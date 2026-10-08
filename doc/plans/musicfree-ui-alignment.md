@@ -115,6 +115,7 @@
 - navActiveId 状态机收口（全链删除）：`setNavActiveId`/`setLastNavActiveId`/`useNavActiveId`/`navActiveIdUpdated` 事件/`lastNavActiveId` 状态/启动视图恢复（`viewPrevState` 持久化链含 dataInit 回读与 storage 前缀）全部移除；Leaderboard/SongList 的 handleFixDrawer 监听删除（DrawerLayoutFixed 的 `usePageVisible` 已覆盖页面返回后的宽度修正）；QuickNav/Aside 导航类型改 `Home/utils` 导出的 `NavId`。
 - I2 歌单曲目数持久化：新增独立存储键 `@list_music_counts`（`utils/listManage` 内存 `musicCounts` Map + 节流写盘）；维护收敛在 `setMusicList` 单点（曲目读写路径必经，增删实时修正、详情屏浏览惰性回填迁移）——不改 `UserListInfo` 元数据，同步/备份链零影响（导入/同步后按浏览重算）。首页歌单行不再为计数预载全部曲目（`getListMusics` 预载删除），未浏览过的歌单显示 `--`（渐进迁移）。
 - 横屏双 SearchView 收口：横屏 Main 不再常驻搜索页，改为复用竖屏首页内容（继续播放卡+快捷入口+歌单平铺）；横屏 Header 改搜索胶囊（SearchBox 提取为 `Home/components` 横竖屏共用）；搜索类型切换（音乐/歌单）挂进搜索屏（原 SearchTypeSelector 仅横屏 Header 可达，竖屏搜索屏缺失该入口，本批补齐）。
+- 批次④代码审查修复（2C/I1/I2/4S）：删歌计数漏修（`listMusicRemove` 补 `setMusicList`）；搜索类型切换定高包裹行（消除高度坍缩）；`initMusicCounts` once 守卫+合并式覆盖；**横屏首页内容限宽 640 居中（拍板对齐设置屏策略，审查 I2）**；孤儿计数键清理、废弃键 `@view_prev_state` 一次性清理、SearchBox 恢复竖屏原胶囊尺寸、DrawerNav 抽屉关闭调用收敛。
 - 评估项结论：栈内多 PlayerBar 实例——对标 MusicFree 同为每屏挂载，接受（深层栈切歌重渲染线性增长，真机验收观察）；首页歌单区空态——lX 必有默认列表（试听/收藏）不会为空，无需引导；`pushTransitionScreen` pop 动画宽度——RNN pop 动画在 push 时序列化，系统返回路径无法实时取宽，仅「push 后旋转再返回」的滑出距离偏差，接受；`jumpListPosition` 监听——核实 emit 源存在（PlayerBar 封面/标题点击），保留（批次④清单表述有误，已核实纠正）。
 
 | 风险 | 应对 |
