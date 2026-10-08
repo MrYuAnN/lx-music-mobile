@@ -8,28 +8,27 @@ import { useIsPlay } from '@/store/player/hook'
 import { useLayout } from '@/utils/hooks'
 import { marginLeft } from '../constant'
 import { BTN_WIDTH } from '../MoreBtn/Btn'
+import { FONT_WHITE } from '../../constant'
 
 // const WIDTH = scaleSizeW(48)
 
 const PrevBtn = ({ size }: { size: number }) => {
-  const theme = useTheme()
   const handlePlayPrev = () => {
     void playPrev()
   }
   return (
     <TouchableOpacity style={{ ...styles.cotrolBtn, width: size, height: size }} activeOpacity={0.5} onPress={handlePlayPrev}>
-      <Icon name='prevMusic' color={theme['c-button-font']} rawSize={size * 0.7} />
+      <Icon name='prevMusic' color={FONT_WHITE} rawSize={size * 0.7} />
     </TouchableOpacity>
   )
 }
 const NextBtn = ({ size }: { size: number }) => {
-  const theme = useTheme()
   const handlePlayNext = () => {
     void playNext()
   }
   return (
     <TouchableOpacity style={{ ...styles.cotrolBtn, width: size, height: size }} activeOpacity={0.5} onPress={handlePlayNext}>
-      <Icon name='nextMusic' color={theme['c-button-font']} rawSize={size * 0.7} />
+      <Icon name='nextMusic' color={FONT_WHITE} rawSize={size * 0.7} />
     </TouchableOpacity>
   )
 }
@@ -38,8 +37,8 @@ const TogglePlayBtn = ({ size }: { size: number }) => {
   const theme = useTheme()
   const isPlay = useIsPlay()
   return (
-    <TouchableOpacity style={{ ...styles.cotrolBtn, width: size, height: size }} activeOpacity={0.5} onPress={togglePlay}>
-      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} rawSize={size * 0.7} />
+    <TouchableOpacity style={{ ...styles.cotrolBtn, ...styles.togglePlayBtn, width: size, height: size, backgroundColor: theme['c-primary'] }} activeOpacity={0.8} onPress={togglePlay}>
+      <Icon name={isPlay ? 'pause' : 'play'} color={FONT_WHITE} rawSize={size * 0.52} />
     </TouchableOpacity>
   )
 }
@@ -77,5 +76,8 @@ const styles = StyleSheet.create({
     shadowOpacity: 1,
     textShadowRadius: 1,
     // marginLeft: 10,
+  },
+  togglePlayBtn: {
+    borderRadius: 999,
   },
 })

@@ -1,25 +1,28 @@
 import { memo } from 'react'
 import { View } from 'react-native'
 
-import Progress from '@/components/player/ProgressBar'
+import Progress, { type ProgressColors } from '@/components/player/ProgressBar'
 import Status from './Status'
 import { useProgress } from '@/store/player/hook'
-import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useBufferProgress } from '@/plugins/player'
+import { FONT_WHITE_50 } from '../../../constant'
 
 // const FONT_SIZE = 13
 
+const progressColors: ProgressColors = {
+  track: 'rgba(255,255,255,0.3)',
+  buffered: 'rgba(255,255,255,0.4)',
+  // 进度与圆点保留主题强调色
+}
+
 const PlayTimeCurrent = ({ timeStr }: { timeStr: string }) => {
-  const theme = useTheme()
-  // console.log(timeStr)
-  return <Text color={theme['c-500']}>{timeStr}</Text>
+  return <Text color={FONT_WHITE_50}>{timeStr}</Text>
 }
 
 const PlayTimeMax = memo(({ timeStr }: { timeStr: string }) => {
-  const theme = useTheme()
-  return <Text color={theme['c-500']}>{timeStr}</Text>
+  return <Text color={FONT_WHITE_50}>{timeStr}</Text>
 })
 
 export default () => {
@@ -30,7 +33,7 @@ export default () => {
 
   return (
     <>
-      <View style={styles.progress}><Progress progress={progress} duration={maxPlayTime} buffered={buffered} /></View>
+      <View style={styles.progress}><Progress progress={progress} duration={maxPlayTime} buffered={buffered} colors={progressColors} /></View>
       <View style={styles.info}>
         <PlayTimeCurrent timeStr={nowPlayTimeStr} />
         <View style={styles.status} >

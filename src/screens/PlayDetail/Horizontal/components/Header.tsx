@@ -4,7 +4,6 @@ import { View, StyleSheet, TouchableOpacity } from 'react-native'
 
 import { Icon } from '@/components/common/Icon'
 import { pop } from '@/navigation'
-import { useTheme } from '@/store/theme/hook'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
@@ -14,18 +13,18 @@ import CommentBtn from './CommentBtn'
 import Btn from './Btn'
 import SettingPopup, { type SettingPopupType } from '../../components/SettingPopup'
 import DesktopLyricBtn from './DesktopLyricBtn'
+import { FONT_WHITE, FONT_WHITE_70 } from '../../constant'
 
 export const HEADER_HEIGHT = scaleSizeH(_HEADER_HEIGHT)
 
 const Title = () => {
-  const theme = useTheme()
   const musicInfo = usePlayerMusicInfo()
 
 
   return (
     <View style={styles.titleContent}>
-      <Text numberOfLines={1} style={styles.title} size={14}>{musicInfo.name}</Text>
-      <Text numberOfLines={1} style={styles.title} size={12} color={theme['c-font-label']}>{musicInfo.singer}</Text>
+      <Text numberOfLines={1} style={styles.title} size={14} color={FONT_WHITE}>{musicInfo.name}</Text>
+      <Text numberOfLines={1} style={styles.title} size={12} color={FONT_WHITE_70}>{musicInfo.singer}</Text>
     </View>
   )
 }

@@ -1,17 +1,16 @@
 import { memo, useState, useRef, useMemo, useEffect } from 'react'
-import { View, AppState } from 'react-native'
+import { View, AppState, Animated } from 'react-native'
 
 import Header from './components/Header'
-// import Aside from './components/Aside'
-// import Main from './components/Main'
 import Player from './Player'
-import PagerView, { type PagerViewOnPageSelectedEvent } from 'react-native-pager-view'
+import PagerView, { type PagerViewOnPageSelectedEvent, type PagerViewOnPageScrollEvent } from 'react-native-pager-view'
 import Pic from './Pic'
 import Lyric from './Lyric'
+import ActionBar from './components/ActionBar'
+import LyricToolBar from './components/LyricToolBar'
 import { screenkeepAwake, screenUnkeepAwake } from '@/utils/nativeModules/utils'
 import commonState, { type InitState as CommonState } from '@/store/common/state'
 import { createStyle } from '@/utils/tools'
-// import { useTheme } from '@/store/theme/hook'
 
 const LyricPage = ({ activeIndex }: { activeIndex: number }) => {
   const initedRef = useRef(false)
@@ -29,9 +28,10 @@ const LyricPage = ({ activeIndex }: { activeIndex: number }) => {
 
 // global.iskeep = false
 export default memo(({ componentId }: { componentId: string }) => {
-  // const theme = useTheme()
   const [pageIndex, setPageIndex] = useState(0)
   const showLyricRef = useRef(false)
+  const pagerRef = useRef<PagerView>(null)
+  const scrollProgress = useRef(new Animated.Value(0)).current
 
   const onPageSelected = ({ nativeEvent }: PagerViewOnPageSelectedEvent) => {
     setPageIndex(nativeEvent.position)
@@ -41,6 +41,15 @@ export default memo(({ componentId }: { componentId: string }) => {
     } else {
       screenUnkeepAwake()
     }
+  }
+
+  // 下划线跟手：滚动过程中连续更新进度（position + offset）
+  const onPageScroll = ({ nativeEvent }: PagerViewOnPageScrollEvent) => {
+    scrollProgress.setValue(nativeEvent.position + nativeEvent.offset)
+  }
+
+  const handleChangePage = (position: number) => {
+    pagerRef.current?.setPage(position)
   }
 
   useEffect(() => {
@@ -72,24 +81,24 @@ export default memo(({ componentId }: { componentId: string }) => {
 
   return (
     <>
-      <Header />
+      <Header progress={scrollProgress} activeIndex={pageIndex} onChange={handleChangePage} />
       <View style={styles.container}>
         <PagerView
+          ref={pagerRef}
           onPageSelected={onPageSelected}
+          onPageScroll={onPageScroll}
           // onPageScrollStateChanged={onPageScrollStateChanged}
           style={styles.pagerView}
         >
-          <View collapsable={false}>
+          <View collapsable={false} style={styles.page}>
             <Pic componentId={componentId} />
+            <ActionBar />
           </View>
-          <View collapsable={false}>
+          <View collapsable={false} style={styles.page}>
             <LyricPage activeIndex={pageIndex} />
+            <LyricToolBar />
           </View>
         </PagerView>
-        {/* <View style={styles.pageIndicator} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_pageIndicator}>
-          <View style={{ ...styles.pageIndicatorItem, backgroundColor: pageIndex == 0 ? theme['c-primary-light-100-alpha-700'] : theme['c-primary-alpha-900'] }}></View>
-          <View style={{ ...styles.pageIndicatorItem, backgroundColor: pageIndex == 1 ? theme['c-primary-light-100-alpha-700'] : theme['c-primary-alpha-900'] }}></View>
-        </View> */}
         <Player />
       </View>
     </>
@@ -104,18 +113,8 @@ const styles = createStyle({
   pagerView: {
     flex: 1,
   },
-  // pageIndicator: {
-  //   flex: 0,
-  //   flexDirection: 'row',
-  //   justifyContent: 'center',
-  //   paddingTop: 10,
-  //   // backgroundColor: 'rgba(0,0,0,0.1)',
-  // },
-  // pageIndicatorItem: {
-  //   height: 3,
-  //   width: '5%',
-  //   marginLeft: 2,
-  //   marginRight: 2,
-  //   borderRadius: 2,
-  // },
+  page: {
+    flex: 1,
+    flexDirection: 'column',
+  },
 })

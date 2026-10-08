@@ -52,7 +52,7 @@ export default memo(({ componentId }: { componentId: string }) => {
   }, [])
 
   return (
-    <PageContent>
+    <PageContent forceCoverBg>
       <StatusBar />
       <View style={{ ...styles.container, paddingTop: statusBarHeight }}>
         <View style={styles.left}>

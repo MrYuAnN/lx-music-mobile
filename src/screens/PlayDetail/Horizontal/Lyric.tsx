@@ -11,6 +11,7 @@ import { setSpText } from '@/utils/pixelRatio'
 import playerState from '@/store/player/state'
 import { scrollTo } from '@/utils/scroll'
 import PlayLine, { type PlayLineType } from '../components/PlayLine'
+import { FONT_WHITE, FONT_WHITE_70 } from '../constant'
 // import { screenkeepAwake } from '@/utils/nativeModules/utils'
 // import { log } from '@/utils/log'
 // import { toast } from '@/utils/tools'
@@ -23,6 +24,10 @@ interface LineProps {
   activeLine: number
   onLayout: (lineNum: number, height: number, width: number) => void
 }
+
+// 与当前行的距离档位（0=当前行），用于按距离做透明度渐变
+const getLineLevel = (lineNum: number, activeLine: number) => Math.min(Math.abs(lineNum - activeLine), 4)
+
 const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
   const theme = useTheme()
   const lrcFontSize = useSettingValue('playDetail.horizontal.style.lrcFontSize')
@@ -30,18 +35,18 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
   const size = lrcFontSize / 10
   const lineHeight = setSpText(size) * 1.3
 
+  const level = getLineLevel(lineNum, activeLine)
   const colors = useMemo(() => {
-    const active = activeLine == lineNum
-    return active ? [
-      theme['c-primary'],
-      theme['c-primary-alpha-200'],
-      1,
-    ] as const : [
-      theme['c-350'],
-      theme['c-300'],
-      0.6,
-    ] as const
-  }, [activeLine, lineNum, theme])
+    if (level == 0) {
+      return [
+        theme['c-primary'],
+        theme['c-primary-alpha-200'],
+        1,
+      ] as const
+    }
+    const opacity = level == 1 ? 0.72 : level == 2 ? 0.48 : level == 3 ? 0.3 : 0.2
+    return [FONT_WHITE, FONT_WHITE_70, opacity] as const
+  }, [level, theme])
 
   const handleLayout = ({ nativeEvent }: LayoutChangeEvent) => {
     onLayout(lineNum, nativeEvent.layout.height, nativeEvent.layout.width)
@@ -68,9 +73,9 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
     </View>
   )
 }, (prevProps, nextProps) => {
+  // 行内容相同且与当前行的距离档位不变时无需重渲染
   return prevProps.line === nextProps.line &&
-    prevProps.activeLine != nextProps.lineNum &&
-    nextProps.activeLine != nextProps.lineNum
+    getLineLevel(prevProps.lineNum, prevProps.activeLine) === getLineLevel(nextProps.lineNum, nextProps.activeLine)
 })
 const wait = async() => new Promise(resolve => setTimeout(resolve, 100))
 

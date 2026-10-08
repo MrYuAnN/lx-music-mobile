@@ -40,7 +40,7 @@ export default memo(({ componentId }: { componentId: string }) => {
         <Image url={pic} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_pic} style={{
           width: imgWidth,
           height: imgWidth,
-          borderRadius: 2,
+          borderRadius: 12,
         }} />
       </View>
     </View>

@@ -8,16 +8,32 @@ import SettingVolume from './settings/SettingVolume'
 import SettingPlaybackRate from './settings/SettingPlaybackRate'
 import SettingLrcFontSize from './settings/SettingLrcFontSize'
 import SettingLrcAlign from './settings/SettingLrcAlign'
+import SettingRoma from './settings/SettingRoma'
+
+export type SettingPopupItem = 'lyricProgress' | 'volume' | 'rate' | 'fontSize' | 'align' | 'roma'
 
 export interface SettingPopupProps extends Omit<PopupProps, 'children'> {
   direction: 'vertical' | 'horizontal'
+  /** 展示的设置项，缺省为全量（横屏沿用） */
+  items?: SettingPopupItem[]
 }
 
 export interface SettingPopupType {
   show: () => void
 }
 
-export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...props }, ref) => {
+const SETTING_COMPONENTS: Record<SettingPopupItem, (direction: 'vertical' | 'horizontal') => React.ReactNode> = {
+  lyricProgress: () => <SettingLyricProgress />,
+  volume: () => <SettingVolume />,
+  rate: () => <SettingPlaybackRate />,
+  fontSize: direction => <SettingLrcFontSize direction={direction} />,
+  align: () => <SettingLrcAlign />,
+  roma: () => <SettingRoma />,
+}
+
+const DEFAULT_ITEMS: SettingPopupItem[] = ['lyricProgress', 'volume', 'rate', 'fontSize', 'align']
+
+export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, items = DEFAULT_ITEMS, ...props }, ref) => {
   const [visible, setVisible] = useState(false)
   const popupRef = useRef<PopupType>(null)
   // console.log('render import export')
@@ -42,11 +58,7 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
         <Popup ref={popupRef} title={t('play_detail_setting_title')} {...props}>
           <ScrollView>
             <View onStartShouldSetResponder={() => true}>
-              <SettingLyricProgress />
-              <SettingVolume />
-              <SettingPlaybackRate />
-              <SettingLrcFontSize direction={direction} />
-              <SettingLrcAlign />
+              {items.map(item => SETTING_COMPONENTS[item](direction))}
             </View>
           </ScrollView>
         </Popup>

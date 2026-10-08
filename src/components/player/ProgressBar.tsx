@@ -7,17 +7,20 @@ import { useDrag } from '@/utils/hooks'
 import { Icon } from '@/components/common/Icon'
 // import { AppColors } from '@/theme'
 
+export interface ProgressColors {
+  track?: string
+  buffered?: string
+  progress?: string
+  dot?: string
+}
 
-const DefaultBar = memo(() => {
-  const theme = useTheme()
-
-  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-300-alpha-800'], position: 'absolute', width: '100%', left: 0, top: 0 }}></View>
+const DefaultBar = memo(({ color }: { color: string }) => {
+  return <View style={{ ...styles.progressBar, backgroundColor: color, position: 'absolute', width: '100%', left: 0, top: 0 }}></View>
 })
 
-const BufferedBar = memo(({ progress }: { progress: number }) => {
+const BufferedBar = memo(({ progress, color }: { progress: number, color: string }) => {
   // console.log(bufferedProgress)
-  const theme = useTheme()
-  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-400-alpha-700'], position: 'absolute', width: `${progress * 100}%`, left: 0, top: 0 }}></View>
+  return <View style={{ ...styles.progressBar, backgroundColor: color, position: 'absolute', width: `${progress * 100}%`, left: 0, top: 0 }}></View>
 })
 
 
@@ -46,7 +49,7 @@ const PreassBar = memo(({ onDragState, setDragProgress, onSetProgress }: {
         onDrag(gestureState.dx)
       },
       onPanResponderGrant: (evt, gestureState) => {
-        // console.log(evt.nativeEvent.locationX, gestureState)
+        // console.log(gestureState.dx, evt.nativeEvent.locationX)
         onDragStart(gestureState.dx, evt.nativeEvent.locationX)
       },
       onPanResponderRelease: () => {
@@ -62,10 +65,11 @@ const PreassBar = memo(({ onDragState, setDragProgress, onSetProgress }: {
 })
 
 
-const Progress = ({ progress, duration, buffered }: {
+const Progress = ({ progress, duration, buffered, colors }: {
   progress: number
   duration: number
   buffered: number
+  colors?: ProgressColors
 }) => {
   // const { progress: bufferProgress } = usePlayTimeBuffer()
   const theme = useTheme()
@@ -91,23 +95,28 @@ const Progress = ({ progress, duration, buffered }: {
     global.app_event.setProgress(progress * durationRef.current)
   }, [])
 
+  const trackColor = colors?.track ?? theme['c-primary-light-300-alpha-800']
+  const bufferedColor = colors?.buffered ?? theme['c-primary-light-400-alpha-700']
+  const progressColor = colors?.progress ?? theme['c-primary-light-100-alpha-400']
+  const dotColor = colors?.dot ?? theme['c-primary-light-100']
+
   return (
     <View style={styles.progress}>
       <View>
-        <DefaultBar />
-        <BufferedBar progress={buffered} />
+        <DefaultBar color={trackColor} />
+        <BufferedBar progress={buffered} color={bufferedColor} />
         {
           draging
             ? (
                 <>
-                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-700'], width: progressStr, position: 'absolute', left: 0, top: 0 }} />
+                  <View style={{ ...styles.progressBar, backgroundColor: progressColor, width: progressStr, position: 'absolute', left: 0, top: 0 }} />
                   <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-600'], width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
-                    <Icon name="full_stop" color={theme['c-primary-light-100']} rawSize={progressDotSize} style={progressDotStyle} />
+                    <Icon name="full_stop" color={dotColor} rawSize={progressDotSize} style={progressDotStyle} />
                   </View>
                 </>
               ) : (
-                <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-400'], width: progressStr, position: 'absolute', left: 0, top: 0 }}>
-                  <Icon name="full_stop" color={theme['c-primary-light-100']} rawSize={progressDotSize} style={progressDotStyle} />
+                <View style={{ ...styles.progressBar, backgroundColor: progressColor, width: progressStr, position: 'absolute', left: 0, top: 0 }}>
+                  <Icon name="full_stop" color={dotColor} rawSize={progressDotSize} style={progressDotStyle} />
                 </View>
               )
         }

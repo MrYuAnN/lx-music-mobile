@@ -8,14 +8,46 @@ import { scaleSizeAbsHR } from '@/utils/pixelRatio'
 import { defaultHeaders } from './common/Image'
 import SizeView from './SizeView'
 import { useBgPic } from '@/store/common/hook'
+import { usePlayerMusicInfo } from '@/store/player/hook'
+import { BG_FALLBACK, BG_MASK_OPACITY } from '@/screens/PlayDetail/constant'
 
 interface Props {
   children: React.ReactNode
+  /**
+   * 播放页专用：强制封面模糊+深色遮罩背景，无视主题背景图与动态背景设置。
+   * 播放页前景为恒定白字系（见 PlayDetail/constant.ts）。
+   */
+  forceCoverBg?: boolean
 }
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
 
-export default ({ children }: Props) => {
+// forceCoverBg 独立成组件，把播放封面订阅隔离在子树内，避免影响其它页面的 PageContent
+const ForceCoverBg = ({ children }: Props) => {
+  const windowSize = useWindowSize()
+  const musicInfo = usePlayerMusicInfo()
+  const pic = musicInfo?.pic ?? null
+
+  const content = useMemo(() => (
+    <View style={{ flex: 1, overflow: 'hidden' }}>
+      <ImageBackground
+        style={{ position: 'absolute', left: 0, top: 0, height: windowSize.height, width: windowSize.width, backgroundColor: BG_FALLBACK }}
+        source={pic ? { uri: pic, headers: defaultHeaders } : null}
+        resizeMode="cover"
+        blurRadius={BLUR_RADIUS}
+      >
+        <View style={{ flex: 1, flexDirection: 'column', backgroundColor: `rgba(0,0,0,${BG_MASK_OPACITY})` }}></View>
+      </ImageBackground>
+      <View style={{ flex: 1, flexDirection: 'column' }}>
+        {children}
+      </View>
+    </View>
+  ), [children, pic, windowSize.height, windowSize.width])
+
+  return content
+}
+
+export default ({ children, forceCoverBg }: Props) => {
   const theme = useTheme()
   const windowSize = useWindowSize()
   const pic = useBgPic()
@@ -69,6 +101,15 @@ export default ({ children }: Props) => {
       </View>
     )
   }, [children, pic, theme, windowSize.height, windowSize.width])
+
+  if (forceCoverBg) {
+    return (
+      <>
+        <SizeView />
+        <ForceCoverBg>{children}</ForceCoverBg>
+      </>
+    )
+  }
 
   return (
     <>

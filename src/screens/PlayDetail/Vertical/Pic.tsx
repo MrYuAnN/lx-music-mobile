@@ -1,19 +1,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import { View } from 'react-native'
-// import { useLayout } from '@/utils/hooks'
 import { createStyle } from '@/utils/tools'
-import { usePlayerMusicInfo } from '@/store/player/hook'
+import { usePlayerMusicInfo, usePlayMusicInfo } from '@/store/player/hook'
 import { useWindowSize } from '@/utils/hooks'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useNavigationComponentDidAppear } from '@/navigation'
 import { HEADER_HEIGHT } from './components/Header'
 import Image from '@/components/common/Image'
+import Text from '@/components/common/Text'
 import { useStatusbarHeight } from '@/store/common/hook'
 import commonState from '@/store/common/state'
+import { FONT_WHITE, FONT_WHITE_70 } from '../constant'
 
 
 export default ({ componentId }: { componentId: string }) => {
   const musicInfo = usePlayerMusicInfo()
+  const playMusicInfo = usePlayMusicInfo()
   const { width: winWidth, height: winHeight } = useWindowSize()
   const statusBarHeight = useStatusbarHeight()
 
@@ -29,18 +31,36 @@ export default ({ componentId }: { componentId: string }) => {
   // console.log('render pic')
 
   const style = useMemo(() => {
-    const imgWidth = Math.min(winWidth * 0.8, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.5)
+    const imgWidth = Math.min(winWidth * 0.85, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.42)
     return {
       width: imgWidth,
       height: imgWidth,
-      borderRadius: 2,
+      borderRadius: 12,
     }
   }, [statusBarHeight, winHeight, winWidth])
+
+  // 音源名来自播放列表里的原始音乐信息（Player.MusicInfo 顶层无 source 字段）
+  const source = playMusicInfo.musicInfo && 'source' in playMusicInfo.musicInfo
+    ? playMusicInfo.musicInfo.source.toUpperCase()
+    : null
 
   return (
     <View style={styles.container}>
       <View style={{ ...styles.content, elevation: animated ? 3 : 0 }}>
         <Image url={pic} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_pic} style={style} />
+      </View>
+      <View style={styles.info}>
+        <Text numberOfLines={1} style={styles.name} size={22} color={FONT_WHITE}>{musicInfo.name}</Text>
+        <View style={styles.singerRow}>
+          <Text numberOfLines={1} style={styles.singer} size={13} color={FONT_WHITE_70}>{musicInfo.singer}</Text>
+          {
+            source ? (
+              <View style={styles.badge}>
+                <Text size={10} color={FONT_WHITE_70}>{source}</Text>
+              </View>
+            ) : null
+          }
+        </View>
       </View>
     </View>
   )
@@ -52,11 +72,40 @@ const styles = createStyle({
     flexShrink: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
+    paddingLeft: 20,
+    paddingRight: 20,
   },
   content: {
-    // elevation: 3,
     backgroundColor: 'rgba(0,0,0,0)',
+    borderRadius: 12,
+  },
+  info: {
+    alignSelf: 'stretch',
+    alignItems: 'center',
+    paddingTop: 24,
+  },
+  name: {
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  singerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+    maxWidth: '100%',
+  },
+  singer: {
+    flexShrink: 1,
+  },
+  badge: {
+    flexGrow: 0,
+    flexShrink: 0,
+    marginLeft: 8,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
     borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
   },
 })
