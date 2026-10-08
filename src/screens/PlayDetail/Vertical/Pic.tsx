@@ -39,10 +39,14 @@ export default ({ componentId }: { componentId: string }) => {
     }
   }, [statusBarHeight, winHeight, winWidth])
 
-  // 音源名来自播放列表里的原始音乐信息（Player.MusicInfo 顶层无 source 字段）
-  const source = playMusicInfo.musicInfo && 'source' in playMusicInfo.musicInfo
-    ? playMusicInfo.musicInfo.source.toUpperCase()
-    : null
+  // 音源徽标：与下载/切源包装解包后取 source（仿收藏键的解包方式）；本地歌曲不显示
+  const source = useMemo(() => {
+    const info = playMusicInfo.musicInfo
+    if (!info) return null
+    const musicInfo = 'progress' in info ? info.metadata.musicInfo : info
+    if (musicInfo.source == null || musicInfo.source == 'local') return null
+    return musicInfo.source.toUpperCase()
+  }, [playMusicInfo.musicInfo])
 
   return (
     <View style={styles.container}>

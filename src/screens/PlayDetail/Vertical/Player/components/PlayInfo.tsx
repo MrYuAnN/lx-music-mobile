@@ -7,13 +7,13 @@ import { useProgress } from '@/store/player/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useBufferProgress } from '@/plugins/player'
-import { FONT_WHITE_50 } from '../../../constant'
+import { FONT_WHITE_30, FONT_WHITE_40, FONT_WHITE_50 } from '../../../constant'
 
 // const FONT_SIZE = 13
 
 const progressColors: ProgressColors = {
-  track: 'rgba(255,255,255,0.3)',
-  buffered: 'rgba(255,255,255,0.4)',
+  track: FONT_WHITE_30,
+  buffered: FONT_WHITE_40,
   // 进度与圆点保留主题强调色
 }
 

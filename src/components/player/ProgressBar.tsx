@@ -12,6 +12,8 @@ export interface ProgressColors {
   buffered?: string
   progress?: string
   dot?: string
+  /** 拖拽中的高亮条（未提供时保留主题色） */
+  dragHighlight?: string
 }
 
 const DefaultBar = memo(({ color }: { color: string }) => {
@@ -99,6 +101,7 @@ const Progress = ({ progress, duration, buffered, colors }: {
   const bufferedColor = colors?.buffered ?? theme['c-primary-light-400-alpha-700']
   const progressColor = colors?.progress ?? theme['c-primary-light-100-alpha-400']
   const dotColor = colors?.dot ?? theme['c-primary-light-100']
+  const dragHighlightColor = colors?.dragHighlight ?? theme['c-primary-light-100-alpha-600']
 
   return (
     <View style={styles.progress}>
@@ -110,7 +113,7 @@ const Progress = ({ progress, duration, buffered, colors }: {
             ? (
                 <>
                   <View style={{ ...styles.progressBar, backgroundColor: progressColor, width: progressStr, position: 'absolute', left: 0, top: 0 }} />
-                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-600'], width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
+                  <View style={{ ...styles.progressBar, backgroundColor: dragHighlightColor, width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
                     <Icon name="full_stop" color={dotColor} rawSize={progressDotSize} style={progressDotStyle} />
                   </View>
                 </>

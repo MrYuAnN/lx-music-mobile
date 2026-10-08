@@ -24,11 +24,12 @@ const FavBtn = () => {
 
   const handleShowMusicAddModal = () => {
     const musicInfo = playerState.playMusicInfo.musicInfo
-    if (!musicInfo) return
+    const listId = playerState.playMusicInfo.listId
+    if (!musicInfo || !listId) return
     musicAddModalRef.current?.show({
       musicInfo: 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo,
       isMove: false,
-      listId: playerState.playMusicInfo.listId!,
+      listId,
     })
   }
 

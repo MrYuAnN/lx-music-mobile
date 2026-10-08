@@ -91,8 +91,22 @@ const createI18n = (_locale: Langs = locale): I18n => {
 }
 
 
+// 订阅当前语言（'zh_cn'/'zh_tw'/'en_us'），供语言相关的字形/文案选择使用
+const useLocale = (): Langs => {
+  const [locale, updateLocale] = useState<Langs>(i18n?.locale ?? 'en_us')
+  useEffect(() => {
+    const hook: Hook = (newLocale) => {
+      updateLocale(newLocale)
+    }
+    hookTools.add(hook)
+    return () => { hookTools.remove(hook) }
+  }, [])
+  return locale
+}
+
 export {
   setLanguage,
   useI18n,
+  useLocale,
   createI18n,
 }

@@ -33,7 +33,7 @@ export default memo(({ progress, activeIndex, onChange }: Props) => {
 
   return (
     <View style={{ height: HEADER_HEIGHT + statusBarHeight, paddingTop: statusBarHeight }} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_header}>
-      <StatusBar />
+      <StatusBar barStyle="light-content" />
       <View style={styles.container}>
         <Btn icon="chevron-left" color={FONT_WHITE} onPress={back} />
         <SegmentedControl

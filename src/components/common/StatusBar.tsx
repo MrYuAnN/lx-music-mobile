@@ -1,9 +1,9 @@
 import { useTheme } from '@/store/theme/hook'
 import { StatusBar as RNStatusBar } from 'react-native'
 
-const StatusBar = function() {
+const StatusBar = function({ barStyle: barStyleProp }: { barStyle?: 'light-content' | 'dark-content' } = {}) {
   const theme = useTheme()
-  const statusBarStyle = theme.isDark ? 'light-content' : 'dark-content'
+  const statusBarStyle = barStyleProp ?? (theme.isDark ? 'light-content' : 'dark-content')
   return <RNStatusBar backgroundColor="rgba(0,0,0,0)" barStyle={statusBarStyle} translucent={true} />
 }
 

@@ -4,49 +4,29 @@ import { View, FlatList, type FlatListProps, type NativeSyntheticEvent, type Nat
 import { type Line, useLrcPlay, useLrcSet } from '@/plugins/lyric'
 import { createStyle } from '@/utils/tools'
 // import { useComponentIds } from '@/store/common/hook'
-import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { AnimatedColorText } from '@/components/common/Text'
 import { setSpText } from '@/utils/pixelRatio'
 import playerState from '@/store/player/state'
 import { scrollTo } from '@/utils/scroll'
 import PlayLine, { type PlayLineType } from '../components/PlayLine'
-import { FONT_WHITE, FONT_WHITE_70 } from '../constant'
+import { getLineLevel, lrcLineMemoComparator, useLrcLineColors, type LrcLineProps } from '../components/lrcLine'
 // import { screenkeepAwake } from '@/utils/nativeModules/utils'
 // import { log } from '@/utils/log'
 // import { toast } from '@/utils/tools'
 
 type FlatListType = FlatListProps<Line>
 
-interface LineProps {
-  line: Line
-  lineNum: number
-  activeLine: number
-  onLayout: (lineNum: number, height: number, width: number) => void
-}
-
-// 与当前行的距离档位（0=当前行），用于按距离做透明度渐变
-const getLineLevel = (lineNum: number, activeLine: number) => Math.min(Math.abs(lineNum - activeLine), 4)
+type LineProps = LrcLineProps
 
 const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
-  const theme = useTheme()
   const lrcFontSize = useSettingValue('playDetail.horizontal.style.lrcFontSize')
   const textAlign = useSettingValue('playDetail.style.align')
   const size = lrcFontSize / 10
   const lineHeight = setSpText(size) * 1.3
 
   const level = getLineLevel(lineNum, activeLine)
-  const colors = useMemo(() => {
-    if (level == 0) {
-      return [
-        theme['c-primary'],
-        theme['c-primary-alpha-200'],
-        1,
-      ] as const
-    }
-    const opacity = level == 1 ? 0.72 : level == 2 ? 0.48 : level == 3 ? 0.3 : 0.2
-    return [FONT_WHITE, FONT_WHITE_70, opacity] as const
-  }, [level, theme])
+  const colors = useLrcLineColors(level)
 
   const handleLayout = ({ nativeEvent }: LayoutChangeEvent) => {
     onLayout(lineNum, nativeEvent.layout.height, nativeEvent.layout.width)
@@ -72,11 +52,7 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
       }
     </View>
   )
-}, (prevProps, nextProps) => {
-  // 行内容相同且与当前行的距离档位不变时无需重渲染
-  return prevProps.line === nextProps.line &&
-    getLineLevel(prevProps.lineNum, prevProps.activeLine) === getLineLevel(nextProps.lineNum, nextProps.activeLine)
-})
+}, lrcLineMemoComparator)
 const wait = async() => new Promise(resolve => setTimeout(resolve, 100))
 
 export default () => {

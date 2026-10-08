@@ -1,7 +1,7 @@
 import { memo, useRef } from 'react'
 import { View } from 'react-native'
 
-import { useI18n } from '@/lang'
+import { useI18n, useLocale } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
@@ -11,10 +11,19 @@ import ToolBtn from './ToolBtn'
 import { DesktopLyricBtn } from './ActionBar'
 
 // 歌词工具行（歌词页专属）：字号 / 翻译 / 对齐 / 桌面歌词 / 更多（歌词进度条、罗马音）
-// 字号与对齐为循环切换（设置弹层内保留精细调节则无同步问题，此处直调设置项）
+// 字号与对齐为循环切换（竖屏无滑条精调入口，循环键是这两个设置项的唯一写入方）
 
 const FONT_SIZE_STEPS = [120, 160, 200, 240, 280]
 const ALIGN_VALUES = ['left', 'center', 'right'] as const
+
+// 非档位值（如默认 210、滑条遗留值）就近归档，避免首按从默认值跳到最小档
+const getNearestStep = (value: number) => {
+  let nearest = 0
+  for (let i = 1; i < FONT_SIZE_STEPS.length; i++) {
+    if (Math.abs(FONT_SIZE_STEPS[i] - value) < Math.abs(FONT_SIZE_STEPS[nearest] - value)) nearest = i
+  }
+  return FONT_SIZE_STEPS[nearest]
+}
 
 const FontSizeBtn = () => {
   const t = useI18n()
@@ -22,7 +31,9 @@ const FontSizeBtn = () => {
 
   const toggleNextSize = () => {
     const index = FONT_SIZE_STEPS.indexOf(lrcFontSize)
-    const next = FONT_SIZE_STEPS[(index + 1) % FONT_SIZE_STEPS.length] ?? FONT_SIZE_STEPS[0]
+    const next = index >= 0
+      ? FONT_SIZE_STEPS[(index + 1) % FONT_SIZE_STEPS.length]
+      : getNearestStep(lrcFontSize)
     updateSetting({ 'playDetail.vertical.style.lrcFontSize': next })
   }
 
@@ -31,6 +42,7 @@ const FontSizeBtn = () => {
 
 const TranslationBtn = () => {
   const t = useI18n()
+  const locale = useLocale()
   const isShowTranslation = useSettingValue('player.isShowLyricTranslation')
 
   const handleToggle = () => {
@@ -39,7 +51,7 @@ const TranslationBtn = () => {
     void toggleTranslation(next)
   }
 
-  return <ToolBtn glyph="译" label={t('play_detail_tool_translation')} active={isShowTranslation} onPress={handleToggle} />
+  return <ToolBtn glyph={locale.startsWith('zh') ? '译' : 'Tr'} label={t('play_detail_tool_translation')} active={isShowTranslation} onPress={handleToggle} />
 }
 
 const AlignBtn = () => {

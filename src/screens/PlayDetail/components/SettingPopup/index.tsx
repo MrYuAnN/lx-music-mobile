@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { Fragment, forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import Popup, { type PopupType, type PopupProps } from '@/components/common/Popup'
 import { useI18n } from '@/lang'
@@ -31,7 +31,7 @@ const SETTING_COMPONENTS: Record<SettingPopupItem, (direction: 'vertical' | 'hor
   roma: () => <SettingRoma />,
 }
 
-const DEFAULT_ITEMS: SettingPopupItem[] = ['lyricProgress', 'volume', 'rate', 'fontSize', 'align']
+const DEFAULT_ITEMS: SettingPopupItem[] = ['lyricProgress', 'volume', 'rate', 'fontSize', 'align', 'roma']
 
 export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, items = DEFAULT_ITEMS, ...props }, ref) => {
   const [visible, setVisible] = useState(false)
@@ -58,7 +58,7 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ite
         <Popup ref={popupRef} title={t('play_detail_setting_title')} {...props}>
           <ScrollView>
             <View onStartShouldSetResponder={() => true}>
-              {items.map(item => SETTING_COMPONENTS[item](direction))}
+              {items.map(item => <Fragment key={item}>{SETTING_COMPONENTS[item](direction)}</Fragment>)}
             </View>
           </ScrollView>
         </Popup>
