@@ -19,6 +19,7 @@ import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { getStatusBarStyle } from './utils'
 import { windowSizeTools } from '@/utils/windowSizeTools'
 import { type ListInfoItem } from '@/store/songlist/state'
+import { type SettingScreenIds } from '@/screens/Home/Views/Setting/constant'
 
 /**
  * 普通二级屏 push（顶栏隐藏 + 横向平移过渡），供 screen 化的搜索/设置/榜单/歌单/我的列表等屏复用
@@ -79,8 +80,8 @@ export function pushSearchScreen(componentId: string) {
   pushTransitionScreen(componentId, SEARCH_SCREEN)
 }
 
-export function pushSettingScreen(componentId: string) {
-  pushTransitionScreen(componentId, SETTING_SCREEN)
+export function pushSettingScreen(componentId: string, initialAnchor?: SettingScreenIds) {
+  pushTransitionScreen(componentId, SETTING_SCREEN, initialAnchor ? { initialAnchor } : undefined)
 }
 
 export function pushLeaderboardScreen(componentId: string) {

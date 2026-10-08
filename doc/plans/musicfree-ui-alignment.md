@@ -96,6 +96,20 @@
 - C2：`jumpListPosition` 旧机制依赖「setNavActiveId 切 PagerView」已失效（长按跳转无反馈 + `jumpMyListPosition` 标志残留致详情屏被播放列表错误接管）。改为：校验播放列表为本地歌单或临时列表 → `setActiveList` 同步 → 置标志 → 直接 push 对应 MylistDetail（挂载后滚动到播放位，push 目标=播放列表，无错位）；`handlePressList` 清标志兜底 + componentId 防御。
 - 拍板：I1 设置屏保持无播放条（修文档表述）；I2 歌单计数改元数据持久化字段（登记批次④，见下）；S 小项（字号 16 对齐/死注释/utils 派发差异注释/counts 占位）当场修。
 
+**批次③三角色审查修复（2026-10-08，1C/4I/9S）**：
+- C1+I3：初始定位统一为「initialAnchor ?? getSettingActiveId()」，布局就绪驱动（目标分组 onLayout 后 rAF 定位，替代 300ms 定时器），用户拖动取消 pending——「记住上次分类」语义完整恢复且无静默失败。
+- I1：滚动到底（offset 钳制）时直接高亮末分组，修复尾部矮分组永不可高亮与点击末 chip 弹回。
+- I2：点击 chip 动画滚动期间挂起 scroll-spy（guard + 600ms 兜底释放 + onScrollBeginDrag/onMomentumScrollEnd 提前释放），消除沿途闪烁。
+- I4：条目「灰色说明」落地——helpDesc 改行内 12 灰字（4 处既有生效），问号弹窗机制退役（helpTitle 无调用方）。
+- S：need 联动禁用改纯派生；chip 下划线线宽用 BorderWidths.normal3；活动 chip 滚入横条可视区；Sync/isEnable.tsx.bak 死文件删除；审查包口径改 `git add -N` 纳入新文件。
+- 拍板回写：RN 内置 Switch 有限还原（M3 off 态 track 应为 surface 角色，本产品以 c-350 替代）经真机观感迭代前接受；ANCHOR_THRESHOLD=72 与 chip 滚入余量 48 为本产品自定参数。真机验收新增检查项：锚点跳转（含批次④初始锚点）、横屏 640 限宽居中、设置首帧耗时与全页滚动流畅度。
+
+**批次③实施记录（2026-10-08）**：
+- 设置页改为横竖屏共用单长页（原横屏单分类切换布局 `Horizontal/`、竖屏 `Vertical/` 包装目录删除）；横屏限宽 640 居中。
+- 去虚拟化：FlatList(windowSize=2) → ScrollView 全量渲染 10 分组（性能预案照旧：真机掉帧再锚点+懒挂载分期）。
+- 锚点导航：顶部固定横滚 chip 行（10 分类，样式沿用 SearchTypeSelector 下划线语言）；分组容器 `collapsable={false}` + onLayout 实测 y（字号/语言切换自动重测）；点击 chip scrollTo、滚动反向高亮（阈值 72）、`pushSettingScreen(componentId, initialAnchor?)` 支持初始锚点参数（批次④抽屉「备份与恢复/关于」入口直接可用）；activeId 变化同步 `setSettingActiveId`（保留「记住上次分类」）。
+- 视觉对齐：Section 去竖条改 18 粗体大标题；`CheckBoxItem` 重做为 M3 开关行（左标题+帮助问号、右 accent Switch，复用 CheckBoxProps 保持 35 处调用零改动；need/禁用语义保留）；内容边距对齐屏边距 16。裸 CheckBox 多选组（字号/主题色块等）、Slider/Input、值弹选类条目本批不动（条目级值文本形态留待真机观感迭代）。
+
 | 风险 | 应对 |
 |---|---|
 | 播放页共享元素过渡错位 | nativeID 不变，每批真机验证 |

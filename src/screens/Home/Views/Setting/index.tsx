@@ -1,13 +1,9 @@
-import { useHorizontalMode } from '@/utils/hooks'
-import Vertical from './Vertical'
-import Horizontal from './Horizontal'
+import Main from './Main'
+import { type SettingScreenIds } from './constant'
 
-export type { SettingScreenIds } from './Main'
+export type { SettingScreenIds } from './constant'
 
-export default () => {
-  const isHorizontalMode = useHorizontalMode()
-
-  return isHorizontalMode
-    ? <Horizontal />
-    : <Vertical />
+export default ({ initialAnchor }: { initialAnchor?: SettingScreenIds }) => {
+  // 横竖屏共用同一长页（横屏限宽居中），原横屏单分类切换布局已移除
+  return <Main initialAnchor={initialAnchor} />
 }
