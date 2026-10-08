@@ -11,6 +11,7 @@ import LyricToolBar from './components/LyricToolBar'
 import { screenkeepAwake, screenUnkeepAwake } from '@/utils/nativeModules/utils'
 import commonState, { type InitState as CommonState } from '@/store/common/state'
 import { createStyle } from '@/utils/tools'
+import PageContent from '@/components/PageContent'
 
 const LyricPage = ({ activeIndex }: { activeIndex: number }) => {
   const initedRef = useRef(false)
@@ -80,7 +81,7 @@ export default memo(({ componentId }: { componentId: string }) => {
   }, [])
 
   return (
-    <>
+    <PageContent forceCoverBg>
       <Header progress={scrollProgress} activeIndex={pageIndex} onChange={handleChangePage} />
       <View style={styles.container}>
         <PagerView
@@ -101,7 +102,7 @@ export default memo(({ componentId }: { componentId: string }) => {
         </PagerView>
         <Player />
       </View>
-    </>
+    </PageContent>
   )
 })
 
