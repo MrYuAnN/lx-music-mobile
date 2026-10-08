@@ -29,7 +29,6 @@ export interface ListProps {
   onPlayList?: (index: number) => void
   progressViewOffset?: number
   ListHeaderComponent?: FlatListType['ListEmptyComponent']
-  checkHomePagerIdle: boolean
   rowType?: RowInfoType
 }
 export interface ListType {
@@ -53,7 +52,6 @@ const List = forwardRef<ListType, ListProps>(({
   onPlayList,
   progressViewOffset,
   ListHeaderComponent,
-  checkHomePagerIdle,
   rowType,
 }, ref) => {
   // const t = useI18n()
@@ -153,7 +151,6 @@ const List = forwardRef<ListType, ListProps>(({
 
   const handlePress = (item: LX.Music.MusicInfoOnline, index: number) => {
     requestAnimationFrame(() => {
-      if (checkHomePagerIdle && !global.lx.homePagerIdle) return
       if (isMultiSelectModeRef.current) {
         handleSelect(item, index)
       } else {

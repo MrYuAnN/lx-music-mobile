@@ -5,7 +5,6 @@ import type { DislikeEventTypes } from '@/event/dislikeEvent'
 import type { StateEventTypes } from '@/event/stateEvent'
 import type { I18n } from '@/lang/i18n'
 import type { Buffer as _Buffer } from 'buffer'
-import type { SettingScreenIds } from '@/screens/Home/Views/Setting'
 
 // interface Process {
 //   env: {
@@ -39,13 +38,6 @@ interface GlobalData {
   apiInitPromise: [Promise<boolean>, boolean, (success: boolean) => void]
 
   jumpMyListPosition: boolean
-
-  settingActiveId: SettingScreenIds
-
-  /**
-   * 首页是否正在滚动中，用于防止意外误触播放歌曲
-   */
-  homePagerIdle: boolean
 
   // windowInfo: {
   //   screenW: number

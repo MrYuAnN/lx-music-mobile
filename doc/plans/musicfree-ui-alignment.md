@@ -81,7 +81,20 @@
 
 ## 6. 前置调查、风险与测试
 
-**前置调查（批次②开工前）**：查 git log 弄清 `registerScreens.tsx` 中 Setting screen 注册被整体注释的动机（潜在缺陷？），结论写入批次②实施说明后再定注册方式。
+**前置调查结论（批次②已核实）**：`registerScreens.tsx` 的 Setting 注册自 v1.0.0（`4fdf309`，上游模板带入）即整体注释，此后从未启用，无历史缺陷记录；属模板遗留注释。批次②已安全注册（连同 Search/Leaderboard/SongList/Mylist/MylistDetail 共 6 个新 screen）。
+
+**批次②实施记录（2026-10-08）**：
+- 新 screen 统一结构：PageContent + ScreenHeader（共享组件，返回=RNN pop）+ 内容 + PlayerBar；push 动画统一横向平移 300ms。**例外**：Setting 屏无 PlayerBar（对标 MusicFree 设置页，三角色审查外呼核实），非遗漏。
+- MusicList 脱抽屉化：ActiveList 整体移除（其冷启动恢复激活列表的职责由 `setActiveList→saveListPrevSelectId` 持久化链承接，MusicList/List.tsx 挂载时 `getListPrevSelectId` 自行恢复）；歌单内搜索入口上移到详情屏顶栏（MusicList forwardRef 暴露 showSearch）。
+- MyList 平铺化：FlatList→map 平铺（适配首页 ScrollView 嵌套），行=图标 tile+名称+N 首+竖点；曲目数走 `getListMusics` 预填充缓存 + `myListMusicUpdate` 事件增量刷新（未就绪显示 `--` 占位）。
+- `settingActiveId` 改 Setting/Main.tsx 模块级变量（跨挂载保留上次分类）；`homePagerIdle`/`checkHomePagerIdle`/`changeLoveListVisible` 全链清除；Setting 竖屏 Header/NavList 死代码与 Download view 一并删除。
+- 横屏中间态：Aside 点击= `setNavActiveId`（保留派发，`jumpListPosition` 等仍依赖）+ push；Main 固定搜索页、Header 标题/类型选择器随之固定，规避标题与内容不一致。
+- 首页快捷入口（搜索胶囊/三卡/歌单行）只 push 不派发 setNavActiveId；抽屉与 Aside 先派发再 push（拍板内分工）。
+
+**批次②三角色审查修复（2026-10-08，0C→2C/2I 后修复）**：
+- C1：重写 registerScreens.tsx 时误删 SyncModeModal 注册（同步冲突模式选择弹窗全链挂死），已恢复 import+注册两行。
+- C2：`jumpListPosition` 旧机制依赖「setNavActiveId 切 PagerView」已失效（长按跳转无反馈 + `jumpMyListPosition` 标志残留致详情屏被播放列表错误接管）。改为：校验播放列表为本地歌单或临时列表 → `setActiveList` 同步 → 置标志 → 直接 push 对应 MylistDetail（挂载后滚动到播放位，push 目标=播放列表，无错位）；`handlePressList` 清标志兜底 + componentId 防御。
+- 拍板：I1 设置屏保持无播放条（修文档表述）；I2 歌单计数改元数据持久化字段（登记批次④，见下）；S 小项（字号 16 对齐/死注释/utils 派发差异注释/counts 占位）当场修。
 
 | 风险 | 应对 |
 |---|---|
@@ -93,6 +106,15 @@
 | 锚点 y 漂移 | onLayout 实测+字号/语言切换重算 |
 | 恒定白字与浅色主题观感 | 16 主题抽查（black/orange/中秋各一） |
 | iOS blurRadius | 双平台可用；按真机性能决定降级（策略性） |
+| 横屏双 SearchView 实例 + 搜索屏返回清词与横屏常驻搜索页状态分叉 | 批次②中间态已知差异，批次④与状态机一并收口 |
+
+**批次④收口清单（批次②审查沉淀，2026-10-08）**：
+- I2 歌单「N 首」计数改元数据持久化字段（对标 MusicFree worksNum：增删时维护 count，首页不为计数加载曲目列表；含数据迁移与同步/备份链评估，替代现 `getListMusics` 预取方案）。
+- SongList/Songlist 拼法统一（涉 RNN 注册字符串，一次性改）。
+- `pushTransitionScreen` pop 动画宽度改实时取（横竖屏切换后返回的滑出距离）；既有 push 函数（SonglistDetail/Comment）复用该 helper。
+- 栈内多 PlayerBar 实例：评估覆盖屏降级（对标 MusicFree 同为每屏挂载，可接受，深层栈切歌重渲染线性增长）。
+- 首页歌单区空态引导（核对 MusicFree 空态做法后决定）。
+- MusicList/List.tsx 的 `jumpListPosition` 事件监听已无 emit 源（C2 修复后跳转走标志+push），随状态机简化一并清除。
 
 **测试**：每批 `npm run lint` + tsc → Android 真机 → 用例：横竖屏切换、亮/暗/特色主题、共享元素过渡、播放切歌、抽屉/弹窗入口、**安卓返回键/返回手势专项**（screen 化后返回行为迁移：搜索屏返回清词、播放页返回、设置屏返回）、**PlayerBar 隐藏态点继续播放卡**、歌单 9 项操作回归 → 对照 MusicFree 截图逐页核对。
 

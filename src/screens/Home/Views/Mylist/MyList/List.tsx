@@ -1,62 +1,56 @@
-import { memo, useEffect, useRef } from 'react'
-import { View, TouchableOpacity, FlatList, type NativeScrollEvent, type NativeSyntheticEvent, type FlatListProps } from 'react-native'
+import { memo, useEffect, useRef, useState } from 'react'
+import { View, TouchableOpacity } from 'react-native'
 
 import { Icon } from '@/components/common/Icon'
 
 import { useTheme } from '@/store/theme/hook'
-import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
+import { useMyList } from '@/store/list/hook'
 import { createStyle } from '@/utils/tools'
-import { LIST_SCROLL_POSITION_KEY } from '@/config/constant'
-import { getListPosition, saveListPosition } from '@/utils/data'
 import { setActiveList } from '@/core/list'
+import { getListMusicSync, getListMusics } from '@/utils/listManage'
+import { navigations } from '@/navigation'
+import commonState from '@/store/common/state'
 import Text from '@/components/common/Text'
+import { LIST_IDS } from '@/config/constant'
+import { useI18n } from '@/lang'
 import { type Position } from './ListMenu'
-import { scaleSizeH } from '@/utils/pixelRatio'
-import Loading from '@/components/common/Loading'
+import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
-type FlatListType = FlatListProps<LX.List.MyListInfo>
+const TILE_SIZE = scaleSizeW(44)
+const ITEM_HEIGHT = scaleSizeH(64)
 
-const ITEM_HEIGHT = scaleSizeH(40)
-
-const ListItem = memo(({ item, index, activeId, onPress, onShowMenu }: {
+const ListItem = memo(({ item, index, count, onPress, onShowMenu }: {
   onPress: (item: LX.List.MyListInfo) => void
   index: number
-  activeId: string
+  count: number | null
   item: LX.List.MyListInfo
   onShowMenu: (item: LX.List.MyListInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
 }) => {
   const theme = useTheme()
+  const t = useI18n()
   const moreButtonRef = useRef<TouchableOpacity>(null)
-  const fetching = useListFetching(item.id)
-
-  const active = activeId == item.id
 
   const handleShowMenu = () => {
     if (moreButtonRef.current?.measure) {
       moreButtonRef.current.measure((fx, fy, width, height, px, py) => {
-        // console.log(fx, fy, width, height, px, py)
         onShowMenu(item, index, { x: Math.ceil(px), y: Math.ceil(py), w: Math.ceil(width), h: Math.ceil(height) })
       })
     }
   }
 
-  const handlePress = () => {
-    onPress(item)
-  }
-
   return (
     <View style={{ ...styles.listItem, height: ITEM_HEIGHT }}>
-      {
-        active
-          ? <Icon style={styles.listActiveIcon} name="chevron-right" size={12} color={theme['c-primary-font']} />
-          : null
-      }
-      { fetching ? <Loading color={active ? theme['c-primary-font'] : theme['c-font']} style={styles.loading} /> : null }
-      <TouchableOpacity style={styles.listName} onPress={handlePress}>
-        <Text numberOfLines={1} color={active ? theme['c-primary-font'] : theme['c-font']}>{item.name}</Text>
+      <TouchableOpacity style={styles.listMain} onPress={() => { onPress(item) }}>
+        <View style={{ ...styles.tile, backgroundColor: theme['c-primary-light-400-alpha-900'] }}>
+          <Icon name={item.id == LIST_IDS.LOVE ? 'love' : 'album'} size={18} color={theme['c-primary']} />
+        </View>
+        <View style={styles.listInfo}>
+          <Text numberOfLines={1} size={16} color={theme['c-font']}>{item.name}</Text>
+          <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{count == null ? '--' : t('songs_count', { num: count })}</Text>
+        </View>
       </TouchableOpacity>
       <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.listMoreBtn}>
-        <Icon name="dots-vertical" color={theme['c-350']} size={12} />
+        <Icon name="dots-vertical" color={theme['c-font-label']} size={16} />
       </TouchableOpacity>
     </View>
   )
@@ -64,127 +58,114 @@ const ListItem = memo(({ item, index, activeId, onPress, onShowMenu }: {
   return !!(prevProps.item === nextProps.item &&
     prevProps.index === nextProps.index &&
     prevProps.item.name == nextProps.item.name &&
-    prevProps.activeId != nextProps.item.id &&
-    nextProps.activeId != nextProps.item.id
-  )
+    prevProps.count == nextProps.count)
 })
 
 
 export default ({ onShowMenu }: {
   onShowMenu: (info: { listInfo: LX.List.MyListInfo, index: number }, position: Position) => void
 }) => {
-  const flatListRef = useRef<FlatList>(null)
   const allList = useMyList()
-  const activeListId = useActiveListId()
+  const [counts, setCounts] = useState<Record<string, number>>({})
 
-  const handleToggleList = (item: LX.List.MyListInfo) => {
-    // setVisiblePanel(false)
-    global.app_event.changeLoveListVisible(false)
-    requestAnimationFrame(() => {
-      setActiveList(item.id)
+  useEffect(() => {
+    let isInited = false
+    // 歌单数量展示需要曲目数，首次挂载将各歌单载入缓存后读取
+    void Promise.all(allList.map(async l => { await getListMusics(l.id).catch(() => null) })).then(() => {
+      if (isInited) return
+      isInited = true
+      setCounts(prev => {
+        const next = { ...prev }
+        for (const l of allList) next[l.id] = getListMusicSync(l.id).length
+        return next
+      })
     })
-  }
 
+    const handleMusicUpdate = (ids: string[]) => {
+      setCounts(prev => {
+        const next = { ...prev }
+        let changed = false
+        for (const id of ids) {
+          if (next[id] == null) continue
+          next[id] = getListMusicSync(id).length
+          changed = true
+        }
+        return changed ? next : prev
+      })
+    }
+    global.app_event.on('myListMusicUpdate', handleMusicUpdate)
 
-  const handleScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
-    void saveListPosition(LIST_SCROLL_POSITION_KEY, nativeEvent.contentOffset.y)
+    return () => {
+      isInited = true
+      global.app_event.off('myListMusicUpdate', handleMusicUpdate)
+    }
+  }, [allList])
+
+  const handlePressList = (item: LX.List.MyListInfo) => {
+    const componentId = commonState.componentIds.home
+    if (!componentId) return
+    // 防止长按跳转残留的标志把本详情屏错误接管到播放列表（正常时它已被消费，此处仅兜底）
+    global.lx.jumpMyListPosition = false
+    setActiveList(item.id)
+    navigations.pushMylistDetailScreen(componentId, item)
   }
 
   const showMenu = (listInfo: LX.List.MyListInfo, index: number, position: Position) => {
     onShowMenu({ listInfo, index }, position)
   }
 
-  useEffect(() => {
-    void getListPosition(LIST_SCROLL_POSITION_KEY).then((offset) => {
-      flatListRef.current?.scrollToOffset({ offset, animated: false })
-    })
-  }, [])
-
-  const renderItem: FlatListType['renderItem'] = ({ item, index }) => (
-    <ListItem
-      key={item.id}
-      item={item}
-      index={index}
-      activeId={activeListId}
-      onPress={handleToggleList}
-      onShowMenu={showMenu}
-    />
-  )
-  const getkey: FlatListType['keyExtractor'] = item => item.id
-  const getItemLayout: FlatListType['getItemLayout'] = (data, index) => {
-    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
-  }
-
   return (
-    <FlatList
-      ref={flatListRef}
-      onScroll={handleScroll}
-      style={styles.container}
-      data={allList}
-      maxToRenderPerBatch={9}
-      // updateCellsBatchingPeriod={80}
-      windowSize={9}
-      removeClippedSubviews={true}
-      initialNumToRender={18}
-      renderItem={renderItem}
-      keyExtractor={getkey}
-      // extraData={activeIndex}
-      getItemLayout={getItemLayout}
-    />
+    <View style={styles.container}>
+      {allList.map((item, index) => (
+        <ListItem
+          key={item.id}
+          item={item}
+          index={index}
+          count={counts[item.id] ?? null}
+          onPress={handlePressList}
+          onShowMenu={showMenu}
+        />
+      ))}
+    </View>
   )
 }
 
 
 const styles = createStyle({
   container: {
-    flexShrink: 1,
     flexGrow: 0,
+    flexShrink: 1,
   },
-  // listContainer: {
-  //   // borderBottomWidth: BorderWidths.normal2,
-  // },
-
   listItem: {
-    height: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 5,
-    paddingLeft: 5,
-    // borderBottomWidth: BorderWidths.normal,
+    paddingLeft: 16,
+    paddingRight: 8,
   },
-  listActiveIcon: {
-    // width: 18,
-    marginLeft: 3,
-    // paddingRight: 5,
-    textAlign: 'center',
-  },
-  loading: {
-    marginLeft: 5,
-  },
-  listName: {
+  listMain: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     height: '100%',
-    // height: 46,
-    // paddingTop: 12,
-    // paddingBottom: 12,
-    justifyContent: 'center',
-    flexGrow: 1,
-    flexShrink: 1,
-    paddingLeft: 5,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
   },
-  // listNameText: {
-  //   // height: 46,
-  //   fontSize: 14,
-  // },
+  tile: {
+    width: TILE_SIZE,
+    height: TILE_SIZE,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  listInfo: {
+    flex: 1,
+    flexShrink: 1,
+    paddingLeft: 12,
+    justifyContent: 'center',
+    gap: 2,
+  },
   listMoreBtn: {
     height: '100%',
     width: 36,
-    // height: 46,
-    // paddingTop: 12,
-    // paddingBottom: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
   },
 })
-

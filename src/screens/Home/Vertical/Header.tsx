@@ -1,158 +1,82 @@
 import { View, TouchableOpacity } from 'react-native'
-// import Button from '@/components/common/Button'
-// import { navigations } from '@/navigation'
-// import { BorderWidths } from '@/theme'
-import { useTheme } from '@/store/theme/hook'
-import { useNavActiveId, useStatusbarHeight } from '@/store/common/hook'
-import { useI18n } from '@/lang'
-import { createStyle } from '@/utils/tools'
+
 import { Icon } from '@/components/common/Icon'
 import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
+import { useTheme } from '@/store/theme/hook'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { useSettingValue } from '@/store/setting/hook'
+import { useI18n } from '@/lang'
+import { pushNavScreen } from '../utils'
+import { createStyle } from '@/utils/tools'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { HEADER_HEIGHT } from '@/config/constant'
-import { type InitState as CommonState } from '@/store/common/state'
-import SearchTypeSelector from '@/screens/Home/Views/Search/SearchTypeSelector'
 
-const headerComponents: Partial<Record<CommonState['navActiveId'], React.ReactNode>> = {
-  nav_search: <SearchTypeSelector />,
-}
-
-
-// const LeftTitle = () => {
-//   const id = useNavActiveId()
-//   const t = useI18n()
-
-//   return <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
-// }
-const LeftHeader = () => {
+const SearchBox = () => {
   const theme = useTheme()
-  const id = useNavActiveId()
   const t = useI18n()
-  const statusBarHeight = useStatusbarHeight()
-
-  const openMenu = () => {
-    global.app_event.changeMenuVisible(true)
-  }
 
   return (
-    <View style={{
-      ...styles.container,
-      height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
-      paddingTop: statusBarHeight,
-    }}>
-      <View style={styles.left}>
-        <TouchableOpacity style={styles.btn} onPress={openMenu}>
-          <Icon color={theme['c-font']} name="menu" size={18} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.titleBtn} onPress={openMenu}>
-          <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
-        </TouchableOpacity>
-      </View>
-      {headerComponents[id] ?? null}
-
-      {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
-        <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />
-      </TouchableOpacity> */}
-    </View>
+    <TouchableOpacity style={{ ...styles.searchBox, backgroundColor: theme['c-main-background'] }} onPress={() => { pushNavScreen('nav_search') }} activeOpacity={0.7}>
+      <Icon name="search-2" color={theme['c-font-label']} size={16} />
+      <Text style={styles.searchText} size={14} color={theme['c-font-label']}>{t('nav_search')}</Text>
+    </TouchableOpacity>
   )
 }
 
-
-// const RightTitle = () => {
-//   const id = useNavActiveId()
-//   const t = useI18n()
-
-//   return <Text style={styles.rightTitle} size={18}>{t(id)}</Text>
-// }
-const RightHeader = () => {
+export default () => {
   const theme = useTheme()
-  const t = useI18n()
-  const id = useNavActiveId()
   const statusBarHeight = useStatusbarHeight()
-
-  const openMenu = () => {
-    global.app_event.changeMenuVisible(true)
-  }
-  return (
-    <View style={{
-      ...styles.container,
-      height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
-      paddingTop: statusBarHeight,
-    }}>
-      <View style={styles.left}>
-        <TouchableOpacity style={styles.titleBtn} onPress={openMenu}>
-          <Text style={styles.rightTitle} size={18}>{t(id)}</Text>
-        </TouchableOpacity>
-      </View>
-      {headerComponents[id] ?? null}
-      <TouchableOpacity style={styles.btn} onPress={openMenu}>
-        <Icon color={theme['c-font']} name="menu" size={18} />
-      </TouchableOpacity>
-      {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
-        <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
-const Header = () => {
   const drawerLayoutPosition = useSettingValue('common.drawerLayoutPosition')
 
-  return (
-    <>
-      <StatusBar />
-      {
-        drawerLayoutPosition == 'left'
-          ? <LeftHeader />
-          : <RightHeader />
-      }
+  const openMenu = () => {
+    global.app_event.changeMenuVisible(true)
+  }
 
-    </>
+  const menuBtn = (
+    <TouchableOpacity style={styles.btn} onPress={openMenu}>
+      <Icon color={theme['c-font']} name="menu" size={18} />
+    </TouchableOpacity>
+  )
+
+  return (
+    <View style={{ height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight, paddingTop: statusBarHeight }}>
+      <StatusBar />
+      <View style={styles.container}>
+        {drawerLayoutPosition == 'left' ? menuBtn : null}
+        <SearchBox />
+        {drawerLayoutPosition == 'right' ? menuBtn : null}
+      </View>
+    </View>
   )
 }
-
 
 const styles = createStyle({
   container: {
-    // width: '100%',
-    paddingRight: 5,
     flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    zIndex: 10,
-  },
-  left: {
-    flex: 1,
-    flexDirection: 'row',
-    paddingLeft: 5,
     alignItems: 'center',
     height: '100%',
+    paddingHorizontal: 8,
   },
   btn: {
-    // flex: 1,
-    width: HEADER_HEIGHT,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
+    width: 40,
+    height: '100%',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
   },
-  titleBtn: {
+  searchBox: {
     flex: 1,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    height: '100%',
-    justifyContent: 'center',
-  },
-  leftTitle: {
+    height: 36,
+    borderRadius: 999,
+    flexDirection: 'row',
+    alignItems: 'center',
     paddingLeft: 14,
-    paddingRight: 16,
+    paddingRight: 14,
+    gap: 8,
+    marginLeft: 4,
+    marginRight: 4,
   },
-  rightTitle: {
-    paddingLeft: 16,
-    paddingRight: 16,
+  searchText: {
+    flexShrink: 1,
   },
 })
-
-export default Header

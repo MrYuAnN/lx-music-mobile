@@ -7,7 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
-import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
+import { SETTING_SCREENS, getSettingActiveId, setSettingActiveId, type SettingScreenIds } from '../Main'
 import { useI18n } from '@/lang'
 
 type FlatListType = FlatListProps<SettingScreenIds>
@@ -52,12 +52,12 @@ export default ({ onChangeId }: {
   onChangeId: (id: SettingScreenIds) => void
 }) => {
   const flatListRef = useRef<FlatList>(null)
-  const [activeId, setActiveId] = useState(global.lx.settingActiveId)
+  const [activeId, setActiveId] = useState<SettingScreenIds>(getSettingActiveId)
 
   const handleChangeId = (id: SettingScreenIds) => {
     onChangeId(id)
     setActiveId(id)
-    global.lx.settingActiveId = id
+    setSettingActiveId(id)
   }
 
   const renderItem: FlatListType['renderItem'] = ({ item, index }) => (

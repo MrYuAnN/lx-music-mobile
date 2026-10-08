@@ -1,6 +1,11 @@
 import { setNavActiveId } from '@/core/common'
+import { setActiveList } from '@/core/list'
 import Event from './Event'
 import commonState from '@/store/common/state'
+import listState from '@/store/list/state'
+import playerState from '@/store/player/state'
+import { LIST_IDS } from '@/config/constant'
+import { navigations } from '@/navigation'
 import { type Source as SonglistSource } from '@/store/songlist/state'
 import { type SearchType } from '@/store/search/state'
 
@@ -171,19 +176,18 @@ export class AppEvent extends Event {
   }
 
   jumpListPosition() {
-    if (commonState.navActiveId == 'nav_love') {
-      this.emit('jumpListPosition')
-    } else {
-      global.lx.jumpMyListPosition = true
-      setNavActiveId('nav_love')
-      setTimeout(() => {
-        this.emit('jumpListPosition')
-      }, 200)
-    }
-  }
-
-  changeLoveListVisible(visible: boolean) {
-    this.emit('changeLoveListVisible', visible)
+    const listId = playerState.playMusicInfo.listId
+    if (!listId) return
+    const componentId = commonState.componentIds.home
+    if (!componentId) return
+    // screen 化后跳转承接方是歌单详情屏；仅本地歌单与临时列表可打开（下载列表已被长按入口排除）
+    const tempListInfo: { id: string, name: string, meta: { id?: string } } = { id: LIST_IDS.TEMP, name: global.i18n.t('list_name_temp'), meta: {} }
+    const listInfo = listState.allList.find(l => l.id == listId) ?? (listId == LIST_IDS.TEMP ? tempListInfo : null)
+    if (listInfo == null) return
+    setActiveList(listId)
+    global.lx.jumpMyListPosition = true
+    setNavActiveId('nav_love')
+    navigations.pushMylistDetailScreen(componentId, listInfo)
   }
 
   showSonglistTagList(source: SonglistSource, activeId: string) {

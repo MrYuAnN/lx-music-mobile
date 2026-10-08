@@ -57,10 +57,6 @@ global.lx = {
 
   jumpMyListPosition: false,
 
-  settingActiveId: 'basic',
-
-  homePagerIdle: true,
-
   // syncKeyInfo: initValue as LX.Sync.KeyInfo,
 
   // windowInfo: {

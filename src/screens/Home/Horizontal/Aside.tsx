@@ -1,13 +1,13 @@
 import { memo } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
-import { useNavActiveId, useStatusbarHeight } from '@/store/common/hook'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { useTheme } from '@/store/theme/hook'
 import { Icon } from '@/components/common/Icon'
 import { confirmDialog, createStyle, exitApp as backHome } from '@/utils/tools'
 import { NAV_MENUS } from '@/config/constant'
 import type { InitState } from '@/store/common/state'
-// import commonState from '@/store/common/state'
 import { exitApp, setNavActiveId } from '@/core/common'
+import { pushNavScreen } from '../utils'
 import { BorderWidths } from '@/theme'
 import { useSettingValue } from '@/store/setting/hook'
 
@@ -83,23 +83,15 @@ const MenuItem = ({ id, icon, onPress }: {
   icon: string
   onPress: (id: IdType) => void
 }) => {
-  // const t = useI18n()
-  const activeId = useNavActiveId()
   const theme = useTheme()
 
-  return activeId == id
-    ? <View style={styles.menuItem}>
-        <View style={styles.iconContent}>
-          <Icon name={icon} size={20} color={theme['c-primary-font-active']} />
-        </View>
-        {/* <Text style={styles.text} size={14} color={theme['c-primary-font']}>{t(id)}</Text> */}
+  return (
+    <TouchableOpacity style={styles.menuItem} onPress={() => { onPress(id) }}>
+      <View style={styles.iconContent}>
+        <Icon name={icon} size={20} color={theme['c-font-label']} />
       </View>
-    : <TouchableOpacity style={styles.menuItem} onPress={() => { onPress(id) }}>
-        <View style={styles.iconContent}>
-          <Icon name={icon} size={20} color={theme['c-font-label']} />
-        </View>
-        {/* <Text style={styles.text} size={14}>{t(id)}</Text> */}
-      </TouchableOpacity>
+    </TouchableOpacity>
+  )
 }
 
 export default memo(() => {
@@ -125,7 +117,9 @@ export default memo(() => {
     }
 
     global.app_event.changeMenuVisible(false)
+    // 导航中间态（批次②）：派发保留（lastNavActiveId/viewPrevState 兼容），跳转走独立 screen push
     setNavActiveId(id)
+    pushNavScreen(id)
   }
 
   return (

@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { forwardRef, useCallback, useImperativeHandle, useRef } from 'react'
 
 import listState from '@/store/list/state'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
@@ -8,7 +8,6 @@ import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/comp
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import { createStyle } from '@/utils/tools'
 import { type LayoutChangeEvent, View } from 'react-native'
-import ActiveList, { type ActiveListType } from './ActiveList'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
 import ListSearchBar, { type ListSearchBarType } from './ListSearchBar'
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
@@ -16,10 +15,12 @@ import MusicPositionModal, { type MusicPositionModalType } from './MusicPosition
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 
+export interface MusicListType {
+  showSearch: () => void
+}
 
-export default () => {
-  // const t = useI18n()
-  const activeListRef = useRef<ActiveListType>(null)
+
+export default forwardRef<MusicListType, {}>((props, ref) => {
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
@@ -34,12 +35,17 @@ export default () => {
   const isShowMultipleModeBar = useRef(false)
   const isShowSearchBarModeBar = useRef(false)
   const selectedInfoRef = useRef<SelectInfo>()
-  // console.log('render index list')
+
+  useImperativeHandle(ref, () => ({
+    showSearch() {
+      handleShowSearch()
+    },
+  }))
 
   const hancelMultiSelect = useCallback(() => {
     if (isShowSearchBarModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
-    } else activeListRef.current?.setVisibleBar(false)
+    }
     isShowMultipleModeBar.current = true
     multipleModeBarRef.current?.show()
     listRef.current?.setIsMultiSelectMode(true)
@@ -47,7 +53,7 @@ export default () => {
   const hancelExitSelect = useCallback(() => {
     if (isShowSearchBarModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(true)
-    } else activeListRef.current?.setVisibleBar(true)
+    }
     // console.log('hancelExitSelect', isShowSearchBarModeBar.current)
     multipleModeBarRef.current?.exitSelectMode()
     listRef.current?.setIsMultiSelectMode(false)
@@ -57,10 +63,6 @@ export default () => {
     multipleModeBarRef.current?.setSwitchMode(mode)
     listRef.current?.setSelectMode(mode)
   }, [])
-  const hancelScrollToTop = useCallback(() => {
-    listRef.current?.scrollToTop()
-  }, [])
-
   const showMenu = useCallback((musicInfo: LX.Music.MusicInfo, index: number, position: Position) => {
     listMenuRef.current?.show({
       musicInfo,
@@ -74,17 +76,16 @@ export default () => {
     isShowSearchBarModeBar.current = true
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
-    } else activeListRef.current?.setVisibleBar(false)
+    }
     listSearchBarRef.current?.show()
   }, [])
   const handleExitSearch = useCallback(() => {
     isShowSearchBarModeBar.current = false
     listMusicSearchRef.current?.hide()
     listSearchBarRef.current?.hide()
-    // console.log('handleExitSearch', isShowMultipleModeBar.current)
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(true)
-    } else activeListRef.current?.setVisibleBar(true)
+    }
   }, [])
   const handleScrollToInfo = useCallback((info: LX.Music.MusicInfo) => {
     listRef.current?.scrollToInfo(info)
@@ -122,7 +123,6 @@ export default () => {
   return (
     <View style={styles.container}>
       <View style={{ zIndex: 2 }}>
-        <ActiveList ref={activeListRef} onShowSearchBar={handleShowSearch} onScrollToTop={hancelScrollToTop} />
         <MultipleModeBar
           ref={multipleModeBarRef}
           onSwitchMode={hancelSwitchSelectMode}
@@ -173,7 +173,7 @@ export default () => {
       <MusicToggleModal ref={musicToggleModalRef} />
     </View>
   )
-}
+})
 
 
 const styles = createStyle({
@@ -182,3 +182,4 @@ const styles = createStyle({
     flexDirection: 'column',
   },
 })
+

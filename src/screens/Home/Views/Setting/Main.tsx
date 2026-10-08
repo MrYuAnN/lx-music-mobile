@@ -26,6 +26,15 @@ export const SETTING_SCREENS = [
 
 export type SettingScreenIds = typeof SETTING_SCREENS[number]
 
+// 记住上次浏览的设置分类（screen 化后跨挂载保留，原 global.lx.settingActiveId）
+let lastSettingActiveId: SettingScreenIds = 'basic'
+
+export const getSettingActiveId = (): SettingScreenIds => lastSettingActiveId
+
+export const setSettingActiveId = (id: SettingScreenIds) => {
+  lastSettingActiveId = id
+}
+
 // interface MainProps {
 //   onUpdateActiveId: (id: string) => void
 // }
@@ -34,10 +43,11 @@ export interface MainType {
 }
 
 const Main = forwardRef<MainType, {}>((props, ref) => {
-  const [id, setId] = useState(global.lx.settingActiveId)
+  const [id, setId] = useState<SettingScreenIds>(getSettingActiveId)
 
   useImperativeHandle(ref, () => ({
     setActiveId(id) {
+      setSettingActiveId(id)
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
           setId(id)

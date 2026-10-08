@@ -82,7 +82,6 @@ export default forwardRef<MusicListType, {}>((props, ref) => {
     ref={listRef}
     onRefresh={handleRefresh}
     onLoadMore={handleLoadMore}
-    checkHomePagerIdle
   />
 })
 

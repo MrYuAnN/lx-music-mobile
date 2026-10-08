@@ -15,7 +15,6 @@ export interface OnlineListProps {
   onPlayList?: ListProps['onPlayList']
   progressViewOffset?: ListProps['progressViewOffset']
   ListHeaderComponent?: ListProps['ListHeaderComponent']
-  checkHomePagerIdle?: boolean
   rowType?: RowInfoType
 }
 export interface OnlineListType {
@@ -29,7 +28,6 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   onPlayList,
   progressViewOffset,
   ListHeaderComponent,
-  checkHomePagerIdle = false,
   rowType,
 }, ref) => {
   const listRef = useRef<ListType>(null)
@@ -91,7 +89,6 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
           onPlayList={onPlayList}
           progressViewOffset={progressViewOffset}
           ListHeaderComponent={ListHeaderComponent}
-          checkHomePagerIdle={checkHomePagerIdle}
           rowType={rowType}
         />
         <MultipleModeBar
