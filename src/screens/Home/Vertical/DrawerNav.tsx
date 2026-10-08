@@ -113,35 +113,28 @@ export default memo(() => {
   }
 
   const handleMenu = (id: MenuId) => {
-    switch (id) {
-      case 'setting':
-        global.app_event.changeMenuVisible(false)
-        pushSetting()
-        return
-      case 'timeout_exit':
-        global.app_event.changeMenuVisible(false)
-        modalRef.current?.show()
-        return
-      case 'backup':
-        global.app_event.changeMenuVisible(false)
-        pushSetting('backup')
-        return
-      case 'about':
-        global.app_event.changeMenuVisible(false)
-        pushSetting('about')
-        return
-      case 'back_home':
-        backHome()
-        return
-      case 'exit':
-        void confirmDialog({
-          message: global.i18n.t('exit_app_tip'),
-          confirmButtonText: global.i18n.t('list_remove_tip_button'),
-        }).then(isExit => {
-          if (!isExit) return
-          exitApp('Exit Btn')
-        })
+    if (id == 'back_home') {
+      backHome()
+      return
     }
+    if (id == 'exit') {
+      void confirmDialog({
+        message: global.i18n.t('exit_app_tip'),
+        confirmButtonText: global.i18n.t('list_remove_tip_button'),
+      }).then(isExit => {
+        if (!isExit) return
+        exitApp('Exit Btn')
+      })
+      return
+    }
+
+    global.app_event.changeMenuVisible(false)
+    if (id == 'timeout_exit') {
+      modalRef.current?.show()
+      return
+    }
+    // setting / backup / about：均进设置屏，后两者锚定到对应分组
+    pushSetting(id == 'setting' ? undefined : id)
   }
 
 

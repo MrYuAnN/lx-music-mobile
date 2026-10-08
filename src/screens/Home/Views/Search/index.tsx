@@ -108,7 +108,9 @@ export default () => {
         onHideTipList={handleHideTipList}
         onShowTipList={handleShowTipList}
       />
-      <SearchTypeSelector />
+      <View style={styles.typeSelectorRow}>
+        <SearchTypeSelector />
+      </View>
       <View style={styles.content} onLayout={handleLayout}>
         <TipList ref={searchTipListRef} onSearch={handleSearch} />
         <List ref={listRef} onSearch={handleSearch} />
@@ -121,6 +123,9 @@ const styles = createStyle({
   container: {
     width: '100%',
     flex: 1,
+  },
+  typeSelectorRow: {
+    height: 38,
   },
   content: {
     flex: 1,

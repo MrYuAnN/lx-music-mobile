@@ -23,11 +23,20 @@ const saveMusicCountsThrottle = throttle(() => {
 }, 800)
 
 /**
- * 启动时加载持久化的歌单曲目数（不加载曲目列表）
+ * 启动时加载持久化的歌单曲目数（不加载曲目列表）。
+ * once 守卫：重复调用不会用 storage 旧值覆盖内存中已实时修正的计数（与节流写盘存在竞态窗口）
  */
+let musicCountsInitPromise: Promise<void> | null = null
 export const initMusicCounts = async() => {
-  const saved = await getData<Record<string, number>>(storageDataPrefix.listMusicCounts)
-  for (const [id, count] of Object.entries(saved ?? {})) musicCounts.set(id, count)
+  if (!musicCountsInitPromise) {
+    musicCountsInitPromise = (async() => {
+      const saved = await getData<Record<string, number>>(storageDataPrefix.listMusicCounts)
+      for (const [id, count] of Object.entries(saved ?? {})) {
+        if (!musicCounts.has(id)) musicCounts.set(id, count)
+      }
+    })()
+  }
+  return musicCountsInitPromise
 }
 
 export const getMusicCountSync = (id: string): number | null => {
@@ -141,9 +150,10 @@ export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }:
     return listInfo
   })
   for (const list of userLists) {
-    if (!allMusicList.has(list.id) || newUserIds.includes(list.id)) continue
+    if (newUserIds.includes(list.id)) continue
+    const wasLoaded = allMusicList.has(list.id)
     removeMusicList(list.id)
-    updatedListIds.push(list.id)
+    if (wasLoaded) updatedListIds.push(list.id)
   }
   overwriteUserList(newUserListInfos)
 
@@ -186,7 +196,6 @@ export const userListsRemove = (ids: string[]) => {
   const changedIds = []
   for (const id of ids) {
     removeUserList(id)
-    if (!allMusicList.has(id)) continue
     removeMusicList(id)
     void removeListPosition(id)
     void removeListUpdateInfo(id)
@@ -278,6 +287,7 @@ export const listMusicRemove = async(listId: string, ids: string[]): Promise<str
   const newList = targetList.filter(mInfo => listSet.has(mInfo.id))
   targetList.splice(0, targetList.length)
   arrPush(targetList, newList)
+  setMusicList(listId, targetList)
 
   return [listId]
 }

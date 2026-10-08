@@ -49,7 +49,6 @@ export default () => {
 
 const styles = createStyle({
   container: {
-    height: '100%',
     flexGrow: 0,
     flexShrink: 1,
     // paddingLeft: 5,

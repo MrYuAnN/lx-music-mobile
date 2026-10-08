@@ -26,19 +26,21 @@ const styles = createStyle({
   container: {
     flex: 1,
     flexDirection: 'row',
-    paddingHorizontal: 12,
   },
   searchBox: {
     flex: 1,
-    height: 34,
-    borderRadius: 17,
+    height: 36,
+    borderRadius: 999,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 12,
-    gap: 6,
+    paddingLeft: 14,
+    paddingRight: 14,
+    gap: 8,
+    marginLeft: 4,
+    marginRight: 4,
   },
   searchText: {
-    // flex: 1,
+    flexShrink: 1,
   },
 })
 

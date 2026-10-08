@@ -6,6 +6,7 @@ import { initMusicCounts } from '@/utils/listManage'
 import { bootLog } from '@/utils/bootLog'
 import { getDislikeInfo, setDislikeInfo } from '@/core/dislikeList'
 import { unlink } from '@/utils/fs'
+import { removeData } from '@/plugins/storage'
 import { TEMP_FILE_PATH } from '@/utils/tools'
 // import { play, playList } from '../player/player'
 
@@ -31,6 +32,8 @@ export default async(appSetting: LX.AppSetting) => {
   setDislikeInfo(await getDislikeInfo()) // 获取不喜欢列表
   bootLog('User list inited.')
   void initMusicCounts()
+  // 旧版「上次视图」存储键，界面改造（导航状态机收口）后废弃，一次性清理
+  void removeData('@view_prev_state')
   void unlink(TEMP_FILE_PATH)
   // await initPrevPlayInfo(appSetting).catch(err => log.error(err)) // 初始化上次的歌曲播放信息
 }

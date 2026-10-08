@@ -15,6 +15,13 @@ const styles = createStyle({
     flex: 1,
     overflow: 'hidden',
   },
+  // 宽屏下内容限宽居中（与设置屏 640 策略一致），mini 播放条保持全宽
+  contentInner: {
+    flex: 1,
+    width: 640,
+    alignSelf: 'center',
+    maxWidth: '100%',
+  },
 })
 
 export default () => {
@@ -24,8 +31,10 @@ export default () => {
       <View style={styles.container}>
         <Aside />
         <View style={styles.content}>
-          <Header />
-          <Main />
+          <View style={styles.contentInner}>
+            <Header />
+            <Main />
+          </View>
           <PlayerBar isHome />
         </View>
       </View>
