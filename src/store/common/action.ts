@@ -22,14 +22,6 @@ export default {
     delete state.componentIds[name]
     global.state_event.componentIdsUpdated({ ...state.componentIds })
   },
-  setNavActiveId(id: InitState['navActiveId']) {
-    state.navActiveId = id
-    if (id != 'nav_setting') state.lastNavActiveId = id
-    global.state_event.navActiveIdUpdated(id)
-  },
-  setLastNavActiveId(id: InitState['navActiveId']) {
-    state.lastNavActiveId = id
-  },
   setBgPic(pic: string | null) {
     state.bgPic = pic
     global.state_event.bgPicUpdated(pic)

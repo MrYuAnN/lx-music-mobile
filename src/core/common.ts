@@ -7,12 +7,12 @@ import { setLanguage as applyLanguage } from '@/lang/i18n'
 import settingActions from '@/store/setting/action'
 import settingState from '@/store/setting/state'
 import commonActions from '@/store/common/action'
-import commonState, { type InitState as CommonStateType } from '@/store/common/state'
+import { type InitState as CommonStateType } from '@/store/common/state'
 
 import { storageDataPrefix } from '@/config/constant'
 import { saveData } from '@/plugins/storage'
 import { throttle } from '@/utils/common'
-import { getSelectedManagedFolder, saveFontSize, saveViewPrevState, setSelectedManagedFolder } from '@/utils/data'
+import { getSelectedManagedFolder, saveFontSize, setSelectedManagedFolder } from '@/utils/data'
 import { showPactModal as handleShowPactModal } from '@/navigation'
 import { hideDesktopLyricView } from '@/utils/nativeModules/lyricDesktop'
 import { getPersistedUriList, selectManagedFolder } from '@/utils/fs'
@@ -78,15 +78,6 @@ export const setComponentId = (name: keyof CommonStateType['componentIds'], id: 
 }
 export const removeComponentId = (name: string) => {
   commonActions.removeComponentId(name)
-}
-
-export const setNavActiveId = (id: Parameters<typeof commonActions.setNavActiveId>['0']) => {
-  if (id == commonState.navActiveId) return
-  commonActions.setNavActiveId(id)
-  if (id != 'nav_setting') {
-    commonActions.setLastNavActiveId(id)
-    saveViewPrevState({ id })
-  }
 }
 
 export const showPactModal = () => {

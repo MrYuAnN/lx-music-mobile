@@ -7,7 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useMyList } from '@/store/list/hook'
 import { createStyle } from '@/utils/tools'
 import { setActiveList } from '@/core/list'
-import { getListMusicSync, getListMusics } from '@/utils/listManage'
+import { getMusicCountSync, initMusicCounts } from '@/utils/listManage'
 import { navigations } from '@/navigation'
 import commonState from '@/store/common/state'
 import Text from '@/components/common/Text'
@@ -70,13 +70,16 @@ export default ({ onShowMenu }: {
 
   useEffect(() => {
     let isInited = false
-    // 歌单数量展示需要曲目数，首次挂载将各歌单载入缓存后读取
-    void Promise.all(allList.map(async l => { await getListMusics(l.id).catch(() => null) })).then(() => {
+    // 曲目数走持久化计数（musicCounts），不为计数加载曲目列表；未浏览过的歌单显示 '--'
+    void initMusicCounts().then(() => {
       if (isInited) return
       isInited = true
       setCounts(prev => {
         const next = { ...prev }
-        for (const l of allList) next[l.id] = getListMusicSync(l.id).length
+        for (const l of allList) {
+          const count = getMusicCountSync(l.id)
+          if (count != null) next[l.id] = count
+        }
         return next
       })
     })
@@ -86,8 +89,9 @@ export default ({ onShowMenu }: {
         const next = { ...prev }
         let changed = false
         for (const id of ids) {
-          if (next[id] == null) continue
-          next[id] = getListMusicSync(id).length
+          const count = getMusicCountSync(id)
+          if (count == null || next[id] === count) continue
+          next[id] = count
           changed = true
         }
         return changed ? next : prev

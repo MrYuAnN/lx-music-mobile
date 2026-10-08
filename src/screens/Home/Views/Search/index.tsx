@@ -13,6 +13,7 @@ import { getSearchSetting, saveSearchSetting } from '@/utils/data'
 import { createStyle } from '@/utils/tools'
 import TipList, { type TipListType } from './TipList'
 import List, { type ListType } from './List'
+import SearchTypeSelector from './SearchTypeSelector'
 import { addHistoryWord } from '@/core/search/search'
 
 
@@ -107,6 +108,7 @@ export default () => {
         onHideTipList={handleHideTipList}
         onShowTipList={handleShowTipList}
       />
+      <SearchTypeSelector />
       <View style={styles.content} onLayout={handleLayout}>
         <TipList ref={searchTipListRef} onSearch={handleSearch} />
         <List ref={listRef} onSearch={handleSearch} />

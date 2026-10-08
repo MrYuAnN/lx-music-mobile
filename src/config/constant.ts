@@ -40,7 +40,7 @@ export enum NAV_SHEAR_NATIVE_IDS {
 export const storageDataPrefix = {
   setting: '@setting_v1',
   userList: '@user_list',
-  viewPrevState: '@view_prev_state',
+  listMusicCounts: '@list_music_counts',
 
   list: '@list__',
   listScrollPosition: '@list_scroll_position',
@@ -145,10 +145,5 @@ export const DEFAULT_SETTING = {
     temp_source: 'kw' as LX.OnlineSource,
     source: 'all' as LX.OnlineSource | 'all',
     type: 'music' as 'music' | 'songlist',
-  },
-
-  viewPrevState: {
-    id: 'nav_search' as NAV_ID_Type,
-    // query: {},
   },
 }

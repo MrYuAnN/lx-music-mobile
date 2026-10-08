@@ -1,5 +1,5 @@
 import { getData, saveData, getAllKeys, removeDataMultiple, saveDataMultiple, removeData, getDataMultiple } from '@/plugins/storage'
-import { DEFAULT_SETTING, LIST_IDS, storageDataPrefix, type NAV_ID_Type } from '@/config/constant'
+import { DEFAULT_SETTING, LIST_IDS, storageDataPrefix } from '@/config/constant'
 import { throttle } from './common'
 // import { gzip, ungzip } from '@/utils/nativeModules/gzip'
 // import { readFile, writeFile, temporaryDirectoryPath, unlink } from '@/utils/fs'
@@ -11,7 +11,6 @@ const fontSizeKey = storageDataPrefix.fontSize
 const themeKey = storageDataPrefix.theme
 const playInfoStorageKey = storageDataPrefix.playInfo
 const userListKey = storageDataPrefix.userList
-const viewPrevStateKey = storageDataPrefix.viewPrevState
 const listScrollPositionKey = storageDataPrefix.listScrollPosition
 const listUpdateInfoKey = storageDataPrefix.listUpdateInfo
 const ignoreVersionKey = storageDataPrefix.ignoreVersion
@@ -56,9 +55,6 @@ const saveSongListSettingThrottle = throttle(() => {
 }, 1000)
 const saveLeaderboardSettingThrottle = throttle(() => {
   void saveData(leaderboardSettingKey, leaderboardSetting)
-}, 1000)
-const saveViewPrevStateThrottle = throttle((state) => {
-  void saveData(viewPrevStateKey, state)
 }, 1000)
 
 export const getFontSize = async() => (await getData<number>(fontSizeKey) ?? 1)
@@ -265,13 +261,6 @@ export const saveLeaderboardSetting = async(setting: Partial<typeof DEFAULT_SETT
   if (!leaderboardSetting) await getLeaderboardSetting()
   leaderboardSetting = Object.assign(leaderboardSetting, setting)
   saveLeaderboardSettingThrottle()
-}
-
-export const getViewPrevState = async() => {
-  return (await getData<{ id: NAV_ID_Type }>(viewPrevStateKey)) ?? { ...DEFAULT_SETTING.viewPrevState }
-}
-export const saveViewPrevState = (state: { id: NAV_ID_Type }) => {
-  saveViewPrevStateThrottle(state)
 }
 
 

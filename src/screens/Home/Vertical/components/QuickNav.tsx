@@ -4,14 +4,13 @@ import { Icon } from '@/components/common/Icon'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-import { pushNavScreen } from '../../utils'
+import { pushNavScreen, type NavId } from '../../utils'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeW } from '@/utils/pixelRatio'
-import { type InitState as CommonState } from '@/store/common/state'
 
 const TILE_SIZE = scaleSizeW(56)
 
-const ITEMS: Array<{ id: CommonState['navActiveId'], icon: string }> = [
+const ITEMS: Array<{ id: NavId, icon: string }> = [
   { id: 'nav_top', icon: 'leaderboard' },
   { id: 'nav_songlist', icon: 'album' },
   { id: 'nav_setting', icon: 'setting' },

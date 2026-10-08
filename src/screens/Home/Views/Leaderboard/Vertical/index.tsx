@@ -11,7 +11,6 @@ import { useTheme } from '@/store/theme/hook'
 // import { BorderWidths } from '@/theme'
 // import { useTheme } from '@/store/theme/hook'
 import BoardsList, { type BoardsListType, type BoardsListProps } from '../BoardsList'
-import type { InitState as CommonState } from '@/store/common/state'
 import settingState from '@/store/setting/state'
 import { getBoardsList } from '@/core/leaderboard'
 import { COMPONENT_IDS } from '@/config/constant'
@@ -94,12 +93,6 @@ export default () => {
 
 
   useEffect(() => {
-    const handleFixDrawer = (id: CommonState['navActiveId']) => {
-      if (id == 'nav_top') drawer.current?.fixWidth()
-    }
-    global.state_event.on('navActiveIdUpdated', handleFixDrawer)
-
-
     isUnmountedRef.current = false
     void getLeaderboardSetting().then(({ source, boardId }) => {
       boundInfo.current.source = source
@@ -113,7 +106,6 @@ export default () => {
     })
 
     return () => {
-      global.state_event.off('navActiveIdUpdated', handleFixDrawer)
       isUnmountedRef.current = true
     }
   }, [])

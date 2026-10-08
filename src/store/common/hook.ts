@@ -83,19 +83,6 @@ export const useAssertApiSupport = (source: LX.Source) => {
 }
 
 
-export const useNavActiveId = () => {
-  const [value, update] = useState(state.navActiveId)
-
-  useEffect(() => {
-    global.state_event.on('navActiveIdUpdated', update)
-    return () => {
-      global.state_event.off('navActiveIdUpdated', update)
-    }
-  }, [])
-
-  return value
-}
-
 export const useBgPic = () => {
   const [value, update] = useState(state.bgPic)
 

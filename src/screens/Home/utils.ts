@@ -1,13 +1,14 @@
 import { navigations } from '@/navigation'
 import commonState from '@/store/common/state'
-import { type InitState as CommonState } from '@/store/common/state'
+import { type NAV_ID_Type } from '@/config/constant'
+
+/** 首页内容导航目标（抽屉与 Aside 的图标导航、首页快捷入口共用） */
+export type NavId = NAV_ID_Type
 
 /**
- * 导航中间态（批次②）：抽屉/横屏 Aside/首页快捷卡的导航项点击后按独立 screen push。
- * 派发差异：抽屉与 Aside 调用方会先行 setNavActiveId（lastNavActiveId/viewPrevState 兼容），
- * 首页快捷入口（搜索胶囊/三卡/歌单行）只 push 不派发——均为拍板内分工，非遗漏；状态机简化推迟到批次④。
+ * 导航项点击后按独立 screen push（横竖屏共用；首页单页化后不再有 pager 切页）。
  */
-export const pushNavScreen = (id: CommonState['navActiveId']) => {
+export const pushNavScreen = (id: NavId) => {
   const componentId = commonState.componentIds.home
   if (!componentId) return
   switch (id) {

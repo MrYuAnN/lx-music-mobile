@@ -110,6 +110,13 @@
 - 锚点导航：顶部固定横滚 chip 行（10 分类，样式沿用 SearchTypeSelector 下划线语言）；分组容器 `collapsable={false}` + onLayout 实测 y（字号/语言切换自动重测）；点击 chip scrollTo、滚动反向高亮（阈值 72）、`pushSettingScreen(componentId, initialAnchor?)` 支持初始锚点参数（批次④抽屉「备份与恢复/关于」入口直接可用）；activeId 变化同步 `setSettingActiveId`（保留「记住上次分类」）。
 - 视觉对齐：Section 去竖条改 18 粗体大标题；`CheckBoxItem` 重做为 M3 开关行（左标题+帮助问号、右 accent Switch，复用 CheckBoxProps 保持 35 处调用零改动；need/禁用语义保留）；内容边距对齐屏边距 16。裸 CheckBox 多选组（字号/主题色块等）、Slider/Input、值弹选类条目本批不动（条目级值文本形态留待真机观感迭代）。
 
+**批次④实施记录（2026-10-08）**：
+- 抽屉功能菜单化：菜单改为 设置 / 定时关闭（弹 TimeoutExitEditModal）/ 备份与恢复（push 设置屏锚点 backup）/ 关于（锚点 about）+ 底部分隔线 + 红色退出应用；5 个内容导航项移除（首页与横屏均已覆盖）；返回主页/退出显隐仍由原设置项控制。
+- navActiveId 状态机收口（全链删除）：`setNavActiveId`/`setLastNavActiveId`/`useNavActiveId`/`navActiveIdUpdated` 事件/`lastNavActiveId` 状态/启动视图恢复（`viewPrevState` 持久化链含 dataInit 回读与 storage 前缀）全部移除；Leaderboard/SongList 的 handleFixDrawer 监听删除（DrawerLayoutFixed 的 `usePageVisible` 已覆盖页面返回后的宽度修正）；QuickNav/Aside 导航类型改 `Home/utils` 导出的 `NavId`。
+- I2 歌单曲目数持久化：新增独立存储键 `@list_music_counts`（`utils/listManage` 内存 `musicCounts` Map + 节流写盘）；维护收敛在 `setMusicList` 单点（曲目读写路径必经，增删实时修正、详情屏浏览惰性回填迁移）——不改 `UserListInfo` 元数据，同步/备份链零影响（导入/同步后按浏览重算）。首页歌单行不再为计数预载全部曲目（`getListMusics` 预载删除），未浏览过的歌单显示 `--`（渐进迁移）。
+- 横屏双 SearchView 收口：横屏 Main 不再常驻搜索页，改为复用竖屏首页内容（继续播放卡+快捷入口+歌单平铺）；横屏 Header 改搜索胶囊（SearchBox 提取为 `Home/components` 横竖屏共用）；搜索类型切换（音乐/歌单）挂进搜索屏（原 SearchTypeSelector 仅横屏 Header 可达，竖屏搜索屏缺失该入口，本批补齐）。
+- 评估项结论：栈内多 PlayerBar 实例——对标 MusicFree 同为每屏挂载，接受（深层栈切歌重渲染线性增长，真机验收观察）；首页歌单区空态——lX 必有默认列表（试听/收藏）不会为空，无需引导；`pushTransitionScreen` pop 动画宽度——RNN pop 动画在 push 时序列化，系统返回路径无法实时取宽，仅「push 后旋转再返回」的滑出距离偏差，接受；`jumpListPosition` 监听——核实 emit 源存在（PlayerBar 封面/标题点击），保留（批次④清单表述有误，已核实纠正）。
+
 | 风险 | 应对 |
 |---|---|
 | 播放页共享元素过渡错位 | nativeID 不变，每批真机验证 |

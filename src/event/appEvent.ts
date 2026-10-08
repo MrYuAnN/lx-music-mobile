@@ -1,4 +1,3 @@
-import { setNavActiveId } from '@/core/common'
 import { setActiveList } from '@/core/list'
 import Event from './Event'
 import commonState from '@/store/common/state'
@@ -186,7 +185,6 @@ export class AppEvent extends Event {
     if (listInfo == null) return
     setActiveList(listId)
     global.lx.jumpMyListPosition = true
-    setNavActiveId('nav_love')
     navigations.pushMylistDetailScreen(componentId, listInfo)
   }
 

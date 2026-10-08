@@ -5,9 +5,8 @@ import { useTheme } from '@/store/theme/hook'
 import { Icon } from '@/components/common/Icon'
 import { confirmDialog, createStyle, exitApp as backHome } from '@/utils/tools'
 import { NAV_MENUS } from '@/config/constant'
-import type { InitState } from '@/store/common/state'
-import { exitApp, setNavActiveId } from '@/core/common'
-import { pushNavScreen } from '../utils'
+import { exitApp } from '@/core/common'
+import { pushNavScreen, type NavId } from '../utils'
 import { BorderWidths } from '@/theme'
 import { useSettingValue } from '@/store/setting/hook'
 
@@ -76,7 +75,7 @@ const Header = () => {
   )
 }
 
-type IdType = InitState['navActiveId'] | 'nav_exit' | 'back_home'
+type IdType = NavId | 'nav_exit' | 'back_home'
 
 const MenuItem = ({ id, icon, onPress }: {
   id: IdType
@@ -117,8 +116,6 @@ export default memo(() => {
     }
 
     global.app_event.changeMenuVisible(false)
-    // 导航中间态（批次②）：派发保留（lastNavActiveId/viewPrevState 兼容），跳转走独立 screen push
-    setNavActiveId(id)
     pushNavScreen(id)
   }
 

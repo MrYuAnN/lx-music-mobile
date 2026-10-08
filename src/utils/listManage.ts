@@ -8,11 +8,31 @@ import {
   removeListPosition,
   removeListUpdateInfo,
 } from '@/utils/data'
-import { arrPush, arrPushByPosition, arrUnshift } from '@/utils/common'
-import { LIST_IDS } from '@/config/constant'
+import { arrPush, arrPushByPosition, arrUnshift, throttle } from '@/utils/common'
+import { getData, saveData } from '@/plugins/storage'
+import { LIST_IDS, storageDataPrefix } from '@/config/constant'
 
 export const userLists: LX.List.UserListInfo[] = []
 export const allMusicList = new Map<string, LX.Music.MusicInfo[]>()
+
+// 歌单曲目数（持久化，独立于曲目缓存：首页计数不为加载曲目列表；详见 setMusicList）
+export const musicCounts = new Map<string, number>()
+
+const saveMusicCountsThrottle = throttle(() => {
+  void saveData(storageDataPrefix.listMusicCounts, Object.fromEntries(musicCounts))
+}, 800)
+
+/**
+ * 启动时加载持久化的歌单曲目数（不加载曲目列表）
+ */
+export const initMusicCounts = async() => {
+  const saved = await getData<Record<string, number>>(storageDataPrefix.listMusicCounts)
+  for (const [id, count] of Object.entries(saved ?? {})) musicCounts.set(id, count)
+}
+
+export const getMusicCountSync = (id: string): number | null => {
+  return musicCounts.get(id) ?? null
+}
 
 export const setUserLists = (lists: LX.List.UserListInfo[]) => {
   userLists.splice(0, userLists.length, ...lists)
@@ -21,10 +41,17 @@ export const setUserLists = (lists: LX.List.UserListInfo[]) => {
 
 export const setMusicList = (listId: string, musicList: LX.Music.MusicInfo[]): LX.Music.MusicInfo[] => {
   allMusicList.set(listId, musicList)
+  // 曲目列表的每个读写路径都经过这里：维护持久化计数（详情屏浏览时惰性回填，增删时实时修正）
+  const count = musicList.length
+  if (musicCounts.get(listId) !== count) {
+    musicCounts.set(listId, count)
+    saveMusicCountsThrottle()
+  }
   return musicList
 }
 export const removeMusicList = (id: string) => {
   allMusicList.delete(id)
+  if (musicCounts.delete(id)) saveMusicCountsThrottle()
 }
 
 
