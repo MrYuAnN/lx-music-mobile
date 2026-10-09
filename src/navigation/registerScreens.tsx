@@ -28,7 +28,15 @@ import {
   SYNC_MODE_MODAL,
   VERSION_MODAL,
   PACT_MODAL,
+  DRAWER_SCREEN,
+  RECENT_PLAY_SCREEN,
+  DOWNLOAD_SCREEN,
+  LOCAL_MUSIC_SCREEN,
 } from './screenNames'
+import DrawerNav from '@/screens/Home/Vertical/DrawerNav'
+import RecentPlay from '@/screens/RecentPlay'
+import Download from '@/screens/Download'
+import LocalMusic from '@/screens/LocalMusic'
 import SyncModeModal from './components/SyncModeModal'
 import VersionModal from './components/VersionModal'
 import PactModal from './components/PactModal'
@@ -61,6 +69,10 @@ export default () => {
   Navigation.registerComponent(SYNC_MODE_MODAL, () => WrappedComponent(SyncModeModal))
   Navigation.registerComponent(VERSION_MODAL, () => WrappedComponent(VersionModal))
   Navigation.registerComponent(PACT_MODAL, () => WrappedComponent(PactModal))
+  Navigation.registerComponent(DRAWER_SCREEN, () => WrappedComponent(DrawerNav))
+  Navigation.registerComponent(RECENT_PLAY_SCREEN, () => WrappedComponent(RecentPlay))
+  Navigation.registerComponent(DOWNLOAD_SCREEN, () => WrappedComponent(Download))
+  Navigation.registerComponent(LOCAL_MUSIC_SCREEN, () => WrappedComponent(LocalMusic))
 
   console.info('All screens have been registered...')
 }

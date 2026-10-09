@@ -29,7 +29,7 @@ export default memo(() => {
 
   const handleCollection = () => {
     if (!songlistState.listDetailInfo.info.name) return
-    void handleCollect(info.id, info.source, songlistState.listDetailInfo.info.name || info.name)
+    void handleCollect(info.id, info.source, songlistState.listDetailInfo.info.name || info.name, info)
   }
 
   return (

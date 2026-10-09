@@ -61,6 +61,9 @@ export const storageDataPrefix = {
   ignoringBatteryOptimizationTipEnable: '@ignoring_battery_optimization_tip_enable',
 
   searchHistoryList: '@search_history_list',
+  recentPlay: '@recent_play',
+  downloadList: '@download_list',
+  localMusicList: '@local_music_list',
   listUpdateInfo: '@list_update_info',
   ignoreVersion: '@ignore_version',
   ignoreVersionFailTipTimeKey: '@ignore_version_fail_tip_time',
@@ -72,7 +75,6 @@ export const storageDataPrefix = {
 
   theme: '@theme',
 
-  cheatTip: '@cheat_tip',
   remoteLyricTip: '@remote_lyric_tip',
 
   dislikeList: '@dislike_list',
@@ -145,5 +147,10 @@ export const DEFAULT_SETTING = {
     temp_source: 'kw' as LX.OnlineSource,
     source: 'all' as LX.OnlineSource | 'all',
     type: 'music' as 'music' | 'songlist',
+  },
+
+  download: {
+    quality: '128k' as LX.Quality,
+    savePath: '' as string,
   },
 }

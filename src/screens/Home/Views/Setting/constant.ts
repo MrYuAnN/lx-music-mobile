@@ -1,5 +1,6 @@
 export const SETTING_SCREENS = [
   'basic',
+  'download',
   'player',
   'lyric_desktop',
   'search',

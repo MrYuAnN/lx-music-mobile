@@ -3,6 +3,9 @@
 import { init as musicSdkInit } from '@/utils/musicSdk'
 import { getUserLists, setUserList } from '@/core/list'
 import { initMusicCounts } from '@/utils/listManage'
+import { initRecentPlay } from '@/core/player/recentPlay'
+import { initDownloadList } from '@/core/music/download'
+import { initLocalMusicList } from '@/core/localMusic'
 import { bootLog } from '@/utils/bootLog'
 import { getDislikeInfo, setDislikeInfo } from '@/core/dislikeList'
 import { unlink } from '@/utils/fs'
@@ -32,6 +35,9 @@ export default async(appSetting: LX.AppSetting) => {
   setDislikeInfo(await getDislikeInfo()) // 获取不喜欢列表
   bootLog('User list inited.')
   void initMusicCounts()
+  await initRecentPlay() // 最近播放记录（批次⑥；await 以消除与切歌记录的加载竞态）
+  void initDownloadList() // 下载列表恢复与续跑（批次⑦）
+  void initLocalMusicList() // 本地音乐列表恢复（批次⑧；扫描进页触发）
   // 旧版「上次视图」存储键，界面改造（导航状态机收口）后废弃，一次性清理
   void removeData('@view_prev_state')
   void unlink(TEMP_FILE_PATH)

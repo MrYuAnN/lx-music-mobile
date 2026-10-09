@@ -115,7 +115,6 @@ export default memo(() => {
         return
     }
 
-    global.app_event.changeMenuVisible(false)
     pushNavScreen(id)
   }
 

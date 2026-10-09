@@ -11,7 +11,7 @@ import {
   getMusicUrl as getDownloadMusicUrl,
   getPicUrl as getDownloadPicUrl,
   getLyricInfo as getDownloadLyricInfo,
-} from './download'
+} from './downloadInfo'
 import {
   getMusicUrl as getLocalMusicUrl,
   getPicUrl as getLocalPicUrl,

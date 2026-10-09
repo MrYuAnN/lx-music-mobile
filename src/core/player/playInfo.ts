@@ -3,6 +3,7 @@ import playerState from '@/store/player/state'
 
 import { getListMusicSync } from '@/utils/listManage'
 import { setProgress } from '@/core/player/progress'
+import { addRecentPlay } from '@/core/player/recentPlay'
 import { LIST_IDS } from '@/config/constant'
 
 
@@ -133,6 +134,13 @@ export const setPlayMusicInfo = (listId: string | null, musicInfo: LX.Download.L
 
     playerActions.updatePlayIndex(playIndex, playerPlayIndex)
     global.app_event.musicToggled()
+
+    // 最近播放记录（批次⑥：切歌单点；下载项取真实歌曲信息，本地歌曲播放记录批次⑧接入）
+    if ('meta' in musicInfo) {
+      if (musicInfo.source != 'local') addRecentPlay(musicInfo)
+    } else if ('metadata' in musicInfo) {
+      addRecentPlay(musicInfo.metadata.musicInfo)
+    }
   }
 }
 

@@ -1,23 +1,17 @@
 import { ScrollView } from 'react-native'
 
-import Text from '@/components/common/Text'
-import { useI18n } from '@/lang'
-import { useTheme } from '@/store/theme/hook'
-import MyList from '../Views/Mylist/MyList'
-import ContinuePlayCard from './components/ContinuePlayCard'
+import RecentPlayCard from './components/RecentPlayCard'
 import QuickNav from './components/QuickNav'
+import HomeListSection from './components/HomeListSection'
 import { createStyle } from '@/utils/tools'
 
+// 首页主体（批次⑤骨架）：最近播放大卡 → 2×2 快捷卡片 → 歌单区双 Tab
 const Main = () => {
-  const t = useI18n()
-  const theme = useTheme()
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content} keyboardShouldPersistTaps={'handled'}>
-      <ContinuePlayCard />
+      <RecentPlayCard />
       <QuickNav />
-      <Text style={{ ...styles.sectionTitle, color: theme['c-font'] }} size={18}>{t('nav_love')}</Text>
-      <MyList />
+      <HomeListSection />
     </ScrollView>
   )
 }
@@ -28,12 +22,6 @@ const styles = createStyle({
   },
   content: {
     paddingBottom: 24,
-  },
-  sectionTitle: {
-    marginTop: 24,
-    marginBottom: 4,
-    marginLeft: 16,
-    fontWeight: 'bold',
   },
 })
 

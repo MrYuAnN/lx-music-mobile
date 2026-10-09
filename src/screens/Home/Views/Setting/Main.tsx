@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { ScrollView, TouchableOpacity, View, type LayoutChangeEvent, type NativeScrollEvent, type NativeSyntheticEvent } from 'react-native'
 
 import Basic from './settings/Basic'
+import Download from './settings/Download'
 import Player from './settings/Player'
 import LyricDesktop from './settings/LyricDesktop'
 import Search from './settings/Search'
@@ -21,6 +22,7 @@ import { BorderWidths } from '@/theme'
 
 const SECTION_COMPONENTS: Record<SettingScreenIds, React.ComponentType> = {
   basic: Basic,
+  download: Download,
   player: Player,
   lyric_desktop: LyricDesktop,
   search: Search,

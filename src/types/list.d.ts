@@ -6,6 +6,14 @@ declare namespace LX {
       // list: LX.Music.MusicInfo[]
       source?: LX.OnlineSource
       sourceListId?: string
+      // 收藏歌单的展示快照（批次⑤：首页收藏 Tab 封面/作者展示与详情转场用）
+      meta?: {
+        author?: string
+        img?: string
+        desc?: string
+        play_count?: string
+        total?: string
+      }
       // position?: number
       locationUpdateTime: number | null
     }

@@ -3,6 +3,9 @@ import { useI18n } from '@/lang'
 import Menu, { type Menus, type MenuType, type Position } from '@/components/common/Menu'
 import { hasDislike } from '@/core/dislikeList'
 import { hasMusicUrlByMusic } from '@/utils/data'
+import { startDownloadList } from '@/core/music/download'
+import { toast } from '@/utils/tools'
+import { requestStoragePermission } from '@/utils/permissions'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfoOnline
@@ -58,7 +61,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
     const menu = [
       { action: 'play', label: t('play') },
       { action: 'playLater', label: t('play_later') },
-      // { action: 'download', label: '下载' },
+      { action: 'download', label: t('download') },
       { action: 'add', label: t('add_to') },
       { action: 'copyName', label: t('copy_name') },
       { action: 'musicSourceDetail', label: t('music_source_detail') },
@@ -87,6 +90,19 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
       case 'playLater':
         props.onPlayLater(selectInfo)
         break
+      case 'download': {
+        // 多选时整批入队，单曲只下当前歌曲（下载为全局能力，不走宿主回调）
+        void requestStoragePermission().then(granted => {
+          if (!granted) {
+            toast(t('download_permission_tip'))
+            return
+          }
+          const targetList = selectInfo.selectedList.length ? selectInfo.selectedList : [selectInfo.musicInfo]
+          const added = startDownloadList(targetList)
+          toast(added ? t('download_added_tip', { num: added }) : t('download_duplicate_tip'))
+        })
+        break
+      }
       case 'add':
         props.onAdd(selectInfo)
         break

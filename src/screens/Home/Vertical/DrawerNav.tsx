@@ -9,7 +9,7 @@ import { exitApp } from '@/core/common'
 import Text from '@/components/common/Text'
 import TimeoutExitEditModal, { type TimeoutExitEditModalType, useTimeInfo } from '@/components/TimeoutExitEditModal'
 import { navigations } from '@/navigation'
-import commonState from '@/store/common/state'
+import { HOME_STACK_ID } from '@/navigation/screenNames'
 import { useSettingValue } from '@/store/setting/hook'
 
 const styles = createStyle({
@@ -107,9 +107,8 @@ export default memo(() => {
   const timeInfo = useTimeInfo()
 
   const pushSetting = (initialAnchor?: 'backup' | 'about') => {
-    const componentId = commonState.componentIds.home
-    if (!componentId) return
-    navigations.pushSettingScreen(componentId, initialAnchor)
+    // side 屏自身无 stack，push 目标为 center stack 固定 id（题①）
+    navigations.pushSettingScreen(HOME_STACK_ID, initialAnchor)
   }
 
   const handleMenu = (id: MenuId) => {

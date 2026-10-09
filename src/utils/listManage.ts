@@ -95,21 +95,21 @@ const updateList = ({
   id,
   source,
   sourceListId,
-  // meta,
+  meta,
   locationUpdateTime,
-}: LX.List.UserListInfo & { meta?: { id?: string } }) => {
+}: LX.List.UserListInfo) => {
   let index
   switch (id) {
     case LIST_IDS.DEFAULT:
     case LIST_IDS.LOVE:
       break
     case LIST_IDS.TEMP:
-    //   tempList.meta = meta ?? {}
-      // break
+      break
     default:
       index = userLists.findIndex(l => l.id == id)
       if (index < 0) return
-      userLists.splice(index, 1, { ...userLists[index], name, source, sourceListId, locationUpdateTime })
+      // meta 未随调用传入时保留旧值（重命名等精简调用不抹快照）
+      userLists.splice(index, 1, { ...userLists[index], name, source, sourceListId, locationUpdateTime, ...(meta !== undefined ? { meta } : {}) })
       break
   }
 }
@@ -173,11 +173,12 @@ export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }:
   return updatedListIds
 }
 
-export const userListCreate = ({ name, id, source, sourceListId, position, locationUpdateTime }: {
+export const userListCreate = ({ name, id, source, sourceListId, meta, position, locationUpdateTime }: {
   name: string
   id: string
   source?: LX.OnlineSource
   sourceListId?: string
+  meta?: LX.List.UserListInfo['meta']
   position: number
   locationUpdateTime: number | null
 }) => {
@@ -187,6 +188,7 @@ export const userListCreate = ({ name, id, source, sourceListId, position, locat
     id,
     source,
     sourceListId,
+    meta,
     locationUpdateTime,
   }
   createUserList(newList, position)

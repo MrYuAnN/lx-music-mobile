@@ -155,6 +155,8 @@ android {
     }
     buildTypes {
         debug {
+            // 包名加后缀与正式签名版共存（验收用 debug 壳，卸载不影响正式版数据）
+            applicationIdSuffix ".debug"
             signingConfig signingConfigs.debug
         }
         release {

@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { View, TouchableOpacity } from 'react-native'
 
 import { Icon } from '@/components/common/Icon'
@@ -18,6 +18,12 @@ import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
 const TILE_SIZE = scaleSizeW(44)
 const ITEM_HEIGHT = scaleSizeH(64)
+
+const listOrder = (id: string) => {
+  if (id == LIST_IDS.LOVE) return 0
+  if (id == LIST_IDS.DEFAULT) return 2
+  return 1
+}
 
 const ListItem = memo(({ item, index, count, onPress, onShowMenu }: {
   onPress: (item: LX.List.MyListInfo) => void
@@ -62,11 +68,21 @@ const ListItem = memo(({ item, index, count, onPress, onShowMenu }: {
 })
 
 
-export default ({ onShowMenu }: {
+export default ({ onShowMenu, filterCollected = false }: {
   onShowMenu: (info: { listInfo: LX.List.MyListInfo, index: number }, position: Position) => void
+  /** 首页「我的」Tab 传入：排除收藏的在线歌单（与收藏 Tab 互斥）；MYLIST 独立屏不传保持全量 */
+  filterCollected?: boolean
 }) => {
   const allList = useMyList()
   const [counts, setCounts] = useState<Record<string, number>>({})
+
+  // 列表顺序（批次⑤）：我的收藏置顶、用户歌单居中、试听列表收尾；首页场景排除收藏条目
+  const orderedList = useMemo(() => {
+    const base = filterCollected
+      ? allList.filter(l => !('sourceListId' in l && l.sourceListId))
+      : allList
+    return [...base].sort((a, b) => listOrder(a.id) - listOrder(b.id))
+  }, [allList, filterCollected])
 
   useEffect(() => {
     let isInited = false
@@ -120,7 +136,7 @@ export default ({ onShowMenu }: {
 
   return (
     <View style={styles.container}>
-      {allList.map((item, index) => (
+      {orderedList.map((item, index) => (
         <ListItem
           key={item.id}
           item={item}

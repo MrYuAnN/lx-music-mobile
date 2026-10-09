@@ -124,12 +124,13 @@ export const overwriteList = async(listInfoFull: LX.List.MyDefaultListInfoFull |
  * @param listInfo
  * @param musics
  */
-export const createList = async({ name, id = `userlist_${Date.now()}`, list = [], source, sourceListId, position = -1 }: {
+export const createList = async({ name, id = `userlist_${Date.now()}`, list = [], source, sourceListId, meta, position = -1 }: {
   name?: string
   id?: string
   list?: LX.Music.MusicInfo[]
   source?: LX.OnlineSource
   sourceListId?: string
+  meta?: LX.List.UserListInfo['meta']
   position?: number
 }) => {
   await createUserList(position < 0 ? listState.userList.length : position, [
@@ -138,6 +139,7 @@ export const createList = async({ name, id = `userlist_${Date.now()}`, list = []
       name: name ?? 'list',
       source,
       sourceListId,
+      meta,
       locationUpdateTime: position < 0 ? null : Date.now(),
     },
   ])
