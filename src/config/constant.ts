@@ -51,6 +51,13 @@ export const storageDataPrefix = {
   musicOtherSource: '@music_other_source__',
   playInfo: '@play_info',
 
+  recentPlay: '@recent_play',
+  localMusicList: '@local_music_list',
+
+  // 临时播放列表 meta id（仅作 tempListMeta 来源标识，实体均写入 LIST_IDS.TEMP）
+  TEMP_LIST_RECENT: 'recent_play',
+  TEMP_LIST_LOCAL: 'local__play',
+
   syncAuthKey: '@sync_auth_key',
   syncHost: '@sync_host',
   syncHostHistory: '@sync_host_history',
