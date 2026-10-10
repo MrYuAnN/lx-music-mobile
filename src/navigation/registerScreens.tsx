@@ -15,6 +15,7 @@ import {
   Download,
   RecentPlay,
   LocalMusic,
+  LocalMusicGroup,
 } from '@/screens'
 import { Provider } from '@/store/Provider'
 
@@ -33,6 +34,7 @@ import {
   DOWNLOAD_SCREEN,
   RECENT_PLAY_SCREEN,
   LOCAL_MUSIC_SCREEN,
+  LOCAL_MUSIC_GROUP_SCREEN,
 } from './screenNames'
 import VersionModal from './components/VersionModal'
 import SyncModeModal from './components/SyncModeModal'
@@ -64,6 +66,7 @@ export default () => {
   Navigation.registerComponent(DOWNLOAD_SCREEN, () => WrappedComponent(Download))
   Navigation.registerComponent(RECENT_PLAY_SCREEN, () => WrappedComponent(RecentPlay))
   Navigation.registerComponent(LOCAL_MUSIC_SCREEN, () => WrappedComponent(LocalMusic))
+  Navigation.registerComponent(LOCAL_MUSIC_GROUP_SCREEN, () => WrappedComponent(LocalMusicGroup))
   Navigation.registerComponent(VERSION_MODAL, () => WrappedComponent(VersionModal))
   Navigation.registerComponent(SYNC_MODE_MODAL, () => WrappedComponent(SyncModeModal))
 

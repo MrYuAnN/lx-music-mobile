@@ -11,6 +11,7 @@ import {
   SETTING_SCREEN,
   RECENT_PLAY_SCREEN,
   LOCAL_MUSIC_SCREEN,
+  LOCAL_MUSIC_GROUP_SCREEN,
   SONG_LIST_SCREEN,
   LEADERBOARD_SCREEN,
   MYLIST_SCREEN,
@@ -317,13 +318,14 @@ export function pop(componentId: string) {
 }
 
 // AM-2：二级屏统一 push（标准滑动转场，topBar 隐藏；Views 自含 HeaderBar）
-const pushAmScreen = (componentId: string, screenName: string) => {
+const pushAmScreen = (componentId: string, screenName: string, passProps?: Record<string, unknown>) => {
   requestAnimationFrame(() => {
     const theme = themeState.theme
 
     void Navigation.push(componentId, {
       component: {
         name: screenName,
+        passProps,
         options: {
           topBar: {
             visible: false,
@@ -376,7 +378,7 @@ export const pushMylistScreen = (componentId: string) => { pushAmScreen(componen
 export const pushDownloadScreen = (componentId: string) => { pushAmScreen(componentId, DOWNLOAD_SCREEN) }
 export const pushRecentPlayScreen = (componentId: string) => { pushAmScreen(componentId, RECENT_PLAY_SCREEN) }
 export const pushLocalMusicScreen = (componentId: string) => { pushAmScreen(componentId, LOCAL_MUSIC_SCREEN) }
-
+export const pushLocalMusicGroupScreen = (componentId: string, passProps: Record<string, unknown>) => { pushAmScreen(componentId, LOCAL_MUSIC_GROUP_SCREEN, passProps) }
 export function pushCommentScreen(componentId: string) {
   /*
     Navigation.setDefaultOptions({
