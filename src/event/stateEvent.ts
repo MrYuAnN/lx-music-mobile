@@ -136,6 +136,14 @@ export class StateEvent extends Event {
   localMusicScanProgress(done: number, total: number) {
     this.emit('localMusicScanProgress', done, total)
   }
+
+  downloadStateChanged(list: LX.Download.ListItem[]) {
+    this.emit('downloadStateChanged', list)
+  }
+
+  downloadProgress(taskId: string) {
+    this.emit('downloadProgress', taskId)
+  }
 }
 
 

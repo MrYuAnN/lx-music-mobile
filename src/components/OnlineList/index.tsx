@@ -7,7 +7,8 @@ import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } fr
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
 import { clearMusicUrl, handleDislikeMusic, handlePlay, handlePlayLater, handleShare, handleShowMusicSourceDetail } from './listAction'
-import { createStyle } from '@/utils/tools'
+import { addDownloadTask } from '@/core/download'
+import { createStyle, toast } from '@/utils/tools'
 
 export interface OnlineListProps {
   onRefresh: ListProps['onRefresh']
@@ -115,6 +116,11 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
         onMusicSourceDetail={info => { void handleShowMusicSourceDetail(info.musicInfo) }}
         onRemoveCache={info => { void clearMusicUrl(info.musicInfo) }}
         onDislikeMusic={info => { void handleDislikeMusic(info.musicInfo) }}
+        onDownload={info => {
+          void addDownloadTask(info.musicInfo).then(added => {
+            toast(global.i18n.t(added ? 'download_added' : 'download_exists'))
+          })
+        }}
       />
       {/* <LoadingMask ref={loadingMaskRef} /> */}
     </View>

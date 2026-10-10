@@ -298,9 +298,24 @@ declare global {
       'list.addMusicLocationType': AddMusicLocationType
 
       /**
-       * 文件命名方式
+       * 文件命名方式（分享文案用，历史键归属分享场景）
        */
       'download.fileName': '歌名 - 歌手' | '歌手 - 歌名' | '歌名'
+
+      /**
+       * 下载音质（不可用时引擎向下回退）
+       */
+      'download.quality': LX.Quality
+
+      /**
+       * 同时下载数
+       */
+      'download.maxConcurrency': number
+
+      /**
+       * 允许移动网络下载（关闭时任务等待 Wi-Fi）
+       */
+      'download.isAllowMobileNetwork': boolean
 
       /**
        * 是否启用同步

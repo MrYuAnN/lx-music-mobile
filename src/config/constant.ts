@@ -71,6 +71,7 @@ export const storageDataPrefix = {
 
   recentPlay: '@recent_play',
   localMusicList: '@local_music_list',
+  downloadList: '@download_list',
 
   // 临时播放列表 meta id（仅作 tempListMeta 来源标识，实体均写入 LIST_IDS.TEMP）
   TEMP_LIST_RECENT: 'recent_play',

@@ -27,6 +27,7 @@ export interface ListMenuProps {
   onRemoveCache: (selectInfo: SelectInfo) => void
   onDislikeMusic: (selectInfo: SelectInfo) => void
   onRemove: (selectInfo: SelectInfo) => void
+  onDownload: (selectInfo: SelectInfo) => void
 }
 export interface ListMenuType {
   show: (selectInfo: SelectInfo, position: Position) => void
@@ -71,7 +72,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
     const menu = [
       { action: 'play', label: t('play'), icon: 'play' },
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },
-      // { action: 'download', label: '下载' },
+      ...(isLocal ? [] : [{ action: 'download', label: t('download_action'), icon: 'download-2' }]),
       { action: 'add', label: t('add_to'), icon: 'add-to' },
       { action: 'move', label: t('move_to'), icon: 'move-to' },
       { action: 'changePosition', label: t('change_position'), icon: 'change-position' },
@@ -112,6 +113,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       case 'playLater':
         props.onPlayLater(selectInfo)
 
+        break
+      case 'download':
+        props.onDownload(selectInfo)
         break
       case 'add':
         props.onAdd(selectInfo)

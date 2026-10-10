@@ -17,7 +17,7 @@ export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, onLikePress, onPress, onLongPress, onShowMenu }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -30,6 +30,8 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
   isShowAlbumName: boolean
   activeIndex?: number
   isLiked?: boolean
+  /** 显式音质标签（下载管理已完成行按实际下载档显示） */
+  qualityOverride?: LX.Music._MusicQualityType
   onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
   onPress: (item: LX.Music.MusicInfo, index: number) => void
   onLongPress: (item: LX.Music.MusicInfo, index: number) => void
@@ -55,7 +57,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
     onLikePress(item, isLiked)
   }
 
-  const qualitys = getOnlineQualitys(item)
+  const qualitys = qualityOverride ?? getOnlineQualitys(item)
 
   let subline = item.singer || t('singer_unknown')
   if (isShowAlbumName && item.meta.albumName) subline += ` · ${item.meta.albumName}`
@@ -123,6 +125,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
     prevProps.showSublineInterval === nextProps.showSublineInterval &&
     prevProps.isShowAlbumName === nextProps.isShowAlbumName &&
     prevProps.isLiked === nextProps.isLiked &&
+    prevProps.qualityOverride === nextProps.qualityOverride &&
     prevProps.activeIndex != nextProps.index &&
     nextProps.activeIndex != nextProps.index &&
     nextProps.selectedList.includes(nextProps.item) == prevProps.selectedList.includes(nextProps.item)

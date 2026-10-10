@@ -3,6 +3,9 @@ import { View } from 'react-native'
 import Text from './Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { getOnlineQualitys } from '@/utils/music'
+
+export { getOnlineQualitys }
 
 // 音质等级映射：flac24bit→24bit 金 / flac|ape→SQ 绿 / 320k→HQ 蓝灰 / 128k、wav、192k 无标签（原型图例拍板）
 type QualityColorKey = 'c-quality-24bit' | 'c-quality-sq' | 'c-quality-hq'
@@ -12,11 +15,6 @@ export const getQualityTagInfo = (qualitys?: LX.Music._MusicQualityType): { text
   if (qualitys.flac ?? qualitys.ape) return { text: 'SQ', color: 'c-quality-sq' }
   if (qualitys['320k']) return { text: 'HQ', color: 'c-quality-hq' }
   return null
-}
-
-// online 行音质元数据提取（local 无 _qualitys 返回 undefined）；ListItem/PlayListPanel 共用
-export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQualityType | undefined => {
-  return item.source == 'local' ? undefined : (item.meta as LX.Music.MusicInfoMeta_online)._qualitys
 }
 
 // 描边多彩音质标签（高15 r3 字9 描边1，边框=文字色，透明底）；来源标签同形态用 c-font-label 灰
