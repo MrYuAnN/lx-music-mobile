@@ -89,8 +89,9 @@ export default {
       }
       return true
     })
-    if (topList.length) arrUnshift(state.tempPlayList, topList.map(({ musicInfo, listId }) => ({ musicInfo, listId, isTempPlay: true })))
-    if (bottomList.length) arrPush(state.tempPlayList, bottomList.map(({ musicInfo, listId }) => ({ musicInfo, listId, isTempPlay: true })))
+    // TempPlayListItem.listId 可空而播放态类型要求 string，沿用上游运行时行为不收窄
+    if (topList.length) arrUnshift(state.tempPlayList, topList.map(({ musicInfo, listId }) => ({ musicInfo, listId: listId!, isTempPlay: true })))
+    if (bottomList.length) arrPush(state.tempPlayList, bottomList.map(({ musicInfo, listId }) => ({ musicInfo, listId: listId!, isTempPlay: true })))
 
     global.state_event.playTempPlayListChanged({ ...state.tempPlayList })
   },
