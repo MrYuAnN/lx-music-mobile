@@ -18,7 +18,7 @@ export default ({ componentId }: { componentId: string }) => {
   }, [])
 
   return (
-    <PageContent>
+    <PageContent coverBg>
       <StatusBar />
       {
         isHorizontalMode

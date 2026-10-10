@@ -7,7 +7,6 @@ import MoreBtn from './MoreBtn'
 import Header from './components/Header'
 import { setComponentId } from '@/core/common'
 import { COMPONENT_IDS } from '@/config/constant'
-import PageContent from '@/components/PageContent'
 import commonState, { type InitState as CommonState } from '@/store/common/state'
 
 import Pic from './Pic'
@@ -51,8 +50,9 @@ export default memo(({ componentId }: { componentId: string }) => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // 外层 PageContent(coverBg) 已提供沉浸封面背景；此处不再套 solid 底避免遮蔽氛围层
   return (
-    <PageContent>
+    <>
       <StatusBar />
       <View style={{ ...styles.container, paddingTop: statusBarHeight }}>
         <View style={styles.left}>
@@ -71,7 +71,7 @@ export default memo(({ componentId }: { componentId: string }) => {
           <Lyric />
         </View>
       </View>
-    </PageContent>
+    </>
   )
 })
 

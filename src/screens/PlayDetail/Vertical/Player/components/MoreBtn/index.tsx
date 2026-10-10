@@ -4,11 +4,13 @@ import PlayModeBtn from './PlayModeBtn'
 import MusicAddBtn from './MusicAddBtn'
 import DesktopLyricBtn from './DesktopLyricBtn'
 import CommentBtn from './CommentBtn'
+import QueueBtn from './QueueBtn'
 
 export default () => {
   return (
     <View style={styles.container}>
       <DesktopLyricBtn />
+      <QueueBtn />
       <MusicAddBtn />
       <PlayModeBtn />
       <CommentBtn />

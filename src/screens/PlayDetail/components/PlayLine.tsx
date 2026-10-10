@@ -7,6 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { BorderWidths } from '@/theme'
 import { formatPlayTime2 } from '@/utils'
 import { Icon } from '@/components/common/Icon'
+import { AM_EASE_DURATION, amEase } from '@/utils/animation'
 
 
 export interface PlayLineType {
@@ -20,7 +21,7 @@ export interface PlayLineProps {
   onPlayLine: (time: number) => void
 }
 
-const ANIMATION_DURATION = 300
+const ANIMATION_DURATION = AM_EASE_DURATION
 
 export default forwardRef<PlayLineType, PlayLineProps>(({ onPlayLine }, ref) => {
   const theme = useTheme()
@@ -36,6 +37,7 @@ export default forwardRef<PlayLineType, PlayLineProps>(({ onPlayLine }, ref) => 
     Animated.timing(opsAnim, {
       toValue: visible ? 1 : 0,
       duration: ANIMATION_DURATION,
+      easing: amEase,
       useNativeDriver: true,
     }).start(() => {
       if (!visible) setVisible(false)

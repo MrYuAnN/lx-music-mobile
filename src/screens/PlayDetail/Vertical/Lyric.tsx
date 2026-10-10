@@ -6,7 +6,7 @@ import { createStyle } from '@/utils/tools'
 // import { useComponentIds } from '@/store/common/hook'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
-import { AnimatedColorText } from '@/components/common/Text'
+import { AnimatedColorText, FontFamilies } from '@/components/common/Text'
 import { setSpText } from '@/utils/pixelRatio'
 import playerState from '@/store/player/state'
 import { scrollTo } from '@/utils/scroll'
@@ -70,15 +70,18 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
   const lineHeight = setSpText(size) * 1.3
 
   const colors = useMemo(() => {
+    // AM 歌词形态：当前行主字色+semibold，其余淡灰（无逐字扫色）
     const active = activeLine == lineNum
     return active ? [
-      theme['c-primary'],
-      theme['c-primary-alpha-200'],
+      theme['c-font'],
+      theme['c-font-label'],
       1,
+      FontFamilies.semibold,
     ] as const : [
-      theme['c-350'],
-      theme['c-300'],
-      0.6,
+      theme['c-font-label'],
+      theme['c-font-label'],
+      0.55,
+      FontFamilies.regular,
     ] as const
   }, [activeLine, lineNum, theme])
 
@@ -95,6 +98,7 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
         ...styles.lineText,
         textAlign,
         lineHeight,
+        fontFamily: colors[3],
       }} textBreakStrategy="simple" color={colors[0]} opacity={colors[2]} size={size}>{line.text}</AnimatedColorText>
       {
         line.extendedLyrics.map((lrc, index) => {
@@ -102,6 +106,7 @@ const LrcLine = memo(({ line, lineNum, activeLine, onLayout }: LineProps) => {
             ...styles.lineTranslationText,
             textAlign,
             lineHeight: lineHeight * 0.8,
+            fontFamily: colors[3],
           }} textBreakStrategy="simple" key={index} color={colors[1]} opacity={colors[2]} size={size * 0.8}>{lrc}</AnimatedColorText>)
         })
       }
@@ -321,7 +326,7 @@ export default () => {
         ListFooterComponent={spaceComponent}
         onScrollBeginDrag={handleScrollBeginDrag}
         onScrollEndDrag={onScrollEndDrag}
-        fadingEdgeLength={100}
+        fadingEdgeLength={160}
         initialNumToRender={Math.max(line + 10, 10)}
         onScrollToIndexFailed={handleScrollToIndexFailed}
         onScroll={handleScroll}
@@ -342,8 +347,8 @@ const styles = createStyle({
     paddingTop: '100%',
   },
   line: {
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: 14,
+    paddingBottom: 14,
     // opacity: 0,
   },
   lineText: {
