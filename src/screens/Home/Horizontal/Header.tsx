@@ -9,12 +9,9 @@ import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { HEADER_HEIGHT as _HEADER_HEIGHT } from '@/config/constant'
-import { type InitState as CommonState } from '@/store/common/state'
-import SearchTypeSelector from '@/screens/Home/Views/Search/SearchTypeSelector'
 
-const headerComponents: Partial<Record<CommonState['navActiveId'], React.ReactNode>> = {
-  nav_search: <SearchTypeSelector />,
-}
+// 搜索类型 chips 在内容组件（Views/Search）内自渲染（问题 2），
+// 页头不再挂 SearchTypeSelector——横屏双实例状态互不同步（架构师 I2 修复）
 
 const HEADER_HEIGHT = _HEADER_HEIGHT * 0.8
 
@@ -39,7 +36,6 @@ const LeftHeader = () => {
       <View style={styles.left}>
         <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
       </View>
-      {headerComponents[id] ?? null}
 
       {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
         <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />

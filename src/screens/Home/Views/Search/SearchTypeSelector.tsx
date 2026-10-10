@@ -1,23 +1,20 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ScrollView, TouchableOpacity } from 'react-native'
+import { View } from 'react-native'
 
-import { createStyle } from '@/utils/tools'
-import { scaleSizeH } from '@/utils/pixelRatio'
+import CategoryChips from '@/components/common/CategoryChips'
 import { type SearchType } from '@/store/search/state'
 import { useI18n } from '@/lang'
-import Text from '@/components/common/Text'
-import { useTheme } from '@/store/theme/hook'
 import { getSearchSetting } from '@/utils/data'
-import { BorderWidths } from '@/theme'
+import { createStyle } from '@/utils/tools'
 
 const SEARCH_TYPE_LIST = [
   'music',
   'songlist',
 ] as const
 
+// 搜索类型切换（问题 2 拍板 v3-1）：实心筛选 chips（歌曲/歌单，无计数）
 export default () => {
   const t = useI18n()
-  const theme = useTheme()
   const [type, setType] = useState<SearchType>('music')
 
   useEffect(() => {
@@ -30,53 +27,23 @@ export default () => {
     return SEARCH_TYPE_LIST.map(type => ({ label: t(`search_type_${type}`), id: type }))
   }, [t])
 
-  const handleTypeChange = (type: SearchType) => {
-    setType(type)
-    global.app_event.searchTypeChanged(type)
+  const handleTypeChange = (id: string) => {
+    setType(id as SearchType)
+    global.app_event.searchTypeChanged(id as SearchType)
   }
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps={'always'} horizontal={true}>
-      {
-        list.map(t => (
-          <TouchableOpacity style={styles.button} onPress={() => { handleTypeChange(t.id) }} key={t.id}>
-            <Text style={{ ...styles.buttonText, borderBottomColor: type == t.id ? theme['c-primary-background-active'] : 'transparent' }} color={type == t.id ? theme['c-primary-font-active'] : theme['c-font']}>{t.label}</Text>
-          </TouchableOpacity>
-        ))
-      }
-    </ScrollView>
+    <View style={styles.container}>
+      <CategoryChips items={list} activeId={type} onChange={handleTypeChange} />
+    </View>
   )
 }
 
 const styles = createStyle({
   container: {
-    // 固定高度：height '100%' 会占满父容器剩余空间，把下方搜索框挤出屏幕（真机 10-10 实证）
-    height: scaleSizeH(44),
     flexGrow: 0,
     flexShrink: 0,
-    // paddingLeft: 5,
-    // paddingRight: 5,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  button: {
-    // height: 38,
-    // lineHeight: 38,
-    justifyContent: 'center',
-    paddingLeft: 8,
-    paddingRight: 8,
-    // width: 80,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  buttonText: {
-    // height: 38,
-    // lineHeight: 38,
-    textAlign: 'center',
-    paddingLeft: 2,
-    paddingRight: 2,
-    // paddingTop: 10,
-    paddingTop: 3,
-    paddingBottom: 3,
-    borderBottomWidth: BorderWidths.normal3,
-    // width: 80,
+    paddingTop: 12,
+    paddingBottom: 2,
   },
 })
