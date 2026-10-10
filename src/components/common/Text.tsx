@@ -1,10 +1,18 @@
 import { memo, type ComponentProps } from 'react'
 import { Text, type TextProps as _TextProps, StyleSheet, Animated, type ColorValue, type TextStyle } from 'react-native'
-import { useTextShadow, useTheme } from '@/store/theme/hook'
+import { useTheme } from '@/store/theme/hook'
 import { setSpText } from '@/utils/pixelRatio'
 import { useAnimateColor } from '@/utils/hooks/useAnimateColor'
 import { DEFAULT_DURATION, useAnimateNumber } from '@/utils/hooks/useAnimateNumber'
-// import { AppColors } from '@/theme'
+
+// SF Pro 静态字重族（assets/fonts 文件名即 Android fontFamily；子集覆盖拉丁/数字/
+// 标点，中文回退系统字体）。字重语义映射，组件样式按需取用，不做 fontWeight 合成。
+export const FontFamilies = {
+  regular: 'SF-Pro-Regular',
+  medium: 'SF-Pro-Medium',
+  semibold: 'SF-Pro-Semibold',
+  bold: 'SF-Pro-Bold',
+} as const
 
 export interface TextProps extends _TextProps {
   /**
@@ -17,30 +25,10 @@ export interface TextProps extends _TextProps {
   color?: ColorValue
 }
 
-// const warpText = <P extends TextProps>(Component: ComponentType<TextProps>) => {
-//   return ({ style, size = 15, color, children, ...props }: P) => {
-//     const theme = useTheme()
-//     return (
-//       <Component
-//         style={StyleSheet.compose({ fontFamily: 'System', fontSize: setSpText(size), color: color ?? theme['c-font'] }, style)}
-//         {...props}
-//       >{children}</Component>
-//     )
-//   }
-// }
-
 export default memo(({ style, size = 15, color, children, ...props }: TextProps) => {
   const theme = useTheme()
-  const textShadow = useTextShadow()
-  style = StyleSheet.compose(textShadow ? {
-    // fontFamily: 'System',
-    textShadowColor: theme['c-primary-dark-300-alpha-800'],
-    textShadowOffset: { width: 0.2, height: 0.2 },
-    textShadowRadius: 2,
-    fontSize: setSpText(size),
-    color: color ?? theme['c-font'],
-  } : {
-    // fontFamily: 'System',
+  style = StyleSheet.compose({
+    fontFamily: FontFamilies.regular,
     fontSize: setSpText(size),
     color: color ?? theme['c-font'],
   }, style)
@@ -65,16 +53,8 @@ export interface AnimatedTextProps extends _AnimatedTextProps {
 }
 export const AnimatedText = ({ style, size = 15, color, children, ...props }: AnimatedTextProps) => {
   const theme = useTheme()
-  const textShadow = useTextShadow()
-  style = StyleSheet.compose(textShadow ? {
-    // fontFamily: 'System',
-    textShadowColor: theme['c-primary-dark-300-alpha-800'],
-    textShadowOffset: { width: 0.2, height: 0.2 },
-    textShadowRadius: 2,
-    fontSize: setSpText(size),
-    color: color ?? theme['c-font'],
-  } : {
-    // fontFamily: 'System',
+  style = StyleSheet.compose({
+    fontFamily: FontFamilies.regular,
     fontSize: setSpText(size),
     color: color ?? theme['c-font'],
   }, style as TextStyle)
@@ -100,21 +80,12 @@ export interface AnimatedColorTextProps extends _AnimatedTextProps {
 }
 export const AnimatedColorText = ({ style, size = 15, opacity: _opacity, color: _color, children, ...props }: AnimatedColorTextProps) => {
   const theme = useTheme()
-  const textShadow = useTextShadow()
 
   const [color] = useAnimateColor(_color ?? theme['c-font'])
   const [opacity] = useAnimateNumber(_opacity ?? 1, DEFAULT_DURATION, false)
 
-  style = StyleSheet.compose(textShadow ? {
-    // fontFamily: 'System',
-    textShadowColor: theme['c-primary-dark-300-alpha-800'],
-    textShadowOffset: { width: 0.2, height: 0.2 },
-    textShadowRadius: 2,
-    fontSize: setSpText(size),
-    color: color as unknown as ColorValue,
-    opacity,
-  } : {
-    // fontFamily: 'System',
+  style = StyleSheet.compose({
+    fontFamily: FontFamilies.regular,
     fontSize: setSpText(size),
     color: color as unknown as ColorValue,
     opacity,

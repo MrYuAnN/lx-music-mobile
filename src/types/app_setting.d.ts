@@ -6,10 +6,6 @@ declare global {
 
     interface AppSetting {
       version: string
-      /**
-       * 是否跟随系统切换亮暗主题
-       */
-      'common.isAutoTheme': boolean
 
       /**
        * 语言id
@@ -42,24 +38,9 @@ declare global {
       'common.autoHidePlayBar': boolean
 
       /**
-       * 抽屉组件弹出方向
-       */
-      'common.drawerLayoutPosition': 'left' | 'right'
-
-      /**
-       * 启用首页滑动
-       */
-      'common.homePageScroll': boolean
-
-      /**
        * 允许通过底栏进度条调整进度
        */
       'common.allowProgressBarSeek': boolean
-
-      /**
-       * 是否显示返回按钮
-       */
-      'common.showBackBtn': boolean
 
       /**
        * 是否显示退出按钮
@@ -80,31 +61,6 @@ declare global {
        * 主题id
        */
       'theme.id': string
-
-      /**
-       * 亮色主题id
-       */
-      'theme.lightId': string
-
-      /**
-       * 暗色主题id
-       */
-      'theme.darkId': string
-
-      /**
-       * 隐藏黑色主题背景
-       */
-      'theme.hideBgDark': boolean
-
-      /**
-       * 动态背景
-       */
-      'theme.dynamicBg': boolean
-
-      /**
-       * 字体阴影
-       */
-      'theme.fontShadow': boolean
 
       /**
        * 启动时自动播放歌曲

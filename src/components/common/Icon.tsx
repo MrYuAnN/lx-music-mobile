@@ -2,8 +2,8 @@ import { createIconSetFromIcoMoon } from 'react-native-vector-icons'
 import icoMoonConfig from '@/resources/fonts/selection.json'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { memo, type ComponentProps } from 'react'
-import { useTextShadow, useTheme } from '@/store/theme/hook'
-import { StyleSheet, type StyleProp, type TextStyle } from 'react-native'
+import { useTheme } from '@/store/theme/hook'
+import { type StyleProp, type TextStyle } from 'react-native'
 
 // import IconAntDesign from 'react-native-vector-icons/AntDesign'
 // import IconEntypo from 'react-native-vector-icons/Entypo'
@@ -35,18 +35,13 @@ interface IconProps extends Omit<ComponentProps<IconType>, 'style'> {
 
 export const Icon = memo(({ size = 15, rawSize, color, style, ...props }: IconProps) => {
   const theme = useTheme()
-  const textShadow = useTextShadow()
-  const newStyle = textShadow ? StyleSheet.compose({
-    textShadowColor: theme['c-primary-dark-300-alpha-800'],
-    textShadowOffset: { width: 0.2, height: 0.2 },
-    textShadowRadius: 2,
-  }, style) : style
   return (
     <IcoMoon
       size={rawSize ?? scaleSizeW(size)}
       color={color ?? theme['c-font']}
+      // RNV 自带的旧版 @types/react-native 与 RN 本体类型不一致，style 需要抑制
       // @ts-expect-error
-      style={newStyle}
+      style={style}
       {...props}
     />
   )

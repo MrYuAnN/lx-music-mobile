@@ -1,16 +1,12 @@
 const defaultSetting: LX.AppSetting = {
   version: '2.0',
-  'common.isAutoTheme': false,
   'common.langId': null,
   'common.apiSource': '',
   'common.sourceNameType': 'alias',
   'common.shareType': 'system',
   'common.isAgreePact': false,
   'common.autoHidePlayBar': true,
-  'common.drawerLayoutPosition': 'left',
-  'common.homePageScroll': true,
   'common.allowProgressBarSeek': true,
-  'common.showBackBtn': false,
   'common.showExitBtn': true,
   'common.useSystemFileSelector': true,
   'common.alwaysKeepStatusbarHeight': false,
@@ -55,7 +51,7 @@ const defaultSetting: LX.AppSetting = {
   'desktopLyric.style.fontSize': 180,
   'desktopLyric.style.opacity': 100,
   'desktopLyric.style.lyricUnplayColor': 'rgba(255, 255, 255, 1)',
-  'desktopLyric.style.lyricPlayedColor': 'rgba(7, 197, 86, 1)',
+  'desktopLyric.style.lyricPlayedColor': 'rgba(250, 35, 59, 1)',
   'desktopLyric.style.lyricShadowColor': 'rgba(0, 0, 0, 0.6)',
 
   'search.isShowHotSearch': false,
@@ -72,20 +68,9 @@ const defaultSetting: LX.AppSetting = {
 
   'sync.enable': false,
 
-  // 'theme.id': 'blue_plus',
-  'theme.id': 'green',
-  'theme.lightId': 'green',
-  'theme.darkId': 'black',
-  'theme.hideBgDark': false,
-  'theme.dynamicBg': false,
-  'theme.fontShadow': false,
-}
-
-
-// 使用新年皮肤
-if (new Date().getMonth() < 2) {
-  defaultSetting['theme.id'] = 'happy_new_year'
-  defaultSetting['desktopLyric.style.lyricPlayedColor'] = 'rgba(255, 18, 34, 1)'
+  // AM 化：theme.id ∈ { am_light, am_dark, auto }；旧版主题 id 由
+  // themes/index.ts resolveThemeId 读时映射为跟随系统，不写回存储
+  'theme.id': 'auto',
 }
 
 export default defaultSetting

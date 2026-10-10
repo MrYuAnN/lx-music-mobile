@@ -292,22 +292,20 @@ declare global {
         extInfo: {
           'c-app-background': string
           'c-main-background': string
-          'bg-image': string
-          'bg-image-position': string
-          'bg-image-size': string
+          'bg-image'?: string
+          'bg-image-position'?: string
+          'bg-image-size'?: string
 
-          // 徽章颜色
+          // 语义色（AM 直接值，可选；缺省走派生链）
+          'c-font'?: string
+          'c-font-label'?: string
+          'c-content-background'?: string
+          'c-border-background'?: string
           'c-badge-primary': string
           'c-badge-secondary': string
           'c-badge-tertiary': string
         }
       }
-    }
-
-    interface ThemeInfo {
-      themes: LX.Theme[]
-      userThemes: LX.Theme[]
-      dataPath: string
     }
 
     interface ThemeSetting {

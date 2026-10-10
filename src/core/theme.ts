@@ -13,8 +13,7 @@ export const applyTheme = (theme: LX.Theme) => {
 
 export const setTheme = (id: string) => {
   updateSetting({ 'theme.id': id })
-  void getTheme().then(theme => {
-    if (theme.id == themeState.theme.id) return
-    applyTheme(theme)
-  })
+  const theme = getTheme()
+  if (theme.id == themeState.theme.id) return
+  applyTheme(theme)
 }

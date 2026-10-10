@@ -35,7 +35,6 @@ export default (setting: any): Partial<LX.AppSetting> => {
     setting['list.isSaveScrollLocation'] = setting.list?.isSaveScrollLocation
     setting['list.addMusicLocationType'] = setting.list?.addMusicLocationType
     setting['common.themeId'] = setting.themeId
-    setting['common.isAutoTheme'] = setting.isAutoTheme
     setting['common.langId'] = setting.langId
     setting['common.apiSource'] = setting.apiSource
     setting['common.sourceNameType'] = setting.sourceNameType
