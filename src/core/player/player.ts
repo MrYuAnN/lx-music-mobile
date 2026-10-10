@@ -29,6 +29,7 @@ import { checkIgnoringBatteryOptimization, checkNotificationPermission, debounce
 import { LIST_IDS } from '@/config/constant'
 import { addListMusics, removeListMusics } from '@/core/list'
 import { addDislikeInfo } from '@/core/dislikeList'
+import { updateRecentPlayPic } from './recentPlay'
 
 // import { checkMusicFileAvailable } from '@renderer/utils/music'
 
@@ -174,6 +175,8 @@ const handleRestorePlay = async(restorePlayInfo: LX.Player.SavedPlayInfo) => {
       playerState.loadErrorPicUrl == url
     ) return
     setMusicInfo({ pic: url })
+    // 封面回写最近播放快照（新批问题1；guard 后挂，防错误占位图/过期回调入快照）
+    updateRecentPlayPic(musicInfo as LX.Music.MusicInfo, url)
     global.app_event.picUpdated()
   })
 
@@ -206,6 +209,8 @@ const debouncePlay = debounceBackgroundTimer((musicInfo: LX.Player.PlayMusic) =>
       playerState.musicInfo.pic == url ||
       playerState.loadErrorPicUrl == url) return
     setMusicInfo({ pic: url })
+    // 封面回写最近播放快照（新批问题1；guard 后挂，防错误占位图/过期回调入快照）
+    updateRecentPlayPic(musicInfo as LX.Music.MusicInfo, url)
     global.app_event.picUpdated()
   })
 

@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { FlatList, View } from 'react-native'
 
 import Text from '@/components/common/Text'
@@ -26,6 +26,32 @@ const RECENT_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_RECENT
 export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
   const [list, setList] = useState<RecentPlayItem[]>(() => [...getRecentPlayList()])
+  // 广播同步（新批问题1）：空表时整表采纳（initRecentPlay 初值灌入）；其后保序替换命中行并移除已删行，
+  // 新增不插入（浏览期不重排约定不变，仅豁免封面回写与删除的行内容同步）
+  useEffect(() => {
+    const handleUpdate = (newList: RecentPlayItem[]) => {
+      setList(prev => {
+        if (prev.length === 0) return newList.length ? [...newList] : prev
+        const freshMap = new Map(newList.map(n => [`${n.musicInfo.source}__${n.musicInfo.id}`, n]))
+        let changed = false
+        const next: RecentPlayItem[] = []
+        for (const item of prev) {
+          const fresh = freshMap.get(`${item.musicInfo.source}__${item.musicInfo.id}`)
+          if (!fresh) {
+            changed = true
+            continue
+          }
+          if (fresh != item) changed = true
+          next.push(fresh)
+        }
+        return changed ? next : prev
+      })
+    }
+    global.state_event.on('recentPlayUpdated', handleUpdate)
+    return () => {
+      global.state_event.off('recentPlayUpdated', handleUpdate)
+    }
+  }, [])
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
   const menuRef = useRef<ActionSheetType>(null)

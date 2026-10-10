@@ -47,10 +47,38 @@ export const initRecentPlay = async() => {
  */
 export const addRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
   const key = `${musicInfo.source}__${musicInfo.id}`
+  const oldRow = recentPlayList.find(item => `${item.musicInfo.source}__${item.musicInfo.id}` == key)
+  const snapshot = serializeMusicInfo(musicInfo)
+  // 列表原始条目 picUrl 可能为空（kw/kg 等源数据不齐），重复播放时沿用已回写的快照封面，防覆盖丢失
+  if (oldRow && !snapshot.meta.picUrl && oldRow.musicInfo.meta.picUrl) {
+    snapshot.meta.picUrl = oldRow.musicInfo.meta.picUrl
+  }
   recentPlayList = [
-    { ts: Date.now(), musicInfo: serializeMusicInfo(musicInfo) },
+    { ts: Date.now(), musicInfo: snapshot },
     ...recentPlayList.filter(item => `${item.musicInfo.source}__${item.musicInfo.id}` != key),
   ].slice(0, MAX_RECENT_PLAY)
+  saveRecentPlayList(recentPlayList)
+  global.state_event.recentPlayUpdated(recentPlayList)
+}
+
+/**
+ * 播放中封面拉取成功后回写快照：按 音源+id 匹配，不可变整条替换（保序，订阅方 memo 安全）；
+ * 未命中（记录已删/换源歌不在列表）静默跳过
+ */
+export const updateRecentPlayPic = (musicInfo: LX.Music.MusicInfo, url: string) => {
+  const key = `${musicInfo.source}__${musicInfo.id}`
+  const index = recentPlayList.findIndex(item => `${item.musicInfo.source}__${item.musicInfo.id}` == key)
+  if (index < 0) return
+  const row = recentPlayList[index]
+  if (row.musicInfo.meta.picUrl == url) return
+  const itemMusicInfo: LX.Music.MusicInfo = { ...row.musicInfo }
+  const meta: LX.Music.MusicInfo['meta'] = { ...itemMusicInfo.meta, picUrl: url }
+  itemMusicInfo.meta = meta
+  recentPlayList = [
+    ...recentPlayList.slice(0, index),
+    { ...row, musicInfo: itemMusicInfo },
+    ...recentPlayList.slice(index + 1),
+  ]
   saveRecentPlayList(recentPlayList)
   global.state_event.recentPlayUpdated(recentPlayList)
 }
