@@ -76,6 +76,7 @@ export const storageDataPrefix = {
   // 临时播放列表 meta id（仅作 tempListMeta 来源标识，实体均写入 LIST_IDS.TEMP）
   TEMP_LIST_RECENT: 'recent_play',
   TEMP_LIST_LOCAL: 'local__play',
+  TEMP_LIST_ONLINE: 'online__play',
 
   syncAuthKey: '@sync_auth_key',
   syncHost: '@sync_host',

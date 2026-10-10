@@ -1,9 +1,8 @@
-import { LIST_IDS } from '@/config/constant'
-import { addListMusics } from '@/core/list'
+import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { setTempList } from '@/core/list'
 import { playList, playNext } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import settingState from '@/store/setting/state'
-import { getListMusicSync } from '@/utils/listManage'
 import { confirmDialog, openUrl, shareMusic, toast } from '@/utils/tools'
 import { addDislikeInfo, hasDislike } from '@/core/dislikeList'
 import playerState from '@/store/player/state'
@@ -11,12 +10,12 @@ import musicSdk from '@/utils/musicSdk'
 import { toOldMusicInfo } from '@/utils'
 import { clearMusicUrlByMusic } from '@/utils/data'
 
-export const handlePlay = (musicInfo: LX.Music.MusicInfoOnline) => {
-  void addListMusics(LIST_IDS.DEFAULT, [musicInfo], settingState.setting['list.addMusicLocationType']).then(() => {
-    const index = getListMusicSync(LIST_IDS.DEFAULT).findIndex(m => m.id == musicInfo.id)
-    if (index < 0) return
-    void playList(LIST_IDS.DEFAULT, index)
-  })
+const ONLINE_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_ONLINE
+
+// 点播=以来源列表为队列注入临时列表播放（对齐 QQ/网易云；不再写默认歌单）
+export const handlePlay = async(list: LX.Music.MusicInfoOnline[], index: number) => {
+  await setTempList(ONLINE_TEMP_LIST_ID, [...list])
+  void playList(LIST_IDS.TEMP, index)
 }
 export const handlePlayLater = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[], onCancelSelect: () => void) => {
   if (selectedList.length) {

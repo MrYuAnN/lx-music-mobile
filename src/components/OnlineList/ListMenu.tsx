@@ -6,6 +6,8 @@ import { hasMusicUrlByMusic } from '@/utils/data'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfoOnline
+  /** 当前列表全量（点播注入临时队列用） */
+  list: LX.Music.MusicInfoOnline[]
   selectedList: LX.Music.MusicInfoOnline[]
   index: number
   single: boolean

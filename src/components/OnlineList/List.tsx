@@ -166,8 +166,7 @@ const List = forwardRef<ListType, ListProps>(({
         if (settingState.setting['list.isClickPlayList'] && onPlayList != null) {
           onPlayList(index)
         } else {
-          // console.log(currentList[index])
-          handlePlay(currentList[index])
+          void handlePlay(currentList, index)
         }
       }
     })

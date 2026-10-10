@@ -68,6 +68,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   const showMenu = (musicInfo: LX.Music.MusicInfoOnline, index: number, position: Position) => {
     listMenuRef.current?.show({
       musicInfo,
+      list: listRef.current!.getList(),
       index,
       single: false,
       selectedList: listRef.current!.getSelectedList(),
@@ -109,7 +110,12 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
       <ListMusicMultiAdd ref={listMusicMultiAddRef} onAdded={() => { hancelExitSelect() }} />
       <ListMenu
         ref={listMenuRef}
-        onPlay={info => { handlePlay(info.musicInfo) }}
+        onPlay={info => {
+          hancelExitSelect()
+          // 多选以选择集为队列；单选以当前列表为队列从该曲起播
+          if (info.selectedList.length) void handlePlay(info.selectedList, 0)
+          else void handlePlay(info.list, info.index)
+        }}
         onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.musicInfo, info.selectedList, hancelExitSelect) }}
         onCopyName={info => { handleShare(info.musicInfo) }}
         onAdd={handleAddMusic}
