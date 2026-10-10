@@ -102,3 +102,19 @@ export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>(
     resolve(false)
   })
 })
+
+export const getNavigationBarInset = UtilsModule.getNavigationBarInset as () => Promise<number>
+export const watchWindowInsets = UtilsModule.watchWindowInsets
+
+// edge-to-edge insets 变化订阅（导航栏/键盘，弹窗体系批 §问题2）
+export const onWindowInsetsChange = (handler: (insets: { navBarBottom: number, navBarRight: number, imeBottom: number }) => void): () => void => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  const eventEmitter = new NativeEventEmitter(UtilsModule)
+  const eventListener = eventEmitter.addListener('window-insets-changed', event => {
+    handler({ navBarBottom: event.navBarBottom, navBarRight: event.navBarRight, imeBottom: event.imeBottom })
+  })
+
+  return () => {
+    eventListener.remove()
+  }
+}

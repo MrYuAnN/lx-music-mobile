@@ -4,6 +4,8 @@
     <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <!-- Customize your theme here. -->
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <!-- edge-to-edge 启动底色对齐主题（DayNight 双资源，弹窗体系批 §问题2） -->
+        <item name="android:windowBackground">@color/launch_window_background</item>
     </style>
 
 </resources>

@@ -79,6 +79,9 @@ export default forwardRef<ModalType, ModalProps>(({
 
   const memoChildren = useMemo(() => children, [children])
 
+  // navigationBarTranslucent 为 RN 0.74+ 属性（本应用 RN 0.73 无此 API）：
+  // Modal 独立窗口内手势条底色无法 JS 侧透明化，sheet 已按 navBarInset 垫高避让，
+  // 底色观感真机验收确认，必要时后续批做 Modal 原生小补丁
   return (
     <Modal
       animationType="fade"

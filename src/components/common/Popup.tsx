@@ -3,7 +3,7 @@ import { View, TouchableOpacity } from 'react-native'
 
 import Modal, { type ModalType } from './Modal'
 import { Icon } from '@/components/common/Icon'
-import { useKeyboard } from '@/utils/hooks'
+import { useBottomInset } from '@/utils/insetsTool'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
@@ -73,7 +73,7 @@ export default forwardRef<PopupType, PopupProps>(({
   children,
 }: PopupProps, ref) => {
   const theme = useTheme()
-  const { keyboardShown, keyboardHeight } = useKeyboard()
+  const bottomInset = useBottomInset()
   const statusBarHeight = useStatusbarHeight()
 
   const modalRef = useRef<ModalType>(null)
@@ -172,7 +172,7 @@ export default forwardRef<PopupType, PopupProps>(({
 
   return (
     <Modal onHide={onHide} keyHide={keyHide} bgHide={bgHide} bgColor="rgba(50,50,50,.2)" ref={modalRef}>
-      <View style={{ ...styles.centeredView, ...centeredViewStyle, paddingBottom: keyboardShown ? keyboardHeight : 0 }}>
+      <View style={{ ...styles.centeredView, ...centeredViewStyle, paddingBottom: bottomInset }}>
         <View style={{ ...styles.modalView, ...modalViewStyle, backgroundColor: theme['c-content-background'] }} onStartShouldSetResponder={() => true}>
           <View style={styles.header}>
             <Text size={13} style={styles.title} numberOfLines={1}>{title}</Text>

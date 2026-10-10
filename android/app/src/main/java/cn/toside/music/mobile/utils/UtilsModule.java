@@ -16,6 +16,9 @@ import android.view.Window;
 import android.view.WindowManager;
 
 import androidx.core.app.LocaleManagerCompat;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.os.LocaleListCompat;
 
@@ -34,7 +37,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 
-public class UtilsModule extends ReactContextBaseJavaModule {
+public class UtilsModule extends ReactContextBaseJavaModule implements com.facebook.react.bridge.LifecycleEventListener {
   private final ReactApplicationContext reactContext;
 
   private int listenerCount = 0;
@@ -46,6 +49,7 @@ public class UtilsModule extends ReactContextBaseJavaModule {
     this.reactContext = reactContext;
     utilsEvent = new UtilsEvent(reactContext);
     registerScreenBroadcastReceiver();
+    reactContext.addLifecycleEventListener(this);
   }
 
   @Override
@@ -347,27 +351,77 @@ public class UtilsModule extends ReactContextBaseJavaModule {
   //    });
   //  }
 
-  @ReactMethod
-  public void getWindowSize(Promise promise) {
-    WritableMap params = Arguments.createMap();
+  // edge-to-edge（弹窗体系批 §问题2）：导航栏 inset 读取/监听与生命周期自愈
+  // 批4审查 I-2：activity 进程内重建后新 decorView 无监听，onHostResume 幂等重挂并回放当前值
+  private int lastNavBottom = -1;
+  private int lastNavRight = -1;
+  private int lastImeBottom = -1;
 
+  @Override
+  public void onHostResume() {
+    // activity 重建/回到前台后重挂 inset 监听并回放当前值（幂等）
+    watchWindowInsets();
+  }
+
+  @Override
+  public void onHostPause() {
+  }
+
+  @Override
+  public void onHostDestroy() {
+  }
+  @ReactMethod
+  public void getNavigationBarInset(Promise promise) {
     Activity currentActivity = reactContext.getCurrentActivity();
-    if (currentActivity == null) {
-      params.putInt("width", 0);
-      params.putInt("height", 0);
-      promise.resolve(params);
+    android.view.WindowInsets rawInsets = currentActivity == null ? null : currentActivity.getWindow().getDecorView().getRootWindowInsets();
+    if (rawInsets == null) {
+      promise.resolve(0);
       return;
     }
-    // 获取当前应用可用区域大小
-    Window window = currentActivity.getWindow();
-    Rect rect = new Rect();
-    window.getDecorView().getWindowVisibleDisplayFrame(rect);
-    // View decorView = window.getDecorView();
-    // int width = decorView.getMeasuredWidth();
-    // int height = decorView.getMeasuredHeight();
-    params.putInt("width", rect.width());
-    params.putInt("height", rect.height());
-    promise.resolve(params);
+    WindowInsetsCompat insets = WindowInsetsCompat.toWindowInsetsCompat(rawInsets);
+    promise.resolve(insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom);
+  }
+
+  // ime/navigationBars inset 变化监听：decorFitsSystemWindows(false) 后 adjustResize 失效，
+  // 由原生推事件给 JS 补偿（键盘顶起/底部 inset 垫高）。JS 启动时调用一次；onHostResume 自愈重挂。
+  // 值变化才发（批4审查：键盘动画期逐帧分发防事件风暴）
+  @ReactMethod
+  public void watchWindowInsets() {
+    Activity currentActivity = reactContext.getCurrentActivity();
+    if (currentActivity == null) return;
+    currentActivity.runOnUiThread(() -> {
+      ViewCompat.setOnApplyWindowInsetsListener(currentActivity.getWindow().getDecorView(), (v, windowInsets) -> {
+        Insets navInsets = windowInsets.getInsets(WindowInsetsCompat.Type.navigationBars());
+        Insets imeInsets = windowInsets.getInsets(WindowInsetsCompat.Type.ime());
+        if (navInsets.bottom == lastNavBottom && navInsets.right == lastNavRight && imeInsets.bottom == lastImeBottom) {
+          return windowInsets;
+        }
+        lastNavBottom = navInsets.bottom;
+        lastNavRight = navInsets.right;
+        lastImeBottom = imeInsets.bottom;
+        WritableMap params = Arguments.createMap();
+        params.putInt("navBarBottom", navInsets.bottom);
+        params.putInt("navBarRight", navInsets.right);
+        params.putInt("imeBottom", imeInsets.bottom);
+        utilsEvent.sendEvent(utilsEvent.WINDOW_INSETS_CHANGED, params);
+        return windowInsets;
+      });
+      // 挂载即回放当前值（JS 侧原生通道立即激活）
+      android.view.WindowInsets raw = currentActivity.getWindow().getDecorView().getRootWindowInsets();
+      if (raw != null) {
+        WindowInsetsCompat current = WindowInsetsCompat.toWindowInsetsCompat(raw);
+        Insets navInsets = current.getInsets(WindowInsetsCompat.Type.navigationBars());
+        Insets imeInsets = current.getInsets(WindowInsetsCompat.Type.ime());
+        WritableMap params = Arguments.createMap();
+        params.putInt("navBarBottom", navInsets.bottom);
+        params.putInt("navBarRight", navInsets.right);
+        params.putInt("imeBottom", imeInsets.bottom);
+        utilsEvent.sendEvent(utilsEvent.WINDOW_INSETS_CHANGED, params);
+        lastNavBottom = navInsets.bottom;
+        lastNavRight = navInsets.right;
+        lastImeBottom = imeInsets.bottom;
+      }
+    });
   }
 
   @ReactMethod

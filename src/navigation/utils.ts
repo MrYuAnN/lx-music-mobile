@@ -36,7 +36,7 @@ export const showVersionModal = () => {
         navigationBar: {
           // visible: false,
           // 手势条区域与页面底色一致（避免底部色带割裂，AM-6）
-          backgroundColor: theme['c-app-background'],
+          backgroundColor: 'transparent',
         },
         // animations: {
 
@@ -86,7 +86,7 @@ export const showSyncModeModal = () => {
         navigationBar: {
           // visible: false,
           // 手势条区域与页面底色一致（避免底部色带割裂，AM-6）
-          backgroundColor: theme['c-app-background'],
+          backgroundColor: 'transparent',
         },
         // animations: {
 

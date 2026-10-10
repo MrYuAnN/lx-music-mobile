@@ -146,8 +146,7 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
             backgroundColor: 'transparent',
           },
           navigationBar: {
-            // visible: false,
-            backgroundColor: theme['c-app-background'],
+            backgroundColor: 'transparent',
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -232,8 +231,7 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
             backgroundColor: 'transparent',
           },
           navigationBar: {
-            // visible: false,
-            backgroundColor: theme['c-app-background'],
+            backgroundColor: 'transparent',
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -339,7 +337,7 @@ const pushAmScreen = (componentId: string, screenName: string) => {
             backgroundColor: 'transparent',
           },
           navigationBar: {
-            backgroundColor: theme['c-app-background'],
+            backgroundColor: 'transparent',
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -431,8 +429,7 @@ export function pushCommentScreen(componentId: string) {
             backgroundColor: 'transparent',
           },
           navigationBar: {
-            // visible: false,
-            backgroundColor: theme['c-app-background'],
+            backgroundColor: 'transparent',
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],

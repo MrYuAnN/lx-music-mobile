@@ -1,0 +1,4 @@
+<resources>
+    <!-- edge-to-edge 启动底色（亮色，对齐主题 c-app-background systemGroupedBackground；弹窗体系批 §问题2） -->
+    <color name="launch_window_background">#F2F2F7</color>
+</resources>

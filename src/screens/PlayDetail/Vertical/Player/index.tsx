@@ -7,11 +7,16 @@ import PlayInfo from './components/PlayInfo'
 import ControlBtn from './components/ControlBtn'
 import { createStyle } from '@/utils/tools'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
+import { useBottomInset } from '@/utils/insetsTool'
 
+// 控制区基础底距（原型 1:1 dp）；运行时叠加导航栏 inset（edge-to-edge）
+const PLAYER_PADDING_BOTTOM = 15
 
 export default memo(({ page }: { page: number }) => {
+  const navBarInset = useBottomInset(true)
+
   return (
-    <View style={styles.container} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_player}>
+    <View style={{ ...styles.container, paddingBottom: PLAYER_PADDING_BOTTOM + navBarInset }} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_player}>
       <ActionRow page={page} />
       <PlayInfo />
       <ControlBtn />

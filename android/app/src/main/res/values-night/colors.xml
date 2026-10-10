@@ -1,0 +1,4 @@
+<resources>
+    <!-- edge-to-edge 启动底色（暗色，对齐主题 c-app-background #000） -->
+    <color name="launch_window_background">#000000</color>
+</resources>

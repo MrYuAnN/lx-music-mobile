@@ -4,7 +4,8 @@ import { Animated, PanResponder, TouchableWithoutFeedback, View } from 'react-na
 import Modal, { type ModalType } from './Modal'
 import Text from './Text'
 import { useTheme } from '@/store/theme/hook'
-import { useKeyboard, useWindowSize } from '@/utils/hooks'
+import { useWindowSize } from '@/utils/hooks'
+import { useBottomInset } from '@/utils/insetsTool'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { AM_SHEET_SPRING, AM_EASE_DURATION, amEase } from '@/utils/animation'
@@ -62,9 +63,10 @@ const SheetBase = ({
   const windowSizeRef = useRef(windowSize)
   windowSizeRef.current = windowSize
   const closingRef = useRef(false)
-  const { keyboardShown, keyboardHeight } = useKeyboard()
   const slideAnim = useRef(new Animated.Value(0)).current
   const maskAnim = useRef(new Animated.Value(0)).current
+  // 贴底容器统一 inset 消费（键盘×导航栏 max 语义收口在 insetsTool，批4审查 S-1）
+  const bottomInset = useBottomInset()
 
   const springTo = (toValue: number, after?: () => void) => {
     Animated.spring(slideAnim, {
@@ -162,7 +164,7 @@ const SheetBase = ({
           style={{
             ...styles.sheet,
             maxHeight,
-            paddingBottom: keyboardShown ? keyboardHeight : 0,
+            paddingBottom: bottomInset,
             backgroundColor: theme['c-content-background'],
             transform: [{ translateY: slideAnim }],
           }}

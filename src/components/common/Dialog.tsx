@@ -3,7 +3,7 @@ import { View, TouchableHighlight } from 'react-native'
 
 import Modal, { type ModalType } from './Modal'
 import { Icon } from '@/components/common/Icon'
-import { useKeyboard } from '@/utils/hooks'
+import { useBottomInset } from '@/utils/insetsTool'
 import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
@@ -83,7 +83,8 @@ export default forwardRef<DialogType, DialogProps>(({
   height,
 }: DialogProps, ref) => {
   const theme = useTheme()
-  const { keyboardShown, keyboardHeight } = useKeyboard()
+  // 居中弹窗：仅键盘时顶起，常态不垫（useBottomInset false 变体）
+  const bottomInset = useBottomInset(false)
   const modalRef = useRef<ModalType>(null)
 
   useImperativeHandle(ref, () => ({
@@ -102,7 +103,7 @@ export default forwardRef<DialogType, DialogProps>(({
 
   return (
     <Modal onHide={onHide} keyHide={keyHide} bgHide={bgHide} bgColor="rgba(50,50,50,.3)" ref={modalRef}>
-      <View style={{ ...styles.centeredView, paddingBottom: keyboardShown ? keyboardHeight : 0 }}>
+      <View style={{ ...styles.centeredView, paddingBottom: bottomInset }}>
         <View style={{ ...styles.modalView, height, backgroundColor: theme['c-content-background'] }} onStartShouldSetResponder={() => true}>
           <View style={{ ...styles.header, backgroundColor: theme['c-primary-light-100-alpha-100'] }}>
             <Text style={styles.title} size={13} color={theme['c-primary-light-1000']} numberOfLines={1}>{title}</Text>

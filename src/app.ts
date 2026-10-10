@@ -7,9 +7,12 @@ import { exitApp } from './utils/nativeModules/utils'
 import { windowSizeTools } from './utils/windowSizeTools'
 import { listenLaunchEvent } from './navigation/regLaunchedEvent'
 import { tipDialog } from './utils/tools'
+import { initInsets } from './utils/insetsTool'
 
 console.log('starting app...')
 listenLaunchEvent()
+// edge-to-edge insets 通道（弹窗体系批 §问题2）：挂载原生监听 + 首读导航栏 inset
+initInsets()
 
 void Promise.all([getFontSize(), windowSizeTools.init()]).then(async([fontSize]) => {
   global.lx.fontSize = fontSize
