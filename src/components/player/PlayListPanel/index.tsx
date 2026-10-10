@@ -4,6 +4,7 @@ import { Animated, FlatList, PanResponder, TouchableOpacity, View, type LayoutCh
 import Popup, { type PopupType } from '@/components/common/Popup'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
+import QualityTag, { getOnlineQualitys } from '@/components/common/QualityTag'
 import { Icon } from '@/components/common/Icon'
 import { sheetHandleStyles } from '@/components/common/SheetBase'
 import { useI18n } from '@/lang'
@@ -41,11 +42,14 @@ const PlayListItem = memo(({ item, active, onPress, onArmDrag, onReleaseDrag }: 
         <Image url={item.meta.picUrl} style={styles.itemPic} />
         <View style={styles.itemTexts}>
           <Text numberOfLines={1} size={15} color={active ? theme['c-primary'] : theme['c-font']}>{item.name}</Text>
-          {
-            item.singer
-              ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{item.singer}</Text>
-              : null
-          }
+          <View style={styles.itemSubline}>
+            <QualityTag qualitys={getOnlineQualitys(item)} />
+            {
+              item.singer
+                ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{item.singer}</Text>
+                : null
+            }
+          </View>
         </View>
       </TouchableOpacity>
       {/* 触摸结束仍未进入拖拽即清登记，防 pressIndex 残留把后续滚动劫持为拖拽 */}
@@ -62,6 +66,8 @@ interface DragInfo {
   picUrl: string | number | null
   name: string
   singer: string
+  /** 抓取时快照（拖拽换位后 index 不再对应原行） */
+  qualitys: LX.Music._MusicQualityType | undefined
 }
 
 export default forwardRef<PlayListPanelType>((_, ref) => {
@@ -126,6 +132,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
         picUrl: item.meta.picUrl ?? null,
         name: item.name,
         singer: item.singer,
+        qualitys: getOnlineQualitys(item),
       })
     },
     onPanResponderMove: (_, g) => {
@@ -273,11 +280,14 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
                               <Image url={drag.picUrl} style={styles.itemPic} />
                               <View style={styles.itemTexts}>
                                 <Text numberOfLines={1} size={15} color={theme['c-font']}>{drag.name}</Text>
-                                {
-                                  drag.singer
-                                    ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{drag.singer}</Text>
-                                    : null
-                                }
+                                <View style={styles.itemSubline}>
+                                  <QualityTag qualitys={drag.qualitys} />
+                                  {
+                                    drag.singer
+                                      ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{drag.singer}</Text>
+                                      : null
+                                  }
+                                </View>
                               </View>
                             </Animated.View>
                           )
@@ -330,6 +340,10 @@ const styles = createStyle({
     flex: 1,
     flexShrink: 1,
     gap: 2,
+  },
+  itemSubline: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   itemGrip: {
     width: 40,

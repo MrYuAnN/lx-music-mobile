@@ -7,6 +7,7 @@ import { createStyle, getRowInfo, type RowInfoType } from '@/utils/tools'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useTheme } from '@/store/theme/hook'
+import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import settingState from '@/store/setting/state'
 import { MULTI_SELECT_BAR_HEIGHT } from './MultipleModeBar'
 import { useI18n } from '@/lang'
@@ -32,6 +33,7 @@ export interface ListProps {
   ListHeaderComponent?: FlatListType['ListEmptyComponent']
   checkHomePagerIdle: boolean
   rowType?: RowInfoType
+  showIndex?: boolean
 }
 export interface ListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
@@ -56,6 +58,7 @@ const List = forwardRef<ListType, ListProps>(({
   ListHeaderComponent,
   checkHomePagerIdle,
   rowType,
+  showIndex = false,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
@@ -72,6 +75,8 @@ const List = forwardRef<ListType, ListProps>(({
   const rowInfo = useRef(getRowInfo(rowType))
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
+  const likedSet = useLikedSet()
+  const toggleLike = useLikeToggle()
   // const currentListIdRef = useRef('')
   // console.log('render music list')
 
@@ -186,14 +191,19 @@ const List = forwardRef<ListType, ListProps>(({
     <ListItem
       item={item}
       index={index}
-      showSource={showSource}
-      onPress={handlePress}
-      onLongPress={handleLongPress}
-      onShowMenu={onShowMenu}
-      selectedList={selectedList}
       rowInfo={rowInfo.current}
+      selectedList={selectedList}
+      showIndex={showIndex}
+      showCover={false}
+      showSource={showSource}
+      showInterval={isShowInterval}
       isShowAlbumName={isShowAlbumName}
-      isShowInterval={isShowInterval}
+      isLiked={likedSet.has(item.id)}
+      onLikePress={toggleLike}
+      // OnlineList 数据源恒为在线歌曲，统一行按联合类型收窄，边界处断言
+      onPress={(pressedItem, pressIndex) => { handlePress(pressedItem as LX.Music.MusicInfoOnline, pressIndex) }}
+      onLongPress={(pressedItem, pressIndex) => { handleLongPress(pressedItem as LX.Music.MusicInfoOnline, pressIndex) }}
+      onShowMenu={onShowMenu as unknown as (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void}
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id

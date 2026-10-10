@@ -7,12 +7,12 @@ import playerState from '@/store/player/state'
 import { getListPosition, getListPrevSelectId, saveListPosition } from '@/utils/data'
 // import { useMusicList } from '@/store/list/hook'
 import { getListMusics, setActiveList } from '@/core/list'
-import ListItem, { ITEM_HEIGHT } from './ListItem'
+import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { createStyle, getRowInfo } from '@/utils/tools'
 import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
-import { useActiveListId } from '@/store/list/hook'
+import { useActiveListId, useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 
@@ -179,6 +179,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   }, [])
 
   const activeIndex = usePlayIndex()
+  const likedSet = useLikedSet()
+  const toggleLike = useLikeToggle()
   const handlePlay = (index: number) => {
     void playList(listState.activeListId, index)
   }
@@ -255,14 +257,19 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     <ListItem
       item={item}
       index={index}
+      rowInfo={rowInfo.current}
+      selectedList={selectedList}
+      showIndex
+      showCover={false}
+      showSource={false}
+      showInterval={isShowInterval}
+      isShowAlbumName={isShowAlbumName}
       activeIndex={activeIndex}
+      isLiked={likedSet.has(item.id)}
+      onLikePress={toggleLike}
       onPress={handlePress}
       onLongPress={handleLongPress}
       onShowMenu={onShowMenu}
-      selectedList={selectedList}
-      rowInfo={rowInfo.current}
-      isShowAlbumName={isShowAlbumName}
-      isShowInterval={isShowInterval}
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id

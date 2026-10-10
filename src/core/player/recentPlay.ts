@@ -55,6 +55,14 @@ export const addRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
   global.state_event.recentPlayUpdated(recentPlayList)
 }
 
+/** 删除单条播放记录（最近播放页行菜单） */
+export const removeRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
+  const key = `${musicInfo.source}__${musicInfo.id}`
+  recentPlayList = recentPlayList.filter(item => `${item.musicInfo.source}__${item.musicInfo.id}` != key)
+  saveRecentPlayList(recentPlayList)
+  global.state_event.recentPlayUpdated(recentPlayList)
+}
+
 /** 返回内部数组引用：仅用于挂载快照（调用方需自行拷贝），勿直接变更 */
 export const getRecentPlayList = () => {
   return recentPlayList

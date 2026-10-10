@@ -1,106 +1,143 @@
 import { memo, useRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
-// import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
-import Badge, { type BadgeType } from '@/components/common/Badge'
 import { Icon } from '@/components/common/Icon'
-import { useI18n } from '@/lang'
+import Image from '@/components/common/Image'
+import QualityTag, { getOnlineQualitys } from '@/components/common/QualityTag'
+import DotsVertical from '@/components/common/DotsVertical'
 import { useTheme } from '@/store/theme/hook'
-import { scaleSizeH } from '@/utils/pixelRatio'
-import { LIST_ITEM_HEIGHT, ICON_SIZE } from '@/config/constant'
+import { useAssertApiSupport } from '@/store/common/hook'
+import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
+import { LIST_ITEM_HEIGHT, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
 import { createStyle, type RowInfo } from '@/utils/tools'
+import { useI18n } from '@/lang'
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 
-const useQualityTag = (musicInfo: LX.Music.MusicInfoOnline) => {
-  const t = useI18n()
-  let info: { type: BadgeType | null, text: string } = { type: null, text: '' }
-  if (musicInfo.meta._qualitys.flac24bit) {
-    info.type = 'secondary'
-    info.text = t('quality_lossless_24bit')
-  } else if (musicInfo.meta._qualitys.flac ?? musicInfo.meta._qualitys.ape) {
-    info.type = 'secondary'
-    info.text = t('quality_lossless')
-  } else if (musicInfo.meta._qualitys['320k']) {
-    info.type = 'tertiary'
-    info.text = t('quality_high_quality')
-  }
-
-  return info
-}
-
-export default memo(({ item, index, showSource, onPress, onLongPress, onShowMenu, selectedList, rowInfo, isShowAlbumName, isShowInterval }: {
-  item: LX.Music.MusicInfoOnline
+// 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
+// + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
+// local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
+export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, onLikePress, onPress, onLongPress, onShowMenu }: {
+  item: LX.Music.MusicInfo
   index: number
-  showSource?: boolean
-  onPress: (item: LX.Music.MusicInfoOnline, index: number) => void
-  onLongPress: (item: LX.Music.MusicInfoOnline, index: number) => void
-  onShowMenu: (item: LX.Music.MusicInfoOnline, index: number, position: { x: number, y: number, w: number, h: number }) => void
-  selectedList: LX.Music.MusicInfoOnline[]
   rowInfo: RowInfo
+  selectedList: LX.Music.MusicInfo[]
+  showIndex: boolean
+  showCover: boolean
+  showSource: boolean
+  showInterval: boolean
+  showSublineInterval?: boolean
   isShowAlbumName: boolean
-  isShowInterval: boolean
+  activeIndex?: number
+  isLiked?: boolean
+  onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
+  onPress: (item: LX.Music.MusicInfo, index: number) => void
+  onLongPress: (item: LX.Music.MusicInfo, index: number) => void
+  onShowMenu: (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
 }) => {
+  const t = useI18n()
   const theme = useTheme()
+  const isSupported = useAssertApiSupport(item.source)
 
   const isSelected = selectedList.includes(item)
+  const active = activeIndex == index
 
   const moreButtonRef = useRef<TouchableOpacity>(null)
   const handleShowMenu = () => {
     if (moreButtonRef.current?.measure) {
       moreButtonRef.current.measure((fx, fy, width, height, px, py) => {
-        // console.log(fx, fy, width, height, px, py)
         onShowMenu(item, index, { x: Math.ceil(px), y: Math.ceil(py), w: Math.ceil(width), h: Math.ceil(height) })
       })
     }
   }
-  const tagInfo = useQualityTag(item)
+  const handleLikePress = () => {
+    if (!onLikePress) return
+    onLikePress(item, isLiked)
+  }
 
-  const singer = `${item.singer}${isShowAlbumName && item.meta.albumName ? ` · ${item.meta.albumName}` : ''}`
+  const qualitys = getOnlineQualitys(item)
+
+  let subline = item.singer || t('singer_unknown')
+  if (isShowAlbumName && item.meta.albumName) subline += ` · ${item.meta.albumName}`
+  if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
   return (
-    <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : 'rgba(0,0,0,0)' }}>
-      <TouchableOpacity style={styles.listItemLeft} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
-        <Text style={styles.sn} size={13} color={theme['c-300']}>{index + 1}</Text>
-        <View style={styles.itemInfo}>
-          <Text numberOfLines={1}>{item.name}</Text>
-          <View style={styles.listItemSingle}>
-            { tagInfo.type ? <Badge type={tagInfo.type}>{tagInfo.text}</Badge> : null }
-            { showSource ? <Badge type="tertiary">{item.source}</Badge> : null }
-            <Text style={styles.listItemSingleText} size={13} color={theme['c-500']} numberOfLines={1}>{singer}</Text>
+    <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
+      <TouchableOpacity style={styles.main} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
+        {
+          showIndex
+            ? (
+                active
+                  ? <Icon style={styles.sn} name="play-outline" size={ICON_SIZE.inline} color={theme['c-primary-font']} />
+                  : <Text style={styles.sn} size={13} color={theme['c-300']}>{index + 1}</Text>
+              )
+            : null
+        }
+        {
+          showCover
+            ? (
+                item.meta.picUrl
+                  ? <Image url={item.meta.picUrl} style={styles.pic} />
+                  : (
+                      <View style={{ ...styles.pic, ...styles.picPlaceholder, backgroundColor: theme['c-border-background'] }}>
+                        <Icon name="music" size={ICON_SIZE.list} color={theme['c-font-label']} />
+                      </View>
+                    )
+              )
+            : null
+        }
+        <View style={styles.info}>
+          <Text size={15} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
+          <View style={styles.sublineRow}>
+            <QualityTag qualitys={qualitys} source={item.source} showSource={showSource} />
+            <Text size={12} style={styles.sublineText} color={active ? theme['c-primary-alpha-200'] : theme['c-font-label']} numberOfLines={1}>{subline}</Text>
           </View>
         </View>
         {
-          isShowInterval ? (
-            <Text size={13} color={theme['c-250']} numberOfLines={1}>{item.interval}</Text>
-          ) : null
+          showInterval && item.interval
+            ? <Text size={12} color={active ? theme['c-primary-alpha-400'] : theme['c-300']} numberOfLines={1}>{item.interval}</Text>
+            : null
         }
       </TouchableOpacity>
-     <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
-        <Icon name="dots-vertical" style={{ color: theme['c-350'] }} size={ICON_SIZE.inline} />
+      {
+        onLikePress
+          ? (
+              <TouchableOpacity style={styles.likeBtn} activeOpacity={0.5} onPress={handleLikePress}>
+                <Icon name={isLiked ? 'love-fill' : 'love'} size={ICON_SIZE.list} color={LOVE_COLOR} />
+              </TouchableOpacity>
+            )
+          : null
+      }
+      <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
+        <DotsVertical color={theme['c-250']} />
       </TouchableOpacity>
     </View>
   )
 }, (prevProps, nextProps) => {
   return !!(prevProps.item === nextProps.item &&
     prevProps.index === nextProps.index &&
+    prevProps.showIndex === nextProps.showIndex &&
+    prevProps.showCover === nextProps.showCover &&
+    prevProps.showSource === nextProps.showSource &&
+    prevProps.showInterval === nextProps.showInterval &&
+    prevProps.showSublineInterval === nextProps.showSublineInterval &&
     prevProps.isShowAlbumName === nextProps.isShowAlbumName &&
-    prevProps.isShowInterval === nextProps.isShowInterval &&
+    prevProps.isLiked === nextProps.isLiked &&
+    prevProps.activeIndex != nextProps.index &&
+    nextProps.activeIndex != nextProps.index &&
     nextProps.selectedList.includes(nextProps.item) == prevProps.selectedList.includes(nextProps.item)
   )
 })
 
 const styles = createStyle({
   listItem: {
-    // width: '100%',
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    // paddingLeft: 10,
-    paddingRight: 2,
     alignItems: 'center',
-    // borderBottomWidth: BorderWidths.normal,
+    paddingLeft: 16,
+    paddingRight: 8,
   },
-  listItemLeft: {
+  main: {
     flex: 1,
     flexGrow: 1,
     flexShrink: 1,
@@ -108,62 +145,44 @@ const styles = createStyle({
     alignItems: 'center',
   },
   sn: {
-    width: 38,
-    // fontSize: 12,
+    width: 26,
     textAlign: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingLeft: 3,
-    paddingRight: 3,
   },
-  itemInfo: {
+  pic: {
+    width: scaleSizeW(40),
+    height: scaleSizeW(40),
+    borderRadius: scaleSizeW(6),
+    marginLeft: 4,
+    marginRight: 11,
+  },
+  picPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  info: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingRight: 2,
-    // paddingTop: 10,
-    // paddingBottom: 10,
+    paddingRight: 6,
   },
-  // listItemTitle: {
-  //   // backgroundColor: 'rgba(0,0,0,0.2)',
-  //   flexGrow: 0,
-  //   flexShrink: 1,
-  //   // fontSize: 15,
-  // },
-  listItemSingle: {
-    paddingTop: 2,
+  sublineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    // alignItems: 'flex-end',
-    // backgroundColor: 'rgba(0,0,0,0.2)',
+    marginTop: 4,
   },
-  listItemTimeLabel: {
-    marginRight: 5,
-  },
-  listItemSingleText: {
-    // fontSize: 13,
-    // paddingTop: 2,
+  sublineText: {
     flexGrow: 0,
     flexShrink: 1,
   },
-  listItemBadge: {
-    // fontSize: 10,
-    paddingLeft: 5,
-    paddingTop: 2,
-    alignSelf: 'flex-start',
-  },
-  listItemRight: {
-    flexGrow: 0,
-    flexShrink: 0,
-    flexBasis: 'auto',
+  likeBtn: {
+    width: 32,
+    height: '80%',
+    alignItems: 'center',
     justifyContent: 'center',
   },
   moreButton: {
+    width: 36,
     height: '80%',
-    paddingLeft: 16,
-    paddingRight: 16,
-    // paddingTop: 10,
-    // paddingBottom: 10,
-    // backgroundColor: 'rgba(0,0,0,0.2)',
+    alignItems: 'center',
     justifyContent: 'center',
   },
 })
-
