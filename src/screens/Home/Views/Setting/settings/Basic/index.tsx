@@ -5,7 +5,6 @@ import Section from '../../components/Section'
 import Source from './Source'
 import SourceName from './SourceName'
 import Language from './Language'
-import FontSize from './FontSize'
 import ShareType from './ShareType'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
 import IsStartupPushPlayDetailScreen from './IsStartupPushPlayDetailScreen'
@@ -33,7 +32,6 @@ export default memo(() => {
       <ExitApp />
       <Theme />
       <Language />
-      <FontSize />
       <ShareType />
       <Source />
       <SourceName />

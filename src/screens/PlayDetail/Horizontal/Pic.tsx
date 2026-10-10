@@ -30,9 +30,7 @@ export default memo(({ componentId }: { componentId: string }) => {
   })
 
   let imgWidth = Math.min((winWidth * 0.45 - marginLeft - BTN_WIDTH) * 0.76, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.62)
-  imgWidth -= imgWidth * (global.lx.fontSize - 1) * 0.3
   let contentHeight = (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.66
-  contentHeight -= contentHeight * (global.lx.fontSize - 1) * 0.2
 
   return (
     <View style={{ ...styles.container, height: contentHeight }}>

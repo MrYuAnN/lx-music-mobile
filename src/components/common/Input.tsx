@@ -113,6 +113,7 @@ export default forwardRef<InputType, InputProps>(({ onChangeText, onClearText, c
   return (
     <View style={styles.content}>
       <TextInput
+        allowFontScaling={false}
         autoCapitalize="none"
         onChangeText={changeText}
         autoComplete="off"

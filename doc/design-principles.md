@@ -11,6 +11,7 @@
 - token 名沿用现有 `c-*` 体系，只换值与生成输入；组件层不改命名。
 - 效果第一（用户拍板），实现选型以业界主流为准；自用项目豁免 Apple 资产授权。
 - 竖屏为设计基准；横屏保留 Aside 侧栏双栏，仅随 token 换肤。
+- **数值口径 = dp 直译（2026-10-11 拍板）**：样式数值写入即渲染（1 单位 = 1dp），不随屏幕/系统字号/应用字号缩放；屏幕差异由响应式布局吸收。`scaleSizeH/W`、`setSpText/getTextSize`（pixelRatio.ts）与 `createStyle` 的自动缩放管线已退役为恒等直译——新代码**直接写字面量数值**，禁调上述函数；文字固定 dp（Text 组件已 `allowFontScaling=false`）。屏幕适配类库（normalize/size-matters）不引入。
 - **构建约定（AM-0 拍板留痕）**：ABI 收窄为 arm64-only + `universalApk false`（自用分发；未来对外分发需恢复 4 ABI）；`debuggableVariants = []` 让 debug 包内嵌 bundle 可独立安装（代价：Fast Refresh 失效，开发期需 metro 联调时临时移除该行）；release 构建链（R8/proguard）在 AM 批次内未验证，发版前须单独冒烟。
 
 ## 2. 色彩 token

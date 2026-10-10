@@ -7,7 +7,6 @@ import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled
 import musicSdk from '@/utils/musicSdk'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import BackgroundTimer from 'react-native-background-timer'
-import { scaleSizeH, scaleSizeW, setSpText } from './pixelRatio'
 import { toOldMusicInfo } from './index'
 import { stringMd5 } from 'react-native-quick-md5'
 import { windowSizeTools } from '@/utils/windowSizeTools'
@@ -451,66 +450,10 @@ export function debounceBackgroundTimer<Args extends any[]>(fn: (...args: Args) 
 // eslint-disable-next-line @typescript-eslint/ban-types
 type Styles = StyleSheet.NamedStyles<Record<string, {}>>
 type Style = Styles[keyof Styles]
-const trasformeProps: Array<keyof Style> = [
-  // @ts-expect-error
-  'fontSize',
-  // @ts-expect-error
-  'lineHeight',
-  // 'margin',
-  // 'marginLeft',
-  // 'marginRight',
-  // 'marginTop',
-  // 'marginBottom',
-  // 'padding',
-  // 'paddingLeft',
-  // 'paddingRight',
-  // 'paddingTop',
-  // 'paddingBottom',
-  'left',
-  'right',
-  'top',
-  'bottom',
-]
+// 样式数值口径 = dp 直译（2026-10-11 拍板）：写入值即渲染值，不做屏幕/字号缩放。
+// 历史上的等比缩放管线（trasformeProps + scaleSize* 调用）已随 dp 直译拍板退役。
 export const trasformeStyle = <T extends Style>(styles: T): T => {
-  const newStyle: T = { ...styles }
-
-  for (const [p, v] of Object.entries(newStyle) as Array<[keyof Style, Style[keyof Style]]>) {
-    if (typeof v != 'number') continue
-    switch (p) {
-      case 'height':
-      case 'minHeight':
-      case 'marginTop':
-      case 'marginBottom':
-      case 'paddingTop':
-      case 'paddingBottom':
-      case 'paddingVertical':
-        newStyle[p] = scaleSizeH(v)
-        break
-      case 'width':
-      case 'minWidth':
-      case 'marginLeft':
-      case 'marginRight':
-      case 'paddingLeft':
-      case 'paddingRight':
-      case 'paddingHorizontal':
-      case 'gap':
-        newStyle[p] = scaleSizeW(v)
-        break
-      case 'padding':
-        newStyle.paddingRight = newStyle.paddingLeft = scaleSizeW(v)
-        newStyle.paddingBottom = newStyle.paddingTop = scaleSizeH(v)
-        break
-      case 'margin':
-        newStyle.marginRight = newStyle.marginLeft = scaleSizeW(v)
-        newStyle.marginBottom = newStyle.marginTop = scaleSizeH(v)
-        break
-      default:
-        // @ts-expect-error
-        if (trasformeProps.includes(p)) newStyle[p] = setSpText(v)
-        break
-    }
-  }
-  return newStyle
+  return styles
 }
 
 export const createStyle = <T extends StyleSheet.NamedStyles<T>>(styles: T | StyleSheet.NamedStyles<T>): T => {

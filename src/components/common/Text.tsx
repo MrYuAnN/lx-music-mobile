@@ -36,6 +36,7 @@ export default memo(({ style, size = 15, color, children, ...props }: TextProps)
   return (
     <Text
       style={style}
+      allowFontScaling={false}
       {...props}
     >{children}</Text>
   )
@@ -59,7 +60,7 @@ export const AnimatedText = ({ style, size = 15, color, children, ...props }: An
     color: color ?? theme['c-font'],
   }, style as TextStyle)
 
-  return <Animated.Text style={style} {...props}>{children}</Animated.Text>
+  return <Animated.Text style={style} allowFontScaling={false} {...props}>{children}</Animated.Text>
 }
 
 
@@ -91,5 +92,5 @@ export const AnimatedColorText = ({ style, size = 15, opacity: _opacity, color: 
     opacity,
   }, style as TextStyle)
 
-  return <Animated.Text style={style} {...props}>{children}</Animated.Text>
+  return <Animated.Text style={style} allowFontScaling={false} {...props}>{children}</Animated.Text>
 }
