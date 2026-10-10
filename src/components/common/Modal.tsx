@@ -79,9 +79,9 @@ export default forwardRef<ModalType, ModalProps>(({
 
   const memoChildren = useMemo(() => children, [children])
 
-  // navigationBarTranslucent 为 RN 0.74+ 属性（本应用 RN 0.73 无此 API）：
-  // Modal 独立窗口内手势条底色无法 JS 侧透明化，sheet 已按 navBarInset 垫高避让，
-  // 底色观感真机验收确认，必要时后续批做 Modal 原生小补丁
+  // Modal 独立窗口的手势条透明已由 patches/react-native+0.73.11.patch 补齐（navigationBarColor 透明
+  // + 内容延伸，近似 RN 0.74 navigationBarTranslucent，新批问题3）；sheet 已按 navBarInset 垫高避让。
+  // 升 RN 0.74+ 时删补丁换官方属性
   return (
     <Modal
       animationType="fade"

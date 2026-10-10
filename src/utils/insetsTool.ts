@@ -23,7 +23,10 @@ export const initInsets = () => {
   watchWindowInsets()
   void getNavigationBarInset().then(inset => {
     setNavBarInsets({ bottom: inset, right: navBarInsets.right })
-  }).catch(() => {})
+  }).catch(err => {
+    // 首读失败时 bottom 恒 0：Modal 补丁后弹层内容延伸到手势条下，垫 0 会被遮挡——失败必须可观测
+    console.warn('init nav bar inset failed', err)
+  })
   onWindowInsetsChange(({ navBarBottom, navBarRight }) => {
     // 原生事件为物理像素，与首读同款换算为 dp（批4装机修复：事件路径漏除 scale 致 60px 被 当 60dp 过垫）
     const scale = Dimensions.get('window').scale
