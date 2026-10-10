@@ -23,6 +23,7 @@ import { getMusicUrl, getPicPath, getLyricInfo } from '@/core/music'
 import { requestMsg } from '@/utils/message'
 import { getRandom } from '@/utils/common'
 import { filterList } from './utils'
+import { getOrderedPlayList } from './queue'
 import BackgroundTimer from 'react-native-background-timer'
 import { checkIgnoringBatteryOptimization, checkNotificationPermission, debounceBackgroundTimer } from '@/utils/tools'
 import { LIST_IDS } from '@/config/constant'
@@ -329,13 +330,14 @@ export const getNextPlayMusicInfo = async(): Promise<LX.Player.PlayMusicInfo | n
   // console.log(playInfo.playerListId)
   const currentListId = playInfo.playerListId
   if (!currentListId) return null
-  const currentList = getList(currentListId)
+  const currentList = getOrderedPlayList(currentListId)
 
   const playedList = playerState.playedList
   if (playedList.length) { // 移除已播放列表内不存在原列表的歌曲
     let currentId: string
     if (playMusicInfo.isTempPlay) {
-      const musicInfo = currentList[playInfo.playerPlayIndex]
+      // playerPlayIndex 为源列表索引域（与 playInfo.ts getPlayIndex 一致）
+      const musicInfo = getList(currentListId)[playInfo.playerPlayIndex]
       if (musicInfo) currentId = musicInfo.id
     } else {
       currentId = playMusicInfo.musicInfo!.id
@@ -359,7 +361,8 @@ export const getNextPlayMusicInfo = async(): Promise<LX.Player.PlayMusicInfo | n
     listId: currentListId,
     list: currentList,
     playedList,
-    playerMusicInfo: currentList[playInfo.playerPlayIndex],
+    // 临时播放锚点取源列表索引域（playerPlayIndex 为源列表索引，有序列表域下会取错歌）
+    playerMusicInfo: playMusicInfo.isTempPlay ? getList(currentListId)[playInfo.playerPlayIndex] : (playMusicInfo.musicInfo ?? undefined),
     isNext: true,
   })
 
@@ -423,14 +426,15 @@ export const playNext = async(isAutoToggle = false): Promise<void> => {
   // console.log(playInfo.playerListId)
   const currentListId = playInfo.playerListId
   if (!currentListId) return handleToggleStop()
-  const currentList = getList(currentListId)
+  const currentList = getOrderedPlayList(currentListId)
 
   const playedList = playerState.playedList
 
   if (playedList.length) { // 移除已播放列表内不存在原列表的歌曲
     let currentId: string
     if (playMusicInfo.isTempPlay) {
-      const musicInfo = currentList[playInfo.playerPlayIndex]
+      // playerPlayIndex 为源列表索引域（与 playInfo.ts getPlayIndex 一致）
+      const musicInfo = getList(currentListId)[playInfo.playerPlayIndex]
       if (musicInfo) currentId = musicInfo.id
     } else {
       currentId = playMusicInfo.musicInfo.id
@@ -461,7 +465,8 @@ export const playNext = async(isAutoToggle = false): Promise<void> => {
     listId: currentListId,
     list: currentList,
     playedList,
-    playerMusicInfo: currentList[playInfo.playerPlayIndex],
+    // 临时播放锚点取源列表索引域（playerPlayIndex 为源列表索引，有序列表域下会取错歌）
+    playerMusicInfo: playMusicInfo.isTempPlay ? getList(currentListId)[playInfo.playerPlayIndex] : (playMusicInfo.musicInfo ?? undefined),
     isNext: true,
   })
 
@@ -514,13 +519,14 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
 
   const currentListId = playInfo.playerListId
   if (!currentListId) return handleToggleStop()
-  const currentList = getList(currentListId)
+  const currentList = getOrderedPlayList(currentListId)
 
   const playedList = playerState.playedList
   if (playedList.length) {
     let currentId: string
     if (playMusicInfo.isTempPlay) {
-      const musicInfo = currentList[playInfo.playerPlayIndex]
+      // playerPlayIndex 为源列表索引域（与 playInfo.ts getPlayIndex 一致）
+      const musicInfo = getList(currentListId)[playInfo.playerPlayIndex]
       if (musicInfo) currentId = musicInfo.id
     } else {
       currentId = playMusicInfo.musicInfo.id
@@ -548,7 +554,8 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
     listId: currentListId,
     list: currentList,
     playedList,
-    playerMusicInfo: currentList[playInfo.playerPlayIndex],
+    // 临时播放锚点取源列表索引域（playerPlayIndex 为源列表索引，有序列表域下会取错歌）
+    playerMusicInfo: playMusicInfo.isTempPlay ? getList(currentListId)[playInfo.playerPlayIndex] : (playMusicInfo.musicInfo ?? undefined),
     isNext: false,
   })
   if (!filteredList.length) return handleToggleStop()

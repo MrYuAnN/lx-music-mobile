@@ -13,6 +13,7 @@ import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { handlePlay } from './listAction'
 import { useSettingValue } from '@/store/setting/hook'
+import { hapticImpactLight } from '@/utils/haptic'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
 
@@ -169,6 +170,7 @@ const List = forwardRef<ListType, ListProps>(({
 
   const handleLongPress = (item: LX.Music.MusicInfoOnline, index: number) => {
     if (isMultiSelectModeRef.current) return
+    hapticImpactLight()
     prevSelectIndexRef.current = index
     handleUpdateSelectedList([item])
     onMuiltSelectMode()

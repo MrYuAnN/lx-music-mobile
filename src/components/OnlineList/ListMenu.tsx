@@ -1,6 +1,6 @@
 import { useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
-import Menu, { type Menus, type MenuType, type Position } from '@/components/common/Menu'
+import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
 import { hasDislike } from '@/core/dislikeList'
 import { hasMusicUrlByMusic } from '@/utils/data'
 
@@ -35,19 +35,19 @@ export type {
 export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, ref) => {
   const t = useI18n()
   const [visible, setVisible] = useState(false)
-  const menuRef = useRef<MenuType>(null)
+  const menuRef = useRef<ActionSheetType>(null)
   const selectInfoRef = useRef<SelectInfo>(initSelectInfo as SelectInfo)
-  const [menus, setMenus] = useState<Menus>([])
+  const [menus, setMenus] = useState<ActionSheetItem[]>([])
 
   useImperativeHandle(ref, () => ({
-    show(selectInfo, position) {
+    show(selectInfo) {
       selectInfoRef.current = selectInfo
       handleSetMenu(selectInfo.musicInfo)
-      if (visible) menuRef.current?.show(position)
+      if (visible) menuRef.current?.show()
       else {
         setVisible(true)
         requestAnimationFrame(() => {
-          menuRef.current?.show(position)
+          menuRef.current?.show()
         })
       }
     },
@@ -56,14 +56,14 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
   const handleSetMenu = (musicInfo: LX.Music.MusicInfo) => {
     let has_url_cache = false
     const menu = [
-      { action: 'play', label: t('play') },
-      { action: 'playLater', label: t('play_later') },
+      { action: 'play', label: t('play'), icon: 'play' },
+      { action: 'playLater', label: t('play_later'), icon: 'play-later' },
       // { action: 'download', label: '下载' },
-      { action: 'add', label: t('add_to') },
-      { action: 'copyName', label: t('copy_name') },
-      { action: 'musicSourceDetail', label: t('music_source_detail') },
-      { action: 'removeCache', disabled: !has_url_cache, label: t('list_remove_cache') },
-      { action: 'dislike', label: t('dislike'), disabled: hasDislike(musicInfo) },
+      { action: 'add', label: t('add_to'), icon: 'add-to' },
+      { action: 'copyName', label: t('copy_name'), icon: 'copy-name' },
+      { action: 'musicSourceDetail', label: t('music_source_detail'), icon: 'source-detail' },
+      { action: 'removeCache', disabled: !has_url_cache, label: t('list_remove_cache'), icon: 'remove-cache' },
+      { action: 'dislike', disabled: hasDislike(musicInfo), label: t('dislike'), icon: 'dislike-add' },
     ]
     setMenus(menu)
     void hasUrlCache(musicInfo).then((_has_url_cache) => {
@@ -110,7 +110,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
 
   return (
     visible
-      ? <Menu ref={menuRef} menus={menus} onPress={handleMenuPress} />
+      ? <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} />
       : null
   )
 })

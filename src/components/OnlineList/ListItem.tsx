@@ -67,12 +67,12 @@ export default memo(({ item, index, showSource, onPress, onLongPress, onShowMenu
           <View style={styles.listItemSingle}>
             { tagInfo.type ? <Badge type={tagInfo.type}>{tagInfo.text}</Badge> : null }
             { showSource ? <Badge type="tertiary">{item.source}</Badge> : null }
-            <Text style={styles.listItemSingleText} size={11} color={theme['c-500']} numberOfLines={1}>{singer}</Text>
+            <Text style={styles.listItemSingleText} size={13} color={theme['c-500']} numberOfLines={1}>{singer}</Text>
           </View>
         </View>
         {
           isShowInterval ? (
-            <Text size={12} color={theme['c-250']} numberOfLines={1}>{item.interval}</Text>
+            <Text size={13} color={theme['c-250']} numberOfLines={1}>{item.interval}</Text>
           ) : null
         }
       </TouchableOpacity>
@@ -137,14 +137,12 @@ const styles = createStyle({
   },
   listItemTimeLabel: {
     marginRight: 5,
-    fontWeight: '400',
   },
   listItemSingleText: {
     // fontSize: 13,
     // paddingTop: 2,
     flexGrow: 0,
     flexShrink: 1,
-    fontWeight: '300',
   },
   listItemBadge: {
     // fontSize: 10,
