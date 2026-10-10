@@ -1,4 +1,4 @@
-import { initSetting, showPactModal } from '@/core/common'
+import { initSetting } from '@/core/common'
 import registerPlaybackService from '@/plugins/player/service'
 import initTheme from './theme'
 import initI18n from './i18n'
@@ -10,22 +10,17 @@ import initCommonState from './common'
 import { initDeeplink } from './deeplink'
 import { setApiSource } from '@/core/apiSource'
 import commonActions from '@/store/common/action'
-import settingState from '@/store/setting/state'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { initRecentPlay } from '@/core/player/recentPlay'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
-  if (settingState.setting['common.isAgreePact']) {
-    if (isFirstPush) {
-      isFirstPush = false
-      void checkUpdate()
-      void initDeeplink()
-    }
-  } else {
-    if (isFirstPush) isFirstPush = false
-    showPactModal()
+  // 协议功能已移除（弹窗体系批 §问题1）：无条件执行首推逻辑（原「已同意才执行」分支删除）
+  if (isFirstPush) {
+    isFirstPush = false
+    void checkUpdate()
+    void initDeeplink()
   }
 }
 

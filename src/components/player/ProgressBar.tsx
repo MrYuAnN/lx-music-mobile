@@ -4,7 +4,6 @@ import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeW, scaleSizeH } from '@/utils/pixelRatio'
 import { useDrag } from '@/utils/hooks'
-import { Icon } from '@/components/common/Icon'
 // import { AppColors } from '@/theme'
 
 
@@ -77,6 +76,8 @@ const Progress = ({ progress, duration, buffered }: {
   const progressDotStyle = useMemo(() => {
     return {
       width: progressDotSize,
+      height: progressDotSize,
+      borderRadius: progressDotSize / 2,
       position: 'absolute',
       right: -progressDotSize / 2,
       top: -(progressDotSize - progressHeightSize) / 2,
@@ -102,12 +103,13 @@ const Progress = ({ progress, duration, buffered }: {
                 <>
                   <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-700'], width: progressStr, position: 'absolute', left: 0, top: 0 }} />
                   <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-600'], width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
-                    <Icon name="full_stop" color={theme['c-primary-light-100']} size={progressDotSize} style={progressDotStyle} />
+                    {/* 圆点用纯 View（字体 glyph 基线下沉导致偏移，几何圆保证圆心严格落在条上） */}
+                    <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary-light-100'] }} />
                   </View>
                 </>
               ) : (
                 <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-400'], width: progressStr, position: 'absolute', left: 0, top: 0 }}>
-                  <Icon name="full_stop" color={theme['c-primary-light-100']} size={progressDotSize} style={progressDotStyle} />
+                  <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary-light-100'] }} />
                 </View>
               )
         }

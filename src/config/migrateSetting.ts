@@ -39,7 +39,6 @@ export default (setting: any): Partial<LX.AppSetting> => {
     setting['common.apiSource'] = setting.apiSource
     setting['common.sourceNameType'] = setting.sourceNameType
     setting['common.shareType'] = setting.shareType
-    setting['common.isAgreePact'] = setting.isAgreePact
     setting['sync.enable'] = setting.sync?.enable
     setting['theme.id'] = setting.themeId
   }

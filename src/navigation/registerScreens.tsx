@@ -24,7 +24,6 @@ import {
   SONGLIST_DETAIL_SCREEN,
   COMMENT_SCREEN,
   VERSION_MODAL,
-  PACT_MODAL,
   SYNC_MODE_MODAL,
   SEARCH_SCREEN,
   SETTING_SCREEN,
@@ -36,7 +35,6 @@ import {
   LOCAL_MUSIC_SCREEN,
 } from './screenNames'
 import VersionModal from './components/VersionModal'
-import PactModal from './components/PactModal'
 import SyncModeModal from './components/SyncModeModal'
 
 function WrappedComponent(Component: any) {
@@ -67,7 +65,6 @@ export default () => {
   Navigation.registerComponent(RECENT_PLAY_SCREEN, () => WrappedComponent(RecentPlay))
   Navigation.registerComponent(LOCAL_MUSIC_SCREEN, () => WrappedComponent(LocalMusic))
   Navigation.registerComponent(VERSION_MODAL, () => WrappedComponent(VersionModal))
-  Navigation.registerComponent(PACT_MODAL, () => WrappedComponent(PactModal))
   Navigation.registerComponent(SYNC_MODE_MODAL, () => WrappedComponent(SyncModeModal))
 
   console.info('All screens have been registered...')

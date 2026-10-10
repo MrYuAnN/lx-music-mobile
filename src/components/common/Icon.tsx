@@ -40,9 +40,11 @@ export const Icon = memo(({ size = ICON_SIZE.list, color, style, ...props }: Ico
     <IcoMoon
       size={size}
       color={color ?? theme['c-font']}
+      // includeFontPadding:false：Android Text 默认顶部空隙使 IcoMoon 字形系统性偏低 ~0.18em，
+      // 关闭后字形紧致排版、容器居中即视觉居中（弹窗体系批 §问题6，全应用图标一次性归位）
       // RNV 自带的旧版 @types/react-native 与 RN 本体类型不一致，style 需要抑制
       // @ts-expect-error
-      style={style}
+      style={[{ includeFontPadding: false }, style]}
       {...props}
     />
   )

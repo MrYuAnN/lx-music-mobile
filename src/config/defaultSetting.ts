@@ -4,7 +4,6 @@ const defaultSetting: LX.AppSetting = {
   'common.apiSource': '',
   'common.sourceNameType': 'alias',
   'common.shareType': 'system',
-  'common.isAgreePact': false,
   'common.autoHidePlayBar': true,
   'common.allowProgressBarSeek': true,
   'common.showExitBtn': true,

@@ -3,6 +3,7 @@ import { FlatList, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
+import Image from '@/components/common/Image'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PlayerBar from '@/components/player/PlayerBar'
@@ -41,7 +42,11 @@ export default ({ componentId }: { componentId: string }) => {
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
         renderItem={({ item, index }) => (
           <TouchableOpacity style={styles.item} activeOpacity={0.7} onPress={() => { void handlePlay(index) }}>
-            <Text style={styles.index} size={13} color={theme['c-font-label']} numberOfLines={1}>{index + 1}</Text>
+            {/* 封面替换序号（弹窗体系批 §问题3 拍板，对齐网易云/QQ/Apple 最近播放形态）；空 URL/加载失败走 Image 内置兜底 */}
+            <Image
+              url={item.musicInfo.meta.picUrl}
+              style={styles.pic}
+            />
             <View style={styles.info}>
               <Text size={15} color={theme['c-font']} numberOfLines={1}>{item.musicInfo.name}</Text>
               <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.musicInfo.singer}</Text>
@@ -77,8 +82,11 @@ const styles = createStyle({
     paddingRight: 16,
     gap: 10,
   },
-  index: {
-    width: scaleSizeW(24),
+  // 封面规格对齐本地音乐屏 picPlaceholder（40×40 圆角 6，随宽缩放）
+  pic: {
+    width: scaleSizeW(40),
+    height: scaleSizeW(40),
+    borderRadius: scaleSizeW(6),
   },
   info: {
     flex: 1,
