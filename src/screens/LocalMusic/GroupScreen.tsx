@@ -3,7 +3,7 @@ import { FlatList } from 'react-native'
 
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import PlayerBar from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { setTempList } from '@/core/list'
@@ -66,7 +66,7 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
         )}
       />
       <LocalMusicMenu ref={menuRef} />
-      <PlayerBar />
+      <PlayerBarPlaceholder />
     </PageContent>
   )
 }

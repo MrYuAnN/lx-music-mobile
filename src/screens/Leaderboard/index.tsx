@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import PlayerBar from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { useI18n } from '@/lang'
 import Leaderboard from '../Home/Views/Leaderboard'
 
@@ -15,7 +15,7 @@ export default ({ componentId }: { componentId: string }) => {
         <ScreenHeader componentId={componentId} title={t('nav_top')} />
         <Leaderboard />
       </View>
-      <PlayerBar />
+      <PlayerBarPlaceholder />
     </PageContent>
   )
 }

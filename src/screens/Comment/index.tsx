@@ -12,14 +12,19 @@ import { useI18n } from '@/lang'
 import { COMPONENT_IDS, ICON_SIZE } from '@/config/constant'
 import { setComponentId } from '@/core/common'
 import PageContent from '@/components/PageContent'
-import PlayerBar from '@/components/player/PlayerBar'
 import playerState from '@/store/player/state'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { BorderWidths } from '@/theme'
+import { useNavBarInsets } from '@/utils/insetsTool'
 
 type ActiveId = 'hot' | 'new'
 
 const BAR_HEIGHT = scaleSizeH(34)
+
+const CommentBottomInset = () => {
+  const { bottom: navBarBottom } = useNavBarInsets()
+  return <View style={{ height: navBarBottom }} />
+}
 
 const HeaderItem = ({ id, label, isActive, onPress }: {
   id: ActiveId
@@ -177,7 +182,8 @@ export default memo(({ componentId }: {
         </>
       }
 
-      <PlayerBar />
+      {/* 评论页为迷你条黑名单屏（新批问题4）：仅垫导航栏 inset，不占迷你条高度 */}
+      <CommentBottomInset />
     </PageContent>
   )
 })

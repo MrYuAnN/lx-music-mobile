@@ -6,6 +6,7 @@ import { pop } from './navigation'
 import registerScreens from './registerScreens'
 import { removeComponentId } from '@/core/common'
 import { onAppLaunched } from './regLaunchedEvent'
+import { initCurrentScreenTracker } from './currentScreen'
 
 let unRegisterEvent: ReturnType<ReturnType<typeof Navigation.events>['registerScreenPoppedListener']>
 
@@ -25,6 +26,8 @@ const init = (callback: () => void | Promise<void>) => {
   unRegisterEvent = Navigation.events().registerScreenPoppedListener(({ componentId }) => {
     removeComponentId(componentId)
   })
+  // 当前屏单值追踪（新批问题4）：setRoot 前挂载，不漏 Home 首个 appear
+  initCurrentScreenTracker()
   onAppLaunched(() => {
     console.log('Register app launched listener')
     void callback()

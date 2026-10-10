@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import PlayerBar from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { useI18n } from '@/lang'
 import Search from '../Home/Views/Search'
 
@@ -16,7 +16,7 @@ export default ({ componentId }: { componentId: string }) => {
         <ScreenHeader componentId={componentId} title={t('nav_search')} />
         <Search />
       </View>
-      <PlayerBar />
+      <PlayerBarPlaceholder />
     </PageContent>
   )
 }

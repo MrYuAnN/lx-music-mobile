@@ -33,6 +33,9 @@ export const LIST_IDS = {
   PLAY_LATER: null,
 } as const
 
+// 横屏 Home 侧栏宽度（单源）：Aside 布局与迷你条 overlay 横屏让位共用（新批问题4 审查 S-5 跨层引用收敛）
+export const NAV_WIDTH = 68
+
 // export const COMPONENT_IDS = {
 //   home: 'home',
 //   playDetail: 'playDetail',
@@ -46,7 +49,7 @@ export enum COMPONENT_IDS {
 }
 
 export enum NAV_SHEAR_NATIVE_IDS {
-  playDetail_pic = 'playDetail_pic',
+  // playDetail_pic = 'playDetail_pic', // 已随封面飞入转场降级移除（新批问题4；playDetail_header/player 为 elementTransitions 活配置保留）
   playDetail_header = 'playDetail_header',
   // playDetail_pageIndicator = 'playDetail_pageIndicator',
   playDetail_player = 'playDetail_player',

@@ -3,20 +3,23 @@ import { navigations } from '@/navigation'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-import commonState from '@/store/common/state'
 import playerState from '@/store/player/state'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { LIST_IDS } from '@/config/constant'
+import { useCurrentScreen } from '@/navigation/currentScreen'
 
 // AM-6 迷你条双行文案：歌名 13/600 + 歌手 11 灰（Status 歌词行移除，歌词看播放页——方案 §3.7.2）
-export default ({ isHome }: { isHome: boolean }) => {
+export default () => {
   const musicInfo = usePlayerMusicInfo()
   const theme = useTheme()
   const t = useI18n()
+  const currentScreen = useCurrentScreen()
 
   const handlePress = () => {
     if (!musicInfo.id) return
-    navigations.pushPlayDetailScreen(commonState.componentIds.home!)
+    // push 到当前屏（overlay 不在 stack 内）；当前屏未就绪时忽略
+    if (!currentScreen) return
+    navigations.pushPlayDetailScreen(currentScreen.componentId)
   }
 
   const handleLongPress = () => {

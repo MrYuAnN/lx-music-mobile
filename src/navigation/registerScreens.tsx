@@ -18,6 +18,7 @@ import {
   LocalMusicGroup,
 } from '@/screens'
 import { Provider } from '@/store/Provider'
+import PlayerBar from '@/components/player/PlayerBar'
 
 import {
   HOME_SCREEN,
@@ -35,6 +36,7 @@ import {
   RECENT_PLAY_SCREEN,
   LOCAL_MUSIC_SCREEN,
   LOCAL_MUSIC_GROUP_SCREEN,
+  PLAYER_BAR_OVERLAY,
 } from './screenNames'
 import VersionModal from './components/VersionModal'
 import SyncModeModal from './components/SyncModeModal'
@@ -69,6 +71,7 @@ export default () => {
   Navigation.registerComponent(LOCAL_MUSIC_GROUP_SCREEN, () => WrappedComponent(LocalMusicGroup))
   Navigation.registerComponent(VERSION_MODAL, () => WrappedComponent(VersionModal))
   Navigation.registerComponent(SYNC_MODE_MODAL, () => WrappedComponent(SyncModeModal))
+  Navigation.registerComponent(PLAYER_BAR_OVERLAY, () => WrappedComponent(PlayerBar))
 
   console.info('All screens have been registered...')
 }

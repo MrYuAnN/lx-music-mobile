@@ -1,12 +1,12 @@
 import { StyleSheet, TouchableOpacity } from 'react-native'
 import { navigations } from '@/navigation'
 import { usePlayerMusicInfo } from '@/store/player/hook'
-import commonState from '@/store/common/state'
 import playerState from '@/store/player/state'
-import { LIST_IDS, NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
+import { LIST_IDS } from '@/config/constant'
 import Image from '@/components/common/Image'
 import { useCallback } from 'react'
 import { setLoadErrorPicUrl, setMusicInfo } from '@/core/player/playInfo'
+import { useCurrentScreen } from '@/navigation/currentScreen'
 
 const PIC_HEIGHT = 46
 
@@ -20,13 +20,12 @@ const styles = StyleSheet.create({
 
 export default ({ isHome }: { isHome: boolean }) => {
   const musicInfo = usePlayerMusicInfo()
+  const currentScreen = useCurrentScreen()
   const handlePress = () => {
-    // console.log('')
-    // console.log(playMusicInfo)
     if (!musicInfo.id) return
-    navigations.pushPlayDetailScreen(commonState.componentIds.home!)
-
-    // toast(global.i18n.t('play_detail_todo_tip'), 'long')
+    // push 到当前屏（overlay 不在 stack 内）；当前屏未就绪时忽略（v3 方案空值兜底）
+    if (!currentScreen) return
+    navigations.pushPlayDetailScreen(currentScreen.componentId)
   }
 
   const handleLongPress = () => {
@@ -45,14 +44,8 @@ export default ({ isHome }: { isHome: boolean }) => {
 
   return (
     <TouchableOpacity onLongPress={handleLongPress} onPress={handlePress} activeOpacity={0.7} >
-      <Image url={musicInfo.pic} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_pic} style={styles.image} onError={handleError} />
+      {/* nativeID(playDetail_pic) 已随封面飞入转场降级移除（新批问题4） */}
+      <Image url={musicInfo.pic} style={styles.image} onError={handleError} />
     </TouchableOpacity>
   )
 }
-
-
-// const styles = StyleSheet.create({
-//   playInfoImg: {
-
-//   },
-// })

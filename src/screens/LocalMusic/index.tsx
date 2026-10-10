@@ -8,7 +8,7 @@ import DotsVertical from '@/components/common/DotsVertical'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import PlayerBar from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { FolderSectionList, AlbumGrid, ArtistList, splitSingers, type MusicGroup, type GroupViewActions } from './GroupViews'
@@ -274,7 +274,7 @@ export default ({ componentId }: { componentId: string }) => {
             )
       }
       <LocalMusicMenu ref={menuRef} />
-      <PlayerBar />
+      <PlayerBarPlaceholder />
     </PageContent>
   )
 }

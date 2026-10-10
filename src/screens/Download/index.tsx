@@ -7,7 +7,7 @@ import ActionSheet, { type ActionSheetType, type ActionSheetItem } from '@/compo
 import CategoryChips from '@/components/common/CategoryChips'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import PlayerBar from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
@@ -239,7 +239,7 @@ export default ({ componentId }: { componentId: string }) => {
           ? <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} onHide={() => { setMenuVisible(false) }} />
           : null
       }
-      <PlayerBar />
+      <PlayerBarPlaceholder />
     </PageContent>
   )
 }

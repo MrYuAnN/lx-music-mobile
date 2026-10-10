@@ -1,21 +1,14 @@
-import { memo, useCallback, useState } from 'react'
+import { memo } from 'react'
 import { View, StyleSheet } from 'react-native'
 
 import { useProgress } from '@/store/player/hook'
 import { useTheme } from '@/store/theme/hook'
-import { COMPONENT_IDS } from '@/config/constant'
-import { usePageVisible } from '@/store/common/hook'
 
 // AM-6 迷你条进度线：2px 贴卡底（红已播/分隔色底轨），无时间数字；
-// 沿用 usePageVisible→autoUpdate 节流（页面不可见停更，防后台每秒空转重渲染）
-export default memo(({ isHome }: { isHome: boolean }) => {
+// overlay 化后（新批问题4）迷你条全局常显，原「仅 Home 屏可见时更新」节流失效，恒更新
+export default memo(() => {
   const theme = useTheme()
-  const [autoUpdate, setAutoUpdate] = useState(true)
-  const { progress } = useProgress(autoUpdate)
-
-  usePageVisible([COMPONENT_IDS.home], useCallback((visible) => {
-    if (isHome) setAutoUpdate(visible)
-  }, [isHome]))
+  const { progress } = useProgress(true)
 
   return (
     <View style={{ ...styles.track, backgroundColor: theme['c-border-background'] }} pointerEvents="none">

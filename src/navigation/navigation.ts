@@ -16,16 +16,55 @@ import {
   LEADERBOARD_SCREEN,
   MYLIST_SCREEN,
   DOWNLOAD_SCREEN,
+  PLAYER_BAR_OVERLAY,
 } from './screenNames'
 
 import themeState from '@/store/theme/state'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
+import { markPendingBlacklist } from './currentScreen'
 import { getStatusBarStyle } from './utils'
 import { windowSizeTools } from '@/utils/windowSizeTools'
 import { type ListInfoItem } from '@/store/songlist/state'
 
 // const store = getStore()
 // const getTheme = () => getter('common', 'theme')(store.getState())
+
+// 迷你播放条全局 overlay（新批问题4）：仅启动挂载一次（现网 pushHomeScreen 仅 app.ts:58 启动调用；
+// 若未来引入 root 重建需重置标志，否则 overlay 永久缺失）。
+// 标志在 Promise 兑现后置位、失败重置并告警（NB-4 审查 I-2：防 void 吞错后永久缺失）；
+// 在 setRoot 兑现后调用（仓内无 setRoot 前 showOverlay 先例，时序以成功回调实证）
+let playerBarOverlayShown = false
+const showPlayerBarOverlay = () => {
+  if (playerBarOverlayShown) return
+  const theme = themeState.theme
+  void Navigation.showOverlay({
+    component: {
+      name: PLAYER_BAR_OVERLAY,
+      options: {
+        layout: {
+          componentBackgroundColor: 'transparent',
+        },
+        overlay: {
+          // 迷你条自身需可点，只拦截卡片区域（组件内 pointerEvents 定向）
+          interceptTouchOutside: false,
+        },
+        statusBar: {
+          drawBehind: true,
+          visible: true,
+          style: getStatusBarStyle(theme.isDark),
+          backgroundColor: 'transparent',
+        },
+        navigationBar: {
+          backgroundColor: 'transparent',
+        },
+      },
+    },
+  }).then(() => {
+    playerBarOverlayShown = true
+  }).catch((err) => {
+    console.warn('show player bar overlay failed', err)
+  })
+}
 
 export async function pushHomeScreen() {
   /*
@@ -93,6 +132,9 @@ export async function pushHomeScreen() {
         }],
       },
     },
+  }).then(() => {
+    // root 建立后再挂迷你条 overlay（NB-4 审查 I-2：setRoot 前下令无仓内先例）
+    showPlayerBarOverlay()
   })
 }
 export function pushPlayDetailScreen(componentId: string, skipAnimation = false) {
@@ -131,6 +173,8 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
   requestAnimationFrame(() => {
     const theme = themeState.theme
 
+    // 播放页为迷你条黑名单屏：置位提前隐藏，防转场动画期间迷你条浮在滑入页面上（NB-4 审查 I-1）
+    markPendingBlacklist()
     void Navigation.push(componentId, {
       component: {
         name: PLAY_DETAIL_SCREEN,
@@ -154,14 +198,9 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
           },
           animations: {
             push: skipAnimation ? {} : {
-              sharedElementTransitions: [
-                {
-                  fromId: NAV_SHEAR_NATIVE_IDS.playDetail_pic,
-                  toId: NAV_SHEAR_NATIVE_IDS.playDetail_pic,
-                  // AM 曲线统一：decelerate 逼近 cubic-bezier(0.32,0.72,0,1) 手感（RNN 原生无贝塞尔）
-                  interpolation: { type: 'decelerate' },
-                },
-              ],
+              // sharedElementTransitions（迷你条封面飞入）已移除：迷你条迁 overlay 后 fromId 不再存在于
+              // screen 树，RNN 会静默跳过（转场降级为普通 push，新批问题4 拍板）；elementTransitions 的
+              // 目标元素在 PlayDetail 屏内，为活配置保留
               elementTransitions: [
                 {
                   id: NAV_SHEAR_NATIVE_IDS.playDetail_header,
@@ -415,6 +454,8 @@ export function pushCommentScreen(componentId: string) {
   requestAnimationFrame(() => {
     const theme = themeState.theme
 
+    // 评论页为迷你条黑名单屏：置位提前隐藏（同 pushPlayDetailScreen）
+    markPendingBlacklist()
     void Navigation.push(componentId, {
       component: {
         name: COMMENT_SCREEN,
