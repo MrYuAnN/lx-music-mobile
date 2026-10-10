@@ -1,4 +1,4 @@
-import { AppState, NativeEventEmitter, NativeModules } from 'react-native'
+import { AppState, Dimensions, NativeEventEmitter, NativeModules } from 'react-native'
 
 const { UtilsModule } = NativeModules
 
@@ -103,7 +103,12 @@ export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>(
   })
 })
 
-export const getNavigationBarInset = UtilsModule.getNavigationBarInset as () => Promise<number>
+export const getNavigationBarInset = async(): Promise<number> => {
+  // 原生返回物理像素，JS 样式按 dp 消费（与 getWindowSize 同款换算）
+  const scale = Dimensions.get('window').scale
+  const inset = await UtilsModule.getNavigationBarInset()
+  return inset / scale
+}
 export const watchWindowInsets = UtilsModule.watchWindowInsets
 
 // edge-to-edge insets 变化订阅（导航栏/键盘，弹窗体系批 §问题2）

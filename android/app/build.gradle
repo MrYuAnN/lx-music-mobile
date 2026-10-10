@@ -26,7 +26,9 @@ react {
     //   skip the bundling of the JS bundle and the assets. By default is just 'debug'.
     //   If you add flavors like lite, prod, etc. you'll have to list your debuggableVariants.
     // debuggableVariants = ["liteDebug", "prodDebug"]
-    debuggableVariants = []
+    //   debug 包回归 RN 默认：Metro 供包（改 JS 后手机 Reload 即生效，无需重编译）；
+    //   离线可用安装包用 stage 变体（gradlew assembleStage）。
+    debuggableVariants = ["debug"]
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
@@ -176,6 +178,15 @@ android {
             proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
 
             signingConfig signingConfigs.release
+        }
+        // Fast acceptance build: release config without R8 minification (not
+        // for store release). Signed with the release key and installed
+        // alongside the store build via the ".stage" applicationId suffix.
+        stage {
+            matchingFallbacks = ["release"]
+            minifyEnabled false
+            signingConfig signingConfigs.release
+            applicationIdSuffix ".stage"
         }
     }
 

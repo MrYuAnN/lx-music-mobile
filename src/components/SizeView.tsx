@@ -1,18 +1,12 @@
 import { memo, useCallback, useRef, useEffect } from 'react'
 import { type LayoutChangeEvent, StyleSheet, View, StatusBar, Dimensions } from 'react-native'
 import commonState from '@/store/common/state'
-import settingState from '@/store/setting/state'
 import { setStatusbarHeight } from '@/core/common'
 import { windowSizeTools, getWindowSize } from '@/utils/windowSizeTools'
 
-const getStatusbarHeight = (winHeight: number, layoutHeight: number) => {
-  const height = (!settingState.setting['common.alwaysKeepStatusbarHeight'] &&
-          parseFloat(winHeight.toFixed(2)) >= parseFloat(layoutHeight.toFixed(2)))
-    ? 0
-    : (StatusBar.currentHeight ?? 0)
-
-  return height
-}
+// edge-to-edge（弹窗体系批 §问题2）后窗口恒贯穿状态栏，旧的「可见帧≥布局高 → 未遮挡 → 0」
+// 启发式恒判 0，会致全应用头部塌进状态栏——状态栏高度恒取系统值
+const getStatusbarHeight = () => (StatusBar.currentHeight ?? 0)
 
 export default memo(() => {
   const currentHeightRef = useRef(commonState.statusbarHeight)
@@ -25,7 +19,7 @@ export default memo(() => {
       dimensionsChangedRef.current = false
       // console.log(layout, size)
       sizeRef.current = [size.height, layout.height]
-      const height = getStatusbarHeight(size.height, layout.height)
+      const height = getStatusbarHeight()
 
       if (currentHeightRef.current != height) {
         currentHeightRef.current = height
@@ -53,7 +47,7 @@ export default memo(() => {
 
     const handleSettingUpdate = (keys: Array<keyof LX.AppSetting>) => {
       if (!keys.includes('common.alwaysKeepStatusbarHeight') || !sizeRef.current[1]) return
-      const height = getStatusbarHeight(sizeRef.current[0], sizeRef.current[1])
+      const height = getStatusbarHeight()
 
       if (currentHeightRef.current != height) {
         currentHeightRef.current = height

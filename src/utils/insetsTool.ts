@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Dimensions } from 'react-native'
 import useKeyboard from './hooks/useKeyboard'
 import { getNavigationBarInset, onWindowInsetsChange, watchWindowInsets } from './nativeModules/utils'
 
@@ -24,7 +25,9 @@ export const initInsets = () => {
     setNavBarInsets({ bottom: inset, right: navBarInsets.right })
   }).catch(() => {})
   onWindowInsetsChange(({ navBarBottom, navBarRight }) => {
-    setNavBarInsets({ bottom: navBarBottom, right: navBarRight })
+    // 原生事件为物理像素，与首读同款换算为 dp（批4装机修复：事件路径漏除 scale 致 60px 被 当 60dp 过垫）
+    const scale = Dimensions.get('window').scale
+    setNavBarInsets({ bottom: navBarBottom / scale, right: navBarRight / scale })
   })
 }
 

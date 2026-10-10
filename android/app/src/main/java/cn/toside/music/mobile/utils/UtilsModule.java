@@ -425,6 +425,26 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
   }
 
   @ReactMethod
+  public void getWindowSize(Promise promise) {
+    WritableMap params = Arguments.createMap();
+
+    Activity currentActivity = reactContext.getCurrentActivity();
+    if (currentActivity == null) {
+      params.putInt("width", 0);
+      params.putInt("height", 0);
+      promise.resolve(params);
+      return;
+    }
+    // 获取当前应用可用区域大小
+    Window window = currentActivity.getWindow();
+    Rect rect = new Rect();
+    window.getDecorView().getWindowVisibleDisplayFrame(rect);
+    params.putInt("width", rect.width());
+    params.putInt("height", rect.height());
+    promise.resolve(params);
+  }
+
+  @ReactMethod
   public void isIgnoringBatteryOptimization(Promise promise) {
     new Thread(() -> {
       boolean result = BatteryOptimizationUtil.isIgnoringBatteryOptimization(
