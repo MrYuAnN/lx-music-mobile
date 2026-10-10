@@ -9,7 +9,7 @@ import { createStyle, toast } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
-import { COMPONENT_IDS } from '@/config/constant'
+import { COMPONENT_IDS, ICON_SIZE } from '@/config/constant'
 import { setComponentId } from '@/core/common'
 import PageContent from '@/components/PageContent'
 import PlayerBar from '@/components/player/PlayerBar'
@@ -137,7 +137,7 @@ export default memo(({ componentId }: {
           </View>
           <View>
             <TouchableOpacity onPress={refreshComment} style={{ ...styles.btn, width: BAR_HEIGHT }}>
-              <Icon name="available_updates" size={20} color={theme['c-600']} />
+              <Icon name="available_updates" size={ICON_SIZE.inline} color={theme['c-600']} />
             </TouchableOpacity>
           </View>
         </View>

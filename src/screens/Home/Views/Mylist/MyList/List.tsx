@@ -6,7 +6,7 @@ import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
 import { createStyle } from '@/utils/tools'
-import { LIST_SCROLL_POSITION_KEY } from '@/config/constant'
+import { LIST_SCROLL_POSITION_KEY, ICON_SIZE } from '@/config/constant'
 import { getListPosition, saveListPosition } from '@/utils/data'
 import { setActiveList } from '@/core/list'
 import Text from '@/components/common/Text'
@@ -48,7 +48,7 @@ const ListItem = memo(({ item, index, activeId, onPress, onShowMenu }: {
     <View style={{ ...styles.listItem, height: ITEM_HEIGHT }}>
       {
         active
-          ? <Icon style={styles.listActiveIcon} name="chevron-right" size={12} color={theme['c-primary-font']} />
+          ? <Icon style={styles.listActiveIcon} name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-primary-font']} />
           : null
       }
       { fetching ? <Loading color={active ? theme['c-primary-font'] : theme['c-font']} style={styles.loading} /> : null }
@@ -56,7 +56,7 @@ const ListItem = memo(({ item, index, activeId, onPress, onShowMenu }: {
         <Text numberOfLines={1} color={active ? theme['c-primary-font'] : theme['c-font']}>{item.name}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.listMoreBtn}>
-        <Icon name="dots-vertical" color={theme['c-350']} size={12} />
+        <Icon name="dots-vertical" color={theme['c-350']} size={ICON_SIZE.inline} />
       </TouchableOpacity>
     </View>
   )

@@ -3,9 +3,10 @@ import { Icon } from '@/components/common/Icon'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeW } from '@/utils/pixelRatio'
+import { ICON_SIZE } from '@/config/constant'
 
 export const BTN_WIDTH = scaleSizeW(32)
-export const BTN_ICON_SIZE = 22
+export const BTN_ICON_SIZE = ICON_SIZE.control
 
 export default ({ icon, color, onPress }: {
   icon: string

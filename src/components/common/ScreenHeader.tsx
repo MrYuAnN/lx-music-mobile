@@ -8,8 +8,8 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import { pop } from '@/navigation'
 import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
-import { HEADER_HEIGHT } from '@/config/constant'
-import { scaleSizeH, setSpText } from '@/utils/pixelRatio'
+import { SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
+import { setSpText } from '@/utils/pixelRatio'
 
 interface Props {
   componentId: string
@@ -30,7 +30,7 @@ export default ({ componentId, title, center, right }: Props) => {
 
   return (
     <View style={{
-      height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
+      height: SCREEN_HEADER_HEIGHT + statusBarHeight,
       paddingTop: statusBarHeight,
       borderBottomWidth: BorderWidths.normal,
       borderBottomColor: theme['c-border-background'],
@@ -38,15 +38,13 @@ export default ({ componentId, title, center, right }: Props) => {
       <StatusBar />
       <View style={styles.container}>
         <TouchableOpacity style={styles.backBtn} onPress={back} activeOpacity={0.7}>
-          <Icon name="chevron-left" color={theme['c-font']} size={24} />
+          <Icon name="chevron-left" color={theme['c-font']} size={ICON_SIZE.nav} />
         </TouchableOpacity>
-        <View style={styles.center}>
-          {
-            center ?? (
-              <Text style={styles.title} numberOfLines={1}>{title}</Text>
-            )
-          }
-        </View>
+        {
+          center ?? (
+            <Text style={styles.title} numberOfLines={1}>{title}</Text>
+          )
+        }
         <View style={styles.right}>
           {right}
         </View>
@@ -60,6 +58,7 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     height: '100%',
+    flexGrow: 1,
   },
   backBtn: {
     width: 52,
@@ -68,18 +67,17 @@ const styles = createStyle({
     alignItems: 'center',
     flex: 0,
   },
-  center: {
-    flex: 1,
-    height: '100%',
-    justifyContent: 'center',
-  },
   title: {
+    flex: 1,
     fontFamily: FontFamilies.semibold,
     fontSize: setSpText(17),
+    // AM 二级页标题居左（紧跟返回键），right 插槽占位时由 flex 收窄
+    marginRight: 12,
   },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingRight: 12,
+    flexShrink: 0,
   },
 })

@@ -17,6 +17,7 @@ export default ({ componentId }: { componentId: string }) => {
         <SearchTypeSelector />
         <Search />
       </View>
+      <PlayerBar />
     </PageContent>
   )
 }

@@ -2,6 +2,9 @@ import { AppState, NativeEventEmitter, NativeModules } from 'react-native'
 
 const { UtilsModule } = NativeModules
 
+// 原生 getConstants 按运行时包名拼装（debug suffix 双包各自正确），勿改回 JS 侧硬编码
+export const FILE_PROVIDER_AUTHORITY = UtilsModule.fileProviderAuthority as string
+
 export const exitApp = UtilsModule.exitApp
 
 export const getSupportedAbis = UtilsModule.getSupportedAbis

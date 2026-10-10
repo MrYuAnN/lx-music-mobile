@@ -2,6 +2,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { type NativeScrollEvent, type NativeSyntheticEvent, View, TouchableOpacity, Animated } from 'react-native'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { type Lines } from 'lrc-file-parser'
 import { useTheme } from '@/store/theme/hook'
 import { BorderWidths } from '@/theme'
@@ -88,7 +89,7 @@ export default forwardRef<PlayLineType, PlayLineProps>(({ onPlayLine }, ref) => 
       <View style={styles.lineContent}>
         <View style={{ ...styles.line, borderBottomColor: theme['c-primary-alpha-700'] }} />
         <TouchableOpacity style={styles.button} onPress={handlePlayLine}>
-          <Icon name="play" color={theme['c-button-font']} size={18} />
+          <Icon name="play" color={theme['c-button-font']} size={ICON_SIZE.inline} />
         </TouchableOpacity>
       </View>
     </Animated.View>

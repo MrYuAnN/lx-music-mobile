@@ -3,6 +3,7 @@ import { View, TouchableOpacity } from 'react-native'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { getExternalStoragePaths, stat } from '@/utils/fs'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeH } from '@/utils/pixelRatio'
@@ -71,13 +72,13 @@ export default memo(({
         </View>
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionBtn} onPress={openStorage}>
-            <Icon name="sd-card" color={theme['c-primary-font']} size={22} />
+            <Icon name="sd-card" color={theme['c-primary-font']} size={ICON_SIZE.nav} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={handleShowNewFolderModal}>
-            <Icon name="add_folder" color={theme['c-primary-font']} size={22} />
+            <Icon name="add_folder" color={theme['c-primary-font']} size={ICON_SIZE.nav} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={refresh}>
-            <Icon name="available_updates" color={theme['c-primary-font']} size={22} />
+            <Icon name="available_updates" color={theme['c-primary-font']} size={ICON_SIZE.nav} />
           </TouchableOpacity>
         </View>
       </View>

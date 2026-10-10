@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Animated, View, StyleSheet } from 'react-native'
 import LinearGradient from 'react-native-linear-gradient'
-import { getColors } from 'react-native-image-colors'
+import RNImageColors from 'react-native-image-colors'
 import { useTheme } from '@/store/theme/hook'
 import { useWindowSize } from '@/utils/hooks'
 import { scaleSizeAbsHR } from '@/utils/pixelRatio'
@@ -10,6 +10,15 @@ import ImageBackground, { prefetch } from './common/ImageBackground'
 import { defaultHeaders } from './common/Image'
 import SizeView from './SizeView'
 import playerState from '@/store/player/state'
+// 包类型声明与运行时导出不一致：metro 实际入口 src/index.ts 仅有 default 导出
+// （getColors 挂在 default 对象上），须按运行时形态取用，勿改为命名导入（AM-6 回归教训）
+const getColors = (RNImageColors as unknown as {
+  getColors: (source: string, config?: {
+    defaultColor?: string
+    cache?: boolean
+    headers?: Record<string, string>
+  }) => Promise<{ dominant?: string, average?: string, platform: string }>
+}).getColors
 
 interface Props {
   children: React.ReactNode

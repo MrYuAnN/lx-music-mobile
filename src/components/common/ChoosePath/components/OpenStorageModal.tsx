@@ -4,6 +4,7 @@ import Input, { type InputType } from '@/components/common/Input'
 import Text from '@/components/common/Text'
 import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
 import { createStyle, toast } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { getManagedFolders, stat, removeManagedFolder, selectManagedFolder } from '@/utils/fs'
 import { useTheme } from '@/store/theme/hook'
 import { getOpenStoragePath, saveOpenStoragePath } from '@/utils/data'
@@ -152,7 +153,7 @@ export default forwardRef<OpenDirModalType, { onOpenDir: (dir: string) => Promis
                     <Text size={12}>{path}</Text>
                   </Button>
                   <Button style={styles.removeBtn} onPress={() => { removeSelectStoragePath(path) }}>
-                    <Icon color={theme['c-font-label']} name="close" size={12} />
+                    <Icon color={theme['c-font-label']} name="close" size={ICON_SIZE.inline} />
                   </Button>
                 </View>
               )

@@ -1,5 +1,20 @@
+// 二级页页头（ScreenHeader）与竖屏播放页头：AM 返工加高（横屏 PlayDetail/Home、Comment 仍用 HEADER_HEIGHT，Q8 横屏不动）
+export const SCREEN_HEADER_HEIGHT = 54
 export const HEADER_HEIGHT = 42
 export const LIST_ITEM_HEIGHT = 54
+
+// 图标尺寸语义 token（AM-6 拍板口径，全局唯一单源；裸 dp 不随用户字号缩放——对标 AM Android/Material，
+// 文字走 Text 组件的 setSpText 保留字号设置）。图标一律从此取值，禁止散落字面量；
+// 播放页主控制键等随容器响应式计算的尺寸除外（调用点内联表达式）。
+export const ICON_SIZE = {
+  chevron: 16, // 行内方向指示（进入/展开箭头）
+  inline: 18, // 行内小操作键（更多/关闭/播放模式/点赞等）
+  list: 20, // 列表行图标（菜单项/侧栏导航/空态）
+  control: 24, // 播放控制键（迷你条/播放页次级键）
+  nav: 26, // 页头导航图标（首页搜索/设置圆钮、二级页返回键）
+  emphasis: 26, // 行内强调图标（我喜欢的音乐、页标题标识）
+  tile: 30, // 快捷卡大图标
+} as const
 export const LIST_SCROLL_POSITION_KEY = '__LIST_SCROLL_POSITION_KEY__'
 
 export const SPLIT_CHAR = {
@@ -79,7 +94,6 @@ export const storageDataPrefix = {
 
   theme: '@theme',
 
-  cheatTip: '@cheat_tip',
   remoteLyricTip: '@remote_lyric_tip',
 
   dislikeList: '@dislike_list',
@@ -101,8 +115,6 @@ export const storageDataPrefixOld = {
   syncHostHistory: '@sync_host_history',
   notificationTipEnable: '@notification_tip_enable',
 } as const
-
-export const APP_PROVIDER_NAME = 'cn.toside.music.mobile.provider'
 
 
 export const NAV_MENUS = [

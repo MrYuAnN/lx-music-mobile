@@ -15,6 +15,7 @@ export default ({ componentId }: { componentId: string }) => {
         <ScreenHeader componentId={componentId} title={t('nav_songlist')} />
         <SongList />
       </View>
+      <PlayerBar />
     </PageContent>
   )
 }

@@ -20,7 +20,7 @@ const PrevBtn = ({ size }: { size: number }) => {
   }
   return (
     <TouchableOpacity style={{ ...styles.cotrolBtn, width: size, height: size }} activeOpacity={0.5} onPress={handlePlayPrev}>
-      <Icon name='prevMusic' color={theme['c-button-font']} rawSize={size * 0.7} />
+      <Icon name='prevMusic' color={theme['c-button-font']} size={size * 0.7} />
     </TouchableOpacity>
   )
 }
@@ -32,7 +32,7 @@ const NextBtn = ({ size }: { size: number }) => {
   }
   return (
     <TouchableOpacity style={{ ...styles.cotrolBtn, width: size, height: size }} activeOpacity={0.5} onPress={handlePlayNext}>
-      <Icon name='nextMusic' color={theme['c-button-font']} rawSize={size * 0.7} />
+      <Icon name='nextMusic' color={theme['c-button-font']} size={size * 0.7} />
     </TouchableOpacity>
   )
 }
@@ -45,7 +45,7 @@ const TogglePlayBtn = ({ size }: { size: number }) => {
       hapticImpactLight()
       togglePlay()
     }}>
-      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} rawSize={size * 0.7} />
+      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} size={size * 0.7} />
     </TouchableOpacity>
   )
 }
@@ -53,7 +53,8 @@ const TogglePlayBtn = ({ size }: { size: number }) => {
 const MIN_SIZE = BTN_WIDTH * 1.1
 export default () => {
   const { onLayout, height, width } = useLayout()
-  const size = Math.max(Math.min(height * 0.65, (width - marginLeft) * 0.52 * 0.3) * global.lx.fontSize, MIN_SIZE)
+  // 图标不随用户字号缩放（AM-6 拍板：图标脱离字号体系）
+  const size = Math.max(Math.min(height * 0.65, (width - marginLeft) * 0.52 * 0.3), MIN_SIZE)
   return (
     <View style={{ ...styles.content, gap: size * 0.5 }} onLayout={onLayout}>
       <PrevBtn size={size} />

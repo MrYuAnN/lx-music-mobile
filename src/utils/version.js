@@ -1,8 +1,7 @@
 import { httpGet } from '@/utils/request'
 import { author, name } from '../../package.json'
 import { downloadFile, stopDownload, temporaryDirectoryPath } from '@/utils/fs'
-import { getSupportedAbis, installApk } from '@/utils/nativeModules/utils'
-import { APP_PROVIDER_NAME } from '@/config/constant'
+import { getSupportedAbis, installApk, FILE_PROVIDER_AUTHORITY } from '@/utils/nativeModules/utils'
 
 const abis = [
   'arm64-v8a',
@@ -87,7 +86,7 @@ let apkSavePath
 export const downloadNewVersion = async(version, onDownload = noop) => {
   const abi = await getTargetAbi()
   const url = `https://github.com/${author.name}/${name}/releases/download/v${version}/${name}-v${version}-${abi}.apk`
-  let savePath = temporaryDirectoryPath + '/lx-music-mobile.apk'
+  let savePath = temporaryDirectoryPath + '/shiyin.apk'
 
   if (downloadJobId) stopDownload(downloadJobId)
 
@@ -119,5 +118,5 @@ export const downloadNewVersion = async(version, onDownload = noop) => {
 
 export const updateApp = async() => {
   if (!apkSavePath) throw new Error('apk Save Path is null')
-  await installApk(apkSavePath, APP_PROVIDER_NAME)
+  await installApk(apkSavePath, FILE_PROVIDER_AUTHORITY)
 }

@@ -13,11 +13,10 @@ import commonActions from '@/store/common/action'
 import settingState from '@/store/setting/state'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
-import { cheatTip } from '@/utils/tools'
+import { initRecentPlay } from '@/core/player/recentPlay'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
-  await cheatTip()
   if (settingState.setting['common.isAgreePact']) {
     if (isFirstPush) {
       isFirstPush = false
@@ -53,6 +52,9 @@ export default async() => {
 
   registerPlaybackService()
   bootLog('Playback Service Registered.')
+  // 最近播放加载必须先于 initPlayer 的播放信息恢复：恢复走 playList → addRecentPlay，
+  // 若列表未加载即记录，空列表+单条会覆盖整个最近播放存储（AM-6 修复）
+  await initRecentPlay()
   await initPlayer(setting)
   bootLog('Player inited.')
   await dataInit(setting)

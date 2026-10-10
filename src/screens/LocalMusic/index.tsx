@@ -6,7 +6,7 @@ import { Icon } from '@/components/common/Icon'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PlayerBar from '@/components/player/PlayerBar'
-import { storageDataPrefix, LIST_IDS } from '@/config/constant'
+import { storageDataPrefix, LIST_IDS, ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { scanLocalMusic, useLocalMusicList, useLocalMusicScanning, useLocalMusicScanProgress, toMusicInfoLocal, formatInterval, type LocalMusicItem } from '@/core/localMusic'
@@ -68,7 +68,7 @@ export default ({ componentId }: { componentId: string }) => {
     <PageContent>
       <ScreenHeader componentId={componentId} title={t('local_music')} />
       <View style={[styles.searchBar, { backgroundColor: theme['c-border-background'] }]}>
-        <Icon name="search-2" size={14} color={theme['c-font-label']} />
+        <Icon name="search-2" size={ICON_SIZE.inline} color={theme['c-font-label']} />
         <TextInput
           style={{ ...styles.searchInput, color: theme['c-font'] }}
           placeholder={t('search_placeholder')}
@@ -97,16 +97,16 @@ export default ({ componentId }: { componentId: string }) => {
         renderItem={({ item, index }) => (
           <TouchableOpacity style={styles.item} activeOpacity={0.7} onPress={() => { void handlePlay(index) }}>
             <View style={[styles.picPlaceholder, { backgroundColor: theme['c-border-background'] }]}>
-              <Icon name="music" size={16} color={theme['c-font-label']} />
+              <Icon name="music" size={ICON_SIZE.list} color={theme['c-font-label']} />
             </View>
             <View style={styles.info}>
               <Text size={15} color={theme['c-font']} numberOfLines={1}>{item.name}</Text>
               <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.singer || t('singer_unknown')} · {formatInterval(item.interval)}</Text>
             </View>
             <TouchableOpacity style={styles.collectBtn} onPress={() => { handleCollect(item) }}>
-              <Icon name="love" size={16} color={theme['c-font-label']} />
+              <Icon name="love" size={ICON_SIZE.inline} color={theme['c-font-label']} />
             </TouchableOpacity>
-            <Icon name="play-outline" size={16} color={theme['c-font-label']} />
+            <Icon name="play-outline" size={ICON_SIZE.inline} color={theme['c-font-label']} />
           </TouchableOpacity>
         )}
         ListEmptyComponent={<EmptyList denied={permissionDenied} onOpenSettings={openAppSettings} />}

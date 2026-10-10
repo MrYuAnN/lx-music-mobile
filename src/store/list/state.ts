@@ -2,7 +2,6 @@ import { LIST_IDS } from '@/config/constant'
 
 
 export interface InitState {
-  allMusicList: Map<string, LX.Music.MusicInfo[]>
   defaultList: LX.List.MyDefaultListInfo
   loveList: LX.List.MyLoveListInfo
   tempList: LX.List.MyTempListInfo
@@ -19,14 +18,14 @@ export interface InitState {
 }
 
 const state: InitState = {
-  allMusicList: new Map(),
   defaultList: {
     id: LIST_IDS.DEFAULT,
-    name: '试听列表',
+    // fallback 名（备份/同步直读）；显示名以 lang list_name_default 读时映射为准
+    name: '默认歌单',
   },
   loveList: {
     id: LIST_IDS.LOVE,
-    name: '我的收藏',
+    name: '我喜欢的音乐',
   },
   tempList: {
     id: LIST_IDS.TEMP,

@@ -1,13 +1,12 @@
-import { TouchableOpacity } from 'react-native'
+import { TouchableOpacity, StyleSheet } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import { useIsPlay } from '@/store/player/hook'
 import { useTheme } from '@/store/theme/hook'
 import { playNext, playPrev, togglePlay } from '@/core/player/player'
-import { createStyle } from '@/utils/tools'
 import { useHorizontalMode } from '@/utils/hooks'
 import { hapticImpactLight } from '@/utils/haptic'
+import { ICON_SIZE } from '@/config/constant'
 
-const BTN_SIZE = 24
 const handlePlayPrev = () => {
   hapticImpactLight()
   void playPrev()
@@ -22,7 +21,7 @@ const PlayPrevBtn = () => {
 
   return (
     <TouchableOpacity style={styles.cotrolBtn} activeOpacity={0.5} onPress={handlePlayPrev}>
-      <Icon name='prevMusic' color={theme['c-button-font']} size={BTN_SIZE} />
+      <Icon name='prevMusic' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }
@@ -32,7 +31,7 @@ const PlayNextBtn = () => {
 
   return (
     <TouchableOpacity style={styles.cotrolBtn} activeOpacity={0.5} onPress={handlePlayNext}>
-      <Icon name='nextMusic' color={theme['c-button-font']} size={BTN_SIZE} />
+      <Icon name='nextMusic' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }
@@ -46,7 +45,7 @@ const TogglePlayBtn = () => {
       hapticImpactLight()
       togglePlay()
     }}>
-      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} size={BTN_SIZE} />
+      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }
@@ -70,10 +69,10 @@ export default () => {
 }
 
 
-const styles = createStyle({
+const styles = StyleSheet.create({
   cotrolBtn: {
-    width: 46,
-    height: 46,
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
 

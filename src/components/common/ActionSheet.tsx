@@ -6,6 +6,7 @@ import Text from './Text'
 import { Icon } from './Icon'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { hapticSelection } from '@/utils/haptic'
 import { AM_EASE_DURATION, amEase } from '@/utils/animation'
@@ -110,7 +111,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                 menu.disabled
                   ? (
                       <View key={menu.action} style={styles.item}>
-                        <Icon name={menu.icon ?? 'full_stop'} size={20} color={theme['c-font-label']} style={styles.icon} />
+                        <Icon name={menu.icon ?? 'full_stop'} size={ICON_SIZE.list} color={theme['c-font-label']} style={styles.icon} />
                         <Text size={15} color={theme['c-font-label']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
                       </View>
                     )
@@ -123,7 +124,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                       >
                         <Icon
                           name={menu.icon ?? 'full_stop'}
-                          size={20}
+                          size={ICON_SIZE.list}
                           // destructive 红语义独立于品牌色（HIG 惯例不随 tint），取 AM 双态红常量
                           color={menu.destructive ? (theme.isDark ? '#FB4B54' : '#FA233B') : theme['c-font']}
                           style={styles.icon}

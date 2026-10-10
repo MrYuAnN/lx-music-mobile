@@ -4,9 +4,9 @@ import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeW } from '@/utils/pixelRatio'
 
-import { HEADER_HEIGHT } from '@/config/constant'
+import { HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 export const BTN_WIDTH = scaleSizeW(HEADER_HEIGHT)
-export const BTN_ICON_SIZE = 20
+export const BTN_ICON_SIZE = ICON_SIZE.list
 
 export default ({ icon, size, color, onPress, onLongPress }: {
   icon: string

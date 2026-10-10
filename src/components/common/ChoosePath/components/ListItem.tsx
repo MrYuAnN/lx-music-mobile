@@ -4,6 +4,7 @@ import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { type RowInfo, createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 
 export interface PathItem {
   name: string
@@ -55,7 +56,7 @@ export default memo(({ item, onPress, rowInfo }: {
             </View>
             {
               item.isDir
-                ? <Icon name="chevron-right" color={theme['c-primary-light-100-alpha-600']} size={18} />
+                ? <Icon name="chevron-right" color={theme['c-primary-light-100-alpha-600']} size={ICON_SIZE.chevron} />
                 : <Text style={styles.size} size={12} color={theme['c-font-label']}>{item.sizeText}</Text>
             }
           </TouchableOpacity>

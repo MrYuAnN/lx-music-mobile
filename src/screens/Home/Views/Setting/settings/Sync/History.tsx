@@ -12,6 +12,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { useSettingValue } from '@/store/setting/hook'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 
 type SyncHistoryItem = Awaited<ReturnType<typeof getSyncHostHistory>>[number]
 
@@ -43,7 +44,7 @@ const HistoryListItem = ({ item, index, onRemove, onSelect }: {
         <Text numberOfLines={1}>{item}</Text>
       </TouchableOpacity>
       <TouchableOpacity onPress={handleRemove} style={styles.listBtn}>
-        <Icon name="remove" color={theme['c-font-label']} size={12} />
+        <Icon name="remove" color={theme['c-font-label']} size={ICON_SIZE.inline} />
       </TouchableOpacity>
     </View>
   )

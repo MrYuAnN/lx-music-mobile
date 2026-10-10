@@ -188,6 +188,11 @@ const main = async () => {
     fontName: 'icomoon',
     fontHeight: 1024,
     normalize: false, // keep relative glyph sizing; scale comes from the shared k
+    // 基线校准（AM-6）：默认 ascent=1024/descent=0 把行盒全压在基线上方，而字形聚在
+    // 基线上方 0~1029 区间的下半（聚合中心 ~270/1024），视觉比相邻文字低 ~0.22em。
+    // 对称 metrics 让字形中心（270）落在行盒中心，盒高 1024 不变、布局零影响。
+    ascent: 782,
+    descent: -242,
     log: () => {},
   })
   const fontChunks = []

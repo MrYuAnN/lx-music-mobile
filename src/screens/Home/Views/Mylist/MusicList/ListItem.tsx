@@ -1,6 +1,6 @@
 import { memo, useRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
-import { LIST_ITEM_HEIGHT } from '@/config/constant'
+import { LIST_ITEM_HEIGHT, ICON_SIZE } from '@/config/constant'
 // import { BorderWidths } from '@/theme'
 import { Icon } from '@/components/common/Icon'
 import { createStyle, type RowInfo } from '@/utils/tools'
@@ -48,7 +48,7 @@ export default memo(({ item, index, activeIndex, onPress, onShowMenu, onLongPres
       <TouchableOpacity style={styles.listItemLeft} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
         {
           active
-            ? <Icon style={styles.sn} name="play-outline" size={13} color={theme['c-primary-font']} />
+            ? <Icon style={styles.sn} name="play-outline" size={ICON_SIZE.inline} color={theme['c-primary-font']} />
             : <Text style={styles.sn} size={13} color={theme['c-300']}>{index + 1}</Text>
         }
         <View style={styles.itemInfo}>
@@ -70,7 +70,7 @@ export default memo(({ item, index, activeIndex, onPress, onShowMenu, onLongPres
       </TouchableOpacity>
       {/* <View style={styles.listItemRight}> */}
       <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
-        <Icon name="dots-vertical" style={{ color: theme['c-350'] }} size={12} />
+        <Icon name="dots-vertical" style={{ color: theme['c-350'] }} size={ICON_SIZE.inline} />
       </TouchableOpacity>
       {/* </View> */}
     </View>

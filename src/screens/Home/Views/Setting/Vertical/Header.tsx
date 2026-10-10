@@ -5,6 +5,7 @@ import { Icon } from '@/components/common/Icon'
 import { BorderWidths } from '@/theme'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { type SettingScreenIds } from '../Main'
@@ -29,7 +30,7 @@ export default forwardRef<HeaderType, HeaderProps>(({ onShowNavBar }, ref) => {
 
   return (
     <TouchableOpacity onPress={onShowNavBar} style={{ ...styles.currentList, borderBottomColor: theme['c-border-background'] }}>
-      <Icon style={styles.currentListIcon} color={theme['c-button-font']} name="chevron-right" size={12} />
+      <Icon style={styles.currentListIcon} color={theme['c-button-font']} name="chevron-right" size={ICON_SIZE.chevron} />
       <Text numberOfLines={1} size={16} style={styles.currentListText} color={theme['c-button-font']}>{t(`setting_${activeId}`)}</Text>
     </TouchableOpacity>
   )

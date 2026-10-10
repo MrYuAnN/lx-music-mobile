@@ -4,7 +4,7 @@ import { useNavActiveId, useStatusbarHeight } from '@/store/common/hook'
 import { useTheme } from '@/store/theme/hook'
 import { Icon } from '@/components/common/Icon'
 import { confirmDialog, createStyle } from '@/utils/tools'
-import { NAV_MENUS } from '@/config/constant'
+import { NAV_MENUS, ICON_SIZE } from '@/config/constant'
 import type { InitState } from '@/store/common/state'
 // import commonState from '@/store/common/state'
 import { exitApp, setNavActiveId } from '@/core/common'
@@ -69,8 +69,8 @@ const Header = () => {
   return (
     <View style={{ paddingTop: statusBarHeight }}>
       <View style={styles.header}>
-        <Icon name="logo" color={theme['c-primary-dark-100-alpha-300']} size={22} />
-        {/* <Text style={styles.headerText} size={16} color={theme['c-primary-dark-100-alpha-300']}>LX Music</Text> */}
+        <Icon name="logo" color={theme['c-primary-dark-100-alpha-300']} size={ICON_SIZE.nav} />
+        {/* <Text style={styles.headerText} size={16} color={theme['c-primary-dark-100-alpha-300']}>拾音</Text> */}
       </View>
     </View>
   )
@@ -90,13 +90,13 @@ const MenuItem = ({ id, icon, onPress }: {
   return activeId == id
     ? <View style={styles.menuItem}>
         <View style={styles.iconContent}>
-          <Icon name={icon} size={20} color={theme['c-primary-font-active']} />
+          <Icon name={icon} size={ICON_SIZE.list} color={theme['c-primary-font-active']} />
         </View>
         {/* <Text style={styles.text} size={14} color={theme['c-primary-font']}>{t(id)}</Text> */}
       </View>
     : <TouchableOpacity style={styles.menuItem} onPress={() => { onPress(id) }}>
         <View style={styles.iconContent}>
-          <Icon name={icon} size={20} color={theme['c-font-label']} />
+          <Icon name={icon} size={ICON_SIZE.list} color={theme['c-font-label']} />
         </View>
         {/* <Text style={styles.text} size={14}>{t(id)}</Text> */}
       </TouchableOpacity>

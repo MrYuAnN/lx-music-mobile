@@ -5,6 +5,7 @@ import Modal, { type ModalType } from './Modal'
 import { Icon } from '@/components/common/Icon'
 import { useKeyboard } from '@/utils/hooks'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
@@ -92,7 +93,7 @@ export default forwardRef<DialogType, DialogProps>(({
   const closeBtnComponent = useMemo(() => {
     return closeBtn
       ? <TouchableHighlight style={{ ...styles.closeBtn, width: scaleSizeH(HEADER_HEIGHT) }} underlayColor={theme['c-primary-dark-200-alpha-600']} onPress={() => modalRef.current?.setVisible(false)}>
-          <Icon name="close" color={theme['c-primary-dark-500-alpha-500']} size={10} />
+          <Icon name="close" color={theme['c-primary-dark-500-alpha-500']} size={ICON_SIZE.inline} />
         </TouchableHighlight>
       : null
   }, [closeBtn, theme])

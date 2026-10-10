@@ -2,6 +2,7 @@ import { useCallback } from 'react'
 import Text from '@/components/common/Text'
 import { View, TouchableOpacity, ScrollView } from 'react-native'
 import { confirmDialog, createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { useUserApiList, state as userApiState } from '@/store/userApi'
@@ -57,7 +58,7 @@ const ListItem = ({ item, activeId, onRemove, onChangeAllowShowUpdateAlert }: {
       </View>
       <View style={styles.listItemRight}>
         <TouchableOpacity style={styles.btn} onPress={handleRemove}>
-          <Icon name="close" color={theme['c-button-font']} />
+          <Icon name="close" color={theme['c-button-font']} size={ICON_SIZE.inline} />
         </TouchableOpacity>
       </View>
     </View>

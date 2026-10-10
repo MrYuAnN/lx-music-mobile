@@ -3,6 +3,7 @@ import { StyleSheet, View } from 'react-native'
 import { BorderWidths } from '@/theme'
 import { Icon } from '@/components/common/Icon'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import { type Comment } from '../utils'
 import Text from '@/components/common/Text'
@@ -51,7 +52,7 @@ const CommentFloor = memo(({ comment, isLast }: {
     if (comment.likedCount == null) return null
     return (
       <View style={styles.like}>
-        <Icon name="thumbs-up" style={{ color: theme['c-450'] }} size={12} />
+        <Icon name="thumbs-up" style={{ color: theme['c-450'] }} size={ICON_SIZE.inline} />
         <Text style={styles.likedCount} size={12} color={ theme['c-450'] }>{comment.likedCount}</Text>
       </View>
     )

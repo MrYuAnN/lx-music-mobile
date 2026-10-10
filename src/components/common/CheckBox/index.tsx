@@ -4,6 +4,7 @@ import CheckBox from './Checkbox'
 
 import { createStyle, tipDialog } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
+import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from '../Text'
 import { Icon } from '../Icon'
@@ -62,7 +63,7 @@ export default ({ check, label, children, onChange, helpTitle, helpDesc, disable
     }
     return (helpTitle ?? helpDesc) ? (
       <TouchableOpacity style={styles.helpBtn} onPress={handleShowHelp}>
-        <Icon size={15 * size} name="help" />
+        <Icon size={ICON_SIZE.inline * size} name="help" />
       </TouchableOpacity>
     ) : null
   }, [helpTitle, helpDesc, size])

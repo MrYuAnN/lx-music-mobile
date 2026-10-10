@@ -1,21 +1,28 @@
-import { FlatList, TouchableOpacity, View } from 'react-native'
-import { useMemo } from 'react'
+import { FlatList, TouchableOpacity, View, StyleSheet } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { useMyList } from '@/store/list/hook'
+import { allMusicList } from '@/utils/listManage'
 import { useRecentPlayList } from '@/core/player/recentPlay'
 import { setTempList, setActiveList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import commonState from '@/store/common/state'
 import { navigations } from '@/navigation'
-import { createStyle } from '@/utils/tools'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
+import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
 
-// AM-2 首页内容：快捷四宫格（本地音乐/下载/榜单/歌单）
-// + 最近播放 shelf（临时列表播放，与搜索歌单试听同模式）+ 我的列表区
+// AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
+// 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
+// （原型基准 390dp，现代设备 dp 宽 360~430，偏差 ±7% 内，天然动态适配）。
+// 图标尺寸走 ICON_SIZE 语义 token（裸 dp，见 constant.ts）；文字沿用 Text 组件（setSpText，保留用户字号设置）。
+
+const isCollectList = (info: LX.List.MyListInfo): boolean => {
+  return 'source' in info ? !!info.source : false
+}
 
 const QuickNav = () => {
   const theme = useTheme()
@@ -29,12 +36,12 @@ const QuickNav = () => {
   ]
 
   return (
-    <View style={styles.quickNav}>
+    <View style={styles.quick}>
       {
         items.map(({ id, icon, action }) => (
           <TouchableOpacity key={id} style={{ ...styles.tile, backgroundColor: theme['c-content-background'] }} activeOpacity={0.6} onPress={action}>
-            <Icon name={icon} size={24} color={theme['c-primary']} />
-            <Text style={styles.tileLabel} size={13} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
+            <Icon name={icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
+            <Text style={styles.tileLabel} size={14} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
           </TouchableOpacity>
         ))
       }
@@ -42,7 +49,28 @@ const QuickNav = () => {
   )
 }
 
-const RecentPlayShelf = () => {
+// 歌单封面：无封面数据的用户歌单按 id 稳定取一组渐变 + 音符标
+const COVER_GRADIENTS: Array<[string, string]> = [
+  ['#FA233B', '#FF7A59'],
+  ['#4F46E5', '#9333EA'],
+  ['#0EA5E9', '#22D3EE'],
+  ['#F59E0B', '#F43F5E'],
+  ['#10B981', '#34D399'],
+  ['#6366F1', '#EC4899'],
+]
+const PlaylistCover = ({ id, size }: { id: string, size: number }) => {
+  let hash = 0
+  for (const ch of id) hash = (hash * 31 + ch.charCodeAt(0)) | 0
+  const [from, to] = COVER_GRADIENTS[Math.abs(hash) % COVER_GRADIENTS.length]
+  return (
+    <View style={{ ...styles.plCover, width: size, height: size, backgroundColor: from }}>
+      <View style={{ ...styles.plCoverTo, backgroundColor: to }} />
+      <Icon name="music" size={size * 0.34} color="rgba(255,255,255,0.9)" style={styles.plCoverIcon} />
+    </View>
+  )
+}
+
+const RecentPlayCard = () => {
   const theme = useTheme()
   const t = useI18n()
   const recentAll = useRecentPlayList()
@@ -54,36 +82,19 @@ const RecentPlayShelf = () => {
     void playList(LIST_IDS.TEMP, index)
   }
 
-  if (!list.length) {
-    const componentId = commonState.componentIds.home
-    return (
-      <View style={styles.section}>
-        <View style={styles.sectionTitleRow}>
-          <Text style={styles.sectionTitle} size={20} color={theme['c-font']}>{t('home_recent_play')}</Text>
-          {
-            componentId
-              ? <TouchableOpacity style={styles.moreBtn} activeOpacity={0.6} onPress={() => { navigations.pushRecentPlayScreen(componentId) }}>
-                  <Text size={13} color={theme['c-font-label']}>{t('more')}</Text>
-                  <Icon name="chevron-right" size={12} color={theme['c-font-label']} />
-                </TouchableOpacity>
-              : null
-          }
-        </View>
-        <Text style={styles.sectionEmpty} size={13} color={theme['c-font-label']}>{t('home_recent_play_empty')}</Text>
-      </View>
-    )
-  }
+  // 空态整块隐藏（含卡头，对标 AM/Spotify 空内容不显示区块；全量入口随之无必要）
+  if (!list.length) return null
 
   const componentId = commonState.componentIds.home
   return (
-    <View style={styles.section}>
-      <View style={styles.sectionTitleRow}>
-        <Text style={styles.sectionTitle} size={20} color={theme['c-font']}>{t('home_recent_play')}</Text>
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+      <View style={styles.cardHead}>
+        <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_recent_play')}</Text>
         {
           componentId
             ? <TouchableOpacity style={styles.moreBtn} activeOpacity={0.6} onPress={() => { navigations.pushRecentPlayScreen(componentId) }}>
                 <Text size={13} color={theme['c-font-label']}>{t('more')}</Text>
-                <Icon name="chevron-right" size={12} color={theme['c-font-label']} />
+                <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
               </TouchableOpacity>
             : null
         }
@@ -98,7 +109,7 @@ const RecentPlayShelf = () => {
           <TouchableOpacity style={styles.shelfItem} activeOpacity={0.6} onPress={() => { void handlePlay(index) }}>
             <Image
               style={{ ...styles.shelfCover, backgroundColor: theme['c-border-background'] }}
-              url={(item.musicInfo.meta as { pic?: string }).pic ?? null}
+              url={(item.musicInfo.meta as { picUrl?: string }).picUrl ?? null}
               resizeMode="cover"
             />
             <Text style={styles.shelfName} size={13} color={theme['c-font']} numberOfLines={1}>{item.musicInfo.name}</Text>
@@ -110,33 +121,89 @@ const RecentPlayShelf = () => {
   )
 }
 
-const MyLists = () => {
+const MyMusic = () => {
   const theme = useTheme()
   const t = useI18n()
   const lists = useMyList()
+  const dialogRef = useRef<CreateListDialogType>(null)
+  const [tab, setTab] = useState<'my' | 'collect'>('my')
+  // 曲数读 allMusicList 内存 Map，两个事件到达时重渲染刷新
+  const [, setMusicVersion] = useState(0)
+
+  useEffect(() => {
+    const bump = () => { setMusicVersion(v => v + 1) }
+    global.state_event.on('mylistUpdated', bump)
+    global.app_event.on('myListMusicUpdate', bump)
+    return () => {
+      global.state_event.off('mylistUpdated', bump)
+      global.app_event.off('myListMusicUpdate', bump)
+    }
+  }, [])
+
+  const getCount = useCallback((id: string) => allMusicList.get(id)?.length ?? 0, [])
+
+  // 「我的歌单」= DEFAULT + userList(无 source)；「收藏歌单」= userList(有 source)；
+  // LOVE 仅置顶红心行，不入 tab（方案 §3.7.2 [审查修订 C1]）
+  const { myLists, collectLists } = useMemo(() => {
+    const userLists = lists.slice(2)
+    return {
+      myLists: [lists[0], ...userLists.filter(l => !isCollectList(l))],
+      collectLists: userLists.filter(isCollectList),
+    }
+  }, [lists])
+
+  const openList = (id: string) => {
+    const componentId = commonState.componentIds.home
+    if (!componentId) return
+    setActiveList(id)
+    navigations.pushMylistScreen(componentId)
+  }
+
+  const currentLists = tab == 'my' ? myLists : collectLists
 
   return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle} size={20} color={theme['c-font']}>{t('nav_love')}</Text>
-      <View style={{ ...styles.listCard, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+      <TouchableOpacity style={styles.loveRow} activeOpacity={0.6} onPress={() => { openList(LIST_IDS.LOVE) }}>
+        <Icon name="love-fill" size={ICON_SIZE.emphasis} color={theme['c-primary']} />
+        <Text style={styles.loveName} size={15} color={theme['c-font']} numberOfLines={1}>{t('list_name_love')}</Text>
+        <Text size={13} color={theme['c-font-label']}>{t('music_count', { count: getCount(LIST_IDS.LOVE) })}</Text>
+        <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+      </TouchableOpacity>
+      <View style={[styles.sep, { backgroundColor: theme['c-border-background'] }]} />
+      <View style={[styles.tabsRow, { borderBottomColor: theme['c-border-background'] }]}>
+        <TouchableOpacity style={[styles.tabBtn, { borderBottomColor: tab == 'my' ? theme['c-primary'] : 'transparent' }]} activeOpacity={0.7} onPress={() => { setTab('my') }}>
+          <Text size={15} color={tab == 'my' ? theme['c-primary'] : theme['c-font-label']}>{t('tab_my_lists')}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.tabBtn, { borderBottomColor: tab == 'collect' ? theme['c-primary'] : 'transparent' }]} activeOpacity={0.7} onPress={() => { setTab('collect') }}>
+          <Text size={15} color={tab == 'collect' ? theme['c-primary'] : theme['c-font-label']}>{t('tab_collect_lists')}</Text>
+        </TouchableOpacity>
         {
-          lists.map(list => (
-            <TouchableOpacity
-              key={list.id}
-              style={styles.listItem}
-              activeOpacity={0.6}
-              onPress={() => {
-                const componentId = commonState.componentIds.home
-                if (!componentId) return
-                setActiveList(list.id)
-                navigations.pushMylistScreen(componentId)
-              }}
-            >
-              <Icon name="music" size={18} color={theme['c-primary']} />
-              <Text style={styles.listItemName} size={15} color={theme['c-font']} numberOfLines={1}>{list.name}</Text>
-              <Icon name="chevron-right" size={14} color={theme['c-font-label']} />
-            </TouchableOpacity>
-          ))
+          tab == 'my'
+            ? <TouchableOpacity style={styles.addTab} activeOpacity={0.6} onPress={() => { dialogRef.current?.show() }}>
+                <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
+              </TouchableOpacity>
+            : null
+        }
+      </View>
+      <View style={styles.plist}>
+        <CreateListDialog ref={dialogRef} />
+        {
+          currentLists.length
+            ? currentLists.map(item => (
+              <TouchableOpacity key={item.id} style={styles.listRow} activeOpacity={0.6} onPress={() => { openList(item.id) }}>
+                <PlaylistCover id={item.id} size={48} />
+                <View style={styles.listInfo}>
+                  <Text size={15} color={theme['c-font']} numberOfLines={1}>{item.name}</Text>
+                  <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{t('music_count', { count: getCount(item.id) })}</Text>
+                </View>
+                <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+              </TouchableOpacity>
+            ))
+            : (
+                <View style={styles.plistEmpty}>
+                  <Text size={13} color={theme['c-font-label']}>{t(tab == 'collect' ? 'collect_list_empty' : 'list_empty')}</Text>
+                </View>
+              )
         }
       </View>
     </View>
@@ -147,80 +214,147 @@ export default () => {
   return (
     <>
       <QuickNav />
-      <RecentPlayShelf />
-      <MyLists />
+      <RecentPlayCard />
+      <MyMusic />
     </>
   )
 }
 
-const styles = createStyle({
-  quickNav: {
+// 原型 v-dense 1:1 dp 值（390 基准）
+const styles = StyleSheet.create({
+  quick: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 12,
     paddingHorizontal: 16,
-    marginBottom: 24,
+    marginBottom: 14,
   },
   tile: {
-    flex: 1,
-    borderRadius: 12,
+    width: '48%',
+    flexGrow: 1,
+    height: 68,
+    borderRadius: 14,
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16,
-    gap: 8,
+    gap: 12,
+    paddingLeft: 16,
   },
   tileLabel: {
-    fontFamily: FontFamilies.medium,
-  },
-  section: {
-    marginBottom: 24,
-  },
-  sectionTitle: {
-    paddingHorizontal: 16,
-    marginBottom: 12,
     fontFamily: FontFamilies.semibold,
   },
-  sectionTitleRow: {
+  section: {
+    marginHorizontal: 16,
+    marginBottom: 14,
+    borderRadius: 14,
+    overflow: 'hidden',
+  },
+  card: {},
+  cardHead: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingRight: 16,
+    paddingLeft: 12,
+    paddingRight: 12,
+    paddingTop: 14,
+    paddingBottom: 10,
+  },
+  cardTitle: {
+    fontFamily: FontFamilies.bold,
   },
   moreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 2,
   },
-  sectionEmpty: {
-    paddingHorizontal: 16,
-  },
   shelfContent: {
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
+    paddingBottom: 16,
     gap: 12,
   },
   shelfItem: {
-    width: 108,
+    width: 84,
   },
   shelfCover: {
-    width: 108,
-    height: 108,
+    width: 84,
+    height: 84,
     borderRadius: 10,
     marginBottom: 6,
   },
   shelfName: {
     marginBottom: 2,
+    fontFamily: FontFamilies.semibold,
   },
-  listCard: {
-    marginHorizontal: 16,
-    borderRadius: 12,
-    paddingVertical: 4,
-  },
-  listItem: {
+  loveRow: {
+    height: 60,
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 12,
   },
-  listItemName: {
+  loveName: {
     flex: 1,
+    fontFamily: FontFamilies.semibold,
   },
+  sep: {
+    height: StyleSheet.hairlineWidth,
+    marginHorizontal: 12,
+  },
+  tabsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 20,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+  },
+  tabBtn: {
+    height: 44,
+    justifyContent: 'center',
+    paddingHorizontal: 2,
+    borderBottomWidth: 2,
+  },
+  addTab: {
+    position: 'absolute',
+    right: 0,
+    // 触区 44（AM-6 拍板），无底色不显形，仅扩大点击区
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plist: {
+    paddingTop: 4,
+    paddingBottom: 8,
+  },
+  plistEmpty: {
+    paddingVertical: 24,
+    alignItems: 'center',
+  },
+  listRow: {
+    height: 56,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingHorizontal: 12,
+  },
+  listInfo: {
+    flex: 1,
+    flexShrink: 1,
+    gap: 2,
+  },
+  plCover: {
+    borderRadius: 8,
+    overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  plCoverTo: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    opacity: 0.65,
+  },
+  plCoverIcon: {},
 })

@@ -7,7 +7,7 @@ import { Icon } from '@/components/common/Icon'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeH } from '@/utils/pixelRatio'
-import { LIST_ITEM_HEIGHT } from '@/config/constant'
+import { LIST_ITEM_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { createStyle, type RowInfo } from '@/utils/tools'
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
@@ -77,7 +77,7 @@ export default memo(({ item, index, showSource, onPress, onLongPress, onShowMenu
         }
       </TouchableOpacity>
      <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
-        <Icon name="dots-vertical" style={{ color: theme['c-350'] }} size={12} />
+        <Icon name="dots-vertical" style={{ color: theme['c-350'] }} size={ICON_SIZE.inline} />
       </TouchableOpacity>
     </View>
   )

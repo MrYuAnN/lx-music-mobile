@@ -15,7 +15,7 @@ import { toNewMusicInfo } from '@/utils'
 import { handleShowMusicSourceDetail, handleToggleSource } from './listAction'
 import { BorderRadius, BorderWidths } from '@/theme'
 import playerState from '@/store/player/state'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playNext } from '@/core/player/player'
 
@@ -103,10 +103,10 @@ const ListItem = memo(({ info, onPlay, onOpenDetail }: {
       </View>
       <View style={styles.listItemBtns}>
         <Button style={styles.listItemBtn} onPress={() => { onOpenDetail(info) }}>
-          <Icon name="share" style={{ color: theme['c-button-font'] }} size={18} />
+          <Icon name="share" style={{ color: theme['c-button-font'] }} size={ICON_SIZE.inline} />
         </Button>
         <Button style={styles.listItemBtn} onPress={() => { onPlay(info) }}>
-          <Icon name="play" style={{ color: theme['c-button-font'] }} size={18} />
+          <Icon name="play" style={{ color: theme['c-button-font'] }} size={ICON_SIZE.inline} />
         </Button>
       </View>
     </View>

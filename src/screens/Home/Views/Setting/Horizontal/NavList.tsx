@@ -5,6 +5,7 @@ import { Icon } from '@/components/common/Icon'
 
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
@@ -32,7 +33,7 @@ const ListItem = memo(({ id, activeId, onPress }: {
     <View style={{ ...styles.listItem, height: ITEM_HEIGHT }}>
       {
         active
-          ? <Icon style={styles.listActiveIcon} name="chevron-right" size={12} color={theme['c-primary-font']} />
+          ? <Icon style={styles.listActiveIcon} name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-primary-font']} />
           : null
       }
       <TouchableOpacity style={styles.listName} onPress={handlePress}>

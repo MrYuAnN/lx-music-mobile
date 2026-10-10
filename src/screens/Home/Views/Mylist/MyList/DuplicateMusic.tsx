@@ -1,6 +1,7 @@
 import { useRef, useImperativeHandle, forwardRef, useState, useCallback, memo, useEffect } from 'react'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import Dialog, { type DialogType } from '@/components/common/Dialog'
 import { FlatList, TouchableOpacity, View, type FlatListProps as _FlatListProps } from 'react-native'
 import { scaleSizeH } from '@/utils/pixelRatio'
@@ -73,10 +74,10 @@ const ListItem = memo(({ info, index, onRemove, onPlay, selectedList, onPress }:
       </View>
       <View style={styles.listItemBtns}>
         <Button style={styles.listItemBtn} onPress={() => { onPlay(info) }}>
-          <Icon name="play-outline" style={{ color: theme['c-button-font'] }} size={18} />
+          <Icon name="play-outline" style={{ color: theme['c-button-font'] }} size={ICON_SIZE.inline} />
         </Button>
         <Button style={styles.listItemBtn} onPress={() => { onRemove(index) }}>
-          <Icon name="remove" style={{ color: theme['c-button-font'] }} size={18} />
+          <Icon name="remove" style={{ color: theme['c-button-font'] }} size={ICON_SIZE.inline} />
         </Button>
       </View>
     </View>

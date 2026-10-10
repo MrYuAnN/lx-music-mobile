@@ -13,6 +13,7 @@ import playerState from '@/store/player/state'
 import { playListById } from '@/core/player/player'
 import { getOrderedPlayList, moveQueueItem } from '@/core/player/queue'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { hapticImpactLight, hapticSelection } from '@/utils/haptic'
 
@@ -49,7 +50,7 @@ const PlayListItem = memo(({ item, active, onPress, onArmDrag, onReleaseDrag }: 
       </TouchableOpacity>
       {/* 触摸结束仍未进入拖拽即清登记，防 pressIndex 残留把后续滚动劫持为拖拽 */}
       <View style={styles.itemGrip} onTouchStart={onArmDrag} onTouchEnd={onReleaseDrag} onTouchCancel={onReleaseDrag}>
-        <Icon name="menu" size={18} color={theme['c-font-label']} />
+        <Icon name="menu" size={ICON_SIZE.inline} color={theme['c-font-label']} />
       </View>
     </View>
   )

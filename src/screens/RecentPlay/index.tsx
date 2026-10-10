@@ -11,7 +11,7 @@ import { useTheme } from '@/store/theme/hook'
 import { getRecentPlayList, type RecentPlayItem } from '@/core/player/recentPlay'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
@@ -51,7 +51,7 @@ export default ({ componentId }: { componentId: string }) => {
                 ? <Text size={12} color={theme['c-font-label']}>{item.musicInfo.interval}</Text>
                 : null
             }
-            <Icon name="play-outline" size={16} color={theme['c-font-label']} />
+            <Icon name="play-outline" size={ICON_SIZE.inline} color={theme['c-font-label']} />
           </TouchableOpacity>
         )}
         ListEmptyComponent={() => (

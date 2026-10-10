@@ -4,6 +4,7 @@ import { type InitState } from '@/store/hotSearch/state'
 import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { clearHistoryList, getSearchHistory, removeHistoryWord } from '@/core/search/search'
@@ -81,7 +82,7 @@ export default forwardRef<HistorySearchType, HistorySearchProps>((props, ref) =>
             <View style={styles.titleContent}>
               <Text size={16}>{t('search_history_search')}</Text>
               <TouchableOpacity onPress={handleClear} style={styles.titleBtn}>
-                <Icon name="eraser" color={theme['c-300']} size={14} />
+                <Icon name="eraser" color={theme['c-300']} size={ICON_SIZE.inline} />
               </TouchableOpacity>
             </View>
             <View style={styles.list}>

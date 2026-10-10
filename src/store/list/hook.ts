@@ -1,20 +1,16 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import state, { type InitState } from './state'
 import { getListMusics } from '@/core/list'
 
+// 显示名读时映射（不写存储）：index 0/1 恒为 default/love（allList 恒定构造），
+// 返回派生数组，不原地改写共享 state
 export const useMyList = () => {
   const [lists, setList] = useState(state.allList)
-  lists[0].name = global.i18n.t('list_name_default')
-  lists[1].name = global.i18n.t('list_name_love')
 
   useEffect(() => {
     const handleConfigUpdate = (keys: Array<keyof LX.AppSetting>) => {
       if (!keys.includes('common.langId')) return
-      setList((lists) => {
-        lists[0].name = global.i18n.t('list_name_default')
-        lists[1].name = global.i18n.t('list_name_love')
-        return [...lists]
-      })
+      setList([...state.allList])
     }
     global.state_event.on('mylistUpdated', setList)
     global.state_event.on('configUpdated', handleConfigUpdate)
@@ -24,7 +20,13 @@ export const useMyList = () => {
     }
   }, [])
 
-  return lists
+  return useMemo(() => {
+    return lists.map((l, i) => {
+      if (i == 0) return { ...l, name: global.i18n.t('list_name_default') }
+      if (i == 1) return { ...l, name: global.i18n.t('list_name_love') }
+      return l
+    })
+  }, [lists])
 }
 
 export const useActiveListId = () => {

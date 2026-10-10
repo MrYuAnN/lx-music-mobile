@@ -8,7 +8,7 @@ import StatusBar from '@/components/common/StatusBar'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
-import { HEADER_HEIGHT as _HEADER_HEIGHT } from '@/config/constant'
+import { HEADER_HEIGHT as _HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import commonState from '@/store/common/state'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -22,7 +22,7 @@ export default memo(({ musicInfo }: {
   const statusBarHeight = useStatusbarHeight()
 
   const back = () => {
-    void pop(commonState.componentIds.comment!)
+    pop(commonState.componentIds.comment!)
   }
 
   return (
@@ -30,7 +30,7 @@ export default memo(({ musicInfo }: {
       <StatusBar />
       <View style={{ ...styles.container }}>
         <TouchableOpacity onPress={back} style={{ ...styles.button, width: HEADER_HEIGHT }}>
-          <Icon name="chevron-left" size={18} />
+          <Icon name="chevron-left" size={ICON_SIZE.nav} />
         </TouchableOpacity>
         <Text numberOfLines={1} size={16} style={styles.title}>{t('comment_title', { name: musicInfo.name, singer: musicInfo.singer })}</Text>
         {/* <TouchableOpacity onPress={back} style={{ ...styles.button }}>

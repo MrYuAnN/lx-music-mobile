@@ -8,6 +8,7 @@ import Slider, { type SliderProps } from '@/components/common/Slider'
 import { updateSetting } from '@/core/common'
 import { setVolume } from '@/plugins/player'
 import { createStyle } from '@/utils/tools'
+import { ICON_SIZE } from '@/config/constant'
 
 // AM 播放页音量行：图标随音量分级 + 滑块（数值仅在拖动时由滑块自身反馈，无数字标签）
 const VolumeIcon = ({ volume }: { volume: number }) => {
@@ -19,7 +20,7 @@ const VolumeIcon = ({ volume }: { volume: number }) => {
       : volume < 0.7
         ? 'volume-medium'
         : 'volume-higt'
-  return <Icon name={name} size={16} color={theme['c-font-label']} style={styles.icon} />
+  return <Icon name={name} size={ICON_SIZE.inline} color={theme['c-font-label']} style={styles.icon} />
 }
 
 export default memo(() => {

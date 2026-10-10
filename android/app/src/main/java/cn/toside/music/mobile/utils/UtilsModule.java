@@ -29,7 +29,9 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeArray;
 
 import java.io.File;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 public class UtilsModule extends ReactContextBaseJavaModule {
@@ -49,6 +51,18 @@ public class UtilsModule extends ReactContextBaseJavaModule {
   @Override
   public String getName() {
     return "UtilsModule";
+  }
+
+  // FileProvider authority 按运行时包名拼装：debug 变体 applicationIdSuffix 下
+  // 与 release 各自正确（manifest 占位符 ${applicationId}.provider），JS 侧勿硬编码
+  @Override
+  public Map<String, Object> getConstants() {
+    final Map<String, Object> constants = new HashMap<>();
+    Context context = getReactApplicationContext();
+    if (context != null) {
+      constants.put("fileProviderAuthority", context.getPackageName() + ".provider");
+    }
+    return constants;
   }
 
   @ReactMethod

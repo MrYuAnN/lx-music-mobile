@@ -10,7 +10,7 @@ import { createStyle } from '@/utils/tools'
 import { getListPrevSelectId } from '@/utils/data'
 import { setActiveList } from '@/core/list'
 import Text from '@/components/common/Text'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import Loading from '@/components/common/Loading'
 import { useSettingValue } from '@/store/setting/hook'
 
@@ -60,11 +60,11 @@ export default forwardRef<ActiveListType, ActiveListProps>(({ onShowSearchBar, o
 
   return (
     <TouchableOpacity onPress={showList} onLongPress={onScrollToTop} style={{ ...styles.currentList, opacity: visibleBar ? 1 : 0, borderBottomColor: theme['c-border-background'] }}>
-      <Icon style={styles.currentListIcon} color={theme['c-button-font']} name="chevron-right" size={12} />
+      <Icon style={styles.currentListIcon} color={theme['c-button-font']} name="chevron-right" size={ICON_SIZE.chevron} />
       { fetching ? <Loading color={theme['c-button-font']} style={styles.loading} /> : null }
       <Text style={styles.currentListText} numberOfLines={1} color={theme['c-button-font']}>{currentListName}</Text>
       <TouchableOpacity style={styles.currentListBtns} onPress={onShowSearchBar}>
-        <Icon color={theme['c-button-font']} name="search-2" />
+        <Icon color={theme['c-button-font']} name="search-2" size={ICON_SIZE.inline} />
       </TouchableOpacity>
     </TouchableOpacity>
   )

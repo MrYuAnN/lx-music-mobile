@@ -30,6 +30,13 @@
 - **结构性资产改为批次内重建**：PlayListPanel（队列面板）、88 页头/ScreenHeader、sharedElement 封面转场（代码从 `archive/custom-v4` 移植）、导航收口——原「v4 结构复用」表述全部改为 AM-2/AM-3 批次内工作。
 - master 基线差异要点：抽屉为 JS 版 DrawerLayoutFixed（AM-2 直接退役，无需 sideMenu 迁移）；无 react-native-svg（AM-0 已补）；MCI 调用点分布与 v4 不同（AM-1 重新盘点）。
 
+### 0.4 品牌重塑拍板（2026-10-10，三角色审查后补记）
+
+- **品牌 LX Music → 拾音，包名 `cn.toside.music.mobile` → `com.shiyin.music`**（Android applicationId、iOS bundle id、FileProvider authority 基段、用户协议、全部品牌文案同步）。改动随 AM-6 批次进入工作区，审查时发现无留痕，本条为补记（用户 10-10 确认保留）。
+- **改名不迁旧数据**：包名变更后新旧应用沙箱隔离，旧包歌单/设置/播放记录不迁移、不能覆盖升级，新旧包并存——自用分发，有意接受；未来如需迁移另立方案。
+- 本方案与原型（home-proto.html）中「LX Music」字样均由「拾音」取代；原型其余规格不变。
+- 伴随整改（审查 I1）：FileProvider authority 改由原生 `UtilsModule.getConstants` 按运行时包名动态拼装（debug `applicationIdSuffix` 双包各自正确），JS 侧不再硬编码。
+
 ## 1. 目标形态
 
 ### 1.1 设计系统（token 层）

@@ -81,7 +81,8 @@ export async function pushHomeScreen() {
               },
               navigationBar: {
                 // visible: false,
-                backgroundColor: theme['c-content-background'],
+                // 播放页氛围背景延伸到手势区（透明导航栏），避免底部色带割裂
+                backgroundColor: 'transparent',
               },
               layout: {
                 componentBackgroundColor: theme['c-content-background'],
@@ -146,7 +147,7 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
           },
           navigationBar: {
             // visible: false,
-            backgroundColor: theme['c-content-background'],
+            backgroundColor: theme['c-app-background'],
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -232,7 +233,7 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
           },
           navigationBar: {
             // visible: false,
-            backgroundColor: theme['c-content-background'],
+            backgroundColor: theme['c-app-background'],
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -338,7 +339,7 @@ const pushAmScreen = (componentId: string, screenName: string) => {
             backgroundColor: 'transparent',
           },
           navigationBar: {
-            backgroundColor: theme['c-content-background'],
+            backgroundColor: theme['c-app-background'],
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],
@@ -431,7 +432,7 @@ export function pushCommentScreen(componentId: string) {
           },
           navigationBar: {
             // visible: false,
-            backgroundColor: theme['c-content-background'],
+            backgroundColor: theme['c-app-background'],
           },
           layout: {
             componentBackgroundColor: theme['c-content-background'],

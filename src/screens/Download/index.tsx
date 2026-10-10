@@ -15,6 +15,7 @@ export default ({ componentId }: { componentId: string }) => {
         <ScreenHeader componentId={componentId} title={t('nav_download')} />
         <Download />
       </View>
+      <PlayerBar />
     </PageContent>
   )
 }
