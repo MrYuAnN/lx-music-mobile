@@ -1,0 +1,31 @@
+diff --git a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/views/modal/ReactModalHostView.java b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/views/modal/ReactModalHostView.java
+index 2b3de09..3ab66a5 100644
+--- a/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/views/modal/ReactModalHostView.java
++++ b/node_modules/react-native/ReactAndroid/src/main/java/com/facebook/react/views/modal/ReactModalHostView.java
+@@ -355,7 +355,11 @@ public class ReactModalHostView extends ViewGroup implements LifecycleEventListe
+     FrameLayout frameLayout = new FrameLayout(getContext());
+     frameLayout.addView(mHostView);
+     if (mStatusBarTranslucent) {
+-      frameLayout.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
++      // PATCH(patch-package): 追加 LAYOUT_HIDE_NAVIGATION，Modal 窗口内容延伸到导航栏（手势条）下面，
++      // 配合 themes.xml 的 navigationBarColor=transparent（等效 RN 0.74 navigationBarTranslucent，
++      // 修复弹窗与手势栏底色不同步/慢一拍）；升 RN 0.74+ 后弃本补丁换官方属性
++      frameLayout.setSystemUiVisibility(
++          View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+     } else {
+       frameLayout.setFitsSystemWindows(true);
+     }
+diff --git a/node_modules/react-native/ReactAndroid/src/main/res/views/modal/values/themes.xml b/node_modules/react-native/ReactAndroid/src/main/res/views/modal/values/themes.xml
+index 24d5b63..a238f88 100644
+--- a/node_modules/react-native/ReactAndroid/src/main/res/views/modal/values/themes.xml
++++ b/node_modules/react-native/ReactAndroid/src/main/res/views/modal/values/themes.xml
+@@ -8,6 +8,9 @@
+     <item name="android:windowBackground">@android:color/transparent</item>
+     <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+     <item name="android:statusBarColor">@android:color/transparent</item>
++    <!-- PATCH(patch-package): 导航栏透明（上游未设走系统默认黑，Modal 弹出/关闭时手势条区域慢一拍；
++         配合 ReactModalHostView 的 LAYOUT_HIDE_NAVIGATION，等效 RN 0.74 navigationBarTranslucent） -->
++    <item name="android:navigationBarColor">@android:color/transparent</item>
+   </style>
+ 
+   <style name="Theme.FullScreenDialogAnimatedSlide" parent="Theme.FullScreenDialog">
