@@ -3,6 +3,8 @@ import type { InitState as CommonState } from '@/store/common/state'
 import type { InitState as ListState } from '@/store/list/state'
 import type { InitState as PlayerState } from '@/store/player/state'
 import type { InitState as VersionState } from '@/store/version/state'
+import type { RecentPlayItem } from '@/core/player/recentPlay'
+import type { LocalMusicItem } from '@/core/localMusic'
 import { type I18n } from '@/lang'
 
 
@@ -40,9 +42,6 @@ export class StateEvent extends Event {
     this.emit('themeUpdated', theme)
   }
 
-  bgPicUpdated(bgPic: string | null) {
-    this.emit('bgPicUpdated', bgPic)
-  }
 
   playerMusicInfoChanged(musicInfo: PlayerState['musicInfo']) {
     this.emit('playerMusicInfoChanged', musicInfo)
@@ -120,6 +119,22 @@ export class StateEvent extends Event {
 
   sourceNamesUpdated(names: CommonState['sourceNames']) {
     this.emit('sourceNamesUpdated', names)
+  }
+
+  recentPlayUpdated(list: RecentPlayItem[]) {
+    this.emit('recentPlayUpdated', list)
+  }
+
+  localMusicUpdated(list: LocalMusicItem[]) {
+    this.emit('localMusicUpdated', list)
+  }
+
+  localMusicScanningChanged(scanning: boolean) {
+    this.emit('localMusicScanningChanged', scanning)
+  }
+
+  localMusicScanProgress(done: number, total: number) {
+    this.emit('localMusicScanProgress', done, total)
   }
 }
 

@@ -1,5 +1,6 @@
 import playerActions from '@/store/player/action'
 import playerState from '@/store/player/state'
+import { addRecentPlay } from './recentPlay'
 
 import { getListMusicSync } from '@/utils/listManage'
 import { setProgress } from '@/core/player/progress'
@@ -129,6 +130,8 @@ export const setPlayMusicInfo = (listId: string | null, musicInfo: LX.Download.L
     playerActions.updatePlayIndex(-1, -1)
     setPlayListId(null)
   } else {
+    // 最近播放记录（AM-2 移植；master 基线无本地音源，无需 local 分支）
+    addRecentPlay(musicInfo as LX.Music.MusicInfo)
     const { playIndex, playerPlayIndex } = getPlayIndex(listId, musicInfo, isTempPlay)
 
     playerActions.updatePlayIndex(playIndex, playerPlayIndex)

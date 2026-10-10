@@ -12,6 +12,7 @@ import { useI18n } from '@/lang'
 import { COMPONENT_IDS } from '@/config/constant'
 import { setComponentId } from '@/core/common'
 import PageContent from '@/components/PageContent'
+import PlayerBar from '@/components/player/PlayerBar'
 import playerState from '@/store/player/state'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { BorderWidths } from '@/theme'
@@ -176,6 +177,7 @@ export default memo(({ componentId }: {
         </>
       }
 
+      <PlayerBar />
     </PageContent>
   )
 })

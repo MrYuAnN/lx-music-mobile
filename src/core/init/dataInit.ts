@@ -6,6 +6,8 @@ import { setNavActiveId } from '../common'
 import { getViewPrevState } from '@/utils/data'
 import { bootLog } from '@/utils/bootLog'
 import { getDislikeInfo, setDislikeInfo } from '@/core/dislikeList'
+import { initRecentPlay } from '@/core/player/recentPlay'
+import { initLocalMusicList } from '@/core/localMusic'
 import { unlink } from '@/utils/fs'
 import { TEMP_FILE_PATH } from '@/utils/tools'
 // import { play, playList } from '../player/player'
@@ -30,6 +32,8 @@ export default async(appSetting: LX.AppSetting) => {
   bootLog('User list init...')
   setUserList(await getUserLists()) // 获取用户列表
   setDislikeInfo(await getDislikeInfo()) // 获取不喜欢列表
+  await initRecentPlay() // 最近播放记录（AM-2 移植）
+  await initLocalMusicList() // 本地音乐列表恢复（AM-4 移植；不自动扫描）
   bootLog('User list inited.')
   setNavActiveId((await getViewPrevState()).id)
   void unlink(TEMP_FILE_PATH)
