@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import Dialog, { type DialogType } from '@/components/common/Dialog'
+import SheetBase, { type SheetBaseType } from '@/components/common/SheetBase'
 import { toast } from '@/utils/tools'
 import Title from './Title'
 import List from './List'
@@ -29,7 +29,7 @@ export interface MusicAddModalType {
 
 export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, ref) => {
   const t = useI18n()
-  const dialogRef = useRef<DialogType>(null)
+  const sheetRef = useRef<SheetBaseType>(null)
   const [selectInfo, setSelectInfo] = useState<SelectInfo>(initSelectInfo as SelectInfo)
 
   useImperativeHandle(ref, () => ({
@@ -37,7 +37,7 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
       setSelectInfo(selectInfo)
 
       requestAnimationFrame(() => {
-        dialogRef.current?.setVisible(true)
+        sheetRef.current?.setVisible(true)
       })
     },
   }))
@@ -49,7 +49,7 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
   }
 
   const handleSelect = (listInfo: LX.List.MyListInfo) => {
-    dialogRef.current?.setVisible(false)
+    sheetRef.current?.setVisible(false)
     if (selectInfo.isMove) {
       void moveListMusics(selectInfo.listId, listInfo.id,
         [selectInfo.musicInfo!],
@@ -74,7 +74,7 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
   }
 
   return (
-    <Dialog ref={dialogRef} onHide={handleHide}>
+    <SheetBase ref={sheetRef} onHide={handleHide} maxHeight="80%">
       {
         selectInfo.musicInfo
           ? (<>
@@ -83,7 +83,7 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
             </>)
           : null
       }
-    </Dialog>
+    </SheetBase>
   )
 })
 

@@ -1,11 +1,11 @@
 import { forwardRef, useImperativeHandle, useRef } from 'react'
-import { View, ScrollView } from 'react-native'
+import { View, ScrollView, StyleSheet } from 'react-native'
 import Dialog, { type DialogType } from './Dialog'
 import Button from './Button'
 import { createStyle } from '@/utils/tools'
 import { useI18n } from '@/lang/index'
 import { useTheme } from '@/store/theme/hook'
-import Text from './Text'
+import Text, { FontFamilies } from './Text'
 
 const styles = createStyle({
   main: {
@@ -14,40 +14,34 @@ const styles = createStyle({
     marginTop: 15,
     marginLeft: 5,
     marginRight: 5,
-    marginBottom: 25,
+    marginBottom: 15,
   },
   content: {
     flexGrow: 0,
     paddingLeft: 10,
     paddingRight: 10,
   },
+  // iOS Alert 式按钮区：顶部发丝线分隔、文本按钮等宽并排（弹窗体系方案 §问题8）
   btns: {
     flexDirection: 'row',
-    justifyContent: 'center',
-    paddingBottom: 15,
-    // paddingRight: 15,
-  },
-  btnsDirection: {
-    paddingLeft: 15,
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
   btnsReversedDirection: {
-    paddingLeft: 15,
     flexDirection: 'row-reverse',
   },
   btn: {
     flex: 1,
-    paddingTop: 9,
-    paddingBottom: 9,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingTop: 12,
+    paddingBottom: 12,
     alignItems: 'center',
-    borderRadius: 4,
+    justifyContent: 'center',
+    borderRadius: 0,
   },
-  btnDirection: {
-    marginRight: 15,
+  separator: {
+    width: StyleSheet.hairlineWidth,
   },
-  btnReversedDirection: {
-    marginLeft: 15,
+  btnTextBold: {
+    fontFamily: FontFamilies.bold,
   },
 })
 
@@ -111,14 +105,19 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(({
           {children ?? <Text>{text}</Text>}
         </ScrollView>
       </View>
-      <View style={{ ...styles.btns, ...(reverseBtn ? styles.btnsReversedDirection : styles.btnsDirection) }}>
-        <Button style={{ ...styles.btn, ...(reverseBtn ? styles.btnReversedDirection : styles.btnDirection), backgroundColor: theme['c-button-background'] }} onPress={handleCancel}>
-          <Text color={theme['c-button-font']}>{cancelText || t('cancel')}</Text>
+      <View style={{ ...styles.btns, borderTopColor: theme['c-border-background'], ...(reverseBtn ? styles.btnsReversedDirection : null) }}>
+        <Button style={styles.btn} onPress={handleCancel}>
+          <Text size={15} color={theme['c-font']}>{cancelText || t('cancel')}</Text>
         </Button>
         {showConfirm
-          ? <Button style={{ ...styles.btn, ...(reverseBtn ? styles.btnReversedDirection : styles.btnDirection), backgroundColor: theme['c-button-background'] }} onPress={onConfirm} disabled={disabledConfirm}>
-              <Text color={theme['c-button-font']}>{confirmText || t('confirm')}</Text>
-            </Button>
+          ? (
+              <>
+                <View style={{ ...styles.separator, backgroundColor: theme['c-border-background'] }} />
+                <Button style={styles.btn} onPress={onConfirm} disabled={disabledConfirm}>
+                  <Text size={15} color={theme['c-primary']} style={styles.btnTextBold}>{confirmText || t('confirm')}</Text>
+                </Button>
+              </>
+            )
           : null}
       </View>
     </Dialog>
