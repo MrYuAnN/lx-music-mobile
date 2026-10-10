@@ -1,11 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
-import { View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import CategoryChips from '@/components/common/CategoryChips'
 import { type SearchType } from '@/store/search/state'
 import { useI18n } from '@/lang'
 import { getSearchSetting } from '@/utils/data'
-import { createStyle } from '@/utils/tools'
 
 const SEARCH_TYPE_LIST = [
   'music',
@@ -39,7 +38,7 @@ export default () => {
   )
 }
 
-const styles = createStyle({
+const styles = StyleSheet.create({
   container: {
     flexGrow: 0,
     flexShrink: 0,

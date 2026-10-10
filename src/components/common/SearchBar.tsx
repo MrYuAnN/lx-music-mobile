@@ -1,9 +1,7 @@
 import { memo, forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
+import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle } from '@/utils/tools'
-import { scaleSizeH } from '@/utils/pixelRatio'
 
 export interface SearchBarType {
   setText: (text: string) => void
@@ -11,7 +9,8 @@ export interface SearchBarType {
   blur: () => void
 }
 
-// 全局搜索框（问题 2/3 拍板）：高38 r8 无边框、放大镜16、圆形✕清除钮自绘；
+// 全局搜索框（问题 2/3 拍板）：高38（裸值，不随用户字号缩放——框内图标 16/文字 13/14
+// 均不缩，容器缩必挤压错位，批4真机教训）、r8 无边框、放大镜16、圆形✕清除钮自绘；
 // tone=明度反衬：灰底页用白底框（plain），白底页用灰底框（elevated）；
 // prefix 槽放来源前缀（前缀与输入间自动补竖分隔线）；value 受控/内部 state 双模式
 const SearchBar = forwardRef<SearchBarType, {
@@ -64,6 +63,7 @@ const SearchBar = forwardRef<SearchBarType, {
           : null
       }
       <TextInput
+        allowFontScaling={false}
         ref={inputRef}
         style={{ ...styles.input, color: theme['c-font'] }}
         placeholder={placeholder}
@@ -100,11 +100,11 @@ const SearchBar = forwardRef<SearchBarType, {
       )
     })
 
-const styles = createStyle({
+const styles = StyleSheet.create({
   box: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: scaleSizeH(38),
+    height: 38,
     borderRadius: 8,
     paddingHorizontal: 10,
   },

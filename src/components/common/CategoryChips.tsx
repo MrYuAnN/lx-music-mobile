@@ -1,8 +1,7 @@
 import { memo } from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { StyleSheet, TouchableOpacity, View } from 'react-native'
 import Text, { FontFamilies } from './Text'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle } from '@/utils/tools'
 
 // 实心筛选胶囊 chips（Spotify/YT Music 口径，问题 2/3 拍板）：选中主色实底反白，
 // 未选中 c-input-background 底；高 31 r999 字13，间距 10 左对齐 16；count 为 label 后缀计数
@@ -59,7 +58,7 @@ export default memo(({ items, activeId, onChange, style }: {
   )
 })
 
-const styles = createStyle({
+const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     flexWrap: 'nowrap',

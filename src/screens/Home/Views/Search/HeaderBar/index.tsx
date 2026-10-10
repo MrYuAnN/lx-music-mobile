@@ -1,5 +1,5 @@
 import { useRef, forwardRef, useImperativeHandle, useState, useMemo } from 'react'
-import { View } from 'react-native'
+import { StyleSheet, View } from 'react-native'
 
 import SearchBar, { type SearchBarType } from '@/components/common/SearchBar'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
@@ -7,7 +7,6 @@ import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
-import { createStyle } from '@/utils/tools'
 import { type Source as MusicSource } from '@/store/search/music/state'
 import { type Source as SonglistSource } from '@/store/search/songlist/state'
 
@@ -88,7 +87,7 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onSourceChange, onTi
   )
 })
 
-const styles = createStyle({
+const styles = StyleSheet.create({
   container: {
     paddingHorizontal: 14,
     paddingTop: 6,
