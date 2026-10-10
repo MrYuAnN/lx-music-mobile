@@ -92,7 +92,6 @@ const Checkbox = ({
       style={{ ...styles.container, padding: PADDING, marginLeft: -PADDING }}
     >
       <Icon
-        allowFontScaling={false}
         name="checkbox-blank-outline"
         size={24 * size}
         color={tintColors.false}
@@ -100,7 +99,6 @@ const Checkbox = ({
       <View style={[StyleSheet.absoluteFill, styles.fillContainer]}>
         <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
           <Icon
-            allowFontScaling={false}
             name={icon}
             size={24 * size}
             color={tintColors.true}

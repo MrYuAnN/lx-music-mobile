@@ -1,69 +1,36 @@
-import { createIconSetFromIcoMoon } from 'react-native-vector-icons'
-import icoMoonConfig from '@/resources/fonts/selection.json'
+import Svg, { Path } from 'react-native-svg'
+import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { ICON_GLYPHS } from '@/resources/fonts/icons.generated'
 import { ICON_SIZE } from '@/config/constant'
-import { memo, type ComponentProps } from 'react'
+import { memo } from 'react'
 import { useTheme } from '@/store/theme/hook'
-import { type StyleProp, type TextStyle } from 'react-native'
 
-// import IconAntDesign from 'react-native-vector-icons/AntDesign'
-// import IconEntypo from 'react-native-vector-icons/Entypo'
-// import IconEvilIcons from 'react-native-vector-icons/EvilIcons'
-// import IconFeather from 'react-native-vector-icons/Feather'
-// import IconFontAwesome from 'react-native-vector-icons/FontAwesome'
-// import IconFontAwesome5 from 'react-native-vector-icons/FontAwesome5'
-// import IconFontisto from 'react-native-vector-icons/Fontisto'
-// import IconFoundation from 'react-native-vector-icons/Foundation'
-// import IconIonicons from 'react-native-vector-icons/Ionicons'
-// import IconMaterialIcons from 'react-native-vector-icons/MaterialIcons'
-// import IconMaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
-// import IconOcticons from 'react-native-vector-icons/Octicons'
-// import IconZocial from 'react-native-vector-icons/Zocial'
-// import IconSimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons'
-
-
-const IcoMoon = createIconSetFromIcoMoon(icoMoonConfig)
-
-
-// https://oblador.github.io/react-native-vector-icons/
-
-type IconType = ReturnType<typeof createIconSetFromIcoMoon>
-
-interface IconProps extends Omit<ComponentProps<IconType>, 'style'> {
-  style?: StyleProp<TextStyle>
-}
-
+// SVG 图标（SF Symbols/Material/Lucide 同形态，AM 批替代 icomoon 字体方案）：
+// 字体方案垂直位置由基线排版定死（glyph 设计在 em 上半部，ink 偏上 0.21~0.40em 且各不
+// 相同），任何单一 translateY 都无法全量居中（MF-3→批4 两轮真机返工教训）。SVG 按内容
+// 中心对齐 viewBox，精确居中不再依赖字体度量；glyph 数据由 tools/generate-icon-paths.mjs
+// 从 selection.json 生成（与原字体同源，视觉零漂移），图标集变更后重跑该脚本。
 // size 为裸 dp 直传（AM-6 拍板：图标脱离 scaleSizeW 体系，不随用户字号缩放），
 // 取值一律用 ICON_SIZE token；默认列表行基准，仅兜底——新调用点禁止依赖默认值，必须显式传 token
-export const Icon = memo(({ size = ICON_SIZE.list, color, style, ...props }: IconProps) => {
-  const theme = useTheme()
-  return (
-    <IcoMoon
-      size={size}
-      color={color ?? theme['c-font']}
-      // includeFontPadding:false：Android Text 默认顶部空隙使 IcoMoon 字形系统性偏低 ~0.18em，
-      // 关闭后字形紧致排版、容器居中即视觉居中（弹窗体系批 §问题6，全应用图标一次性归位）
-      // RNV 自带的旧版 @types/react-native 与 RN 本体类型不一致，style 需要抑制
-      // @ts-expect-error
-      style={[{ includeFontPadding: false }, style]}
-      {...props}
-    />
-  )
-})
-
-
-export {
-  // IconAntDesign,
-  // IconEntypo,
-  // IconEvilIcons,
-  // IconFeather,
-  // IconFontAwesome,
-  // IconFontAwesome5,
-  // IconFontisto,
-  // IconFoundation,
-  // IconIonicons,
-  // IconMaterialIcons,
-  // IconMaterialCommunityIcons,
-  // IconOcticons,
-  // IconZocial,
-  // IconSimpleLineIcons,
+interface IconProps {
+  name: string
+  size?: number
+  color?: string
+  // ViewStyle 为主，交叉 TextStyle 兼容旧字体方案的历史调用（style 里写 color/fontSize）
+  style?: StyleProp<ViewStyle & TextStyle>
 }
+
+export const Icon = memo(({ name, size = ICON_SIZE.list, color, style }: IconProps) => {
+  const theme = useTheme()
+  const glyph = ICON_GLYPHS[name]
+  if (!glyph) return null
+  // 兼容旧 Text 语义：调用方可把 color 写在 style（如 Mylist ListItem），style 优先于 color prop
+  const flat = style ? StyleSheet.flatten(style) : undefined
+  const styleColor = flat ? (flat as Record<string, unknown>).color : undefined
+  const fill = (typeof styleColor === 'string' ? styleColor : undefined) ?? color ?? theme['c-font']
+  return (
+    <Svg width={size} height={size} viewBox="0 0 112 112" style={style}>
+      <Path d={glyph.d} transform={glyph.t} fill={fill} />
+    </Svg>
+  )
+}, () => true)

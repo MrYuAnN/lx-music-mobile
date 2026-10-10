@@ -1,0 +1,27 @@
+diff --git a/node_modules/react-native-navigation/lib/android/app/src/main/java/com/reactnativenavigation/utils/SystemUiUtils.kt b/node_modules/react-native-navigation/lib/android/app/src/main/java/com/reactnativenavigation/utils/SystemUiUtils.kt
+index 89665d1..b1a01fc 100644
+--- a/node_modules/react-native-navigation/lib/android/app/src/main/java/com/reactnativenavigation/utils/SystemUiUtils.kt
++++ b/node_modules/react-native-navigation/lib/android/app/src/main/java/com/reactnativenavigation/utils/SystemUiUtils.kt
+@@ -70,7 +70,10 @@ object SystemUiUtils {
+     @JvmStatic
+     fun showNavigationBar(window: Window?, view: View) {
+         window?.let {
+-            WindowCompat.setDecorFitsSystemWindows(window, true)
++            // PATCH(patch-package, 批4装机修复): 移除 setDecorFitsSystemWindows(true)。
++            // 上游在 navigationBar.visible 未设时也会走此分支，把宿主开的 edge-to-edge
++            // 翻回避让模式，致根布局底部避让手势条 + JS 层 inset 双重垫高（真机实测
++            // 根 LinearLayout 底 3140/3200）。仅确保导航栏显示，不再动 fitSystemWindows。
+             WindowInsetsControllerCompat(window, view).show(WindowInsetsCompat.Type.navigationBars())
+         }
+     }
+@@ -148,7 +151,9 @@ object SystemUiUtils {
+     @JvmStatic
+     fun showStatusBar(window: Window?, view: View) {
+         window?.let {
+-            WindowCompat.setDecorFitsSystemWindows(window, true)
++            // PATCH(patch-package): 上游为 true（避让），改 false 保持窗口延伸——
++            // 状态栏避让由 JS 层 statusBarHeight 自垫，配合宿主 edge-to-edge（弹窗体系批）
++            WindowCompat.setDecorFitsSystemWindows(window, false)
+             WindowInsetsControllerCompat(window, view).show(WindowInsetsCompat.Type.statusBars())
+         }
+     }
