@@ -1,7 +1,7 @@
 import { createStyle } from '@/utils/tools'
 import { View } from 'react-native'
 import PlayModeBtn from './PlayModeBtn'
-import QueueBtn from '@/screens/PlayDetail/Vertical/Player/components/MoreBtn/QueueBtn'
+import QueueBtn from '@/screens/PlayDetail/components/QueueBtn'
 import MusicAddBtn from './MusicAddBtn'
 import TimeoutExitBtn from './TimeoutExitBtn'
 

@@ -215,6 +215,8 @@ export const getOnlineOtherSourcePicByLocal = async(musicInfo: LX.Music.MusicInf
 
 export const TRY_QUALITYS_LIST = ['flac24bit', 'flac', '320k'] as const
 type TryQualityType = typeof TRY_QUALITYS_LIST[number]
+// 播放链可消费档位全集，自低到高（设置页与播放页音质选择共用单源，弹窗体系批 §问题7 拍板收口）
+export const PLAY_QUALITY_LIST: LX.Quality[] = ([...TRY_QUALITYS_LIST, '128k'] as LX.Quality[]).reverse()
 export const getPlayQuality = (highQuality: LX.Quality, musicInfo: LX.Music.MusicInfoOnline): LX.Quality => {
   let type: LX.Quality = '128k'
   if (TRY_QUALITYS_LIST.includes(highQuality as TryQualityType)) {

@@ -7,7 +7,7 @@ import CheckBox from '@/components/common/CheckBox'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
-import { TRY_QUALITYS_LIST } from '@/core/music/utils'
+import { PLAY_QUALITY_LIST } from '@/core/music/utils'
 
 const useActive = (id: LX.Quality) => {
   const q = useSettingValue('player.playQuality')
@@ -26,9 +26,8 @@ const Item = ({ id, name }: {
 
 export default memo(() => {
   const t = useI18n()
-  const playQualityList = useMemo(() => {
-    return [...TRY_QUALITYS_LIST, '128k'].reverse() as LX.Quality[]
-  }, [])
+  // 档位全集与播放页音质选择共用单源（core/music/utils）
+  const playQualityList = PLAY_QUALITY_LIST
 
   return (
     <SubTitle title={t('setting_play_play_quality')}>

@@ -8,9 +8,11 @@ import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
-import { scaleSizeH } from '@/utils/pixelRatio'
+import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
 const HEADER_HEIGHT = 20
+// AM Dialog 圆角（iOS Alert 基准 14，随宽缩放与 sheet 圆角同口径）
+const DIALOG_RADIUS = scaleSizeW(14)
 const styles = createStyle({
   centeredView: {
     flex: 1,
@@ -22,7 +24,7 @@ const styles = createStyle({
     minWidth: '60%',
     maxHeight: '78%',
     // backgroundColor: 'white',
-    borderRadius: 14,
+    borderRadius: DIALOG_RADIUS,
     shadowColor: '#000',
     shadowOffset: {
       width: 0,
@@ -36,8 +38,8 @@ const styles = createStyle({
     flexGrow: 0,
     flexShrink: 0,
     flexDirection: 'row',
-    borderTopLeftRadius: 14,
-    borderTopRightRadius: 14,
+    borderTopLeftRadius: DIALOG_RADIUS,
+    borderTopRightRadius: DIALOG_RADIUS,
     height: HEADER_HEIGHT,
   },
   title: {
@@ -48,7 +50,7 @@ const styles = createStyle({
   closeBtn: {
     position: 'absolute',
     right: 0,
-    borderTopRightRadius: 14,
+    borderTopRightRadius: DIALOG_RADIUS,
     flexGrow: 0,
     flexShrink: 0,
     height: HEADER_HEIGHT,

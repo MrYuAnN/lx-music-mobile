@@ -5,6 +5,7 @@ import Modal, { type ModalType } from './Modal'
 import { Icon } from '@/components/common/Icon'
 import { useKeyboard } from '@/utils/hooks'
 import { createStyle } from '@/utils/tools'
+import { scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
@@ -24,8 +25,8 @@ const styles = createStyle({
   header: {
     flex: 0,
     flexDirection: 'row',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
+    borderTopLeftRadius: scaleSizeW(16),
+    borderTopRightRadius: scaleSizeW(16),
   },
   title: {
     paddingLeft: 10,

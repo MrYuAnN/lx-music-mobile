@@ -121,6 +121,20 @@ export const useLrcPlay = (autoUpdate = true) => {
   return lrcInfo
 }
 
+// 当前歌词是否带翻译（翻译按钮置灰判定，随歌词换曲刷新；空串视为无翻译，与 setLyric 内部消费口径一致）
+export const useLrcHasTranslation = () => {
+  const [has, setHas] = useState(!!lrcTools.translationText)
+  useEffect(() => {
+    const callback = () => {
+      setHas(!!lrcTools.translationText)
+    }
+    lrcTools.addSetLyricHook(callback)
+    return () => { lrcTools.removeSetLyricHook(callback) }
+  }, [])
+
+  return has
+}
+
 // on lyric set hook
 export const useLrcSet = () => {
   const [lines, setLines] = useState<Lines>(lrcTools.currentLines)

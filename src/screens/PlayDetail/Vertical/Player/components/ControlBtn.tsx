@@ -1,14 +1,25 @@
+import { useMemo, useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
+import { MenuView } from '@react-native-menu/menu'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
-// import { useIsPlay } from '@/store/player/hook'
 import { playNext, playPrev, togglePlay } from '@/core/player/player'
 import { useIsPlay } from '@/store/player/hook'
+import { useSettingValue } from '@/store/setting/hook'
+import { useI18n } from '@/lang'
+import { updateSetting } from '@/core/common'
+import { MUSIC_TOGGLE_MODE, MUSIC_TOGGLE_MODE_LIST, ICON_SIZE } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 import { useWindowSize } from '@/utils/hooks'
-import { BTN_WIDTH } from './MoreBtn/Btn'
-import { useMemo } from 'react'
+import { scaleSizeW } from '@/utils/pixelRatio'
 import { hapticImpactLight } from '@/utils/haptic'
+import QueueBtn from '@/screens/PlayDetail/components/QueueBtn'
+
+// AM 控制行五键（方案 §问题7，参考图1）：[播放模式][上一首][播放][下一首][播放列表]——
+// 两端小尺寸键（原 MoreBtn 行的播放模式/播放列表迁入），中间三大键。
+
+const SIDE_BTN_WIDTH = scaleSizeW(36)
+const SIDE_BTN_ICON = ICON_SIZE.control
 
 const PrevBtn = ({ size }: { size: number }) => {
   const theme = useTheme()
@@ -48,8 +59,76 @@ const TogglePlayBtn = ({ size }: { size: number }) => {
   )
 }
 
-const MAX_SIZE = BTN_WIDTH * 1.6
-const MIN_SIZE = BTN_WIDTH * 1.2
+// AM 播放模式：MenuView 四态弹出选择（原 MoreBtn/PlayModeBtn 迁入，逻辑不变）
+type ModeName = 'play_list_loop' | 'play_list_random' | 'play_list_order' | 'play_single_loop' | 'play_single'
+const modeName = (mode: string): ModeName => {
+  switch (mode) {
+    case MUSIC_TOGGLE_MODE.listLoop:
+      return 'play_list_loop'
+    case MUSIC_TOGGLE_MODE.random:
+      return 'play_list_random'
+    case MUSIC_TOGGLE_MODE.list:
+      return 'play_list_order'
+    case MUSIC_TOGGLE_MODE.singleLoop:
+      return 'play_single_loop'
+    default:
+      return 'play_single'
+  }
+}
+
+const PlayModeBtn = () => {
+  const togglePlayMethod = useSettingValue('player.togglePlayMethod')
+  const t = useI18n()
+  const theme = useTheme()
+  const [pressed, setPressed] = useState(false)
+
+  const actions = useMemo(() => {
+    return MUSIC_TOGGLE_MODE_LIST.map(mode => ({
+      id: mode,
+      title: t(modeName(mode)),
+      state: mode == togglePlayMethod ? ('on' as const) : undefined,
+    }))
+  }, [t, togglePlayMethod])
+
+  const playModeIcon = useMemo(() => {
+    switch (togglePlayMethod) {
+      case MUSIC_TOGGLE_MODE.listLoop:
+        return 'list-loop'
+      case MUSIC_TOGGLE_MODE.random:
+        return 'list-random'
+      case MUSIC_TOGGLE_MODE.list:
+        return 'list-order'
+      case MUSIC_TOGGLE_MODE.singleLoop:
+        return 'single-loop'
+      default:
+        return 'single'
+    }
+  }, [togglePlayMethod])
+
+  return (
+    <MenuView
+      onPressAction={({ nativeEvent: { event } }) => {
+        const mode = MUSIC_TOGGLE_MODE_LIST.find(m => m == event)
+        if (!mode) return
+        updateSetting({ 'player.togglePlayMethod': mode })
+      }}
+      actions={actions}
+    >
+      {/* 按压反馈用 onTouch 驱动 opacity（不用 Touchable，避免拦截 MenuView 的原生点击） */}
+      <View
+        style={{ ...styles.cotrolBtn, width: SIDE_BTN_WIDTH, height: SIDE_BTN_WIDTH, opacity: pressed ? 0.5 : 1 }}
+        onTouchStart={() => { setPressed(true) }}
+        onTouchEnd={() => { setPressed(false) }}
+        onTouchCancel={() => { setPressed(false) }}
+      >
+        <Icon name={playModeIcon} color={theme['c-font-label']} size={SIDE_BTN_ICON} />
+      </View>
+    </MenuView>
+  )
+}
+
+const MAX_SIZE = SIDE_BTN_WIDTH * 1.6
+const MIN_SIZE = SIDE_BTN_WIDTH * 1.2
 
 export default () => {
   const winSize = useWindowSize()
@@ -65,9 +144,11 @@ export default () => {
 
   return (
     <View style={containerStyle}>
+      <PlayModeBtn />
       <PrevBtn size={size} />
       <TogglePlayBtn size={size}/>
       <NextBtn size={size} />
+      <QueueBtn />
     </View>
   )
 }

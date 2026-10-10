@@ -45,7 +45,8 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
               <SettingLyricProgress />
               <SettingVolume />
               <SettingPlaybackRate />
-              <SettingLrcFontSize direction={direction} />
+              {/* 字体大小已上播放页歌词动作行（方案 §问题7 拍板：竖屏删、横屏留） */}
+              {direction == 'horizontal' ? <SettingLrcFontSize direction={direction} /> : null}
               <SettingLrcAlign />
             </View>
           </ScrollView>
