@@ -1,7 +1,10 @@
 // 二级页页头（ScreenHeader）与竖屏播放页头：AM 返工加高（横屏 PlayDetail/Home、Comment 仍用 HEADER_HEIGHT，Q8 横屏不动）
 export const SCREEN_HEADER_HEIGHT = 54
 export const HEADER_HEIGHT = 42
-export const LIST_ITEM_HEIGHT = 54
+export const LIST_ITEM_HEIGHT = 64
+
+// LOVE 红心固定红色系（问题 1 拍板：不随主题 token，love 未选/love-fill 选中同色）
+export const LOVE_COLOR = '#FA2C4C'
 
 // 图标尺寸语义 token（AM-6 拍板口径，全局唯一单源；裸 dp 不随用户字号缩放——对标 AM Android/Material，
 // 文字走 Text 组件的 setSpText 保留字号设置）。图标一律从此取值，禁止散落字面量；

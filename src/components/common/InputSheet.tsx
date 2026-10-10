@@ -87,7 +87,7 @@ const InputSheet = ({
             <Text size={14} color={theme['c-font']}>{t('cancel')}</Text>
           </Button>
           <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={!text.trim().length} onPress={handleConfirm}>
-            <Text size={14} color={theme['c-button-font']}>{confirmText ?? t('confirm')}</Text>
+            <Text size={14} color={theme['c-on-primary']}>{confirmText ?? t('confirm')}</Text>
           </Button>
         </View>
       </View>

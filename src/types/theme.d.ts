@@ -271,6 +271,11 @@ declare global {
       'c-primary-background-active': string
       'c-primary-input-background': string
       'c-button-font': string
+      'c-on-primary': string
+      'c-input-background': string
+      'c-quality-24bit': string
+      'c-quality-sq': string
+      'c-quality-hq': string
       'c-button-font-selected': string
       'c-button-background': string
       'c-button-background-selected': string

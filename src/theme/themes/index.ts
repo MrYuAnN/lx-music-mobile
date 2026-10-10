@@ -45,6 +45,11 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     'c-primary-background-hover': theme.config.themeColors['c-primary-light-300-alpha-800'],
     'c-primary-background-active': theme.config.themeColors['c-primary-light-100-alpha-800'],
     'c-primary-input-background': theme.config.themeColors['c-primary-light-400-alpha-700'],
+    'c-on-primary': '#FFFFFF', // 主色实底上的前景（恒白）；c-button-font 保留给淡主色文字场景
+    'c-input-background': theme.isDark ? '#2C2C2E' : '#FFFFFF', // 灰底页上的输入控件/chips 底（iOS systemGray5/elevated 惯例）
+    'c-quality-24bit': theme.isDark ? '#E3B341' : '#B8860B',
+    'c-quality-sq': theme.isDark ? '#7CC98A' : '#3D9A50',
+    'c-quality-hq': theme.isDark ? '#93B1D8' : '#5E81AC',
     'c-button-font': theme.config.themeColors['c-primary-alpha-100'],
     'c-button-font-selected': theme.config.themeColors['c-primary-dark-100-alpha-100'],
     'c-button-background': theme.config.themeColors['c-primary-light-400-alpha-700'],

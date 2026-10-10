@@ -1,6 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import state, { type InitState } from './state'
-import { getListMusics } from '@/core/list'
+import { addListMusics, getListMusics, removeListMusics } from '@/core/list'
+import { LIST_IDS } from '@/config/constant'
+import settingState from '@/store/setting/state'
+import { hapticImpactLight } from '@/utils/haptic'
 
 // 显示名读时映射（不写存储）：index 0/1 恒为 default/love（allList 恒定构造），
 // 返回派生数组，不原地改写共享 state
@@ -82,6 +85,49 @@ export const useMusicExistsList = (list: LX.List.MyListInfo, musicInfo: LX.Music
   }, [list.id, musicInfo.id])
 
   return isExists
+}
+
+// LOVE 列表歌曲 id 集合（行内红心响应式数据源）；isLiked 以布尔入行 memo（蓝本 §2.2），
+// 无关列表更新不重建 Set，避免打穿全列表 memo
+export const useLikedSet = () => {
+  const [likedSet, setLikedSet] = useState<Set<string>>(() => new Set())
+
+  useEffect(() => {
+    const update = () => {
+      void getListMusics(LIST_IDS.LOVE).then((musics) => {
+        setLikedSet(new Set(musics.map(m => m.id)))
+      })
+    }
+    const handleChange = (ids: string[]) => {
+      if (!ids.includes(LIST_IDS.LOVE)) return
+      update()
+    }
+    const handleToggle = (activeListId: string) => {
+      if (activeListId == LIST_IDS.LOVE) update()
+    }
+    global.app_event.on('myListMusicUpdate', handleChange)
+    global.state_event.on('mylistToggled', handleToggle)
+    update()
+
+    return () => {
+      global.app_event.off('myListMusicUpdate', handleChange)
+      global.state_event.off('mylistToggled', handleToggle)
+    }
+  }, [])
+
+  return likedSet
+}
+
+// 红心 toggle（行内红心共用）：点亮=加入 LOVE 列表、取消=移除；轻触觉、无 toast（问题 1 拍板）
+export const useLikeToggle = () => {
+  return useCallback((musicInfo: LX.Music.MusicInfo, isLiked: boolean) => {
+    hapticImpactLight()
+    if (isLiked) {
+      void removeListMusics(LIST_IDS.LOVE, [musicInfo.id])
+    } else {
+      void addListMusics(LIST_IDS.LOVE, [musicInfo], settingState.setting['list.addMusicLocationType'])
+    }
+  }, [])
 }
 
 export const useListFetching = (listId: string) => {
