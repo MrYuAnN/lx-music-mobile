@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import settingState from '@/store/setting/state'
 import MusicList from './MusicList'
 import MyList from './MyList'
 import { useTheme } from '@/store/theme/hook'
@@ -59,7 +58,6 @@ export default () => {
       // drawerWidth={width}
       widthPercentage={0.82}
       widthPercentageMax={MAX_WIDTH}
-      drawerPosition={settingState.setting['common.drawerLayoutPosition']}
       renderNavigationView={navigationView}
       drawerBackgroundColor={theme['c-content-background']}
       style={{ elevation: 1 }}

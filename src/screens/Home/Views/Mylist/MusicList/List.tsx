@@ -14,6 +14,7 @@ import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useActiveListId } from '@/store/list/hook'
 import { useSettingValue } from '@/store/setting/hook'
+import { hapticImpactLight } from '@/utils/haptic'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfo>
 
@@ -235,6 +236,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
 
   const handleLongPress = (item: LX.Music.MusicInfo, index: number) => {
     if (isMultiSelectModeRef.current) return
+    hapticImpactLight()
     prevSelectIndexRef.current = index
     handleUpdateSelectedList([item])
     onMuiltSelectMode()

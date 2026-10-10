@@ -1,6 +1,6 @@
 import { useMemo, useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
-import Menu, { type MenuType, type Position } from '@/components/common/Menu'
+import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
 
 export interface SelectInfo {
   listId: string
@@ -25,27 +25,27 @@ export type {
 export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
   const t = useI18n()
   const [visible, setVisible] = useState(false)
-  const menuRef = useRef<MenuType>(null)
+  const menuRef = useRef<ActionSheetType>(null)
   const selectInfoRef = useRef<SelectInfo>(initSelectInfo as SelectInfo)
 
   useImperativeHandle(ref, () => ({
-    show(selectInfo, position) {
+    show(selectInfo) {
       selectInfoRef.current = selectInfo
-      if (visible) menuRef.current?.show(position)
+      if (visible) menuRef.current?.show()
       else {
         setVisible(true)
         requestAnimationFrame(() => {
-          menuRef.current?.show(position)
+          menuRef.current?.show()
         })
       }
     },
   }))
 
-  const menus = useMemo(() => {
+  const menus = useMemo<ActionSheetItem[]>(() => {
     return [
-      { action: 'play', label: t('play') },
-      { action: 'collect', label: t('collect') },
-    ] as const
+      { action: 'play', label: t('play'), icon: 'play' },
+      { action: 'collect', label: t('collect'), icon: 'love' },
+    ]
   }, [t])
 
   const handleMenuPress = ({ action }: typeof menus[number]) => {
@@ -64,7 +64,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
 
   return (
     visible
-      ? <Menu ref={menuRef} menus={menus} onPress={handleMenuPress} onHide={props.onHideMenu} />
+      ? <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} onHide={props.onHideMenu} />
       : null
   )
 })

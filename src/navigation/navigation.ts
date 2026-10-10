@@ -7,6 +7,14 @@ import {
   SONGLIST_DETAIL_SCREEN,
   COMMENT_SCREEN,
   // SETTING_SCREEN,
+  SEARCH_SCREEN,
+  SETTING_SCREEN,
+  RECENT_PLAY_SCREEN,
+  LOCAL_MUSIC_SCREEN,
+  SONG_LIST_SCREEN,
+  LEADERBOARD_SCREEN,
+  MYLIST_SCREEN,
+  DOWNLOAD_SCREEN,
 } from './screenNames'
 
 import themeState from '@/store/theme/state'
@@ -149,7 +157,8 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
                 {
                   fromId: NAV_SHEAR_NATIVE_IDS.playDetail_pic,
                   toId: NAV_SHEAR_NATIVE_IDS.playDetail_pic,
-                  interpolation: { type: 'spring' },
+                  // AM 曲线统一：decelerate 逼近 cubic-bezier(0.32,0.72,0,1) 手感（RNN 原生无贝塞尔）
+                  interpolation: { type: 'decelerate' },
                 },
               ],
               elementTransitions: [
@@ -157,22 +166,22 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
                   id: NAV_SHEAR_NATIVE_IDS.playDetail_header,
                   alpha: {
                     from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 300,
+                    duration: 350,
                   },
                   translationY: {
                     from: -32, // Animate translationY from 16dp to 0dp
-                    duration: 300,
+                    duration: 350,
                   },
                 },
                 {
                   id: NAV_SHEAR_NATIVE_IDS.playDetail_player,
                   alpha: {
                     from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 300,
+                    duration: 350,
                   },
                   translationY: {
                     from: 32, // Animate translationY from 16dp to 0dp
-                    duration: 300,
+                    duration: 350,
                   },
                 },
               ],
@@ -189,7 +198,7 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
                 translationX: {
                   from: 0,
                   to: windowSizeTools.getSize().width,
-                  duration: 300,
+                  duration: 350,
                 },
               },
             },
@@ -234,7 +243,7 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
                 {
                   fromId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${info.id}`,
                   toId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`,
-                  interpolation: { type: 'spring' },
+                  interpolation: { type: 'decelerate' },
                 },
               ],
               elementTransitions: [
@@ -242,11 +251,11 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
                   id: NAV_SHEAR_NATIVE_IDS.songlistDetail_title,
                   alpha: {
                     from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 300,
+                    duration: 350,
                   },
                   translationX: {
                     from: 16, // Animate translationX from 16dp to 0dp
-                    duration: 300,
+                    duration: 350,
                   },
                 },
               ],
@@ -273,7 +282,7 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
                 {
                   fromId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`,
                   toId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${info.id}`,
-                  interpolation: { type: 'spring' },
+                  interpolation: { type: 'decelerate' },
                 },
               ],
               elementTransitions: [
@@ -281,11 +290,11 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
                   id: NAV_SHEAR_NATIVE_IDS.songlistDetail_title,
                   alpha: {
                     to: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 300,
+                    duration: 350,
                   },
                   translationX: {
                     to: 16, // Animate translationX from 16dp to 0dp
-                    duration: 300,
+                    duration: 350,
                   },
                 },
               ],
@@ -303,6 +312,72 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
     })
   })
 }
+
+export function pop(componentId: string) {
+  void Navigation.pop(componentId).catch(() => {})
+}
+
+// AM-2：二级屏统一 push（标准滑动转场，topBar 隐藏；Views 自含 HeaderBar）
+const pushAmScreen = (componentId: string, screenName: string) => {
+  requestAnimationFrame(() => {
+    const theme = themeState.theme
+
+    void Navigation.push(componentId, {
+      component: {
+        name: screenName,
+        options: {
+          topBar: {
+            visible: false,
+            height: 0,
+            drawBehind: false,
+          },
+          statusBar: {
+            drawBehind: true,
+            visible: true,
+            style: getStatusBarStyle(theme.isDark),
+            backgroundColor: 'transparent',
+          },
+          navigationBar: {
+            backgroundColor: theme['c-content-background'],
+          },
+          layout: {
+            componentBackgroundColor: theme['c-content-background'],
+          },
+          animations: {
+            push: {
+              content: {
+                translationX: {
+                  from: windowSizeTools.getSize().width,
+                  to: 0,
+                  duration: 350,
+                },
+              },
+            },
+            pop: {
+              content: {
+                translationX: {
+                  from: 0,
+                  to: windowSizeTools.getSize().width,
+                  duration: 350,
+                },
+              },
+            },
+          },
+        },
+      },
+    })
+  })
+}
+
+export const pushSearchScreen = (componentId: string) => { pushAmScreen(componentId, SEARCH_SCREEN) }
+export const pushSettingScreen = (componentId: string) => { pushAmScreen(componentId, SETTING_SCREEN) }
+export const pushSongListScreen = (componentId: string) => { pushAmScreen(componentId, SONG_LIST_SCREEN) }
+export const pushLeaderboardScreen = (componentId: string) => { pushAmScreen(componentId, LEADERBOARD_SCREEN) }
+export const pushMylistScreen = (componentId: string) => { pushAmScreen(componentId, MYLIST_SCREEN) }
+export const pushDownloadScreen = (componentId: string) => { pushAmScreen(componentId, DOWNLOAD_SCREEN) }
+export const pushRecentPlayScreen = (componentId: string) => { pushAmScreen(componentId, RECENT_PLAY_SCREEN) }
+export const pushLocalMusicScreen = (componentId: string) => { pushAmScreen(componentId, LOCAL_MUSIC_SCREEN) }
+
 export function pushCommentScreen(componentId: string) {
   /*
     Navigation.setDefaultOptions({
@@ -367,7 +442,7 @@ export function pushCommentScreen(componentId: string) {
                 translationX: {
                   from: windowSizeTools.getSize().width,
                   to: 0,
-                  duration: 300,
+                  duration: 350,
                 },
               },
             },
@@ -376,7 +451,7 @@ export function pushCommentScreen(componentId: string) {
                 translationX: {
                   from: 0,
                   to: windowSizeTools.getSize().width,
-                  duration: 300,
+                  duration: 350,
                 },
               },
             },

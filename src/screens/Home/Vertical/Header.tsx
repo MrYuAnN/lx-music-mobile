@@ -1,157 +1,112 @@
-import { View, TouchableOpacity } from 'react-native'
-// import Button from '@/components/common/Button'
-// import { navigations } from '@/navigation'
-// import { BorderWidths } from '@/theme'
+import { TouchableOpacity, View } from 'react-native'
+import Animated, { interpolate, useAnimatedScrollHandler, useAnimatedStyle, useSharedValue, Extrapolation } from 'react-native-reanimated'
 import { useTheme } from '@/store/theme/hook'
-import { useNavActiveId, useStatusbarHeight } from '@/store/common/hook'
-import { useI18n } from '@/lang'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { createStyle } from '@/utils/tools'
 import { Icon } from '@/components/common/Icon'
-import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
-import { useSettingValue } from '@/store/setting/hook'
-import { scaleSizeH } from '@/utils/pixelRatio'
-import { HEADER_HEIGHT } from '@/config/constant'
-import { type InitState as CommonState } from '@/store/common/state'
-import SearchTypeSelector from '@/screens/Home/Views/Search/SearchTypeSelector'
+import commonState from '@/store/common/state'
+import Text, { FontFamilies } from '@/components/common/Text'
+import { navigations } from '@/navigation'
 
-const headerComponents: Partial<Record<CommonState['navActiveId'], React.ReactNode>> = {
-  nav_search: <SearchTypeSelector />,
-}
+// AM-2 首页头部：应用名大标题随滚动离场，固定栏（小标题+双圆钮）滚动后淡入
+// （对标 AM 资料库页头部形态；拍板见 doc/plans/apple-music-redesign.md §3.1）
 
+const APP_NAME = 'LX Music'
 
-// const LeftTitle = () => {
-//   const id = useNavActiveId()
-//   const t = useI18n()
-
-//   return <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
-// }
-const LeftHeader = () => {
+const Header = ({ children }: { children: React.ReactNode }) => {
   const theme = useTheme()
-  const id = useNavActiveId()
-  const t = useI18n()
   const statusBarHeight = useStatusbarHeight()
+  const scrollY = useSharedValue(0)
+  const scrollHandler = useAnimatedScrollHandler((e) => {
+    scrollY.value = e.contentOffset.y
+  })
 
-  const openMenu = () => {
-    global.app_event.changeMenuVisible(true)
+  const barOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [40, 90], [0, 1], Extrapolation.CLAMP),
+  }))
+
+  const openSearch = () => {
+    const componentId = commonState.componentIds.home
+    if (componentId) navigations.pushSearchScreen(componentId)
+  }
+  const openSetting = () => {
+    const componentId = commonState.componentIds.home
+    if (componentId) navigations.pushSettingScreen(componentId)
   }
 
   return (
-    <View style={{
-      ...styles.container,
-      height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
-      paddingTop: statusBarHeight,
-    }}>
-      <View style={styles.left}>
-        <TouchableOpacity style={styles.btn} onPress={openMenu}>
-          <Icon color={theme['c-font']} name="menu" size={18} />
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.titleBtn} onPress={openMenu}>
-          <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
-        </TouchableOpacity>
-      </View>
-      {headerComponents[id] ?? null}
-
-      {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
-        <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
-
-// const RightTitle = () => {
-//   const id = useNavActiveId()
-//   const t = useI18n()
-
-//   return <Text style={styles.rightTitle} size={18}>{t(id)}</Text>
-// }
-const RightHeader = () => {
-  const theme = useTheme()
-  const t = useI18n()
-  const id = useNavActiveId()
-  const statusBarHeight = useStatusbarHeight()
-
-  const openMenu = () => {
-    global.app_event.changeMenuVisible(true)
-  }
-  return (
-    <View style={{
-      ...styles.container,
-      height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
-      paddingTop: statusBarHeight,
-    }}>
-      <View style={styles.left}>
-        <TouchableOpacity style={styles.titleBtn} onPress={openMenu}>
-          <Text style={styles.rightTitle} size={18}>{t(id)}</Text>
-        </TouchableOpacity>
-      </View>
-      {headerComponents[id] ?? null}
-      <TouchableOpacity style={styles.btn} onPress={openMenu}>
-        <Icon color={theme['c-font']} name="menu" size={18} />
-      </TouchableOpacity>
-      {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
-        <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />
-      </TouchableOpacity> */}
-    </View>
-  )
-}
-
-const Header = () => {
-  const drawerLayoutPosition = useSettingValue('common.drawerLayoutPosition')
-
-  return (
-    <>
+    <View style={styles.container}>
       <StatusBar />
-      {
-        drawerLayoutPosition == 'left'
-          ? <LeftHeader />
-          : <RightHeader />
-      }
-
-    </>
+      <Animated.View
+        style={{
+          ...styles.fixedBar,
+          paddingTop: statusBarHeight,
+          backgroundColor: theme['c-app-background'],
+        }}
+        pointerEvents="box-none"
+      >
+        <View style={styles.fixedBarInner} pointerEvents="box-none">
+          <Animated.Text style={[{ ...styles.miniTitle, color: theme['c-font'], fontSize: 17 }, barOpacity]}>{APP_NAME}</Animated.Text>
+          <View style={styles.btns}>
+            <TouchableOpacity style={styles.btn} onPress={openSearch}>
+              <Icon color={theme['c-font']} name="search-2" size={20} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.btn} onPress={openSetting}>
+              <Icon color={theme['c-font']} name="setting" size={20} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Animated.View>
+      <Animated.ScrollView
+        onScroll={scrollHandler}
+        scrollEventThrottle={16}
+        contentContainerStyle={{ paddingBottom: 20 }}
+      >
+        <View style={{ paddingTop: statusBarHeight + 48 }}>
+          <Text style={{ ...styles.largeTitle, fontFamily: FontFamilies.bold }} size={34} color={theme['c-font']}>{APP_NAME}</Text>
+        </View>
+        {children}
+      </Animated.ScrollView>
+    </View>
   )
 }
-
 
 const styles = createStyle({
   container: {
-    // width: '100%',
-    paddingRight: 5,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
+    flex: 1,
+  },
+  fixedBar: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
     zIndex: 10,
   },
-  left: {
-    flex: 1,
+  fixedBarInner: {
+    height: 52,
     flexDirection: 'row',
-    paddingLeft: 5,
     alignItems: 'center',
-    height: '100%',
+    paddingLeft: 16,
+    paddingRight: 8,
+  },
+  miniTitle: {
+    flex: 1,
+    fontFamily: FontFamilies.semibold,
+  },
+  btns: {
+    flexDirection: 'row',
   },
   btn: {
-    // flex: 1,
-    width: HEADER_HEIGHT,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
+    width: 40,
+    height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-    height: '100%',
   },
-  titleBtn: {
-    flex: 1,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    height: '100%',
-    justifyContent: 'center',
-  },
-  leftTitle: {
-    paddingLeft: 14,
-    paddingRight: 16,
-  },
-  rightTitle: {
-    paddingLeft: 16,
-    paddingRight: 16,
+  largeTitle: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
 })
 

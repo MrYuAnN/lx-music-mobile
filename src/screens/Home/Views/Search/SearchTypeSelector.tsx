@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { ScrollView, TouchableOpacity } from 'react-native'
 
 import { createStyle } from '@/utils/tools'
+import { scaleSizeH } from '@/utils/pixelRatio'
 import { type SearchType } from '@/store/search/state'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
@@ -49,9 +50,10 @@ export default () => {
 
 const styles = createStyle({
   container: {
-    height: '100%',
+    // 固定高度：height '100%' 会占满父容器剩余空间，把下方搜索框挤出屏幕（真机 10-10 实证）
+    height: scaleSizeH(44),
     flexGrow: 0,
-    flexShrink: 1,
+    flexShrink: 0,
     // paddingLeft: 5,
     // paddingRight: 5,
     // backgroundColor: 'rgba(0,0,0,0.1)',

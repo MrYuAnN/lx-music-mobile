@@ -10,13 +10,11 @@ import ShareType from './ShareType'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
 import IsStartupPushPlayDetailScreen from './IsStartupPushPlayDetailScreen'
 import IsAutoHidePlayBar from './IsAutoHidePlayBar'
-import IsHomePageScroll from './IsHomePageScroll'
 import IsAllowProgressBarSeek from './IsAllowProgressBarSeek'
 import IsUseSystemFileSelector from './IsUseSystemFileSelector'
 import IsAlwaysKeepStatusbarHeight from './IsAlwaysKeepStatusbarHeight'
-import IsShowBackBtn from './IsShowBackBtn'
 import IsShowExitBtn from './IsShowExitBtn'
-import DrawerLayoutPosition from './DrawerLayoutPosition'
+import ExitApp from './ExitApp'
 import { useI18n } from '@/lang/i18n'
 
 export default memo(() => {
@@ -27,15 +25,13 @@ export default memo(() => {
     <Section title={t('setting_basic')}>
       <IsStartupAutoPlay />
       <IsStartupPushPlayDetailScreen />
-      <IsShowBackBtn />
       <IsShowExitBtn />
       <IsAutoHidePlayBar />
-      <IsHomePageScroll />
       <IsAllowProgressBarSeek />
       <IsUseSystemFileSelector />
       <IsAlwaysKeepStatusbarHeight />
+      <ExitApp />
       <Theme />
-      <DrawerLayoutPosition />
       <Language />
       <FontSize />
       <ShareType />

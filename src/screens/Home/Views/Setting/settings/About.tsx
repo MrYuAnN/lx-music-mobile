@@ -8,7 +8,7 @@ import { createStyle, openUrl } from '@/utils/tools'
 // import { showPactModal } from '@/navigation'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { showPactModal } from '@/core/common'
 
 // const qqGroupUrl = 'mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3Du1zyxek8roQAwic44nOkBXtG9CfbAxFw'
@@ -132,7 +132,7 @@ const styles = createStyle({
   },
   boldText: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontFamily: FontFamilies.bold,
     textAlignVertical: 'bottom',
   },
   throughText: {

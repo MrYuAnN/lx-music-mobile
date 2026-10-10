@@ -1,6 +1,7 @@
 import { Navigation } from 'react-native-navigation'
 import * as screenNames from './screenNames'
 import * as navigations from './navigation'
+import { pop } from './navigation'
 
 import registerScreens from './registerScreens'
 import { removeComponentId } from '@/core/common'
@@ -38,4 +39,5 @@ export {
   init,
   screenNames,
   navigations,
+  pop,
 }

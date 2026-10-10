@@ -6,7 +6,7 @@ import Button from '@/components/common/Button'
 import { createStyle, openUrl } from '@/utils/tools'
 import { useSettingValue } from '@/store/setting/hook'
 import { useTheme } from '@/store/theme/hook'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import ModalContent from './ModalContent'
 import { exitApp } from '@/utils/nativeModules/utils'
 import { updateSetting } from '@/core/common'
@@ -193,11 +193,11 @@ const styles = createStyle({
   bold: {
     fontSize: 14,
     textAlignVertical: 'bottom',
-    fontWeight: 'bold',
+    fontFamily: FontFamilies.bold,
   },
   tip: {
     textAlignVertical: 'bottom',
-    fontWeight: 'bold',
+    fontFamily: FontFamilies.bold,
     paddingLeft: 15,
     paddingRight: 15,
     paddingBottom: 15,

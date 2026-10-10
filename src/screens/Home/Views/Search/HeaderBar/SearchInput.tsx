@@ -1,5 +1,6 @@
 import { useCallback, useRef, forwardRef, useImperativeHandle, useState } from 'react'
 // import { StyleSheet } from 'react-native'
+import { useI18n } from '@/lang'
 import Input, { type InputType, type InputProps } from '@/components/common/Input'
 
 export interface SearchInputProps {
@@ -17,6 +18,7 @@ export interface SearchInputType {
 }
 
 export default forwardRef<SearchInputType, SearchInputProps>(({ onChangeText, onSubmit, onBlur, onTouchStart }, ref) => {
+  const t = useI18n()
   // const theme = useTheme()
   const [text, setText] = useState('')
   const inputRef = useRef<InputType>(null)
@@ -54,7 +56,7 @@ export default forwardRef<SearchInputType, SearchInputProps>(({ onChangeText, on
   return (
     <Input
       ref={inputRef}
-      placeholder="Search for something..."
+      placeholder={t('search_placeholder')}
       value={text}
       onChangeText={handleChangeText}
       // style={{ ...styles.input, backgroundColor: theme['c-primary-input-background'] }}

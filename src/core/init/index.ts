@@ -40,7 +40,7 @@ export default async() => {
   bootLog('Setting inited.')
   // console.log(setting)
 
-  await initTheme(setting)
+  await initTheme()
   bootLog('Theme inited.')
   await initI18n(setting)
   bootLog('I18n inited.')
@@ -57,7 +57,7 @@ export default async() => {
   bootLog('Player inited.')
   await dataInit(setting)
   bootLog('Data inited.')
-  await initCommonState(setting)
+  await initCommonState()
   bootLog('Common State inited.')
 
   void initSync(setting)

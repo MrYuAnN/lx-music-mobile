@@ -12,7 +12,6 @@ import { useTheme } from '@/store/theme/hook'
 // import { useTheme } from '@/store/theme/hook'
 import BoardsList, { type BoardsListType, type BoardsListProps } from '../BoardsList'
 import type { InitState as CommonState } from '@/store/common/state'
-import settingState from '@/store/setting/state'
 import { getBoardsList } from '@/core/leaderboard'
 import { COMPONENT_IDS } from '@/config/constant'
 import { handleCollect, handlePlay } from '../listAction'
@@ -126,7 +125,6 @@ export default () => {
       // drawerWidth={width}
       widthPercentage={0.82}
       widthPercentageMax={MAX_WIDTH}
-      drawerPosition={settingState.setting['common.drawerLayoutPosition']}
       renderNavigationView={navigationView}
       drawerBackgroundColor={theme['c-content-background']}
       style={{ elevation: 1 }}

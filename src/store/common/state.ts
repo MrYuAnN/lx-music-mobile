@@ -8,7 +8,6 @@ export interface InitState {
   navActiveId: NAV_ID_Type
   lastNavActiveId: NAV_ID_Type
   sourceNames: Record<LX.OnlineSource | 'all', string>
-  bgPic: string | null
 }
 
 const initData = {}
@@ -20,7 +19,6 @@ const state: InitState = {
   navActiveId: 'nav_search',
   lastNavActiveId: 'nav_search',
   sourceNames: initData as InitState['sourceNames'],
-  bgPic: null,
 }
 
 

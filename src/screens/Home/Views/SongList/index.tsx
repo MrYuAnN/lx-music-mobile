@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import settingState from '@/store/setting/state'
 import Content from './Content'
 import TagList from './TagList'
 import { useTheme } from '@/store/theme/hook'
@@ -47,7 +46,6 @@ export default () => {
       visibleNavNames={[COMPONENT_IDS.home]}
       widthPercentage={0.8}
       widthPercentageMax={MAX_WIDTH}
-      drawerPosition={settingState.setting['common.drawerLayoutPosition']}
       renderNavigationView={navigationView}
       drawerBackgroundColor={theme['c-content-background']}
       style={{ elevation: 1 }}

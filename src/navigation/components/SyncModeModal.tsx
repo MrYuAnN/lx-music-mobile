@@ -4,7 +4,7 @@ import { View, ScrollView } from 'react-native'
 import Button from '@/components/common/Button'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import ModalContent from './ModalContent'
 import syncState from '@/store/sync/state'
@@ -59,7 +59,7 @@ const styles = createStyle({
     paddingBottom: 10,
   },
   tipTitle: {
-    fontWeight: 'bold',
+    fontFamily: FontFamilies.bold,
   },
   tip: {
     // paddingLeft: 15,

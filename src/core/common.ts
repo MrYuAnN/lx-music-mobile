@@ -109,6 +109,3 @@ export const requestStoragePermission = async() => {
   return true
 }
 
-export const setBgPic = (pic: string | null) => {
-  commonActions.setBgPic(pic)
-}

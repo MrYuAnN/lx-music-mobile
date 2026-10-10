@@ -1,9 +1,8 @@
 import { useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
-import Menu, { type Menus, type MenuType, type Position } from '@/components/common/Menu'
+import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
 import { LIST_IDS } from '@/config/constant'
 import musicSdk from '@/utils/musicSdk'
-import { scaleSizeW } from '@/utils/pixelRatio'
 import listState from '@/store/list/state'
 
 export interface SelectInfo {
@@ -14,8 +13,6 @@ export interface SelectInfo {
   // single: boolean
 }
 const initSelectInfo = {}
-
-const menuItemWidth = scaleSizeW(110)
 
 
 export interface ListMenuProps {
@@ -49,20 +46,20 @@ export default forwardRef<ListMenuType, ListMenuProps>(({
   onRemove,
 }, ref) => {
   const t = useI18n()
-  const menuRef = useRef<MenuType>(null)
+  const menuRef = useRef<ActionSheetType>(null)
   const selectInfoRef = useRef<SelectInfo>(initSelectInfo as SelectInfo)
-  const [menus, setMenus] = useState<Menus>([])
+  const [menus, setMenus] = useState<ActionSheetItem[]>([])
   const [visible, setVisible] = useState(false)
 
   useImperativeHandle(ref, () => ({
-    show(selectInfo, position) {
+    show(selectInfo) {
       selectInfoRef.current = selectInfo
       handleSetMenu(selectInfo.listInfo)
-      if (visible) menuRef.current?.show(position)
+      if (visible) menuRef.current?.show()
       else {
         setVisible(true)
         requestAnimationFrame(() => {
-          menuRef.current?.show(position)
+          menuRef.current?.show()
         })
       }
     },
@@ -87,16 +84,16 @@ export default forwardRef<ListMenuType, ListMenuProps>(({
     }
 
     setMenus([
-      { action: 'new', label: t('list_create') },
-      { action: 'rename', disabled: !rename, label: t('list_rename') },
-      { action: 'sort', label: t('list_sort') },
-      { action: 'duplicateMusic', label: t('lists__duplicate') },
-      { action: 'local_file', disabled: !local_file, label: t('list_select_local_file') },
-      { action: 'sync', disabled: !sync || !local_file, label: t('list_sync') },
-      { action: 'import', label: t('list_import') },
-      { action: 'export', label: t('list_export') },
+      { action: 'new', label: t('list_create'), icon: 'plus' },
+      { action: 'rename', disabled: !rename, label: t('list_rename'), icon: 'edit-metadata' },
+      { action: 'sort', label: t('list_sort'), icon: 'change-position' },
+      { action: 'duplicateMusic', label: t('lists__duplicate'), icon: 'copy-name' },
+      { action: 'local_file', disabled: !local_file, label: t('list_select_local_file'), icon: 'move-to' },
+      { action: 'sync', disabled: !sync || !local_file, label: t('list_sync'), icon: 'toggle-source' },
+      { action: 'import', label: t('list_import'), icon: 'download-2' },
+      { action: 'export', label: t('list_export'), icon: 'share' },
       // { action: 'changePosition', label: t('change_position') },
-      { action: 'remove', disabled: !remove, label: t('list_remove') },
+      { action: 'remove', disabled: !remove, label: t('list_remove'), icon: 'trash', destructive: true },
     ])
   }
 
@@ -141,11 +138,10 @@ export default forwardRef<ListMenuType, ListMenuProps>(({
 
   return (
     visible
-      ? <Menu
+      ? <ActionSheet
           ref={menuRef}
           menus={menus}
           onPress={handleMenuPress}
-          width={menuItemWidth}
         />
       : null
   )
