@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { StyleSheet, View } from 'react-native'
 
 import CategoryChips from '@/components/common/CategoryChips'
+import { SPACING } from '@/config/spacing'
 import { type SearchType } from '@/store/search/state'
 import { useI18n } from '@/lang'
 import { getSearchSetting } from '@/utils/data'
@@ -42,7 +43,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 0,
     flexShrink: 0,
-    paddingTop: 12,
-    paddingBottom: 2,
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s2,
   },
 })

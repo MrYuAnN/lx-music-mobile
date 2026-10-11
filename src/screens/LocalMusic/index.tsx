@@ -4,6 +4,7 @@ import { AppState, FlatList, Linking, NativeModules, Platform, TouchableOpacity,
 import Text from '@/components/common/Text'
 import SearchBar from '@/components/common/SearchBar'
 import CategoryChips from '@/components/common/CategoryChips'
+import { SPACING } from '@/config/spacing'
 import DotsVertical from '@/components/common/DotsVertical'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
 import PageContent from '@/components/PageContent'
@@ -23,7 +24,6 @@ import { useSettingValue } from '@/store/setting/hook'
 import { pushLocalMusicGroupScreen } from '@/navigation/navigation'
 import { createStyle } from '@/utils/tools'
 import { ensureStoragePermission, isStorageGranted } from '@/utils/permissions'
-import { scaleSizeH } from '@/utils/pixelRatio'
 
 type ViewId = 'all' | 'folder' | 'album' | 'artist'
 
@@ -357,12 +357,12 @@ const EmptyList = ({ denied, scanning, scanningLabel, onOpenSettings }: {
 
 const styles = createStyle({
   searchBar: {
-    marginHorizontal: 14,
-    marginBottom: 4,
+    marginHorizontal: SPACING.s16,
+    marginTop: SPACING.s8,
   },
   chips: {
-    paddingTop: 12,
-    paddingBottom: 2,
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s2,
   },
   list: {
     flex: 1,
@@ -404,7 +404,7 @@ const styles = createStyle({
     borderRadius: 52,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: scaleSizeH(56),
+    marginTop: 56,
   },
   disc: {
     width: 52,
@@ -431,7 +431,7 @@ const styles = createStyle({
   },
   guideBtn: {
     alignSelf: 'stretch',
-    height: scaleSizeH(44),
+    height: 44,
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',

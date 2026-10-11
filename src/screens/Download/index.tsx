@@ -21,6 +21,7 @@ import { playList } from '@/core/player/player'
 import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
 import { qualityLabel as formatQuality } from '@/utils/music'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
 type TabId = 'running' | 'waiting' | 'error' | 'completed'
@@ -334,8 +335,8 @@ const EmptyList = ({ tab }: { tab: TabId }) => {
 
 const styles = createStyle({
   chips: {
-    paddingTop: 12,
-    paddingBottom: 2,
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s2,
   },
   list: {
     flex: 1,

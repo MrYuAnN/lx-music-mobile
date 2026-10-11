@@ -7,6 +7,7 @@ import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
+import { SPACING } from '@/config/spacing'
 import { type Source as MusicSource } from '@/store/search/music/state'
 import { type Source as SonglistSource } from '@/store/search/songlist/state'
 
@@ -89,21 +90,20 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onSourceChange, onTi
 
 const styles = StyleSheet.create({
   container: {
-    paddingHorizontal: 14,
-    paddingTop: 6,
-    paddingBottom: 4,
+    paddingHorizontal: SPACING.s16,
+    paddingTop: SPACING.s8,
     zIndex: 2,
   },
   searchBar: {
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.s10,
   },
   sourceBtn: {
-    paddingVertical: 4,
+    paddingVertical: SPACING.s4,
   },
   sourcePrefix: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: SPACING.s4,
     height: '100%',
   },
   caret: {
