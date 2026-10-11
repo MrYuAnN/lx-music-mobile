@@ -224,7 +224,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
   const handleHide = () => {
     requestAnimationFrame(() => {
       const ninfo = { ...info, name: '' }
-      setInfo(ninfo as LX.List.MyListInfo)
+      setInfo(ninfo)
     })
   }
 

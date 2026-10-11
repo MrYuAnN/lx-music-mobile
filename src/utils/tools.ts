@@ -447,7 +447,6 @@ export function debounceBackgroundTimer<Args extends any[]>(fn: (...args: Args) 
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-types
 type Styles = StyleSheet.NamedStyles<Record<string, {}>>
 type Style = Styles[keyof Styles]
 // 样式数值口径 = dp 直译（2026-10-11 拍板）：写入值即渲染值，不做屏幕/字号缩放。

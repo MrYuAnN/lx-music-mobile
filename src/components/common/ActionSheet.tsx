@@ -22,7 +22,7 @@ export interface ActionSheetItem {
 }
 
 export interface ActionSheetProps {
-  menus: Readonly<ActionSheetItem[]>
+  menus: readonly ActionSheetItem[]
   onPress: (menu: ActionSheetItem) => void
   onHide?: () => void
   title?: string

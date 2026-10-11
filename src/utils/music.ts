@@ -10,7 +10,7 @@ export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promi
 
 /** online 行音质元数据提取（local 无 _qualitys 返回 undefined）；统一行/PlayListPanel/下载引擎共用 */
 export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQualityType | undefined => {
-  return item.source == 'local' ? undefined : (item.meta as LX.Music.MusicInfoMeta_online)._qualitys
+  return item.source == 'local' ? undefined : (item.meta)._qualitys
 }
 
 // 音质档位文案（与播放页 ActionRow 同口径：128k=标准，HQ/SQ/24bit 复用既有键；ape 归 SQ 档语义）

@@ -64,5 +64,5 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
 
 export const getTheme = (): LX.Theme => {
   const themeId = resolveThemeId()
-  return (themes.find(theme => theme.id == themeId) ?? themes[0]) as LX.Theme
+  return (themes.find(theme => theme.id == themeId) ?? themes[0])
 }

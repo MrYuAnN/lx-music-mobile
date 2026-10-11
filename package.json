@@ -4,7 +4,6 @@
   "versionCode": 78,
   "private": true,
   "scripts": {
-    "postinstall": "patch-package",
     "dev": "react-native run-android --active-arch-only",
     "ios": "react-native run-ios",
     "start": "react-native start",
@@ -61,7 +60,6 @@
     "react": "19.2.3",
     "react-native": "0.86.3",
     "react-native-background-timer": "github:lyswhut/react-native-background-timer#55ecaa80880e9cec1fff81f3ce10e6250ab3c40c",
-    "react-native-exception-handler": "~2.10.10",
     "react-native-file-system": "github:lyswhut/react-native-file-system#fcb0e6f55af684ac60598c720c77cfe0502f2c65",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-haptic-feedback": "~3.0.0",
@@ -91,13 +89,14 @@
     "@react-native/metro-config": "0.86.3",
     "@react-native/typescript-config": "0.86.3",
     "@types/he": "^1.2.3",
-    "@types/node": "~20.19.0",
+    "@types/node": "^26.6.5",
     "@types/react": "^19.2.0",
     "@types/react-native-background-timer": "^2.0.2",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
     "babel-plugin-module-resolver": "^5.0.3",
     "changelog-parser": "^3.0.1",
     "eslint-config-standard": "^17.1.0",
-    "eslint-config-standard-with-typescript": "^43.0.1",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
     "patch-package": "^8.0.1",
@@ -116,7 +115,6 @@
     },
     "@typescript-eslint/typescript-estree": {
       "minimatch": "^9"
-    },
-    "@types/node": "~20.19.0"
+    }
   }
 }

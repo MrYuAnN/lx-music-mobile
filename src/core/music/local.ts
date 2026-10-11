@@ -171,7 +171,7 @@ export const parseLyric = (lrc: string): LX.Music.LyricInfo => {
       const target = lrcTags[result[1].toLowerCase() as 'tlrc' | 'rlrc' | 'lrc' | 'awlrc']
       if (!target) continue
       // tsc 全绿；ts-eslint 6.21 对 Buffer.from 泛型重载误判 any（栈升级另行排期）
-      const data = Buffer.from(result[2] ?? '', 'base64').toString('utf-8').trim() as string
+      const data = Buffer.from(result[2] ?? '', 'base64').toString('utf-8').trim()
       if (target.verify(data)) lyricInfo[target.name] = data
     }
     return lyricInfo

@@ -98,7 +98,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
     })
   }, [])
 
-  const qualityOptions = useMemo<Readonly<CheckSheetItem[]>>(() => {
+  const qualityOptions = useMemo<readonly CheckSheetItem[]>(() => {
     const musicInfo = playMusicInfo.musicInfo
       ? ('progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo : playMusicInfo.musicInfo)
       : null

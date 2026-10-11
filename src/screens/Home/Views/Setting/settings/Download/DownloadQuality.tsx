@@ -21,7 +21,7 @@ export default memo(() => {
   const sheetRef = useRef<CheckSheetType>(null)
   const [sheetVisible, setSheetVisible] = useState(false)
 
-  const options = useMemo<Readonly<CheckSheetItem[]>>(() => {
+  const options = useMemo<readonly CheckSheetItem[]>(() => {
     return DOWNLOAD_QUALITY_OPTIONS.map(q => ({ action: q, label: qualityLabel(q, t) }))
   }, [t])
 

@@ -1,6 +1,5 @@
 import { Alert } from 'react-native'
 // import { exitApp } from '@/utils/common'
-import { setJSExceptionHandler, setNativeExceptionHandler } from 'react-native-exception-handler'
 import { log } from '@/utils/log'
 import { toast } from './tools'
 
@@ -32,11 +31,14 @@ const errorHandler = (e: Error, isFatal: boolean) => {
   log.error(e.stack)
 }
 
-if (process.env.NODE_ENV !== 'development') {
-  setJSExceptionHandler(errorHandler)
+// N2 后挂账落地：react-native-exception-handler（上游停更 2024-07，Gradle 9/AGP 8 需 patch 续命）
+// 退役，JS 异常兜底直接用 RN 内建 ErrorUtils（setJSExceptionHandler 的底层等价物，语义不变）；
+// native crash 本地日志能力随库退役放弃（拍板接受）
+interface ErrorUtilsLike {
+  setGlobalHandler: (handler: (error: Error, isFatal: boolean) => void) => void
+}
 
-  setNativeExceptionHandler((errorString) => {
-    log.error(errorString)
-    console.log('+++++', errorString, '+++++')
-  }, false)
+if (process.env.NODE_ENV !== 'development') {
+  const errorUtils = (globalThis as { ErrorUtils?: ErrorUtilsLike }).ErrorUtils
+  errorUtils?.setGlobalHandler(errorHandler)
 }

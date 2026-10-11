@@ -21,7 +21,7 @@ export default memo(() => {
   const sheetRef = useRef<CheckSheetType>(null)
   const [sheetVisible, setSheetVisible] = useState(false)
 
-  const options = useMemo<Readonly<CheckSheetItem[]>>(() => {
+  const options = useMemo<readonly CheckSheetItem[]>(() => {
     return CONCURRENCY_OPTIONS.map(n => ({ action: String(n), label: String(n) }))
   }, [])
 

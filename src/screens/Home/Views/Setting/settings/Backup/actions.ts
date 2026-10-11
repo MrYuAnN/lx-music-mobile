@@ -11,7 +11,7 @@ const getAllLists = async() => {
   lists.push(await getListMusics(listState.defaultList.id).then(musics => ({ ...listState.defaultList, list: musics })))
   lists.push(await getListMusics(listState.loveList.id).then(musics => ({ ...listState.loveList, list: musics })))
 
-  for await (const list of listState.userList) {
+  for (const list of listState.userList) {
     lists.push(await getListMusics(list.id).then(musics => ({ ...list, list: musics })))
   }
 
@@ -33,7 +33,7 @@ const importOldListData = async(lists: any[]) => {
           sourceListId: list.sourceListId,
           locationUpdateTime: list.locationUpdateTime ?? null,
         }
-        allLists.push(listInfo as LX.List.UserListInfoFull)
+        allLists.push(listInfo)
       }
     } catch (err) {
       console.log(err)
@@ -59,7 +59,7 @@ const importNewListData = async(lists: Array<LX.List.MyDefaultListInfoFull | LX.
           sourceListId: (list as LX.List.UserListInfoFull).sourceListId,
           locationUpdateTime: (list as LX.List.UserListInfoFull).locationUpdateTime ?? null,
         }
-        allLists.push(data as LX.List.UserListInfoFull)
+        allLists.push(data)
       }
     } catch (err) {
       console.log(err)

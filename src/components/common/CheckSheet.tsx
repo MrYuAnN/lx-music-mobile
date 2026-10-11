@@ -19,7 +19,7 @@ export interface CheckSheetItem {
 
 export interface CheckSheetProps {
   title: string
-  options: Readonly<CheckSheetItem[]>
+  options: readonly CheckSheetItem[]
   /** 当前选中项 action */
   value: string
   onPress: (item: CheckSheetItem) => void

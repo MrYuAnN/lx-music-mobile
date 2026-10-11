@@ -84,17 +84,18 @@ export const buildLyricInfo = async(lyricInfo: MakeOptional<LX.Player.LyricInfo,
   }
 
   if (settingState.setting['player.isS2t']) {
+    // langS2T 为同步转换（返回 string），统一包 Promise.resolve 对齐 all 聚合类型（lint 栈升级暴露）
     const tasks = [
-      lyricInfo.lyric ? langS2T(lyricInfo.lyric) : Promise.resolve(''),
-      lyricInfo.tlyric ? langS2T(lyricInfo.tlyric) : Promise.resolve(''),
-      lyricInfo.rlyric ? langS2T(lyricInfo.rlyric) : Promise.resolve(''),
-      lyricInfo.lxlyric ? langS2T(lyricInfo.lxlyric) : Promise.resolve(''),
+      Promise.resolve(lyricInfo.lyric ? langS2T(lyricInfo.lyric) : ''),
+      Promise.resolve(lyricInfo.tlyric ? langS2T(lyricInfo.tlyric) : ''),
+      Promise.resolve(lyricInfo.rlyric ? langS2T(lyricInfo.rlyric) : ''),
+      Promise.resolve(lyricInfo.lxlyric ? langS2T(lyricInfo.lxlyric) : ''),
     ]
     if (lyricInfo.rawlrcInfo) {
-      tasks.push(lyricInfo.lyric ? langS2T(lyricInfo.lyric) : Promise.resolve(''))
-      tasks.push(lyricInfo.tlyric ? langS2T(lyricInfo.tlyric) : Promise.resolve(''))
-      tasks.push(lyricInfo.rlyric ? langS2T(lyricInfo.rlyric) : Promise.resolve(''))
-      tasks.push(lyricInfo.lxlyric ? langS2T(lyricInfo.lxlyric) : Promise.resolve(''))
+      tasks.push(Promise.resolve(lyricInfo.lyric ? langS2T(lyricInfo.lyric) : ''))
+      tasks.push(Promise.resolve(lyricInfo.tlyric ? langS2T(lyricInfo.tlyric) : ''))
+      tasks.push(Promise.resolve(lyricInfo.rlyric ? langS2T(lyricInfo.rlyric) : ''))
+      tasks.push(Promise.resolve(lyricInfo.lxlyric ? langS2T(lyricInfo.lxlyric) : ''))
     }
     return Promise.all(tasks).then(([lyric, tlyric, rlyric, lxlyric, lyric_raw, tlyric_raw, rlyric_raw, lxlyric_raw]) => {
       const rawlrcInfo = lyric_raw ? {

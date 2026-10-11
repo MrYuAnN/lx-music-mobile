@@ -111,6 +111,18 @@ git 依赖构建提示：lovegaoshi fork 的 prepare 脚本是 `yarn build`，np
 
 **被证伪记录**（三席合计排除 12 项疑点，含 PlaybackState payload 形状、getMany 丢序、getActiveTrackIndex 空值、worklets 0.13 配对（官方 release notes 确认 4.7 配 0.13.x）、pogodin-fs 活跃度（8 天前有发布）等，详见各席报告）。
 
+## 11. N2 后挂账清理批（2026-10-11 同日，真机走查延后期间）
+
+用户拍板三项扩展范围全做（eslint 栈升级 / exception-handler JS 替代 / minibar-click 代码侧排查）+ 既有挂账小清理，验证 tsc/eslint/bundle 三绿：
+
+1. **react-native-exception-handler 退役（JS 层替代）**：`errorHandle.ts` 改用 RN 内建 `ErrorUtils.setGlobalHandler`（`setJSExceptionHandler` 的底层等价物，语义不变）；native crash 本地日志能力随库退役（拍板接受）。依赖 + postinstall（patch-package 机制）+ patch 文件整体移除——**patches 目录真归零，patch 机制退役**（NB-3 已随 N2 删，无存量 patch）。
+2. **eslint 栈升级**：`eslint-config-standard-with-typescript`（停更于 43.0.1，锁死 ts-eslint 6）弃用，直装 **typescript-eslint 8.71.1**；`.eslintrc.cjs` 复刻 43.0.1 口径（standard 等价规则 + 手挑 type-checked 子集：no-floating-promises/no-misused-promises/await-thenable/unbound-method/no-unnecessary-type-assertion 等），不开 recommended 全家（no-explicit-any/require-await 等显式 off 对齐旧基线）。**@types/node 解除 pin 升 ^26.6.5**（overrides 删除）；三处 Buffer 断言删除（ts-eslint 8 类型程序修复实证：Buffer.from 泛型重载解析正常）。
+   - 新类型程序暴露并修复的真实问题：`core/music/utils.ts` langS2T 同步函数被误作 Promise 用（×8 处 Promise.resolve 包装）、`Backup/actions.ts` 对普通数组 for await、`types/app.d.ts` module→namespace、`CommentFloor` 失效 disable 规则名（no-var-requires→no-require-imports）、`tools.ts` 失效 ban-types disable 删除、7 处多余断言 + 6 处 array-type 写法（--fix）。
+3. **挂账小清理**：i18n 孤儿键 4 key × 3 语言删除（audio offload/audio focus）；`removeDataMultiple` 的 getMany 补 try-catch（对齐全文件惯例）。
+4. **configuration cache 重评估（N2 挂账）**：`--configuration-cache` 实测 **保持关闭**——唯一阻塞点 `@react-native-menu/menu` build.gradle:56 配置期起 node 外部进程（monorepo workaround）；menu 后续版本修复后可重开。
+5. **stage 变体构建验证**：`assembleStage` 全任务成功，stage APK 产出正常（新架构下 build-speed 机制的 stage 包完好）。
+6. **minibar-click 代码侧排查（衔接 N3）**：排查员静态定位完成——**未发现新架构下必然导致点击失效的缺陷；历史 bug 两大嫌疑（RNN ReactRootView 最后一公里 / appear 事件丢失）的载体已随 N1/N2 消亡，最可能已被顺带修复**。候选根因 C1 空态 guard 静默吞点击（Pic/Title 的 `!musicInfo.id`/`!currentScreen` 静默 return）> C2 Fabric 层级未知回归（CoverFlyHost 残留层为唯一状态差异点）> C3 pendingHide 卡死 > C4 release 包 haptic 短路 > C5 inset 跳变。**真机验证清单 V1-V10**（debug 包 + logcat 探针）随 N3 装机执行，V1 通过即结案。
+
 ## 8. 装机走查清单（N2 验收 + N3 回归输入）
 
 - 播放全链路：播放/切歌/队列/seek、通知栏出现与控制、媒体按钮、**退出后通知栏消失语义（destroy→reset 换装的验证点）**、播放缓存设置页数字（弱化为仅 app 缓存）

@@ -174,7 +174,14 @@ export const saveDataMultiple = async(datas: Array<[string, any]>) => {
 
 export const removeDataMultiple = async(keys: string[]) => {
   if (!keys.length) return
-  const datas = await AsyncStorage.getMany(keys)
+  let datas: Record<string, string | null>
+  try {
+    datas = await AsyncStorage.getMany(keys)
+  } catch (e: any) {
+    // read error
+    log.error('storage error[removeDataMultiple]:', e.message)
+    throw e
+  }
   let allKeys = []
   for (const key of keys) {
     const value = datas[key]

@@ -9,13 +9,13 @@ export const usePlaybackState = () => {
     async function setPlayerState() {
       // N2 换装 lovegaoshi fork：getState() → getPlaybackState()
       const playerState = await TrackPlayer.getPlaybackState()
-      setState(playerState.state as State)
+      setState(playerState.state)
     }
 
     void setPlayerState()
 
     const sub = TrackPlayer.addEventListener(Event.PlaybackState, data => {
-      setState(data.state as State)
+      setState(data.state)
     })
 
     return () => { sub.remove() }
