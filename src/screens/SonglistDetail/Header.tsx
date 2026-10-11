@@ -1,8 +1,10 @@
 import { forwardRef, memo, useEffect, useImperativeHandle, useState } from 'react'
 import { View } from 'react-native'
+import Animated from 'react-native-reanimated'
 import { BorderWidths } from '@/theme'
 import ButtonBar from './ActionBar'
-import { useNavigationComponentDidAppear } from '@/navigation'
+import { useIntroStyle } from '@/navigation/transitions/intro'
+import { useCoverFlyTarget } from '@/navigation/transitions/coverFly'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { useTheme } from '@/store/theme/hook'
@@ -32,27 +34,24 @@ const CountText = memo(({ count }: { count: string }) => {
   return true
 })
 
-const Pic = ({ componentId, playCount, imgUrl }: {
-  componentId: string
+const Pic = ({ playCount, imgUrl }: {
   playCount: string
   imgUrl?: string
 }) => {
   const [pic, setPic] = useState(imgUrl)
-  const [animated, setAnimated] = useState(false)
   const info = useListInfo()
+  // 封面飞入目标侧（RNN sharedElement 的 reanimated 等价）：飞行落定前隐藏原图，落定语义
+  // 与原 appear 驱动的 animated 一致（播放数淡入、图刷新同拍）
+  const { ref, onLayout, settled, imageStyle } = useCoverFlyTarget(info.id)
   useEffect(() => {
-    if (animated) setPic(imgUrl)
-  }, [imgUrl, animated])
-
-  useNavigationComponentDidAppear(componentId, () => {
-    setAnimated(true)
-  })
+    if (settled) setPic(imgUrl)
+  }, [imgUrl, settled])
 
   return (
-    <View style={{ ...styles.listItemImg, width: IMAGE_WIDTH, height: IMAGE_WIDTH }}>
-      <Image nativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`} url={pic} style={{ flex: 1, borderRadius: 4 }} />
+    <View ref={ref} onLayout={onLayout} style={{ ...styles.listItemImg, width: IMAGE_WIDTH, height: IMAGE_WIDTH }}>
+      <Image nativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`} url={pic} style={{ flex: 1, borderRadius: 4, ...(imageStyle ?? {}) }} />
       {
-        playCount && animated ? <CountText count={playCount} /> : null
+        playCount && settled ? <CountText count={playCount} /> : null
       }
     </View>
   )
@@ -72,11 +71,13 @@ export interface DetailInfo {
   imgUrl?: string
 }
 
-export default forwardRef<HeaderType, HeaderProps>(({ componentId }: { componentId: string }, ref) => {
+export default forwardRef<HeaderType, HeaderProps>((_props, ref) => {
   const statusBarHeight = useStatusbarHeight()
   const theme = useTheme()
   const info = useListInfo()
   const [detailInfo, setDetailInfo] = useState<DetailInfo>({ name: '', desc: '', playCount: '', imgUrl: info.img })
+  // 标题元素进出场（RNN elementTransitions 等价：alpha 0→1 + translationX 16→0）
+  const titleIntroStyle = useIntroStyle('title')
 
   useImperativeHandle(ref, () => ({
     setInfo(info) {
@@ -87,13 +88,16 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }: { component
   return (
     <View style={{ ...styles.container, paddingTop: statusBarHeight, borderBottomColor: theme['c-border-background'] }}>
       <View style={{ flexDirection: 'row', flexGrow: 0, flexShrink: 0, padding: SPACING.s10 }}>
-        <Pic componentId={componentId} playCount={detailInfo.playCount} imgUrl={detailInfo.imgUrl} />
-        <View style={{ flexDirection: 'column', flexGrow: 1, flexShrink: 1, paddingLeft: SPACING.s6 }} nativeID={NAV_SHEAR_NATIVE_IDS.songlistDetail_title}>
+        <Pic playCount={detailInfo.playCount} imgUrl={detailInfo.imgUrl} />
+        <Animated.View
+          style={[{ flexDirection: 'column', flexGrow: 1, flexShrink: 1, paddingLeft: SPACING.s6 }, titleIntroStyle]}
+          nativeID={NAV_SHEAR_NATIVE_IDS.songlistDetail_title}
+        >
           <Text size={14} numberOfLines={ 1 }>{detailInfo.name}</Text>
           <View style={{ flexGrow: 0, flexShrink: 1 }}>
             <Text size={13} color={theme['c-font-label']} numberOfLines={ 4 }>{detailInfo.desc}</Text>
           </View>
-        </View>
+        </Animated.View>
       </View>
       <ButtonBar />
       {/* <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>

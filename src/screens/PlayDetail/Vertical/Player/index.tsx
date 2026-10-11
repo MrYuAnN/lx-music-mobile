@@ -1,5 +1,5 @@
 import { memo } from 'react'
-import { View } from 'react-native'
+import Animated from 'react-native-reanimated'
 
 // import Title from './components/Title'
 import ActionRow from './components/ActionRow'
@@ -7,6 +7,7 @@ import PlayInfo from './components/PlayInfo'
 import ControlBtn from './components/ControlBtn'
 import { createStyle } from '@/utils/tools'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
+import { useIntroStyle } from '@/navigation/transitions/intro'
 import { useBottomInset } from '@/utils/insetsTool'
 import { SPACING } from '@/config/spacing'
 
@@ -15,13 +16,18 @@ const PLAYER_PADDING_BOTTOM = 15
 
 export default memo(({ page }: { page: number }) => {
   const navBarInset = useBottomInset(true)
+  // push 元素进出场（RNN elementTransitions 等价：alpha 0→1 + translationY +32→0）
+  const introStyle = useIntroStyle('player')
 
   return (
-    <View style={{ ...styles.container, paddingBottom: PLAYER_PADDING_BOTTOM + navBarInset }} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_player}>
+    <Animated.View
+      style={[{ ...styles.container, paddingBottom: PLAYER_PADDING_BOTTOM + navBarInset }, introStyle]}
+      nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_player}
+    >
       <ActionRow page={page} />
       <PlayInfo />
       <ControlBtn />
-    </View>
+    </Animated.View>
   )
 })
 

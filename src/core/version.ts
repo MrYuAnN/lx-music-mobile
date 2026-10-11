@@ -4,19 +4,17 @@ import versionActions from '@/store/version/action'
 import versionState, { type InitState } from '@/store/version/state'
 import { getIgnoreVersion, getIgnoreVersionFailTipTime, saveIgnoreVersion, saveIgnoreVersionFailTipTime } from '@/utils/data'
 import { showVersionModal } from '@/navigation'
-import { Navigation } from 'react-native-navigation'
 import { toast } from '@/utils/tools'
 
 export const showModal = () => {
   if (versionState.showModal) return
-  versionActions.setVisibleModal(true)
   showVersionModal()
 }
 
-export const hideModal = (componentId: string) => {
+// N1：RNN dismissOverlay → store 标志（ModalHosts 据此开合）
+export const hideModal = () => {
   if (!versionState.showModal) return
   versionActions.setVisibleModal(false)
-  void Navigation.dismissOverlay(componentId)
 }
 
 export const checkUpdate = async() => {

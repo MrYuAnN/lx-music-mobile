@@ -14,6 +14,21 @@ export const useVersionInfo = () => {
   return info
 }
 
+// 弹窗可见性（N1：RNN overlay → store 驱动的 RN Modal）
+export const useVersionModalVisible = () => {
+  const [visible, setVisible] = useState(state.showModal)
+
+  useEffect(() => {
+    const update = (v: boolean) => { setVisible(v) }
+    global.state_event.on('versionModalUpdated', update)
+    return () => {
+      global.state_event.off('versionModalUpdated', update)
+    }
+  }, [])
+
+  return visible
+}
+
 export const useVersionDownloadProgressUpdated = () => {
   const [status, setStatus] = useState(state.progress)
 

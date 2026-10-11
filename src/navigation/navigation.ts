@@ -1,12 +1,9 @@
-import { Navigation } from 'react-native-navigation'
-// import { InteractionManager } from 'react-native'
+import { StackActions } from '@react-navigation/native'
 
 import {
-  HOME_SCREEN,
   PLAY_DETAIL_SCREEN,
   SONGLIST_DETAIL_SCREEN,
   COMMENT_SCREEN,
-  // SETTING_SCREEN,
   SEARCH_SCREEN,
   SETTING_SCREEN,
   RECENT_PLAY_SCREEN,
@@ -16,691 +13,73 @@ import {
   LEADERBOARD_SCREEN,
   MYLIST_SCREEN,
   DOWNLOAD_SCREEN,
-  PLAYER_BAR_OVERLAY,
 } from './screenNames'
-
-import themeState from '@/store/theme/state'
-import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
+import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
-import { getStatusBarStyle } from './utils'
-import { windowSizeTools } from '@/utils/windowSizeTools'
+import { markSkipIntro } from './transitions/intro'
+import { withCoverSource } from './transitions/coverFly'
 import { type ListInfoItem } from '@/store/songlist/state'
 
-// const store = getStore()
-// const getTheme = () => getter('common', 'theme')(store.getState())
+// RNN push API 的 react-navigation 等价（N1 迁移）：
+// - componentId 参数保留签名但不再参与寻址（RNN 需栈句柄；react-navigation 单栈按屏名分发），
+//   屏内仍可拿到 route.key 作 componentId（注册表等语义不变）
+// - StackActions.push 恒压新实例（对齐 RNN push 多实例语义，不用 navigate 的去重回跳）
+// - 黑名单屏（播放页/评论页）push 前置 markPendingBlacklist（迷你条提前隐藏，NB-4 审查 I-1）
 
-// 迷你播放条全局 overlay（新批问题4）：仅启动挂载一次（现网 pushHomeScreen 仅 app.ts:58 启动调用；
-// 若未来引入 root 重建需重置标志，否则 overlay 永久缺失）。
-// 标志在 Promise 兑现后置位、失败重置并告警（NB-4 审查 I-2：防 void 吞错后永久缺失）；
-// 在 setRoot 兑现后调用（仓内无 setRoot 前 showOverlay 先例，时序以成功回调实证）
-let playerBarOverlayShown = false
-const showPlayerBarOverlay = () => {
-  if (playerBarOverlayShown) return
-  const theme = themeState.theme
-  void Navigation.showOverlay({
-    component: {
-      name: PLAYER_BAR_OVERLAY,
-      options: {
-        layout: {
-          componentBackgroundColor: 'transparent',
-        },
-        overlay: {
-          // 迷你条自身需可点，只拦截卡片区域（组件内 pointerEvents 定向）
-          interceptTouchOutside: false,
-        },
-        statusBar: {
-          drawBehind: true,
-          visible: true,
-          style: getStatusBarStyle(theme.isDark),
-          backgroundColor: 'transparent',
-        },
-        navigationBar: {
-          backgroundColor: 'transparent',
-        },
-      },
-    },
-  }).then(() => {
-    playerBarOverlayShown = true
-  }).catch((err) => {
-    console.warn('show player bar overlay failed', err)
-  })
+const pushRoute = (name: string, params?: Record<string, unknown>) => {
+  if (!navigationRef.isReady()) {
+    console.warn(`[navigation] container not ready, drop push: ${name}`)
+    return
+  }
+  navigationRef.dispatch(StackActions.push(name, params))
 }
 
-export async function pushHomeScreen() {
-  /*
-    Navigation.setDefaultOptions({
-      topBar: {
-        background: {
-          color: '#039893',
-        },
-        title: {
-          color: 'white',
-        },
-        backButton: {
-          title: '', // Remove previous screen name from back button
-          color: 'white',
-        },
-        buttonColor: 'white',
-      },
-      statusBar: {
-        style: 'light',
-      },
-      layout: {
-        orientation: ['portrait'],
-      },
-      bottomTabs: {
-        titleDisplayMode: 'alwaysShow',
-      },
-      bottomTab: {
-        textColor: 'gray',
-        selectedTextColor: 'black',
-        iconColor: 'gray',
-        selectedIconColor: 'black',
-      },
-    })
-  */
+// root 由 App 常驻渲染（NavigationContainer 首屏即 Home），RNN setRoot 语义不复存在；
+// 原 pushHomeScreen 的唯一消费方（app 启动链）已随 N1 重写，此导出退役。
 
-  const theme = themeState.theme
-  return Navigation.setRoot({
-    root: {
-      stack: {
-        children: [{
-          component: {
-            name: HOME_SCREEN,
-            options: {
-              topBar: {
-                visible: false,
-                height: 0,
-                drawBehind: false,
-              },
-              statusBar: {
-                drawBehind: true,
-                visible: true,
-                style: getStatusBarStyle(theme.isDark),
-                backgroundColor: 'transparent',
-              },
-              navigationBar: {
-                // visible: false,
-                // 播放页氛围背景延伸到手势区（透明导航栏），避免底部色带割裂
-                backgroundColor: 'transparent',
-              },
-              layout: {
-                componentBackgroundColor: theme['c-content-background'],
-              },
-            },
-          },
-        }],
-      },
-    },
-  }).then(() => {
-    // root 建立后再挂迷你条 overlay（NB-4 审查 I-2：setRoot 前下令无仓内先例）
-    showPlayerBarOverlay()
-  })
-}
 export function pushPlayDetailScreen(componentId: string, skipAnimation = false) {
-  /*
-    Navigation.setDefaultOptions({
-      topBar: {
-        background: {
-          color: '#039893',
-        },
-        title: {
-          color: 'white',
-        },
-        backButton: {
-          title: '', // Remove previous screen name from back button
-          color: 'white',
-        },
-        buttonColor: 'white',
-      },
-      statusBar: {
-        style: 'light',
-      },
-      layout: {
-        orientation: ['portrait'],
-      },
-      bottomTabs: {
-        titleDisplayMode: 'alwaysShow',
-      },
-      bottomTab: {
-        textColor: 'gray',
-        selectedTextColor: 'black',
-        iconColor: 'gray',
-        selectedIconColor: 'black',
-      },
-    })
-  */
-  requestAnimationFrame(() => {
-    const theme = themeState.theme
-
-    // 播放页为迷你条黑名单屏：置位提前隐藏，防转场动画期间迷你条浮在滑入页面上（NB-4 审查 I-1）
-    markPendingBlacklist()
-    void Navigation.push(componentId, {
-      component: {
-        name: PLAY_DETAIL_SCREEN,
-        options: {
-          topBar: {
-            visible: false,
-            height: 0,
-            drawBehind: false,
-          },
-          statusBar: {
-            drawBehind: true,
-            visible: true,
-            style: getStatusBarStyle(theme.isDark),
-            backgroundColor: 'transparent',
-          },
-          navigationBar: {
-            backgroundColor: 'transparent',
-          },
-          layout: {
-            componentBackgroundColor: theme['c-content-background'],
-          },
-          animations: {
-            push: skipAnimation ? {} : {
-              // sharedElementTransitions（迷你条封面飞入）已移除：迷你条迁 overlay 后 fromId 不再存在于
-              // screen 树，RNN 会静默跳过（转场降级为普通 push，新批问题4 拍板）；elementTransitions 的
-              // 目标元素在 PlayDetail 屏内，为活配置保留
-              elementTransitions: [
-                {
-                  id: NAV_SHEAR_NATIVE_IDS.playDetail_header,
-                  alpha: {
-                    from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 350,
-                  },
-                  translationY: {
-                    from: -32, // Animate translationY from 16dp to 0dp
-                    duration: 350,
-                  },
-                },
-                {
-                  id: NAV_SHEAR_NATIVE_IDS.playDetail_player,
-                  alpha: {
-                    from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 350,
-                  },
-                  translationY: {
-                    from: 32, // Animate translationY from 16dp to 0dp
-                    duration: 350,
-                  },
-                },
-              ],
-              // content: {
-              //   translationX: {
-              //     from: windowSizeTools.getSize().width,
-              //     to: 0,
-              //     duration: 300,
-              //   },
-              // },
-            },
-            pop: {
-              content: {
-                translationX: {
-                  from: 0,
-                  to: windowSizeTools.getSize().width,
-                  duration: 350,
-                },
-              },
-            },
-          },
-        },
-      },
-    })
-  })
+  // 播放页为迷你条黑名单屏：置位提前隐藏，防转场动画期间迷你条浮在滑入页面上
+  markPendingBlacklist()
+  if (skipAnimation) markSkipIntro()
+  void componentId
+  pushRoute(PLAY_DETAIL_SCREEN)
 }
+
 export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem) {
-  const theme = themeState.theme
-
-  requestAnimationFrame(() => {
-    void Navigation.push(componentId, {
-      component: {
-        name: SONGLIST_DETAIL_SCREEN,
-        passProps: {
-          info,
-        },
-        options: {
-          topBar: {
-            visible: false,
-            height: 0,
-            drawBehind: false,
-          },
-          statusBar: {
-            drawBehind: true,
-            visible: true,
-            style: getStatusBarStyle(theme.isDark),
-            backgroundColor: 'transparent',
-          },
-          navigationBar: {
-            backgroundColor: 'transparent',
-          },
-          layout: {
-            componentBackgroundColor: theme['c-content-background'],
-          },
-          animations: {
-            push: {
-              sharedElementTransitions: [
-                {
-                  fromId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${info.id}`,
-                  toId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`,
-                  interpolation: { type: 'decelerate' },
-                },
-              ],
-              elementTransitions: [
-                {
-                  id: NAV_SHEAR_NATIVE_IDS.songlistDetail_title,
-                  alpha: {
-                    from: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 350,
-                  },
-                  translationX: {
-                    from: 16, // Animate translationX from 16dp to 0dp
-                    duration: 350,
-                  },
-                },
-              ],
-              // content: {
-              //   scaleX: {
-              //     from: 1.2,
-              //     to: 1,
-              //     duration: 200,
-              //   },
-              //   scaleY: {
-              //     from: 1.2,
-              //     to: 1,
-              //     duration: 200,
-              //   },
-              //   alpha: {
-              //     from: 0,
-              //     to: 1,
-              //     duration: 200,
-              //   },
-              // },
-            },
-            pop: {
-              sharedElementTransitions: [
-                {
-                  fromId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`,
-                  toId: `${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${info.id}`,
-                  interpolation: { type: 'decelerate' },
-                },
-              ],
-              elementTransitions: [
-                {
-                  id: NAV_SHEAR_NATIVE_IDS.songlistDetail_title,
-                  alpha: {
-                    to: 0, // We don't declare 'to' value as that is the element's current alpha value, here we're essentially animating from 0 to 1
-                    duration: 350,
-                  },
-                  translationX: {
-                    to: 16, // Animate translationX from 16dp to 0dp
-                    duration: 350,
-                  },
-                },
-              ],
-              // content: {
-              //   alpha: {
-              //     from: 1,
-              //     to: 0,
-              //     duration: 200,
-              //   },
-              // },
-            },
-          },
-        },
-      },
-    })
+  void componentId
+  // 封面飞入：有已挂载源封面则实测源矩形后 push（withCoverSource 内保底普通 push）
+  withCoverSource(info.id, info.img ?? '', () => {
+    pushRoute(SONGLIST_DETAIL_SCREEN, { info })
   })
 }
 
-export function pop(componentId: string) {
-  void Navigation.pop(componentId).catch(() => {})
+export function pop(componentId?: string) {
+  void componentId
+  if (!navigationRef.isReady()) {
+    console.warn('[navigation] container not ready, drop pop')
+    return
+  }
+  navigationRef.goBack()
 }
 
-// AM-2：二级屏统一 push（标准滑动转场，topBar 隐藏；Views 自含 HeaderBar）
-const pushAmScreen = (componentId: string, screenName: string, passProps?: Record<string, unknown>) => {
-  requestAnimationFrame(() => {
-    const theme = themeState.theme
-
-    void Navigation.push(componentId, {
-      component: {
-        name: screenName,
-        passProps,
-        options: {
-          topBar: {
-            visible: false,
-            height: 0,
-            drawBehind: false,
-          },
-          statusBar: {
-            drawBehind: true,
-            visible: true,
-            style: getStatusBarStyle(theme.isDark),
-            backgroundColor: 'transparent',
-          },
-          navigationBar: {
-            backgroundColor: 'transparent',
-          },
-          layout: {
-            componentBackgroundColor: theme['c-content-background'],
-          },
-          animations: {
-            push: {
-              content: {
-                translationX: {
-                  from: windowSizeTools.getSize().width,
-                  to: 0,
-                  duration: 350,
-                },
-              },
-            },
-            pop: {
-              content: {
-                translationX: {
-                  from: 0,
-                  to: windowSizeTools.getSize().width,
-                  duration: 350,
-                },
-              },
-            },
-          },
-        },
-      },
-    })
-  })
+// AM-2：二级屏统一 push（标准滑动转场；Views 自含 HeaderBar）
+const pushAmScreen = (screenName: string, passProps?: Record<string, unknown>) => {
+  pushRoute(screenName, passProps)
 }
 
-export const pushSearchScreen = (componentId: string) => { pushAmScreen(componentId, SEARCH_SCREEN) }
-export const pushSettingScreen = (componentId: string) => { pushAmScreen(componentId, SETTING_SCREEN) }
-export const pushSongListScreen = (componentId: string) => { pushAmScreen(componentId, SONG_LIST_SCREEN) }
-export const pushLeaderboardScreen = (componentId: string) => { pushAmScreen(componentId, LEADERBOARD_SCREEN) }
-export const pushMylistScreen = (componentId: string) => { pushAmScreen(componentId, MYLIST_SCREEN) }
-export const pushDownloadScreen = (componentId: string) => { pushAmScreen(componentId, DOWNLOAD_SCREEN) }
-export const pushRecentPlayScreen = (componentId: string) => { pushAmScreen(componentId, RECENT_PLAY_SCREEN) }
-export const pushLocalMusicScreen = (componentId: string) => { pushAmScreen(componentId, LOCAL_MUSIC_SCREEN) }
-export const pushLocalMusicGroupScreen = (componentId: string, passProps: Record<string, unknown>) => { pushAmScreen(componentId, LOCAL_MUSIC_GROUP_SCREEN, passProps) }
+export const pushSearchScreen = (componentId: string) => { void componentId; pushAmScreen(SEARCH_SCREEN) }
+export const pushSettingScreen = (componentId: string) => { void componentId; pushAmScreen(SETTING_SCREEN) }
+export const pushSongListScreen = (componentId: string) => { void componentId; pushAmScreen(SONG_LIST_SCREEN) }
+export const pushLeaderboardScreen = (componentId: string) => { void componentId; pushAmScreen(LEADERBOARD_SCREEN) }
+export const pushMylistScreen = (componentId: string) => { void componentId; pushAmScreen(MYLIST_SCREEN) }
+export const pushDownloadScreen = (componentId: string) => { void componentId; pushAmScreen(DOWNLOAD_SCREEN) }
+export const pushRecentPlayScreen = (componentId: string) => { void componentId; pushAmScreen(RECENT_PLAY_SCREEN) }
+export const pushLocalMusicScreen = (componentId: string) => { void componentId; pushAmScreen(LOCAL_MUSIC_SCREEN) }
+export const pushLocalMusicGroupScreen = (componentId: string, passProps: Record<string, unknown>) => { void componentId; pushAmScreen(LOCAL_MUSIC_GROUP_SCREEN, passProps) }
+
 export function pushCommentScreen(componentId: string) {
-  /*
-    Navigation.setDefaultOptions({
-      topBar: {
-        background: {
-          color: '#039893',
-        },
-        title: {
-          color: 'white',
-        },
-        backButton: {
-          title: '', // Remove previous screen name from back button
-          color: 'white',
-        },
-        buttonColor: 'white',
-      },
-      statusBar: {
-        style: 'light',
-      },
-      layout: {
-        orientation: ['portrait'],
-      },
-      bottomTabs: {
-        titleDisplayMode: 'alwaysShow',
-      },
-      bottomTab: {
-        textColor: 'gray',
-        selectedTextColor: 'black',
-        iconColor: 'gray',
-        selectedIconColor: 'black',
-      },
-    })
-  */
-  requestAnimationFrame(() => {
-    const theme = themeState.theme
-
-    // 评论页为迷你条黑名单屏：置位提前隐藏（同 pushPlayDetailScreen）
-    markPendingBlacklist()
-    void Navigation.push(componentId, {
-      component: {
-        name: COMMENT_SCREEN,
-        options: {
-          topBar: {
-            visible: false,
-            height: 0,
-            drawBehind: false,
-          },
-          statusBar: {
-            drawBehind: true,
-            visible: true,
-            style: getStatusBarStyle(theme.isDark),
-            backgroundColor: 'transparent',
-          },
-          navigationBar: {
-            backgroundColor: 'transparent',
-          },
-          layout: {
-            componentBackgroundColor: theme['c-content-background'],
-          },
-          animations: {
-            push: {
-              content: {
-                translationX: {
-                  from: windowSizeTools.getSize().width,
-                  to: 0,
-                  duration: 350,
-                },
-              },
-            },
-            pop: {
-              content: {
-                translationX: {
-                  from: 0,
-                  to: windowSizeTools.getSize().width,
-                  duration: 350,
-                },
-              },
-            },
-          },
-        },
-      },
-    })
-  })
+  // 评论页为迷你条黑名单屏：置位提前隐藏（同 pushPlayDetailScreen）
+  markPendingBlacklist()
+  void componentId
+  pushRoute(COMMENT_SCREEN)
 }
-
-// export function pushSettingScreen(componentId: string) {
-//   /*
-//     Navigation.setDefaultOptions({
-//       topBar: {
-//         background: {
-//           color: '#039893',
-//         },
-//         title: {
-//           color: 'white',
-//         },
-//         backButton: {
-//           title: '', // Remove previous screen name from back button
-//           color: 'white',
-//         },
-//         buttonColor: 'white',
-//       },
-//       statusBar: {
-//         style: 'light',
-//       },
-//       layout: {
-//         orientation: ['portrait'],
-//       },
-//       bottomTabs: {
-//         titleDisplayMode: 'alwaysShow',
-//       },
-//       bottomTab: {
-//         textColor: 'gray',
-//         selectedTextColor: 'black',
-//         iconColor: 'gray',
-//         selectedIconColor: 'black',
-//       },
-//     })
-//   */
-//     const theme = themeState.theme
-
-//     void Navigation.push(componentId, {
-//       component: {
-//         name: SETTING_SCREEN,
-//         options: {
-//           topBar: {
-//             visible: false,
-//             height: 0,
-//             drawBehind: false,
-//           },
-//           statusBar: {
-//             drawBehind: true,
-//             visible: true,
-//             style: getStatusBarStyle(theme.isDark),
-//             backgroundColor: 'transparent',
-//           },
-//           navigationBar: {
-//             // visible: false,
-//             backgroundColor: theme['c-content-background'],
-//           },
-//           layout: {
-//             componentBackgroundColor: theme['c-content-background'],
-//           },
-//           animations: {
-//             push: {
-//               content: {
-//                 translationX: {
-//                   from: windowSizeTools.getSize().width,
-//                   to: 0,
-//                   duration: 300,
-//                 },
-//               },
-//             },
-//             pop: {
-//               content: {
-//                 translationX: {
-//                   from: 0,
-//                   to: windowSizeTools.getSize().width,
-//                   duration: 300,
-//                 },
-//               },
-//             },
-//           },
-//         },
-//       },
-//   })
-// }
-
-/*
-export function pushSingleScreenApp() {
-  Navigation.setRoot({
-    root: {
-      stack: {
-        children: [{
-          component: {
-            name: SINGLE_APP_SCREEN,
-            options: {
-              topBar: {
-                title: {
-                  text: 'SINGLE SCREEN APP',
-                },
-                leftButtons: [
-                  {
-                    id: 'nav_user_btn',
-                    icon: require('assets/icons/ic_nav_user.png'),
-                    color: 'white',
-                  },
-                ],
-                rightButtons: [
-                  {
-                    id: 'nav_logout_btn',
-                    icon: require('assets/icons/ic_nav_logout.png'),
-                    color: 'white',
-                  },
-                ],
-              },
-            },
-          },
-        }],
-      },
-    },
-  })
-}
-
-export function pushTabBasedApp() {
-  Navigation.setRoot({
-    root: {
-      bottomTabs: {
-        children: [{
-          stack: {
-            children: [{
-              component: {
-                name: TAB1_SCREEN,
-                options: {
-                  topBar: {
-                    title: {
-                      text: 'TAB 1',
-                    },
-                    leftButtons: [
-                      {
-                        id: 'nav_user_btn',
-                        icon: require('assets/icons/ic_nav_user.png'),
-                        color: 'white',
-                      },
-                    ],
-                    rightButtons: [
-                      {
-                        id: 'nav_logout_btn',
-                        icon: require('assets/icons/ic_nav_logout.png'),
-                        color: 'white',
-                      },
-                    ],
-                  },
-                },
-              },
-            }],
-            options: {
-              bottomTab: {
-                icon: require('assets/icons/ic_tab_home.png'),
-                testID: 'FIRST_TAB_BAR_BUTTON',
-                text: 'Tab1',
-              },
-            },
-          },
-        },
-        {
-          stack: {
-            children: [{
-              component: {
-                name: TAB2_SCREEN,
-                options: {
-                  topBar: {
-                    title: {
-                      text: 'TAB 2',
-                    },
-                    leftButtons: [
-                      {
-                        id: 'nav_user_btn',
-                        icon: require('assets/icons/ic_nav_user.png'),
-                        color: 'white',
-                      },
-                    ],
-                    rightButtons: [
-                      {
-                        id: 'nav_logout_btn',
-                        icon: require('assets/icons/ic_nav_logout.png'),
-                        color: 'white',
-                      },
-                    ],
-                  },
-                },
-              },
-            }],
-            options: {
-              bottomTab: {
-                icon: require('assets/icons/ic_tab_menu.png'),
-                testID: 'SECOND_TAB_BAR_BUTTON',
-                text: 'Tab2',
-              },
-            },
-          },
-        }],
-      },
-    },
-  })
-}
- */

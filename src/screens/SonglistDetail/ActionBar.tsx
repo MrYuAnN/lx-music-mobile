@@ -21,7 +21,7 @@ export default memo(() => {
   const info = useListInfo()
 
   const back = () => {
-    pop(commonState.componentIds.songlistDetail!)
+    pop(commonState.componentIds.songlistDetail)
   }
 
   const handlePlayAll = () => {

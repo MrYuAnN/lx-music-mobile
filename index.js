@@ -2,25 +2,10 @@
  * @format
  */
 import './shim'
-import './src/app'
-// import './test'
-// import '@/utils/errorHandle'
-// import { Navigation } from 'react-native-navigation'
-// import App from './App'
+import { AppRegistry } from 'react-native'
+import App from './src/App'
+// N1：RNN 启动体系（NavigationActivity + registerAppLaunchedListener + setRoot）退役，
+// 改单根组件常驻渲染（NavigationContainer 首屏 Home）；启动链在 src/App.tsx
+import { name as appName } from './app.json'
 
-// Navigation.registerComponent('com.myApp.WelcomeScreen', () => App)
-// Navigation.events().registerAppLaunchedListener(() => {
-//   Navigation.setRoot({
-//     root: {
-//       stack: {
-//         children: [
-//           {
-//             component: {
-//               name: 'com.myApp.WelcomeScreen',
-//             },
-//           },
-//         ],
-//       },
-//     },
-//   })
-// })
+AppRegistry.registerComponent(appName, () => App)

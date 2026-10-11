@@ -19,6 +19,8 @@ export default {
   },
   setSyncModeComponentId(id: string) {
     state.syncModeComponentId = id
+    // 弹窗改 store 驱动的 RN Modal（N1）：非空 id 即可见，根部 ModalHosts 经此事件开合
+    global.state_event.syncModeModalUpdated(id != '')
   },
 }
 

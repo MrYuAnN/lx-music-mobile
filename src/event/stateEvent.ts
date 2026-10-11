@@ -109,6 +109,14 @@ export class StateEvent extends Event {
     this.emit('versionDownloadProgressUpdated', progress)
   }
 
+  versionModalUpdated(visible: VersionState['showModal']) {
+    this.emit('versionModalUpdated', visible)
+  }
+
+  syncModeModalUpdated(visible: boolean) {
+    this.emit('syncModeModalUpdated', visible)
+  }
+
   componentIdsUpdated(ids: CommonState['componentIds']) {
     this.emit('componentIdsUpdated', ids)
   }

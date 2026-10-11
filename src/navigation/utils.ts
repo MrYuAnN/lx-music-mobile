@@ -1,123 +1,22 @@
-import { Navigation } from 'react-native-navigation'
-import {
-  VERSION_MODAL,
-  SYNC_MODE_MODAL,
-} from './screenNames'
-import themeState from '@/store/theme/state'
+import versionActions from '@/store/version/action'
+import syncActions from '@/store/sync/action'
 
+import { pop } from './navigation'
 
-export const getStatusBarStyle = (isDark: boolean) => isDark ? 'light' : 'dark'
+export { pop }
 
-export const dismissOverlay = async(compId: string) => Navigation.dismissOverlay(compId)
-
-export const pop = async(compId: string) => Navigation.pop(compId)
-export const popToRoot = async(compId: string) => Navigation.popToRoot(compId)
-export const popTo = async(compId: string) => Navigation.popTo(compId)
+// RNN utils 的 react-navigation 等价（N1 迁移）：
+// - pop 保留（goBack 语义，栈顶弹出）；popToRoot/popTo 无仓内消费方，随 RNN 退役
+// - 两个 overlay 弹窗改为 store 驱动的 RN Modal（App 根部 ModalHosts 渲染），
+//   show* 即置可见标志；dismissOverlay/onModalDismissed 机制退役（sync.ts 已重接线）
 
 export const showVersionModal = () => {
-  const theme = themeState.theme
-
-  void Navigation.showOverlay({
-    component: {
-      name: VERSION_MODAL,
-      options: {
-        layout: {
-          componentBackgroundColor: 'transparent',
-        },
-        overlay: {
-          interceptTouchOutside: true,
-        },
-        statusBar: {
-          drawBehind: true,
-          visible: true,
-          style: getStatusBarStyle(theme.isDark),
-          backgroundColor: 'transparent',
-        },
-        navigationBar: {
-          // visible: false,
-          // 手势条区域与页面底色一致（避免底部色带割裂，AM-6）
-          backgroundColor: 'transparent',
-        },
-        // animations: {
-
-        //   showModal: {
-        //     enter: {
-        //       enabled: true,
-        //       alpha: {
-        //         from: 0,
-        //         to: 1,
-        //         duration: 300,
-        //       },
-        //     },
-        //     exit: {
-        //       enabled: true,
-        //       alpha: {
-        //         from: 1,
-        //         to: 0,
-        //         duration: 300,
-        //       },
-        //     },
-        //   },
-        // },
-      },
-    },
-  })
+  versionActions.setVisibleModal(true)
 }
+
+// 非空 token 即可见（沿用 syncState.syncModeComponentId 作开合标志，键名不改防漂移）
+export const SYNC_MODE_MODAL_OPEN = 'open'
 
 export const showSyncModeModal = () => {
-  const theme = themeState.theme
-
-  void Navigation.showOverlay({
-    component: {
-      name: SYNC_MODE_MODAL,
-      options: {
-        layout: {
-          componentBackgroundColor: 'transparent',
-        },
-        overlay: {
-          interceptTouchOutside: true,
-        },
-        statusBar: {
-          drawBehind: true,
-          visible: true,
-          style: getStatusBarStyle(theme.isDark),
-          backgroundColor: 'transparent',
-        },
-        navigationBar: {
-          // visible: false,
-          // 手势条区域与页面底色一致（避免底部色带割裂，AM-6）
-          backgroundColor: 'transparent',
-        },
-        // animations: {
-
-        //   showModal: {
-        //     enter: {
-        //       enabled: true,
-        //       alpha: {
-        //         from: 0,
-        //         to: 1,
-        //         duration: 300,
-        //       },
-        //     },
-        //     exit: {
-        //       enabled: true,
-        //       alpha: {
-        //         from: 1,
-        //         to: 0,
-        //         duration: 300,
-        //       },
-        //     },
-        //   },
-        // },
-      },
-    },
-  })
+  syncActions.setSyncModeComponentId(SYNC_MODE_MODAL_OPEN)
 }
-
-// export const showToast = (text) => {
-//   Navigation.showOverlay({
-//     component: {
-//       name: TOAST_SCREEN,
-//     },
-//   })
-// }

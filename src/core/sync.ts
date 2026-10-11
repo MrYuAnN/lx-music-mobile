@@ -1,9 +1,13 @@
-import { dismissOverlay, onModalDismissed, showSyncModeModal } from '@/navigation'
+import { showSyncModeModal } from '@/navigation'
 import syncState from '@/store/sync/state'
 import syncActions from '@/store/sync/action'
 
-type RemoveListener = (() => void) | null
-let removeEvent: RemoveListener
+// N1：RNN overlay 弹窗 → store 驱动的 RN Modal（ModalHosts 渲染）。
+// 关闭=清空 syncModeComponentId；Android 返回键 dismiss（ModalHosts onRequestClose）走
+// removeSyncModeEvent，对齐原 onModalDismissed 的 reject('cancel') 语义。
+
+type RemoveEvent = (() => void) | null
+let removeEvent: RemoveEvent
 
 export const setSyncStatus = (status: LX.Sync.Status) => {
   syncActions.setStatus(status)
@@ -13,24 +17,18 @@ export const setSyncMessage = (message: LX.Sync.Status['message']) => {
   syncActions.setMessage(message)
 }
 
-export const setSyncModeComponentId = (id: string) => {
-  syncActions.setSyncModeComponentId(id)
-}
-
 const closeSyncModeModal = () => {
   if (syncState.syncModeComponentId) {
-    void dismissOverlay(syncState.syncModeComponentId)
     syncActions.setSyncModeComponentId('')
   }
 }
+
 export const selectSyncMode = async<T extends keyof LX.Sync.ModeTypes>(serverName: string, type: T) => new Promise<LX.Sync.ModeTypes[T]>((resolve, reject) => {
   removeSyncModeEvent()
   syncActions.setServerInfo(serverName, type)
   showSyncModeModal()
 
   const removeListeners = () => {
-    removeListener!()
-    removeListener = null
     removeEvent = null
     global.app_event.off('selectSyncMode', handleSelectMode)
   }
@@ -47,11 +45,6 @@ export const selectSyncMode = async<T extends keyof LX.Sync.ModeTypes>(serverNam
   }
 
   global.app_event.on('selectSyncMode', handleSelectMode)
-
-  let removeListener: RemoveListener = onModalDismissed(syncState.syncModeComponentId, () => {
-    syncActions.setSyncModeComponentId('')
-    removeEvent?.()
-  })
 })
 
 export const removeSyncModeEvent = () => {

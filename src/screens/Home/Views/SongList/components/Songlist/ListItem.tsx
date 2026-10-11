@@ -1,4 +1,4 @@
-import { memo } from 'react'
+import { memo, useEffect, useRef } from 'react'
 import { View, Platform, TouchableOpacity } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import { type ListInfoItem } from '@/store/songlist/state'
@@ -6,6 +6,7 @@ import Text from '@/components/common/Text'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
+import { registerCoverSource } from '@/navigation/transitions/coverFly'
 import Image from '@/components/common/Image'
 import { SPACING } from '@/config/spacing'
 
@@ -19,6 +20,17 @@ export default memo(({ item, index, width, showSource, onPress }: {
 }) => {
   const theme = useTheme()
   const itemWidth = width - gap
+  // 封面飞入源侧（RNN sharedElement fromId 的替代）：挂载时注册测距，push 时实测源矩形
+  const sourceRef = useRef<View>(null)
+  useEffect(() => {
+    if (!item.source) return
+    return registerCoverSource(item.id, cb => {
+      sourceRef.current?.measureInWindow((x, y, w, h) => {
+        cb(w > 0 ? { x, y, width: w, height: h } : null)
+      })
+    })
+  }, [item.id, item.source])
+
   const handlePress = () => {
     onPress(item, index)
   }
@@ -28,7 +40,9 @@ export default memo(({ item, index, width, showSource, onPress }: {
           <View style={{ ...styles.listItem, width: itemWidth }}>
             <View style={{ ...styles.listItemImg, backgroundColor: theme['c-content-background'] }}>
               <TouchableOpacity activeOpacity={0.5} onPress={handlePress}>
-                <Image url={item.img} nativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${item.id}`} style={{ width: itemWidth, height: itemWidth, borderRadius: 4 }} />
+                <View ref={sourceRef} style={{ width: itemWidth, height: itemWidth }}>
+                  <Image url={item.img} nativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${item.id}`} style={{ width: itemWidth, height: itemWidth, borderRadius: 4 }} />
+                </View>
                 { showSource ? <Text style={styles.sourceLabel} size={9} color="#fff" >{item.source}</Text> : null }
               </TouchableOpacity>
             </View>

@@ -75,7 +75,8 @@ const Content = memo(({ title, newVersionInfo }: {
 })
 
 const currentVer = process.versions.app
-const VersionModal = ({ componentId }: { componentId: string }) => {
+// N1：RNN overlay → 根部 RN Modal（ModalHosts 挂载），componentId 随之退役
+const VersionModal = () => {
   const theme = useTheme()
   const t = useI18n()
   const versionInfo = useVersionInfo()
@@ -157,7 +158,7 @@ const VersionModal = ({ componentId }: { componentId: string }) => {
   }, [t, versionInfo, ignoreVersion, progress])
 
   const handleCancel = () => {
-    hideModal(componentId)
+    hideModal()
   }
   const handleIgnore = () => {
     setIgnoreVersion(ignoreVersion != versionInfo.newVersion!.version ? versionInfo.newVersion!.version : null)

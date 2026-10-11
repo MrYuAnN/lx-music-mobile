@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { View, ScrollView } from 'react-native'
 
 import Button from '@/components/common/Button'
@@ -9,7 +9,6 @@ import { useI18n } from '@/lang'
 import ModalContent from './ModalContent'
 import syncState from '@/store/sync/state'
 import CheckBox from '@/components/common/CheckBox'
-import { setSyncModeComponentId } from '@/core/sync'
 import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
@@ -200,12 +199,8 @@ const DislikeModeModal = () => {
   )
 }
 
-export default ({ componentId }: { componentId: string }) => {
-  useEffect(() => {
-    setSyncModeComponentId(componentId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-
+// N1：RNN overlay → 根部 RN Modal（ModalHosts 挂载），componentId 注册随 dismissOverlay 机制退役
+export default () => {
   return (
     <ModalContent>
       {

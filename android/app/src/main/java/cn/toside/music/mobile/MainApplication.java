@@ -1,12 +1,13 @@
 package cn.toside.music.mobile;
 
+import android.app.Application;
 import com.facebook.react.PackageList;
-import com.facebook.react.flipper.ReactNativeFlipper;
-import com.reactnativenavigation.NavigationApplication;
+import com.facebook.react.ReactApplication;
 import com.facebook.react.ReactNativeHost;
 import com.facebook.react.ReactPackage;
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint;
-import com.reactnativenavigation.react.NavigationReactNativeHost;
+import com.facebook.react.defaults.DefaultReactNativeHost;
+import com.facebook.react.flipper.ReactNativeFlipper;
 import java.util.List;
 
 import cn.toside.music.mobile.cache.CachePackage;
@@ -16,10 +17,12 @@ import cn.toside.music.mobile.lyric.LyricPackage;
 import cn.toside.music.mobile.userApi.UserApiPackage;
 import cn.toside.music.mobile.utils.UtilsPackage;
 
-public class MainApplication extends NavigationApplication {
+// N1 导航迁移：RNN（NavigationApplication/NavigationReactNativeHost）退役，
+// 回归 RN 0.73 标准模板（DefaultReactNativeHost）；自研六模块手动注册不变
+public class MainApplication extends Application implements ReactApplication {
 
   private final ReactNativeHost mReactNativeHost =
-      new NavigationReactNativeHost(this) {
+      new DefaultReactNativeHost(this) {
         @Override
         public boolean getUseDeveloperSupport() {
           return BuildConfig.DEBUG;

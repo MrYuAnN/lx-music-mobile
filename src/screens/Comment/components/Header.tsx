@@ -23,7 +23,7 @@ export default memo(({ musicInfo }: {
   const statusBarHeight = useStatusbarHeight()
 
   const back = () => {
-    pop(commonState.componentIds.comment!)
+    pop(commonState.componentIds.comment)
   }
 
   return (

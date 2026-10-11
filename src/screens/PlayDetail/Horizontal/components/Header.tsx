@@ -1,9 +1,11 @@
 import { memo, useRef } from 'react'
 
 import { View, StyleSheet, TouchableOpacity } from 'react-native'
+import Animated from 'react-native-reanimated'
 
 import { Icon } from '@/components/common/Icon'
 import { pop } from '@/navigation'
+import { useIntroStyle } from '@/navigation/transitions/intro'
 import { useTheme } from '@/store/theme/hook'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import Text from '@/components/common/Text'
@@ -33,16 +35,18 @@ const Title = () => {
 
 export default memo(() => {
   const popupRef = useRef<SettingPopupType>(null)
+  // push 元素进出场（RNN elementTransitions 等价：alpha 0→1 + translationY -32→0）
+  const introStyle = useIntroStyle('header')
 
   const back = () => {
-    pop(commonState.componentIds.playDetail!)
+    pop(commonState.componentIds.playDetail)
   }
   const showSetting = () => {
     popupRef.current?.show()
   }
 
   return (
-    <View style={{ height: HEADER_HEIGHT }} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_header}>
+    <Animated.View style={[{ height: HEADER_HEIGHT }, introStyle]} nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_header}>
       <View style={styles.container}>
         <TouchableOpacity onPress={back} style={{ ...styles.button, width: HEADER_HEIGHT }}>
           <Icon name="chevron-left" size={ICON_SIZE.nav} />
@@ -53,7 +57,7 @@ export default memo(() => {
         <Btn icon="slider" onPress={showSetting} />
       </View>
       <SettingPopup ref={popupRef} position="left" direction="horizontal" />
-    </View>
+    </Animated.View>
   )
 })
 
