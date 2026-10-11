@@ -113,7 +113,7 @@ const styles = createStyle({
     // marginRight: 15,
     // alignItems: 'center',
     // backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingRight: 3,
+    paddingRight: SPACING.s4,
   },
   name: {
     marginTop: 2,
@@ -121,7 +121,7 @@ const styles = createStyle({
   helpBtn: {
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
     paddingHorizontal: 8,
-    paddingVertical: 3,
+    paddingVertical: SPACING.s4,
   },
 })
 

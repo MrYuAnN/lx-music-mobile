@@ -4,6 +4,7 @@ import Text from '@/components/common/Text'
 import { BorderWidths } from '@/theme'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from "@/config/spacing";
 
 export default ({ listInfo, onPress, width }: {
   listInfo: LX.List.MyListInfo
@@ -31,7 +32,7 @@ export default ({ listInfo, onPress, width }: {
 export const styles = createStyle({
   listItem: {
     // width: '50%',
-    paddingRight: 13,
+    paddingRight: SPACING.s14,
   },
   button: {
     height: 36,

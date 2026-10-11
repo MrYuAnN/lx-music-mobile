@@ -147,7 +147,7 @@ const styles = createStyle({
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   tips: {
-    paddingHorizontal: 7,
+    paddingHorizontal: SPACING.s8,
     marginTop: SPACING.s16,
     flexDirection: 'row',
     flexWrap: 'wrap',

@@ -127,7 +127,7 @@ export default () => {
 
 const styles = createStyle({
   scrollView: {
-    paddingHorizontal: 7,
+    paddingHorizontal: SPACING.s8,
     flexGrow: 0,
   },
   list: {

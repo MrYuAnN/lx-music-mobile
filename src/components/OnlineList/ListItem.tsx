@@ -11,6 +11,7 @@ import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { LIST_ITEM_HEIGHT, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
 import { createStyle, type RowInfo } from '@/utils/tools'
 import { useI18n } from '@/lang'
+import { SPACING } from "@/config/spacing";
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 
@@ -156,7 +157,7 @@ const styles = createStyle({
     height: scaleSizeW(40),
     borderRadius: scaleSizeW(6),
     marginLeft: 4,
-    marginRight: 11,
+    marginRight: SPACING.s12,
   },
   picPlaceholder: {
     alignItems: 'center',

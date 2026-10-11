@@ -155,7 +155,7 @@ const styles = createStyle({
   },
   listActiveIcon: {
     // width: 18,
-    marginLeft: 3,
+    marginLeft: SPACING.s4,
     // paddingRight: 5,
     textAlign: 'center',
   },

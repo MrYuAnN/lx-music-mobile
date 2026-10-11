@@ -44,8 +44,8 @@ const styles = createStyle({
   },
   btn: {
     // flex: 1,
-    paddingTop: 9,
-    paddingBottom: 9,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s10,
     paddingLeft: 8,
     paddingRight: 8,
     alignItems: 'center',

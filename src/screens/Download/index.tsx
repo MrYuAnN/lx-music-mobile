@@ -354,7 +354,7 @@ const styles = createStyle({
     borderRadius: scaleSizeW(6),
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 11,
+    marginRight: SPACING.s12,
   },
   taskInfo: {
     flex: 1,
@@ -365,7 +365,7 @@ const styles = createStyle({
   progressTrack: {
     height: 3,
     borderRadius: 1.5,
-    marginTop: 3,
+    marginTop: SPACING.s4,
     overflow: 'hidden',
   },
   progressFill: {

@@ -189,8 +189,8 @@ const styles = createStyle({
     flexShrink: 1,
     minWidth: 240,
     borderRadius: 4,
-    paddingTop: 3,
-    paddingBottom: 3,
+    paddingTop: SPACING.s4,
+    paddingBottom: SPACING.s4,
     height: 'auto',
   },
   list: {

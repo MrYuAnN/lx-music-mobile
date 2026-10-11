@@ -6,6 +6,7 @@ import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
+import { SPACING } from "@/config/spacing";
 
 export interface SortTabProps {
   onSortChange: (id: string) => void
@@ -75,7 +76,7 @@ const styles = createStyle({
     // lineHeight: 38,
     textAlign: 'center',
     paddingHorizontal: 2,
-    paddingVertical: 3,
+    paddingVertical: SPACING.s4,
     borderBottomWidth: BorderWidths.normal3,
   },
 })

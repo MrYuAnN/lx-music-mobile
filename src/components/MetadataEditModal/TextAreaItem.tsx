@@ -72,8 +72,8 @@ const styles = createStyle({
   textarea: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingTop: 3,
-    paddingBottom: 3,
+    paddingTop: SPACING.s4,
+    paddingBottom: SPACING.s4,
     height: 'auto',
     // height: 300,
     // maxWidth: 300,

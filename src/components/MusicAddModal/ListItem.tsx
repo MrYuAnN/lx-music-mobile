@@ -5,6 +5,7 @@ import { BorderWidths } from '@/theme'
 import { createStyle, toast } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useMusicExistsList } from '@/store/list/hook'
+import { SPACING } from "@/config/spacing";
 
 export default ({ listInfo, onPress, musicInfo, width }: {
   listInfo: LX.List.MyListInfo
@@ -38,7 +39,7 @@ export default ({ listInfo, onPress, musicInfo, width }: {
 export const styles = createStyle({
   listItem: {
     // width: '50%',
-    paddingRight: 13,
+    paddingRight: SPACING.s14,
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   button: {

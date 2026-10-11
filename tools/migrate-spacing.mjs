@@ -18,8 +18,10 @@ const fromIdx = args.indexOf('--from')
 const toIdx = args.indexOf('--to')
 const FROM = Number(args[fromIdx + 1])
 const TO = args[toIdx + 1]
+const filterIdx = args.indexOf('--filter')
+const FILTER = filterIdx >= 0 ? args[filterIdx + 1] : null
 if (!Number.isFinite(FROM) || !TO) {
-  console.error('usage: node tools/migrate-spacing.mjs --from <num> --to <sXX> [--dry]')
+  console.error('usage: node tools/migrate-spacing.mjs --from <num> --to <sXX> [--filter src/sub] [--dry]')
   process.exit(1)
 }
 
@@ -38,7 +40,10 @@ let touchedFiles = 0
 let touchedProps = 0
 const report = []
 
-for (const sf of sourceFiles) {
+for (const sf0 of sourceFiles) {
+  const fp = sf0.getFilePath()
+  const sf = FILTER && !fp.includes(FILTER) && !fp.split('\\').join('/').includes(FILTER) ? null : sf0
+  if (!sf) continue
   let changed = 0
   const hasImport = sf.getImportDeclaration('@/config/spacing') != null
 

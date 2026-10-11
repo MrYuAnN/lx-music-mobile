@@ -463,7 +463,7 @@ const styles = createStyle({
   },
   listItemAlbum: {
     flexDirection: 'row',
-    marginTop: 3,
+    marginTop: SPACING.s4,
   },
   listItemLabel: {
     flex: 0,

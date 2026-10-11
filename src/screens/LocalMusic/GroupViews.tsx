@@ -9,6 +9,7 @@ import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
+import { SPACING } from "@/config/spacing";
 
 export interface MusicGroup {
   name: string
@@ -181,7 +182,7 @@ const styles = createStyle({
     borderRadius: scaleSizeW(20),
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 11,
+    marginRight: SPACING.s12,
   },
   artistInfo: {
     flex: 1,
