@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useImperativeHandle, useRef, useState, type JSX } from 'react'
 import { View } from 'react-native'
 
 import SheetBase, { type SheetBaseType } from './SheetBase'

@@ -16,23 +16,24 @@ import { updateOptions, setVolume, setPlaybackRate, migratePlayerCache } from '.
 //   })
 // }
 
-const initial = async({ volume, playRate, cacheSize, isHandleAudioFocus, isEnableAudioOffload }: {
+// N2 换装 lovegaoshi fork：handleAudioFocus/audioOffload 选项随 v4 焦点管理重写退役，
+// 设置键保留（不破坏存量配置），设置项已隐藏
+const initial = async({ volume, playRate, cacheSize }: {
   volume: number
   playRate: number
   cacheSize: number
-  isHandleAudioFocus: boolean
-  isEnableAudioOffload: boolean
 }) => {
   if (global.lx.playerStatus.isIniting || global.lx.playerStatus.isInitialized) return
   global.lx.playerStatus.isIniting = true
   console.log('Cache Size', cacheSize * 1024)
   await migratePlayerCache()
+  // N2 换装 lovegaoshi fork（v4.1.1 基线）：
+  // - maxBuffer/maxCacheSize/waitForBuffer/autoUpdateMetadata 语义不变
+  // - handleAudioFocus/audioOffload 无对应选项已移除（拍板：设置项隐藏，数据键保留）
   await TrackPlayer.setupPlayer({
     maxCacheSize: cacheSize * 1024,
     maxBuffer: 1000,
     waitForBuffer: true,
-    handleAudioFocus: isHandleAudioFocus,
-    audioOffload: isEnableAudioOffload,
     autoUpdateMetadata: false,
   })
   global.lx.playerStatus.isInitialized = true

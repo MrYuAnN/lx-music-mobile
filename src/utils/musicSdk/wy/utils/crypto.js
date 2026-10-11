@@ -1,7 +1,10 @@
 // https://github.com/Binaryify/NeteaseCloudMusicApi/blob/master/util/crypto.js
-import { btoa } from 'react-native-quick-base64'
+// N2：quick-base64 3.x 移除 btoa 导出；本文件 btoa 输入全为 ASCII（密钥字面量/base64 结果），
+// latin1 与 UTF-8 字节一致，fromByteArray 等价替换（审查 A-C1：此处漏改曾致启动即崩）
+import { fromByteArray } from 'react-native-quick-base64'
 import { aesEncryptSync, aesDecryptSync, rsaEncryptSync, AES_MODE, RSA_PADDING } from '@/utils/nativeModules/crypto'
 import { toMD5 } from '../../utils'
+const btoa = (text) => fromByteArray(Buffer.from(text, 'utf8'))
 const iv = btoa('0102030405060708')
 const presetKey = btoa('0CoJUm6Qyw8W8jud')
 const linuxapiKey = btoa('rFgB&h#%2?^eDg:Q')

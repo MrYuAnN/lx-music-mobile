@@ -1,4 +1,6 @@
-import RNFS from 'react-native-fs'
+// N2：react-native-fs（上游停更 2024-03）→ @dr.pogodin/react-native-fs（API 同构，下载链路装机必测）
+// 类型为命名导出（无 default、选项类型名带 T 后缀）
+import * as RNFS from '@dr.pogodin/react-native-fs'
 import {
   Dirs,
   FileSystem,
@@ -59,7 +61,7 @@ export const writeFile = async(path: string, data: string, encoding?: Encoding) 
 
 export const appendFile = async(path: string, data: string, encoding?: Encoding) => FileSystem.appendFile(path, data, encoding)
 
-export const downloadFile = (url: string, path: string, options: Omit<RNFS.DownloadFileOptions, 'fromUrl' | 'toFile'> = {}) => {
+export const downloadFile = (url: string, path: string, options: Omit<RNFS.DownloadFileOptionsT, 'fromUrl' | 'toFile'> = {}) => {
   if (!options.headers) {
     options.headers = {
       'User-Agent': 'Mozilla/5.0 (Linux; Android 10; Pixel 3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Mobile Safari/537.36',

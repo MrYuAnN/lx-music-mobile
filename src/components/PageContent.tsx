@@ -190,7 +190,7 @@ export default ({ children, coverBg = false }: Props) => {
         >
           <View style={{ flex: 1, flexDirection: 'column', backgroundColor: theme['c-content-background'], opacity: 0.76 }}></View>
           {displayTint ? (
-            <Animated.View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+            <Animated.View style={StyleSheet.absoluteFill} pointerEvents="none">
               <LinearGradient
                 colors={[`${displayTint}88`, `${displayTint}00`, `${displayTint}44`]}
                 style={StyleSheet.absoluteFill}

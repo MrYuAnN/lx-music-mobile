@@ -155,8 +155,10 @@ export const setResource = (musicInfo: LX.Player.PlayMusic, url: string, duratio
 }
 
 export const setPlay = async() => TrackPlayer.play()
-export const getPosition = async() => TrackPlayer.getPosition()
-export const getDuration = async() => TrackPlayer.getDuration()
+// N2 换装 lovegaoshi fork（v4 基线）：getPosition/getDuration/getBufferedPosition
+// 并入 getProgress()，getState→getPlaybackState，getCurrentTrack→getActiveTrackIndex
+export const getPosition = async() => (await TrackPlayer.getProgress()).position
+export const getDuration = async() => (await TrackPlayer.getProgress()).duration
 export const setStop = async() => {
   await TrackPlayer.stop()
   if (!isEmpty()) await TrackPlayer.skipToNext()
@@ -174,16 +176,26 @@ export interface NowPlayingTitles {
   album?: string
   lyric?: string
 }
+// N2 换装：lyswhut fork 的 updateNowPlayingTitles（含 AVRCP lyric 独立通道）退役，
+// 拍板等价实现——逐行文本经 updateNowPlayingMetadata 更新（不传 artwork，避免重载图片）。
+// lyric-only 调用（整首歌词通道，fork 无对应概念已退役）直接短路：
+// 全 undefined 透传会让 native 用空元数据 replaceItem 污染播放器当前 item（审查 A-I1）
 export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
   // console.log('set playing titles', titles)
-  return TrackPlayer.updateNowPlayingTitles(titles)
+  if (titles.title == null && titles.artist == null && titles.album == null) return
+  return TrackPlayer.updateNowPlayingMetadata({
+    title: titles.title,
+    artist: titles.artist,
+    album: titles.album,
+  })
 }
 
 export const resetPlay = async() => Promise.all([setPause(), setCurrentTime(0)])
 
-export const isCached = async(url: string) => TrackPlayer.isCached(url)
-export const getCacheSize = async() => TrackPlayer.getCacheSize()
-export const clearCache = async() => TrackPlayer.clearCache()
+// N2 换装：fork（v4 基线）无缓存查询/清理 JS API（拍板：封装层弱化——
+// native 有 maxCacheSize 上限自管不会膨胀；设置页缓存数字仅含 app 缓存）
+export const getCacheSize = async() => 0
+export const clearCache = async() => {}
 export const migratePlayerCache = async() => {
   const newCachePath = privateStorageDirectoryPath + '/TrackPlayer'
   if (await existsFile(newCachePath)) return
@@ -200,7 +212,8 @@ export const migratePlayerCache = async() => {
 
 export const destroy = async() => {
   if (global.lx.playerStatus.isIniting || !global.lx.playerStatus.isInitialized) return
-  await TrackPlayer.destroy()
+  // N2 换装：fork（v4 基线）移除 destroy()，以 reset() 等价替代（停止播放+清队列）
+  await TrackPlayer.reset()
   global.lx.playerStatus.isInitialized = false
 }
 
@@ -208,8 +221,9 @@ type PlayStatus = 'None' | 'Ready' | 'Playing' | 'Paused' | 'Stopped' | 'Bufferi
 
 export const onStateChange = async(listener: (state: PlayStatus) => void) => {
   const sub = TrackPlayer.addEventListener(Event.PlaybackState, state => {
+    // N2 换装：事件负载为 { state: State } 对象
     let _state: PlayStatus
-    switch (state) {
+    switch (state.state) {
       case State.Ready:
         _state = 'Ready'
         break

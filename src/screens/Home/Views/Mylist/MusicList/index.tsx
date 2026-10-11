@@ -34,7 +34,7 @@ export default () => {
   const layoutHeightRef = useRef<number>(0)
   const isShowMultipleModeBar = useRef(false)
   const isShowSearchBarModeBar = useRef(false)
-  const selectedInfoRef = useRef<SelectInfo>()
+  const selectedInfoRef = useRef<SelectInfo | undefined>(undefined)
   // console.log('render index list')
 
   const hancelMultiSelect = useCallback(() => {

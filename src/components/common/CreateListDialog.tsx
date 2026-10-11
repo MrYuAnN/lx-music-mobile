@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useRef, type JSX } from 'react'
 
 import InputSheet, { type InputSheetType } from './InputSheet'
 import { useI18n } from '@/lang'

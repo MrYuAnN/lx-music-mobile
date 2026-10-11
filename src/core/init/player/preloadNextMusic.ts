@@ -2,7 +2,6 @@ import { getMusicUrl } from '@/core/music'
 import { getNextPlayMusicInfo, resetRandomNextMusicInfo } from '@/core/player/player'
 import { checkUrl } from '@/utils/request'
 import playerState from '@/store/player/state'
-import { isCached } from '@/plugins/player/utils'
 
 
 const preloadMusicInfo = {
@@ -22,11 +21,17 @@ const preloadNextMusicUrl = async(curTime: number) => {
   const info = await getNextPlayMusicInfo()
   if (info) {
     preloadMusicInfo.info = info
-    const url = await getMusicUrl({ musicInfo: info.musicInfo }).catch(() => '')
+    // N2 换装：fork 无 isCached 查询 API（拍板：弱化）——URL 可达性检查兜底，
+    // 播放缓存仍由 native ExoPlayer 缓存（maxCacheSize 上限自管）生效。
+    // allowToggleSource=false：预加载阶段只刷新不换源（HEAD 405/403 误判不应触发换源回写，
+    // 换源决策留给切歌时的正式取链，审查 O-I1）
+    const url = await getMusicUrl({ musicInfo: info.musicInfo, allowToggleSource: false }).catch(() => '')
     if (url) {
       console.log('preload url', url)
-      const [cached, available] = await Promise.all([isCached(url), checkUrl(url).then(() => true).catch(() => false)])
-      if (!cached && !available) {
+      // URL 可达性检查兜底；allowToggleSource=false 已保证误判不换源，
+      // 最多多刷一次链接，预加载场景代价可接受
+      const available = await checkUrl(url).then(() => true).catch(() => false)
+      if (!available) {
         const url = await getMusicUrl({ musicInfo: info.musicInfo, isRefresh: true }).catch(() => '')
         console.log('preload url refresh', url)
       }

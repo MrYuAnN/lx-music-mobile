@@ -7,8 +7,9 @@ export const usePlaybackState = () => {
 
   useEffect(() => {
     async function setPlayerState() {
-      const playerState = await TrackPlayer.getState()
-      setState(playerState)
+      // N2 换装 lovegaoshi fork：getState() → getPlaybackState()
+      const playerState = await TrackPlayer.getPlaybackState()
+      setState(playerState.state as State)
     }
 
     void setPlayerState()
@@ -58,10 +59,10 @@ export const usePlaybackState = () => {
 //   }, [events])
 // }
 
-const pollTrackPlayerStates = [
+const pollTrackPlayerStates = new Set<State>([
   State.Playing,
   State.Buffering,
-] as const
+])
 /**
  * Poll for track progress for the given interval (in miliseconds)
  * @param updateInterval - ms interval
@@ -79,11 +80,8 @@ export function useProgress(updateInterval: number) {
   }, [])
 
   const getProgress = async() => {
-    const [position, duration, buffered] = await Promise.all([
-      TrackPlayer.getPosition(),
-      TrackPlayer.getDuration(),
-      TrackPlayer.getBufferedPosition(),
-    ])
+    // N2 换装：getPosition/getDuration/getBufferedPosition 并入 getProgress()
+    const { position, duration, buffered } = await TrackPlayer.getProgress()
     // After the asynchronous code is executed, if the component has been uninstalled, do not update the status
     if (isUnmountedRef.current) return
 
@@ -99,8 +97,7 @@ export function useProgress(updateInterval: number) {
   }
 
   useEffect(() => {
-    // @ts-expect-error
-    if (!pollTrackPlayerStates.includes(playerState)) return
+    if (!pollTrackPlayerStates.has(playerState)) return
 
     void getProgress()
 
@@ -127,10 +124,11 @@ export function useBufferProgress() {
       interval = null
     }
     const updateBuffer = async() => {
-      const buffered = await (duration ? TrackPlayer.getBufferedPosition() : Promise.all([TrackPlayer.getBufferedPosition(), TrackPlayer.getDuration()]).then(([buffered, _duration]) => {
+      // N2 换装：getBufferedPosition/getDuration → getProgress()
+      const { buffered, duration: _duration } = await TrackPlayer.getProgress()
+      if (!duration) {
         duration = _duration
-        return buffered
-      }))
+      }
       // console.log('updateBuffer', buffered, duration, buffered > 0, buffered == duration)
       // After the asynchronous code is executed, if the component has been uninstalled, do not update the status
       if (buffered > 0 && buffered == duration) clearItv()
@@ -174,8 +172,8 @@ export function useBufferProgress() {
     })
 
     void updateBuffer()
-    void TrackPlayer.getState().then((state) => {
-      if (state == State.Buffering) interval = setInterval(updateBuffer, 1000)
+    void TrackPlayer.getPlaybackState().then((state) => {
+      if (state.state == State.Buffering) interval = setInterval(updateBuffer, 1000)
     })
     return () => {
       isUnmounted = true

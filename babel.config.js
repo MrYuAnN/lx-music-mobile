@@ -32,6 +32,7 @@ module.exports = {
         },
       },
     ],
-    'react-native-reanimated/plugin',
+    // N2: reanimated 4 拆分 worklet 运行时，babel 插件随迁 react-native-worklets/plugin
+    'react-native-worklets/plugin',
   ],
 }

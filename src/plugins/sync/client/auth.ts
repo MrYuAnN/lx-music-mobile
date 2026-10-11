@@ -60,7 +60,9 @@ const codeAuth = async(urlInfo: LX.Sync.UrlInfo, serverId: string, authCode: str
     }
     let msg
     try {
-      msg = rsaDecrypt(Buffer.from(text, 'base64'), privateKey).toString()
+      // tsc 全绿；ts-eslint 6.21 对 Buffer.from 泛型重载误判 any（栈升级另行排期）
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+      msg = rsaDecrypt(Buffer.from(text, 'base64') as Buffer, privateKey).toString()
     } catch (err: any) {
       log.error('[auth] codeAuth decryptMsg error', err.message)
       throw new Error(SYNC_CODE.authFailed)

@@ -1,10 +1,11 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json",     /* Recommended React Native TSConfig base */
+  "extends": "@react-native/typescript-config",     /* Recommended React Native TSConfig base（0.86 起走 exports "."，子路径不再导出） */
   "compilerOptions": {
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 
     "module": "ESNext",
-    "types": ["react-native", "node"],
+    /* N2：@types/react-native 退役（RN 包自带类型），types 仅保留 node */
+    "types": ["node"],
     /* Completeness */
     "skipLibCheck": true,                                 /* Skip type checking all .d.ts files. */
 

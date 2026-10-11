@@ -2,25 +2,24 @@
 
 buildscript {
     ext {
-        buildToolsVersion = "35.0.0"
-        minSdkVersion = 21
+        buildToolsVersion = "36.0.0"
+        minSdkVersion = 24
         compileSdkVersion = 36
-        targetSdkVersion = 29
+        targetSdkVersion = 36
 
-        ndkVersion = "26.1.10909125"
-        kotlinVersion = "1.9.24" // Or any version above 1.3.x
-
-        // https://github.com/dream-horizon-org/react-native-fast-image/blob/main/docs/app-glide-module.md
-        excludeAppGlideModule = true
+        ndkVersion = "27.1.12297006"
+        kotlinVersion = "2.1.20"
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath('com.android.tools.build:gradle:8.6.1')
+        // N2：AGP/Kotlin 版本改由 RN gradle plugin 版本目录统一管理（0.86 模板），
+        // ext.kotlinVersion 仅供三方库读取
+        classpath("com.android.tools.build:gradle")
         classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
     }
 }
 

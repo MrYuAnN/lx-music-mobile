@@ -79,7 +79,8 @@ const PlayerBar = () => {
 // 悬浮卡 1:1 dp 值（390 基准）；运行时边距被上方 inset/横屏偏移覆盖（常量单源：BAR_*）
 const styles = StyleSheet.create({
   overlay: {
-    ...StyleSheet.absoluteFillObject,
+    // N2：RN 0.86 移除 absoluteFillObject，absoluteFill 为普通对象可展开
+    ...StyleSheet.absoluteFill,
     justifyContent: 'flex-end',
   },
   floatCard: {

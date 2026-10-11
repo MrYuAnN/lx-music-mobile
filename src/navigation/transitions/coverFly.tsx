@@ -171,7 +171,8 @@ export const CoverFlyHost = memo(() => {
 
 const styles = StyleSheet.create({
   host: {
-    ...StyleSheet.absoluteFillObject,
+    // N2：RN 0.86 移除 absoluteFillObject，absoluteFill 为普通对象可展开
+    ...StyleSheet.absoluteFill,
     zIndex: 100,
     elevation: 100,
   },

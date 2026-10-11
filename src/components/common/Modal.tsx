@@ -77,7 +77,7 @@ export default forwardRef<ModalType, ModalProps>(({
     },
   }))
 
-  const memoChildren = useMemo(() => children, [children])
+  const memoChildren = useMemo(async() => children, [children])
 
   // Modal 独立窗口的手势条透明已由 patches/react-native+0.73.11.patch 补齐（navigationBarColor 透明
   // + 内容延伸，近似 RN 0.74 navigationBarTranslucent，新批问题3）；sheet 已按 navBarInset 垫高避让。

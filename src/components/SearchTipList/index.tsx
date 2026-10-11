@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type Ref } from 'react'
+import { useRef, useState, useCallback, useMemo, forwardRef, useImperativeHandle, type Ref, type JSX } from 'react'
 import { StyleSheet, View, Animated } from 'react-native'
 // import PropTypes from 'prop-types'
 // import { AppColors } from '@/theme'

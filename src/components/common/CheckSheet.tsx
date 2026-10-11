@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { forwardRef, useImperativeHandle, useRef, type JSX } from 'react'
 import { ScrollView, TouchableOpacity } from 'react-native'
 
 import SheetBase, { type SheetBaseType } from './SheetBase'

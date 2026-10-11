@@ -26,11 +26,13 @@ const buildData = (key: string, value: any, datas: Array<[string, string]>) => {
 
 // 1.4.0 之前的数据分片存储方式，存在key的内容与分隔符冲突的问题
 // 1.4.0 开始改用数组存储，不再使用分隔符的方式
+// N2：async-storage 3.x batch API 改名（multiGet→getMany，返回 Record），
+// 分片拼接按传入 keys 序取值保证顺序
 const handleGetDataOld = async<T>(partKeys: string): Promise<T> => {
   const keys = partKeys.replace(partKeyPrefixRxp, '').split(keySplit)
 
-  return AsyncStorage.multiGet(keys).then(datas => {
-    return JSON.parse(datas.map(data => data[1]).join(''))
+  return AsyncStorage.getMany(keys).then(datas => {
+    return JSON.parse(keys.map(key => datas[key]).join(''))
   })
 }
 
@@ -38,8 +40,8 @@ const handleGetData = async<T>(partKeys: string): Promise<T> => {
   if (partKeys.startsWith(partKeyPrefix)) return handleGetDataOld<T>(partKeys)
 
   const keys = JSON.parse(partKeys.replace(partKeyArrPrefixRxp, '')) as string[]
-  return AsyncStorage.multiGet(keys).then(datas => {
-    return JSON.parse(datas.map(data => data[1]).join(''))
+  return AsyncStorage.getMany(keys).then(datas => {
+    return JSON.parse(keys.map(key => datas[key]).join(''))
   })
 }
 
@@ -49,7 +51,7 @@ export const saveData = async(key: string, value: any) => {
 
   try {
     await removeData(key)
-    await AsyncStorage.multiSet(datas)
+    await AsyncStorage.setMany(Object.fromEntries(datas))
   } catch (e: any) {
     // saving error
     log.error('storage error[saveData]:', key, e.message)
@@ -86,7 +88,7 @@ export const removeData = async(key: string) => {
       let partKeys = value.replace(partKeyPrefixRxp, '').split(keySplit)
       partKeys.push(key)
       try {
-        await AsyncStorage.multiRemove(partKeys)
+        await AsyncStorage.removeMany(partKeys)
       } catch (e: any) {
         // remove error
         log.error('storage error[removeData]:', key, e.message)
@@ -97,7 +99,7 @@ export const removeData = async(key: string) => {
       let partKeys = JSON.parse(value.replace(partKeyArrPrefixRxp, '')) as string[]
       partKeys.push(key)
       try {
-        await AsyncStorage.multiRemove(partKeys)
+        await AsyncStorage.removeMany(partKeys)
       } catch (e: any) {
         // remove error
         log.error('storage error[removeData]:', key, e.message)
@@ -131,17 +133,17 @@ export const getAllKeys = async() => {
 
 
 export const getDataMultiple = async<T extends readonly string[]>(keys: T) => {
-  type RawData = { [K in keyof T]: [T[K], string | null] }
-  let datas: RawData
+  let datas: Record<string, string | null>
   try {
-    datas = await AsyncStorage.multiGet(keys) as RawData
+    datas = await AsyncStorage.getMany([...keys])
   } catch (e: any) {
     // read error
     log.error('storage error[getDataMultiple]:', e.message)
     throw e
   }
-  const promises: Array<Promise<ReadonlyArray<[unknown | null]>>> = []
-  for (const [, value] of datas) {
+  const promises: Array<Promise<unknown>> = []
+  for (const key of keys) {
+    const value = datas[key]
     if (value && (partKeyPrefixRxp.test(value) || partKeyArrPrefixRxp.test(value))) {
       promises.push(handleGetData(value))
     } else {
@@ -150,7 +152,7 @@ export const getDataMultiple = async<T extends readonly string[]>(keys: T) => {
     }
   }
   return Promise.all(promises).then(values => {
-    return datas.map(([key], index) => ([key, values[index]])) as { [K in keyof T]: [T[K], unknown] }
+    return keys.map((key, index) => ([key, values[index]])) as { [K in keyof T]: [T[K], unknown] }
   })
 }
 
@@ -161,7 +163,7 @@ export const saveDataMultiple = async(datas: Array<[string, any]>) => {
   }
   try {
     await removeDataMultiple(datas.map(k => k[0]))
-    await AsyncStorage.multiSet(allData)
+    await AsyncStorage.setMany(Object.fromEntries(allData))
   } catch (e: any) {
     // save error
     log.error('storage error[saveDataMultiple]:', e.message)
@@ -172,9 +174,10 @@ export const saveDataMultiple = async(datas: Array<[string, any]>) => {
 
 export const removeDataMultiple = async(keys: string[]) => {
   if (!keys.length) return
-  const datas = await AsyncStorage.multiGet(keys)
+  const datas = await AsyncStorage.getMany(keys)
   let allKeys = []
-  for (const [key, value] of datas) {
+  for (const key of keys) {
+    const value = datas[key]
     allKeys.push(key)
     if (value) {
       if (partKeyPrefixRxp.test(value)) {
@@ -185,7 +188,7 @@ export const removeDataMultiple = async(keys: string[]) => {
     }
   }
   try {
-    await AsyncStorage.multiRemove(allKeys)
+    await AsyncStorage.removeMany(allKeys)
   } catch (e: any) {
     // remove error
     log.error('storage error[removeDataMultiple]:', e.message)
@@ -202,5 +205,3 @@ export const clearAll = async() => {
     throw e
   }
 }
-
-export { useAsyncStorage } from '@react-native-async-storage/async-storage'

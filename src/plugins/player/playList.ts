@@ -111,17 +111,18 @@ export const isTempTrack = (trackId: string) => /\/\/default$/.test(trackId)
 
 
 export const getCurrentTrackId = async() => {
-  const currentTrackIndex = await TrackPlayer.getCurrentTrack()
-  return list[currentTrackIndex]?.id
+  // N2 换装 lovegaoshi fork：getCurrentTrack() → getActiveTrackIndex()
+  const currentTrackIndex = await TrackPlayer.getActiveTrackIndex()
+  return currentTrackIndex == null ? undefined : list[currentTrackIndex]?.id
 }
 export const getCurrentTrack = async() => {
-  const currentTrackIndex = await TrackPlayer.getCurrentTrack()
-  return list[currentTrackIndex]
+  const currentTrackIndex = await TrackPlayer.getActiveTrackIndex()
+  return currentTrackIndex == null ? undefined : list[currentTrackIndex]
 }
 
 export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: boolean, force = false) => {
   if (!force && isPlay == state.isPlaying) {
-    const duration = await TrackPlayer.getDuration()
+    const duration = await TrackPlayer.getProgress().then(p => p.duration)
     if (state.prevDuration != duration) {
       state.prevDuration = duration
       const trackInfo = await getCurrentTrack()
@@ -130,7 +131,7 @@ export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: bool
       }
     }
   } else {
-    const [duration, trackInfo] = await Promise.all([TrackPlayer.getDuration(), getCurrentTrack()])
+    const [duration, trackInfo] = await Promise.all([TrackPlayer.getProgress().then(p => p.duration), getCurrentTrack()])
     state.prevDuration = duration
     if (trackInfo && musicInfo) {
       delayUpdateMusicInfo(musicInfo)
@@ -152,7 +153,7 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
   const tracks = buildTracks(musicInfo, url)
   const track = tracks[0]
   // await updateMusicInfo(track)
-  const currentTrackIndex = await TrackPlayer.getCurrentTrack()
+  const currentTrackIndex = await TrackPlayer.getActiveTrackIndex()
   await TrackPlayer.add(tracks).then(() => list.push(...tracks))
   const queue = await TrackPlayer.getQueue() as LX.Player.Track[]
   await TrackPlayer.skip(queue.findIndex(t => t.id == track.id))
@@ -210,7 +211,8 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
   //   duration = global.playInfo.duration || 0
   // }
   // console.log('+++++updateMetaInfo+++++', mInfo.name)
-  state.isPlaying = await TrackPlayer.getState() == State.Playing
+  // N2 换装：getState() → getPlaybackState()
+  state.isPlaying = (await TrackPlayer.getPlaybackState()).state == State.Playing
   let artwork = isShowNotificationImage ? mInfo.pic ?? prevArtwork : undefined
   if (mInfo.pic) prevArtwork = mInfo.pic
   let title: string
@@ -222,14 +224,15 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
     title = playerState.lastLyric
     artist = `${mInfo.name}${mInfo.singer ? ` - ${mInfo.singer}` : ''}`
   }
+  // N2 换装：updateNowPlayingMetadata 双参（playing）为 lyswhut 扩展，fork 单参；
+  // AVRCP 独立 lyric 通道随 fork 缺失退役（拍板：等价实现走 updateNowPlayingTitles 文本行）
   await TrackPlayer.updateNowPlayingMetadata({
     title,
     artist,
     album: mInfo.album ?? undefined,
     artwork,
     duration: state.prevDuration || 0,
-    lyric: getCurrentFullLyric(mInfo.id),
-  }, state.isPlaying)
+  })
 }
 
 

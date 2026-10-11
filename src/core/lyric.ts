@@ -17,8 +17,6 @@ import {
 } from '@/core/desktopLyric'
 import { getPosition } from '@/plugins/player'
 import playerState from '@/store/player/state'
-import settingState from '@/store/setting/state'
-import { updateNowPlayingTitles } from '@/plugins/player/utils'
 
 /**
  * init lyric
@@ -35,11 +33,8 @@ export const init = async() => {
 const handleSetLyric = async(lyric: string, translation = '', romalrc = '') => {
   lrcSetLyric(lyric, translation, romalrc)
   await setDesktopLyric(lyric, translation, romalrc)
-  if (settingState.setting['player.isShowBluetoothFullLyric']) {
-    void updateNowPlayingTitles({
-      lyric,
-    })
-  }
+  // N2 换装：player.isShowBluetoothFullLyric（蓝牙整首歌词 AVRCP 通道）随 fork 退役，
+  // lyric-only 推送不再发 native（封装层已短路）；开关隐藏同拍板②先例，数据键保留
 }
 
 /**
