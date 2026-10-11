@@ -4,6 +4,8 @@ import { useWindowSize } from '@/utils/hooks'
 
 import Modal, { type ModalType } from '@/components/common/Modal'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
+
 // import { useGetter } from '@/store'
 
 // const menuItemHeight = 42
@@ -19,8 +21,8 @@ const styles = createStyle({
     backgroundColor: 'rgba(0,0,0,0)',
   },
   menuItem: {
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     // height: menuItemHeight,
     // width: menuItemWidth,
     // alignItems: 'center',

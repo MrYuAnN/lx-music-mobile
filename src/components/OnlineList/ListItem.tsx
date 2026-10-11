@@ -11,7 +11,7 @@ import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { LIST_ITEM_HEIGHT, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
 import { createStyle, type RowInfo } from '@/utils/tools'
 import { useI18n } from '@/lang'
-import { SPACING } from "@/config/spacing";
+import { SPACING } from '@/config/spacing'
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 
@@ -138,8 +138,8 @@ const styles = createStyle({
     flexDirection: 'row',
     flexWrap: 'nowrap',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s8,
   },
   main: {
     flex: 1,
@@ -156,7 +156,7 @@ const styles = createStyle({
     width: scaleSizeW(40),
     height: scaleSizeW(40),
     borderRadius: scaleSizeW(6),
-    marginLeft: 4,
+    marginLeft: SPACING.s4,
     marginRight: SPACING.s12,
   },
   picPlaceholder: {
@@ -166,12 +166,12 @@ const styles = createStyle({
   info: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingRight: 6,
+    paddingRight: SPACING.s6,
   },
   sublineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: SPACING.s4,
   },
   sublineText: {
     flexGrow: 0,

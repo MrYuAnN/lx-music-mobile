@@ -7,6 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
 import { scaleSizeH } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 export type SelectMode = 'single' | 'range'
 
@@ -152,8 +153,8 @@ const styles = createStyle({
   },
   btn: {
     // flex: 1,
-    paddingLeft: 18,
-    paddingRight: 18,
+    paddingLeft: SPACING.s18,
+    paddingRight: SPACING.s18,
     alignItems: 'center',
     justifyContent: 'center',
   },

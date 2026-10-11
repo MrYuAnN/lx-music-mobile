@@ -71,7 +71,7 @@ const styles = createStyle({
     gap: 30,
   },
   label: {
-    marginBottom: 2,
+    marginBottom: SPACING.s2,
   },
   btns: {
     flexDirection: 'row',

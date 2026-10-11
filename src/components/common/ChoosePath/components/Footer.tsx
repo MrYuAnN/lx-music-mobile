@@ -4,6 +4,7 @@ import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
+import { SPACING } from '@/config/spacing'
 
 export default memo(({ onConfirm, onHide, dirOnly }: {
   onConfirm: () => void
@@ -38,8 +39,8 @@ const styles = StyleSheet.create({
   },
   footerBtn: {
     width: '50%',
-    paddingTop: 16,
-    paddingBottom: 16,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
     alignItems: 'center',
   },
 })

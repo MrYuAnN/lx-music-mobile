@@ -7,6 +7,7 @@ import playerState from '@/store/player/state'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { LIST_IDS } from '@/config/constant'
 import { useCurrentScreen } from '@/navigation/currentScreen'
+import { SPACING } from '@/config/spacing'
 
 // AM-6 迷你条双行文案：歌名 13/600 + 歌手 11 灰（Status 歌词行移除，歌词看播放页——方案 §3.7.2）
 export default () => {
@@ -44,8 +45,8 @@ export default () => {
 const styles = StyleSheet.create({
   container: {
     width: '100%',
-    paddingHorizontal: 2,
-    gap: 2,
+    paddingHorizontal: SPACING.s2,
+    gap: SPACING.s2,
   },
   title: {
     fontFamily: FontFamilies.semibold,

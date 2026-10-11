@@ -115,8 +115,8 @@ const styles = createStyle({
     flexShrink: 1,
     minWidth: 240,
     borderRadius: 4,
-    paddingTop: 2,
-    paddingBottom: 2,
+    paddingTop: SPACING.s2,
+    paddingBottom: SPACING.s2,
   },
 })
 

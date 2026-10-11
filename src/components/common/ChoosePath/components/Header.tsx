@@ -118,11 +118,11 @@ const styles = createStyle({
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   actionBtn: {
-    paddingTop: 8,
-    paddingBottom: 8,
-    paddingLeft: 6,
-    paddingRight: 6,
-    marginLeft: 10,
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
+    paddingLeft: SPACING.s6,
+    paddingRight: SPACING.s6,
+    marginLeft: SPACING.s10,
   },
   newFolderContent: {
     flexShrink: 1,
@@ -136,8 +136,8 @@ const styles = createStyle({
     flexShrink: 1,
     minWidth: 240,
     borderRadius: 4,
-    paddingTop: 2,
-    paddingBottom: 2,
+    paddingTop: SPACING.s2,
+    paddingBottom: SPACING.s2,
   },
 })
 

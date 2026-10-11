@@ -15,6 +15,7 @@ import Text from '@/components/common/Text'
 import { handlePlay } from './listAction'
 import { useSettingValue } from '@/store/setting/hook'
 import { hapticImpactLight } from '@/utils/haptic'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
 
@@ -299,7 +300,7 @@ const styles = createStyle({
   },
   footer: {
     textAlign: 'center',
-    padding: 10,
+    padding: SPACING.s10,
   },
 })
 

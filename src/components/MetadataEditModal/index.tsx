@@ -16,6 +16,7 @@ import MetadataForm, { defaultData, type Metadata, type MetadataFormType } from 
 import { log } from '@/utils/log'
 import { formatPlayTime2 } from '@/utils'
 import { unlink } from '@/utils/fs'
+import { SPACING } from '@/config/spacing'
 
 export type {
   Metadata,
@@ -141,7 +142,7 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   title: {
-    marginBottom: 20,
+    marginBottom: SPACING.s20,
     textAlign: 'center',
   },
 })

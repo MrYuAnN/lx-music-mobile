@@ -34,7 +34,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.s16,
   },
   label: {
-    marginBottom: 2,
+    marginBottom: SPACING.s2,
   },
   input: {
     flexGrow: 1,

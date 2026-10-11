@@ -17,6 +17,7 @@ import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { hapticImpactLight, hapticSelection } from '@/utils/haptic'
+import { SPACING } from '@/config/spacing'
 
 const ITEM_HEIGHT = scaleSizeH(56)
 const PIC_SIZE = scaleSizeW(40)
@@ -321,14 +322,14 @@ const styles = createStyle({
     height: ITEM_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 4,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s4,
   },
   itemContent: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: SPACING.s10,
   },
   itemPic: {
     width: PIC_SIZE,
@@ -339,7 +340,7 @@ const styles = createStyle({
   itemTexts: {
     flex: 1,
     flexShrink: 1,
-    gap: 2,
+    gap: SPACING.s2,
   },
   itemSubline: {
     flexDirection: 'row',
@@ -358,16 +359,16 @@ const styles = createStyle({
     height: ITEM_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 4,
-    gap: 10,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s4,
+    gap: SPACING.s10,
     elevation: 8,
     borderRadius: scaleSizeW(8),
     opacity: 0.95,
   },
   empty: {
-    paddingHorizontal: 16,
-    paddingVertical: 28,
+    paddingHorizontal: SPACING.s16,
+    paddingVertical: SPACING.s28,
     alignItems: 'center',
   },
 })

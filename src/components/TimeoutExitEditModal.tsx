@@ -233,13 +233,13 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   tip: {
-    marginBottom: 8,
+    marginBottom: SPACING.s8,
   },
   checkbox: {
     marginTop: SPACING.s6,
   },
   inputContent: {
-    marginTop: 8,
+    marginTop: SPACING.s8,
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -252,7 +252,7 @@ const styles = createStyle({
     // paddingBottom: 2,
   },
   inputLabel: {
-    marginLeft: 8,
+    marginLeft: SPACING.s8,
   },
 })
 

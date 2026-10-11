@@ -2,6 +2,7 @@ import { memo, forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
 
 export interface SearchBarType {
   setText: (text: string) => void
@@ -106,7 +107,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 38,
     borderRadius: 8,
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.s10,
   },
   prefix: {
     flexDirection: 'row',
@@ -115,8 +116,8 @@ const styles = StyleSheet.create({
   divider: {
     width: 1,
     height: 16,
-    marginLeft: 6,
-    marginRight: 8,
+    marginLeft: SPACING.s6,
+    marginRight: SPACING.s8,
   },
   input: {
     flex: 1,
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    marginLeft: 6,
+    marginLeft: SPACING.s6,
     alignItems: 'center',
     justifyContent: 'center',
   },

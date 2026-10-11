@@ -4,7 +4,7 @@ import Text from '@/components/common/Text'
 import { BorderWidths } from '@/theme'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
-import { SPACING } from "@/config/spacing";
+import { SPACING } from '@/config/spacing'
 
 export default ({ listInfo, onPress, width }: {
   listInfo: LX.List.MyListInfo
@@ -36,10 +36,10 @@ export const styles = createStyle({
   },
   button: {
     height: 36,
-    paddingLeft: 10,
-    paddingRight: 10,
-    marginRight: 10,
-    marginBottom: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
+    marginRight: SPACING.s10,
+    marginBottom: SPACING.s10,
     borderRadius: 4,
     width: '100%',
     alignItems: 'center',

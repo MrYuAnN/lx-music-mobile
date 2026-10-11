@@ -196,28 +196,28 @@ const styles = createStyle({
   list: {
     flexGrow: 1,
     flexShrink: 1,
-    marginVertical: 10,
+    marginVertical: SPACING.s10,
   },
   listContentItem: {
-    paddingVertical: 10,
+    paddingVertical: SPACING.s10,
     flexDirection: 'row',
   },
   pathBtn: {
     paddingHorizontal: SPACING.s6,
-    paddingVertical: 10,
+    paddingVertical: SPACING.s10,
     flex: 1,
   },
   removeBtn: {
     flex: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 10,
+    paddingVertical: SPACING.s10,
     paddingHorizontal: SPACING.s16,
   },
   tips: {
     flexDirection: 'column',
     alignItems: 'flex-start',
-    gap: 10,
+    gap: SPACING.s10,
   },
   tip: {
     flex: 1,

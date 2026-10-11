@@ -8,6 +8,7 @@ import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 const menuItemHeight = scaleSizeH(40)
 const menuItemWidth = scaleSizeW(100)
@@ -35,8 +36,8 @@ const styles = createStyle({
     elevation: 3,
   },
   menuItem: {
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     // height: menuItemHeight,
     // width: menuItemWidth,
     // alignItems: 'center',

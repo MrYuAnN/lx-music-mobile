@@ -5,6 +5,7 @@ import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { type RowInfo, createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
+import { SPACING } from '@/config/spacing'
 
 export interface PathItem {
   name: string
@@ -71,16 +72,16 @@ const styles = createStyle({
     width: '100%',
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     alignItems: 'center',
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   itemInfo: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s10,
   },
   listItemTitleText: {
     flexDirection: 'row',
@@ -90,11 +91,11 @@ const styles = createStyle({
     flexShrink: 1,
   },
   listItemDesc: {
-    paddingTop: 2,
+    paddingTop: SPACING.s2,
   },
   size: {
     alignSelf: 'flex-end',
-    marginBottom: 10,
+    marginBottom: SPACING.s10,
   },
 })
 

@@ -13,7 +13,7 @@ import { useSettingValue } from '@/store/setting/hook'
 import { useCurrentScreen, usePendingBlacklistHide } from '@/navigation/currentScreen'
 import { PLAY_DETAIL_SCREEN, COMMENT_SCREEN, HOME_SCREEN } from '@/navigation/screenNames'
 import { NAV_WIDTH } from '@/config/constant'
-import { SPACING } from "@/config/spacing";
+import { SPACING } from '@/config/spacing'
 
 // 迷你播放条全局 overlay（新批问题4 v3 定稿）：一份实例悬浮于全部 screen 之上，转场原地不动。
 // 显隐=isHome 屏推导（封面长按跳列表位置仅 Home 生效）与黑名单（播放页/评论页不显示）同源于当前屏单值；
@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingLeft: SPACING.s8,
-    paddingRight: 4,
+    paddingRight: SPACING.s4,
     overflow: 'hidden',
     elevation: 6,
     shadowColor: '#000',
@@ -101,7 +101,7 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     flexGrow: 1,
     flexShrink: 1,
-    paddingLeft: 10,
+    paddingLeft: SPACING.s10,
   },
   right: {
     flexDirection: 'row',

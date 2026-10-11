@@ -5,6 +5,7 @@ import { confirmDialog, createStyle } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import { createUserList } from '@/core/list'
 import listState from '@/store/list/state'
+import { SPACING } from '@/config/spacing'
 
 export default ({ isEdit, onHide }: {
   isEdit: boolean
@@ -56,7 +57,7 @@ const styles = createStyle({
     left: 0,
     width: '100%',
     height: '100%',
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   input: {

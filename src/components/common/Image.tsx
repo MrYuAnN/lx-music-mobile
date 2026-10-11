@@ -6,6 +6,8 @@ import { View, type ViewProps, StyleSheet, Image as FastImage } from 'react-nati
 // import FastImage, { type FastImageProps } from 'react-native-fast-image'
 import Text from './Text'
 import { useLayout } from '@/utils/hooks'
+import { SPACING } from '@/config/spacing'
+
 // export type { OnLoadEvent } from 'react-native-fast-image'
 
 export interface ImageProps extends ViewProps {
@@ -89,6 +91,6 @@ const styles = createStyle({
     justifyContent: 'center',
   },
   text: {
-    paddingLeft: 2,
+    paddingLeft: SPACING.s2,
   },
 })

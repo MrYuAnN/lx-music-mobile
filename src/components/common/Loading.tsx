@@ -5,6 +5,7 @@ import { useTheme } from '@/store/theme/hook'
 import { ActivityIndicator, StyleSheet, type ActivityIndicatorProps } from 'react-native'
 import { setSpText } from '@/utils/pixelRatio'
 import Text from './Text'
+import { SPACING } from '@/config/spacing'
 
 export interface LoadingProps extends Omit<ActivityIndicatorProps, 'size'> {
   size?: number
@@ -41,6 +42,6 @@ export default memo(({ size = 15, label, ...props }: LoadingProps) => {
 
 const styles = createStyle({
   loadingLabel: {
-    marginRight: 6,
+    marginRight: SPACING.s6,
   },
 })

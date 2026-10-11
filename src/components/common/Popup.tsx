@@ -10,6 +10,7 @@ import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
 import { useStatusbarHeight } from '@/store/common/hook'
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   centeredView: {
@@ -29,10 +30,10 @@ const styles = createStyle({
     borderTopRightRadius: scaleSizeW(16),
   },
   title: {
-    paddingLeft: 10,
+    paddingLeft: SPACING.s10,
     paddingRight: 25,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s10,
     // lineHeight: 20,
   },
   closeBtn: {

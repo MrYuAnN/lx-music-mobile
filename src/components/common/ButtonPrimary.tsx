@@ -22,9 +22,9 @@ export default memo(({ disabled, size = 14, onPress, children }: ButtonProps) =>
 
 const styles = createStyle({
   button: {
-    paddingHorizontal: 10,
+    paddingHorizontal: SPACING.s10,
     paddingVertical: SPACING.s6,
     borderRadius: 4,
-    marginRight: 10,
+    marginRight: SPACING.s10,
   },
 })

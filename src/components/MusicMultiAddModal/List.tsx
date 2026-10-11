@@ -15,7 +15,7 @@ import { SPACING } from '@/config/spacing'
 const styles = createStyle({
   list: {
     paddingLeft: SPACING.s16,
-    paddingRight: 2,
+    paddingRight: SPACING.s2,
     paddingBottom: SPACING.s6,
     flexDirection: 'row',
     flexWrap: 'wrap',

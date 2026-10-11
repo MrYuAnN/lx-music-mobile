@@ -4,6 +4,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import Loading from './Loading'
+import { SPACING } from '@/config/spacing'
 
 // interface LoadingMaskProps {
 
@@ -75,6 +76,6 @@ const styles = createStyle({
     zIndex: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    gap: 10,
+    gap: SPACING.s10,
   },
 })

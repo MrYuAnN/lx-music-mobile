@@ -19,8 +19,8 @@ const styles = createStyle({
   },
   content: {
     flexGrow: 0,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
   },
   // iOS Alert 式按钮区：顶部发丝线分隔、文本按钮等宽并排（弹窗体系方案 §问题8）
   btns: {
@@ -32,8 +32,8 @@ const styles = createStyle({
   },
   btn: {
     flex: 1,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s12,
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 0,

@@ -4,6 +4,7 @@ import Text from './Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { getOnlineQualitys } from '@/utils/music'
+import { SPACING } from '@/config/spacing'
 
 export { getOnlineQualitys }
 
@@ -59,11 +60,11 @@ const styles = createStyle({
   },
   tag: {
     height: 15,
-    paddingHorizontal: 4,
+    paddingHorizontal: SPACING.s4,
     borderWidth: 1,
     borderRadius: 3,
     justifyContent: 'center',
-    marginRight: 4,
+    marginRight: SPACING.s4,
   },
   sourceText: {
     letterSpacing: 0.3,

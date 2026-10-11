@@ -10,6 +10,7 @@ import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
 import { SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { setSpText } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 interface Props {
   componentId: string
@@ -72,12 +73,12 @@ const styles = createStyle({
     fontFamily: FontFamilies.semibold,
     fontSize: setSpText(17),
     // AM 二级页标题居左（紧跟返回键），right 插槽占位时由 flex 收窄
-    marginRight: 12,
+    marginRight: SPACING.s12,
   },
   right: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 12,
+    paddingRight: SPACING.s12,
     flexShrink: 0,
   },
 })
