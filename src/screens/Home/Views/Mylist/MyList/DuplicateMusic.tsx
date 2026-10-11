@@ -300,7 +300,7 @@ const styles = createStyle({
     flexShrink: 1,
     // backgroundColor: 'rgba(0,0,0,0.2)',
     paddingLeft: SPACING.s16,
-    paddingRight: 5,
+    paddingRight: SPACING.s6,
   },
   listItemAlbum: {
     flexDirection: 'row',
@@ -310,12 +310,12 @@ const styles = createStyle({
     flex: 0,
   },
   listItemLabelText: {
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
   },
   listItemBtns: {
     flex: 0,
     flexDirection: 'row',
-    gap: 5,
+    gap: SPACING.s6,
     paddingHorizontal: 8,
   },
   listItemBtn: {

@@ -16,7 +16,7 @@ const styles = createStyle({
   list: {
     paddingLeft: SPACING.s16,
     paddingRight: 2,
-    paddingBottom: 5,
+    paddingBottom: SPACING.s6,
     flexDirection: 'row',
     flexWrap: 'wrap',
     // backgroundColor: 'rgba(0,0,0,0.2)'

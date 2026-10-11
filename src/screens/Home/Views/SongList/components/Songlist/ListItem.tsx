@@ -7,6 +7,7 @@ import { scaleSizeW } from '@/utils/pixelRatio'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Image from '@/components/common/Image'
+import { SPACING } from '@/config/spacing'
 
 const gap = scaleSizeW(15)
 export default memo(({ item, index, width, showSource, onPress }: {
@@ -49,7 +50,7 @@ const styles = createStyle({
   listItemImg: {
     // backgroundColor: '#eee',
     borderRadius: 4,
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
@@ -79,6 +80,6 @@ const styles = createStyle({
   listItemTitle: {
     fontSize: 12,
     // overflow: 'hidden',
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
   },
 })

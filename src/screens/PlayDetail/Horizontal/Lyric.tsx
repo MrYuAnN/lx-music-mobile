@@ -11,6 +11,8 @@ import { setSpText } from '@/utils/pixelRatio'
 import playerState from '@/store/player/state'
 import { scrollTo } from '@/utils/scroll'
 import PlayLine, { type PlayLineType } from '../components/PlayLine'
+import { SPACING } from '@/config/spacing'
+
 // import { screenkeepAwake } from '@/utils/nativeModules/utils'
 // import { log } from '@/utils/log'
 // import { toast } from '@/utils/tools'
@@ -318,7 +320,7 @@ const styles = createStyle({
     textAlign: 'center',
     // fontSize: 13,
     // lineHeight: 17,
-    paddingTop: 5,
+    paddingTop: SPACING.s6,
     // paddingBottom: 5,
   },
 })

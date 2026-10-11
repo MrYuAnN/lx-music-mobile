@@ -79,7 +79,7 @@ const styles = createStyle({
   },
   picContent: {
     // backgroundColor: 'rgba(0,0,0,0.2)',
-    marginTop: 5,
+    marginTop: SPACING.s6,
     position: 'relative',
   },
   pic: {

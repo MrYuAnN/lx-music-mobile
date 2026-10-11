@@ -72,7 +72,7 @@ const styles = createStyle({
   contentContainer: {
     flexDirection: 'row',
     flexWrap: 'nowrap',
-    padding: 5,
+    padding: SPACING.s6,
     // backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   // listContainer: {
@@ -87,10 +87,10 @@ const styles = createStyle({
     // height: 'auto',
     // flexDirection: 'row',
     // alignItems: 'center',
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
     // paddingVertical: 10,
     borderRadius: BorderRadius.normal,
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   listName: {

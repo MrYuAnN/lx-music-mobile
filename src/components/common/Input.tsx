@@ -5,6 +5,7 @@ import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import { setSpText } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   content: {
@@ -23,7 +24,7 @@ const styles = createStyle({
     paddingTop: 0,
     paddingBottom: 0,
     height: 32,
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     paddingRight: 0,
     flexGrow: 1,
     flexShrink: 1,
@@ -37,8 +38,8 @@ const styles = createStyle({
   },
   clearBtn: {
     height: '70%',
-    paddingLeft: 5,
-    paddingRight: 5,
+    paddingLeft: SPACING.s6,
+    paddingRight: SPACING.s6,
     justifyContent: 'center',
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },

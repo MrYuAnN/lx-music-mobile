@@ -10,6 +10,7 @@ import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
 import { useI18n } from '@/lang'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<SettingScreenIds>
 
@@ -124,7 +125,7 @@ const styles = createStyle({
     justifyContent: 'center',
     flexGrow: 1,
     flexShrink: 1,
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
 })

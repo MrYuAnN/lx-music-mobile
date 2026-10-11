@@ -13,6 +13,7 @@ import Text from '@/components/common/Text'
 import { type Position } from './ListMenu'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import Loading from '@/components/common/Loading'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<LX.List.MyListInfo>
 
@@ -148,8 +149,8 @@ const styles = createStyle({
     height: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 5,
-    paddingLeft: 5,
+    paddingRight: SPACING.s6,
+    paddingLeft: SPACING.s6,
     // borderBottomWidth: BorderWidths.normal,
   },
   listActiveIcon: {
@@ -159,7 +160,7 @@ const styles = createStyle({
     textAlign: 'center',
   },
   loading: {
-    marginLeft: 5,
+    marginLeft: SPACING.s6,
   },
   listName: {
     height: '100%',
@@ -169,7 +170,7 @@ const styles = createStyle({
     justifyContent: 'center',
     flexGrow: 1,
     flexShrink: 1,
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   // listNameText: {

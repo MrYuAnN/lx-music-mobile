@@ -7,6 +7,7 @@ import { createUserList, updateUserList } from '@/core/list'
 import { confirmDialog, createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import listState from '@/store/list/state'
+import { SPACING } from '@/config/spacing'
 
 interface NameInputType {
   setName: (text: string) => void
@@ -117,7 +118,7 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
           onConfirm={handleRename}
         >
           <View style={styles.renameContent}>
-            <Text style={{ marginBottom: 5 }}>{ position == -1 ? global.i18n.t('list_rename_title') : global.i18n.t('list_create')}</Text>
+            <Text style={{ marginBottom: SPACING.s6 }}>{ position == -1 ? global.i18n.t('list_rename_title') : global.i18n.t('list_create')}</Text>
             <NameInput ref={nameInputRef} />
           </View>
         </ConfirmAlert>

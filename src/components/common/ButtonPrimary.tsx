@@ -4,6 +4,7 @@ import Button, { type BtnProps } from '@/components/common/Button'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 export interface ButtonProps extends BtnProps {
   size?: number
@@ -22,7 +23,7 @@ export default memo(({ disabled, size = 14, onPress, children }: ButtonProps) =>
 const styles = createStyle({
   button: {
     paddingHorizontal: 10,
-    paddingVertical: 5,
+    paddingVertical: SPACING.s6,
     borderRadius: 4,
     marginRight: 10,
   },

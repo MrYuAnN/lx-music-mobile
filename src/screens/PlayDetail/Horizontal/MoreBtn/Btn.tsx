@@ -4,6 +4,7 @@ import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
+import { SPACING } from '@/config/spacing'
 
 export const BTN_WIDTH = scaleSizeW(32)
 export const BTN_ICON_SIZE = ICON_SIZE.control
@@ -23,7 +24,7 @@ export default ({ icon, color, onPress }: {
 
 const styles = createStyle({
   cotrolBtn: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
     justifyContent: 'center',
     alignItems: 'center',
 

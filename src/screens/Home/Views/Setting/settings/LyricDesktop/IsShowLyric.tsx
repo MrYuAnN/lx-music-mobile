@@ -8,6 +8,7 @@ import { createStyle } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import { useSettingValue } from '@/store/setting/hook'
 import DesktopLyricEnable, { type DesktopLyricEnableType } from '@/components/DesktopLyricEnable'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -29,6 +30,6 @@ export default memo(() => {
 
 const styles = createStyle({
   content: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
 })

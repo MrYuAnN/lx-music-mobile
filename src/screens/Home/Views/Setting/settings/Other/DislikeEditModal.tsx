@@ -150,8 +150,8 @@ const styles = createStyle({
     // borderRadius: 4,
     // borderTopRightRadius: 4,
     // borderBottomRightRadius: 4,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: SPACING.s6,
+    paddingBottom: SPACING.s6,
   },
   inputTipText: {
     marginTop: 8,

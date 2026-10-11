@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { httpFetch } from '@/utils/request'
 import { handleImportScript } from './action'
+import { SPACING } from '@/config/spacing'
 
 interface UrlInputType {
   setText: (text: string) => void
@@ -114,7 +115,7 @@ export default forwardRef<ScriptImportOnlineType, {}>((props, ref) => {
           confirmText={btn.text}
         >
           <View style={styles.reurlContent}>
-            <Text style={{ marginBottom: 5 }}>{ t('user_api_btn_import_online')}</Text>
+            <Text style={{ marginBottom: SPACING.s6 }}>{ t('user_api_btn_import_online')}</Text>
             <UrlInput ref={urlInputRef} />
           </View>
         </ConfirmAlert>

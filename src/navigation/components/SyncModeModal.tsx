@@ -36,8 +36,8 @@ const styles = createStyle({
     flexDirection: 'row',
     // justifyContent: 'center',
     justifyContent: 'flex-start',
-    marginTop: 5,
-    marginBottom: 5,
+    marginTop: SPACING.s6,
+    marginBottom: SPACING.s6,
     // paddingBottom: 15,
     // paddingLeft: 15,
     // paddingRight: 15,
@@ -64,7 +64,7 @@ const styles = createStyle({
   tip: {
     // paddingLeft: 15,
     // paddingRight: 15,
-    paddingBottom: 5,
+    paddingBottom: SPACING.s6,
   },
 })
 

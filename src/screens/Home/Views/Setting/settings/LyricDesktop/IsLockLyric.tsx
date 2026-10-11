@@ -8,6 +8,7 @@ import { createStyle } from '@/utils/tools'
 import CheckBoxItem from '../../components/CheckBoxItem'
 import { toggleDesktopLyricLock } from '@/core/desktopLyric'
 import { updateSetting } from '@/core/common'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -28,6 +29,6 @@ export default memo(() => {
 
 const styles = createStyle({
   content: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
 })

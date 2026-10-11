@@ -13,8 +13,8 @@ const styles = createStyle({
     // flexGrow: 0,
     flexShrink: 1,
     marginTop: SPACING.s16,
-    marginLeft: 5,
-    marginRight: 5,
+    marginLeft: SPACING.s6,
+    marginRight: SPACING.s6,
     marginBottom: SPACING.s16,
   },
   content: {

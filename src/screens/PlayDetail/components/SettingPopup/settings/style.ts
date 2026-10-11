@@ -3,7 +3,7 @@ import { SPACING } from '@/config/spacing'
 
 export default createStyle({
   container: {
-    paddingTop: 5,
+    paddingTop: SPACING.s6,
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
     paddingBottom: SPACING.s16,
@@ -28,6 +28,6 @@ export default createStyle({
     flexShrink: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingTop: 5,
+    paddingTop: SPACING.s6,
   },
 })

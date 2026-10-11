@@ -7,6 +7,7 @@ import Input, { type InputType } from '@/components/common/Input'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 interface TitleType {
   updateTitle: (musicInfo: SelectInfo['musicInfo'], selectedList: SelectInfo['selectedList']) => void
@@ -23,7 +24,7 @@ const Title = forwardRef<TitleType, {}>((props, ref) => {
   }))
 
   return (
-    <Text style={{ marginBottom: 5 }}>{title}</Text>
+    <Text style={{ marginBottom: SPACING.s6 }}>{title}</Text>
   )
 })
 

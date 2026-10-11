@@ -4,6 +4,7 @@ import Button, { type BtnProps } from '@/components/common/Button'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 type ButtonProps = BtnProps
 
@@ -21,8 +22,8 @@ const styles = createStyle({
   button: {
     paddingLeft: 10,
     paddingRight: 10,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: SPACING.s6,
+    paddingBottom: SPACING.s6,
     borderRadius: 4,
     marginRight: 10,
   },

@@ -435,7 +435,7 @@ const styles = createStyle({
     // lineHeight: 38,
     textAlign: 'center',
     paddingHorizontal: 2,
-    paddingVertical: 5,
+    paddingVertical: SPACING.s6,
   },
   list: {
     flexGrow: 1,
@@ -459,7 +459,7 @@ const styles = createStyle({
     flexShrink: 1,
     // backgroundColor: 'rgba(0,0,0,0.2)',
     paddingLeft: SPACING.s16,
-    paddingRight: 5,
+    paddingRight: SPACING.s6,
   },
   listItemAlbum: {
     flexDirection: 'row',
@@ -469,12 +469,12 @@ const styles = createStyle({
     flex: 0,
   },
   listItemLabelText: {
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
   },
   listItemBtns: {
     flex: 0,
     flexDirection: 'row',
-    gap: 5,
+    gap: SPACING.s6,
     paddingHorizontal: 8,
   },
   listItemBtn: {
@@ -483,7 +483,7 @@ const styles = createStyle({
 
   detailContainer: {
     flexDirection: 'row',
-    gap: 5,
+    gap: SPACING.s6,
     alignItems: 'center',
     paddingHorizontal: 10,
     paddingVertical: 10,
@@ -492,13 +492,13 @@ const styles = createStyle({
     flexDirection: 'column',
     flexGrow: 1,
     flexShrink: 1,
-    gap: 5,
+    gap: SPACING.s6,
   },
   detailContainerX: {
     flexDirection: 'row',
     flexGrow: 1,
     flexShrink: 1,
-    gap: 5,
+    gap: SPACING.s6,
     alignItems: 'center',
   },
   detailInfo: {
@@ -509,7 +509,7 @@ const styles = createStyle({
     justifyContent: 'center',
   },
   detailInfoName: {
-    gap: 5,
+    gap: SPACING.s6,
     flexDirection: 'row',
     flexGrow: 0,
     flexShrink: 1,

@@ -30,7 +30,7 @@ export default memo(() => {
 
 const styles = createStyle({
   content: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
     marginBottom: SPACING.s16,
   },
 })

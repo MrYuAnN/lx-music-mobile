@@ -50,7 +50,7 @@ const Content = memo(({ title, newVersionInfo }: {
             ? (
                 <View>
                   <Text style={styles.label}>{t('version_label_change_log')}</Text>
-                  <View style={{ paddingLeft: 10, marginTop: 5 }}>
+                  <View style={{ paddingLeft: 10, marginTop: SPACING.s6 }}>
                     <Text selectable style={styles.desc}>{newVersionInfo.desc}</Text>
                   </View>
                 </View>
@@ -62,7 +62,7 @@ const Content = memo(({ title, newVersionInfo }: {
             ? (
                 <View style={styles.history}>
                   <Text style={styles.label}>{t('version_label_history')}</Text>
-                  <View style={{ paddingLeft: 10, marginTop: 5 }}>
+                  <View style={{ paddingLeft: 10, marginTop: SPACING.s6 }}>
                     {history.map((item, index) => <VersionItem key={index} version={item.version} desc={item.desc} />)}
                   </View>
                 </View>

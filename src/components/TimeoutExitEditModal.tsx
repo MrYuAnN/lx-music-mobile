@@ -11,6 +11,7 @@ import CheckBox from './common/CheckBox'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
 import settingState from '@/store/setting/state'
+import { SPACING } from '@/config/spacing'
 
 const MAX_MIN = 1440
 const rxp = /([1-9]\d*)/
@@ -235,7 +236,7 @@ const styles = createStyle({
     marginBottom: 8,
   },
   checkbox: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
   inputContent: {
     marginTop: 8,

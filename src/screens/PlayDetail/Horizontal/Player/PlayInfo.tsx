@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useBufferProgress } from '@/plugins/player'
+import { SPACING } from '@/config/spacing'
 
 // const FONT_SIZE = 13
 
@@ -47,11 +48,11 @@ export default () => {
 const styles = createStyle({
   container: {
     // marginLeft: 15,
-    marginVertical: 5,
+    marginVertical: SPACING.s6,
     height: 26,
     // flex: 1,
     paddingVertical: 2,
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -71,7 +72,7 @@ const styles = createStyle({
   status: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingRight: 5,
+    paddingRight: SPACING.s6,
   },
 })
 // const styles = createStyle({

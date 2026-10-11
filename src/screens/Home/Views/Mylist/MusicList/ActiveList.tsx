@@ -96,7 +96,7 @@ const styles = createStyle({
     // paddingBottom: 10,
   },
   loading: {
-    marginRight: 5,
+    marginRight: SPACING.s6,
   },
   currentListBtns: {
     width: 46,

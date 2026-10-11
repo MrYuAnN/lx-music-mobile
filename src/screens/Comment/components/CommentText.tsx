@@ -51,7 +51,7 @@ export default memo(({ text }: { text: string }) => {
 
 const styles = createStyle({
   text: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
     lineHeight: 19,
   },
   toggle: {

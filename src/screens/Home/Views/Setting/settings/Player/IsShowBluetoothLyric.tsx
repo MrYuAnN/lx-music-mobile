@@ -11,6 +11,7 @@ import { showRemoteLyric } from '@/core/desktopLyric'
 import { setLastLyric } from '@/core/player/playInfo'
 import { updateNowPlayingTitles } from '@/plugins/player/utils'
 import playerState from '@/store/player/state'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -41,7 +42,7 @@ export default memo(() => {
 
 const styles = createStyle({
   content: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
 })
 

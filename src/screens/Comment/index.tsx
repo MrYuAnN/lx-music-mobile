@@ -16,6 +16,7 @@ import playerState from '@/store/player/state'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { BorderWidths } from '@/theme'
 import { useNavBarInsets } from '@/utils/insetsTool'
+import { SPACING } from '@/config/spacing'
 
 type ActiveId = 'hot' | 'new'
 
@@ -202,7 +203,7 @@ const styles = createStyle({
   left: {
     flex: 1,
     flexDirection: 'row',
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
   },
   tabBtn: {
     // flex: 1,

@@ -13,6 +13,8 @@ import { useI18n } from '@/lang'
 import Image from '@/components/common/Image'
 import CommentImage from './CommentImage'
 import CommentText from './CommentText'
+import { SPACING } from '@/config/spacing'
+
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const defaultUser = require('@/resources/images/defaultUser.jpg')
 
@@ -140,7 +142,7 @@ const styles = createStyle({
     marginLeft: 2,
   },
   images: {
-    paddingTop: 5,
+    paddingTop: SPACING.s6,
     width: '100%',
     flexDirection: 'row',
   },

@@ -9,6 +9,7 @@ import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 const HEADER_HEIGHT = 20
 // AM Dialog 圆角（iOS Alert 基准 14，随宽缩放与 sheet 圆角同口径）
@@ -43,7 +44,7 @@ const styles = createStyle({
     height: HEADER_HEIGHT,
   },
   title: {
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     paddingRight: 25,
     lineHeight: HEADER_HEIGHT,
   },

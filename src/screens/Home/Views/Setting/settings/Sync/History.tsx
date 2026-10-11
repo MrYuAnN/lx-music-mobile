@@ -176,6 +176,6 @@ const styles = createStyle({
     flex: 1,
   },
   listBtn: {
-    padding: 5,
+    padding: SPACING.s6,
   },
 })

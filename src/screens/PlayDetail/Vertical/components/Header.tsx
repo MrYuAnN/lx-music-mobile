@@ -13,6 +13,7 @@ import SettingPopup, { type SettingPopupType } from '../../components/SettingPop
 import { useStatusbarHeight } from '@/store/common/hook'
 import Btn from './Btn'
 import TimeoutExitBtn from './TimeoutExitBtn'
+import { SPACING } from '@/config/spacing'
 
 export const HEADER_HEIGHT = _HEADER_HEIGHT
 
@@ -64,7 +65,7 @@ const styles = StyleSheet.create({
   },
   titleContent: {
     flex: 1,
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
     // alignItems: 'center',
     justifyContent: 'center',
   },

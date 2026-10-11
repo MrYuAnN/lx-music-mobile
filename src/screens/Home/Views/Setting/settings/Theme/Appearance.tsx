@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import SubTitle from '../../components/SubTitle'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 // AM 式外观三选一（跟随系统/浅色/深色），替代原 16 套主题选择器
 const OPTIONS = [
@@ -53,7 +54,7 @@ const styles = createStyle({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 10,
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
   item: {
     paddingHorizontal: 14,

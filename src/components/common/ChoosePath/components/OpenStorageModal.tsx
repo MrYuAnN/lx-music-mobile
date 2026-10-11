@@ -180,7 +180,7 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   newFolderTitle: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
     width: 300,
     maxWidth: '100%',
   },
@@ -203,7 +203,7 @@ const styles = createStyle({
     flexDirection: 'row',
   },
   pathBtn: {
-    paddingHorizontal: 5,
+    paddingHorizontal: SPACING.s6,
     paddingVertical: 10,
     flex: 1,
   },

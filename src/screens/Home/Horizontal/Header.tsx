@@ -9,6 +9,7 @@ import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { HEADER_HEIGHT as _HEADER_HEIGHT } from '@/config/constant'
+import { SPACING } from '@/config/spacing'
 
 // 搜索类型 chips 在内容组件（Views/Search）内自渲染（问题 2），
 // 页头不再挂 SearchTypeSelector——横屏双实例状态互不同步（架构师 I2 修复）
@@ -59,7 +60,7 @@ const Header = () => {
 const styles = createStyle({
   container: {
     // width: '100%',
-    paddingRight: 5,
+    paddingRight: SPACING.s6,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -69,7 +70,7 @@ const styles = createStyle({
   left: {
     flex: 1,
     flexDirection: 'row',
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     alignItems: 'center',
     height: '100%',
     // backgroundColor: 'rgba(0,0,0,0.1)',

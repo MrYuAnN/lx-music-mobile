@@ -113,7 +113,7 @@ const styles = createStyle({
     bottom: 3,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: SPACING.s6,
   },
   lineContent: {
     // backgroundColor: 'rgba(0,0,0,0.1)',
@@ -123,7 +123,7 @@ const styles = createStyle({
     top: -10,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: SPACING.s6,
   },
   line: {
     marginLeft: 30,
@@ -133,7 +133,7 @@ const styles = createStyle({
   },
   button: {
     flex: 0,
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     paddingRight: SPACING.s16,
   },
 })

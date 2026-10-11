@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   btns: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
     flexDirection: 'row',
   },
 })

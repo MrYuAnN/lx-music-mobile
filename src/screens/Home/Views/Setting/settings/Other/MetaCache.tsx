@@ -9,6 +9,7 @@ import { toast } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { clearLyric, clearOtherSource, getMetaCache } from '@/utils/data'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -73,10 +74,10 @@ export default memo(() => {
 
 const styles = StyleSheet.create({
   cacheSize: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
   },
   clearBtn: {
-    gap: 5,
+    gap: SPACING.s6,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },

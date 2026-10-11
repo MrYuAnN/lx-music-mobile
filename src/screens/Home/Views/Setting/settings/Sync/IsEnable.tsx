@@ -17,6 +17,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useStatus } from '@/store/sync/hook'
 import Text from '@/components/common/Text'
 import { SYNC_CODE } from '@/plugins/sync/constants'
+import { SPACING } from '@/config/spacing'
 
 const addressRxp = /^https?:\/\/\S+/i
 
@@ -184,11 +185,11 @@ export default memo(({ host, setHost }: {
 
 const styles = createStyle({
   infoContent: {
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
   textAddr: {
     marginLeft: 25,
-    marginTop: 5,
+    marginTop: SPACING.s6,
   },
   text: {
     marginLeft: 25,
@@ -202,7 +203,7 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   authCodeLabel: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
   },
   authCodeInput: {
     flexGrow: 1,

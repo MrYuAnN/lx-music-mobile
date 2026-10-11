@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   },
   item: {
     marginRight: SPACING.s16,
-    marginTop: 5,
+    marginTop: SPACING.s6,
     alignItems: 'center',
     width: 26,
     // backgroundColor: 'rgba(0,0,0,0.2)',

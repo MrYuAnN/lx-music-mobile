@@ -6,6 +6,7 @@ import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { type BoardItem } from '@/store/leaderboard/state'
 import { Icon } from '@/components/common/Icon'
+import { SPACING } from '@/config/spacing'
 
 // index={index}
 // longPressIndex={longPressIndex}
@@ -55,7 +56,7 @@ export default ({ item, activeId, index, longPressIndex, onBoundChange, onShowMe
 
 const styles = createStyle({
   button: {
-    paddingLeft: 5,
+    paddingLeft: SPACING.s6,
     paddingRight: 10,
     paddingTop: 10,
     paddingBottom: 10,

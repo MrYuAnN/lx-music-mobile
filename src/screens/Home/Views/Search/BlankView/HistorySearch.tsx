@@ -109,7 +109,7 @@ const styles = createStyle({
   },
   titleBtn: {
     marginLeft: 10,
-    padding: 5,
+    padding: SPACING.s6,
   },
   list: {
     // paddingLeft: 15,
@@ -122,8 +122,8 @@ const styles = createStyle({
     textAlign: 'center',
     paddingLeft: 10,
     paddingRight: 10,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: SPACING.s6,
+    paddingBottom: SPACING.s6,
     borderRadius: 4,
     marginRight: 10,
     marginTop: 8,

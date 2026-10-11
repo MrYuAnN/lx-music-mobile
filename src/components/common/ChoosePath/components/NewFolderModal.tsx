@@ -7,6 +7,8 @@ import { createStyle, toast } from '@/utils/tools'
 import { mkdir } from '@/utils/fs'
 import { useTheme } from '@/store/theme/hook'
 import type { PathItem } from './ListItem'
+import { SPACING } from '@/config/spacing'
+
 const filterFileName = /[\\/:*?#"<>|]/
 
 
@@ -106,7 +108,7 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   newFolderTitle: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
   },
   input: {
     flexGrow: 1,

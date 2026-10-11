@@ -11,6 +11,7 @@ import Text from '@/components/common/Text'
 import { state, useRuleNum } from '@/store/dislikeList'
 import DislikeEditModal, { type DislikeEditModalType } from './DislikeEditModal'
 import { overwirteDislikeInfo } from '@/core/dislikeList'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -42,7 +43,7 @@ export default memo(() => {
 
 const styles = StyleSheet.create({
   ruleNum: {
-    marginBottom: 5,
+    marginBottom: SPACING.s6,
   },
   btn: {
     flexDirection: 'row',
