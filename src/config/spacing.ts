@@ -5,7 +5,7 @@
  * 数值口径 = dp 直译（写入即渲染，不随屏幕/字号缩放，见 doc/design-principles.md）。
  * 新代码间距一律从本表取值，禁写裸 magic number；奇数与非 2dp 倍数值非法（存量由
  * Phase 2 清洗批次收敛）。页面纵向层级与 9 页分类清单见 doc/design-principles.md §4.1 间距体系。
- * 表覆盖边界：s2~s28（无 s22——间距家族无 22 存量；> s28 大间距走豁免通道保留裸值，见 §4.1）。
+ * 表覆盖边界：s2~s28。存量豁免值（不入表，逐处留裸）：播放页 ControlBtn 的 22（视觉耦合）、微调值 1/2.5、> s28 大间距（56/92 等）——完整豁免清单见 doc/design-principles.md §4.1。
  */
 export const SPACING = {
   s2: 2,

@@ -50,7 +50,7 @@ const Content = memo(({ title, newVersionInfo }: {
             ? (
                 <View>
                   <Text style={styles.label}>{t('version_label_change_log')}</Text>
-                  <View style={{ paddingLeft: 10, marginTop: SPACING.s6 }}>
+                  <View style={{ paddingLeft: SPACING.s10, marginTop: SPACING.s6 }}>
                     <Text selectable style={styles.desc}>{newVersionInfo.desc}</Text>
                   </View>
                 </View>
@@ -62,7 +62,7 @@ const Content = memo(({ title, newVersionInfo }: {
             ? (
                 <View style={styles.history}>
                   <Text style={styles.label}>{t('version_label_history')}</Text>
-                  <View style={{ paddingLeft: 10, marginTop: SPACING.s6 }}>
+                  <View style={{ paddingLeft: SPACING.s10, marginTop: SPACING.s6 }}>
                     {history.map((item, index) => <VersionItem key={index} version={item.version} desc={item.desc} />)}
                   </View>
                 </View>
@@ -212,7 +212,7 @@ const styles = createStyle({
     marginTop: SPACING.s16,
     marginLeft: SPACING.s16,
     marginRight: SPACING.s16,
-    marginBottom: 20,
+    marginBottom: SPACING.s20,
   },
   content: {
     flexGrow: 0,
@@ -226,11 +226,11 @@ const styles = createStyle({
     marginTop: SPACING.s16,
   },
   versionItem: {
-    marginBottom: 10,
+    marginBottom: SPACING.s10,
   },
   label: {
     fontSize: 14,
-    marginBottom: 2,
+    marginBottom: SPACING.s2,
   },
   desc: {
     fontSize: 13,
@@ -239,7 +239,7 @@ const styles = createStyle({
   tip: {
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
   },
   btns: {
     flexDirection: 'row',
@@ -250,10 +250,10 @@ const styles = createStyle({
   },
   btn: {
     flex: 1,
-    paddingTop: 10,
-    paddingBottom: 10,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     alignItems: 'center',
     borderRadius: 4,
     marginRight: SPACING.s16,

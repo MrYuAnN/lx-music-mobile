@@ -26,11 +26,11 @@ const styles = createStyle({
   },
   title: {
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: SPACING.s10,
     marginRight: SPACING.s16,
   },
   btnGroup: {
-    marginTop: 10,
+    marginTop: SPACING.s10,
   },
   btns: {
     flexDirection: 'row',
@@ -46,8 +46,8 @@ const styles = createStyle({
     // flex: 1,
     paddingTop: SPACING.s10,
     paddingBottom: SPACING.s10,
-    paddingLeft: 8,
-    paddingRight: 8,
+    paddingLeft: SPACING.s8,
+    paddingRight: SPACING.s8,
     alignItems: 'center',
     borderRadius: 4,
     marginRight: SPACING.s16,
@@ -56,7 +56,7 @@ const styles = createStyle({
   tips: {
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
   },
   tipTitle: {
     fontFamily: FontFamilies.bold,
