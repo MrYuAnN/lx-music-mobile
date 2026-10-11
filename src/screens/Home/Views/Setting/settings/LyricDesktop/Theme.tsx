@@ -5,6 +5,7 @@ import { memo } from 'react'
 import { StyleSheet, View, TouchableOpacity } from 'react-native'
 
 import SubTitle from '../../components/SubTitle'
+import { SPACING } from '@/config/spacing'
 
 const themes = [
   ['#08e664', 'rgba(0,0,0,0.6)'],
@@ -59,7 +60,7 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   item: {
-    marginRight: 15,
+    marginRight: SPACING.s16,
     marginTop: 5,
     alignItems: 'center',
     width: 26,

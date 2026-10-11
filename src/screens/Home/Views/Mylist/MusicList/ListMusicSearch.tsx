@@ -10,6 +10,7 @@ import { View } from 'react-native'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { getListMusics } from '@/core/list'
 import listState from '@/store/list/state'
+import { SPACING } from '@/config/spacing'
 
 type SearchTipListProps = _SearchTipListProps<LX.Music.MusicInfo>
 interface ListMusicSearchProps {
@@ -128,8 +129,8 @@ const styles = createStyle({
     height: ITEM_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   itemName: {

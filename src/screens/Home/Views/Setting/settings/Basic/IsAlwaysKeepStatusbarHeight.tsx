@@ -7,6 +7,7 @@ import { useSettingValue } from '@/store/setting/hook'
 
 
 import CheckBoxItem from '../../components/CheckBoxItem'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -30,6 +31,6 @@ export default memo(() => {
 const styles = createStyle({
   content: {
     marginTop: 5,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
 })

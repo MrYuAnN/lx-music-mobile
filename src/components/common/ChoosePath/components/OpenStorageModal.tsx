@@ -13,6 +13,8 @@ import ButtonPrimary from '@/components/common/ButtonPrimary'
 import { useUnmounted } from '@/utils/hooks'
 import { Icon } from '@/components/common/Icon'
 import type { PathItem } from './ListItem'
+import { SPACING } from '@/config/spacing'
+
 const filterFileName = /[\\:*?#"<>|]/
 
 
@@ -210,7 +212,7 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 10,
-    paddingHorizontal: 15,
+    paddingHorizontal: SPACING.s16,
   },
   tips: {
     flexDirection: 'column',

@@ -6,15 +6,16 @@ import { createStyle } from '@/utils/tools'
 import { useI18n } from '@/lang/index'
 import { useTheme } from '@/store/theme/hook'
 import Text, { FontFamilies } from './Text'
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   main: {
     // flexGrow: 0,
     flexShrink: 1,
-    marginTop: 15,
+    marginTop: SPACING.s16,
     marginLeft: 5,
     marginRight: 5,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   content: {
     flexGrow: 0,

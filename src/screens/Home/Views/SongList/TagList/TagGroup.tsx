@@ -5,6 +5,7 @@ import { type TagInfoItem } from '@/store/songlist/state'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 export interface TagGroupProps {
   name: string
@@ -48,7 +49,7 @@ export default ({ name, list, onTagChange, activeId }: TagGroupProps) => {
 
 const styles = createStyle({
   tagTypeTitle: {
-    marginTop: 15,
+    marginTop: SPACING.s16,
     marginBottom: 10,
   },
   tagTypeList: {

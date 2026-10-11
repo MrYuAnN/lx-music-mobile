@@ -73,3 +73,5 @@ android/build-log*.txt
 metro-log.txt
 crop.ps1
 scan-line.ps1
+.tmp-*.png
+.tmp-*.xml

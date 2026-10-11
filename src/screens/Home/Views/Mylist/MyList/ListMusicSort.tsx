@@ -7,6 +7,7 @@ import { useI18n } from '@/lang'
 import CheckBox from '@/components/common/CheckBox'
 import { getListMusics, setFetchingListStatus, updateListMusicPosition } from '@/core/list'
 import { sortListMusicInfo } from './utils'
+import { SPACING } from '@/config/spacing'
 
 const Title = ({ title }: {
   title: string
@@ -160,7 +161,7 @@ const styles = createStyle({
     paddingBottom: 25,
   },
   formSection: {
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   formList: {
     flexDirection: 'row',

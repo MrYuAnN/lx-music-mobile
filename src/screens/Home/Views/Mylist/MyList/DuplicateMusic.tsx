@@ -14,6 +14,7 @@ import { playList } from '@/core/player/player'
 import { useI18n } from '@/lang'
 import { handleRemove } from '../MusicList/listAction'
 import Button from '@/components/common/Button'
+import { SPACING } from '@/config/spacing'
 
 type FlatListProps = _FlatListProps<DuplicateMusicItem>
 const ITEM_HEIGHT = scaleSizeH(56)
@@ -275,7 +276,7 @@ const styles = createStyle({
   },
   title: {
     textAlign: 'center',
-    paddingVertical: 15,
+    paddingVertical: SPACING.s16,
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   list: {
@@ -298,7 +299,7 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     // backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingLeft: 15,
+    paddingLeft: SPACING.s16,
     paddingRight: 5,
   },
   listItemAlbum: {

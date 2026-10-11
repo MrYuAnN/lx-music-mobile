@@ -1,11 +1,12 @@
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 export default createStyle({
   container: {
     paddingTop: 5,
-    paddingLeft: 15,
-    paddingRight: 15,
-    paddingBottom: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
+    paddingBottom: SPACING.s16,
     alignItems: 'flex-start',
   },
   // title: {

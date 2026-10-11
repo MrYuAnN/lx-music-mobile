@@ -13,16 +13,17 @@ import Version from '../settings/Version'
 import About from '../settings/About'
 import { createStyle } from '@/utils/tools'
 import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<SettingScreenIds>
 
 
 const styles = createStyle({
   content: {
-    paddingLeft: 15,
-    paddingRight: 15,
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
     flex: 0,
   },
 })

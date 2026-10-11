@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 // import SourceSelector, { type SourceSelectorProps, type SourceSelectorType } from '../SourceSelector'
 import { type Source } from '@/store/songlist/state'
+import { SPACING } from '@/config/spacing'
 
 interface IdInputType {
   setText: (text: string) => void
@@ -135,7 +136,7 @@ const styles = createStyle({
     height: '100%',
   },
   inputTipText: {
-    marginTop: 15,
+    marginTop: SPACING.s16,
     // lineHeight: 18,
   },
 })

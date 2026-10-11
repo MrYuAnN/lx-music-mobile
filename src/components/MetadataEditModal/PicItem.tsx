@@ -7,7 +7,7 @@ import { createStyle } from '@/utils/tools'
 import Image from '@/components/common/Image'
 import FileSelect, { type FileSelectType } from '@/components/common/FileSelect'
 import { BorderWidths } from '@/theme'
-
+import { SPACING } from '@/config/spacing'
 
 export interface PicItemProps {
   value: string
@@ -62,7 +62,7 @@ export default memo(({ value, label, onOnlineMatch, onChanged }: PicItemProps) =
 const styles = createStyle({
   container: {
     // paddingLeft: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   header: {
     flexDirection: 'row',
@@ -75,7 +75,7 @@ const styles = createStyle({
   },
   btns: {
     flexDirection: 'row',
-    gap: 15,
+    gap: SPACING.s16,
   },
   picContent: {
     // backgroundColor: 'rgba(0,0,0,0.2)',

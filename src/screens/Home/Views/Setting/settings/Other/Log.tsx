@@ -10,6 +10,7 @@ import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/Confirm
 import CheckBoxItem from '../../components/CheckBoxItem'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -93,7 +94,7 @@ export default memo(() => {
 const styles = createStyle({
   checkBox: {
     // paddingTop: 10,
-    paddingBottom: 15,
+    paddingBottom: SPACING.s16,
     marginLeft: -25,
   },
   btn: {

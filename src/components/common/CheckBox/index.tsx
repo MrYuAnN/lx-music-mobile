@@ -8,6 +8,7 @@ import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from '../Text'
 import { Icon } from '../Icon'
+import { SPACING } from '@/config/spacing'
 
 export interface CheckBoxProps {
   check: boolean
@@ -97,7 +98,7 @@ const styles = createStyle({
   content: {
     flexGrow: 0,
     flexShrink: 1,
-    marginRight: 15,
+    marginRight: SPACING.s16,
     alignItems: 'center',
     flexDirection: 'row',
     // backgroundColor: 'rgba(0,0,0,0.2)',

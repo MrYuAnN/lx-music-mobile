@@ -7,6 +7,8 @@ import { useI18n } from '@/lang'
 import { type TagInfo, type Source } from '@/store/songlist/state'
 import { getTags } from '@/core/songlist'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
+
 // import { BorderWidths } from '@/theme'
 
 export interface ListProps {
@@ -82,9 +84,9 @@ export default forwardRef<ListType, ListProps>(({ onTagChange }, ref) => {
 
 const styles = createStyle({
   tagContainer: {
-    paddingTop: 15,
-    paddingLeft: 15,
-    paddingBottom: 15,
+    paddingTop: SPACING.s16,
+    paddingLeft: SPACING.s16,
+    paddingBottom: SPACING.s16,
   },
   blankView: {
     paddingTop: '15%',

@@ -9,6 +9,7 @@ import { ICON_SIZE } from '@/config/constant'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { type SettingScreenIds } from '../Main'
+import { SPACING } from '@/config/spacing'
 
 export interface HeaderProps {
   onShowNavBar: () => void
@@ -47,7 +48,7 @@ const styles = createStyle({
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   currentListIcon: {
-    paddingLeft: 15,
+    paddingLeft: SPACING.s16,
     paddingRight: 10,
     // paddingTop: 10,
     // paddingBottom: 0,

@@ -11,7 +11,7 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import NewFolderModal, { type NewFolderType } from './NewFolderModal'
 import OpenStorageModal, { type OpenDirModalType } from './OpenStorageModal'
 import type { PathItem } from './ListItem'
-
+import { SPACING } from '@/config/spacing'
 
 export default memo(({
   title,
@@ -93,8 +93,8 @@ const styles = createStyle({
     flexGrow: 0,
     flexShrink: 0,
     flexDirection: 'row',
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     alignItems: 'center',
     elevation: 2,
     zIndex: 2,

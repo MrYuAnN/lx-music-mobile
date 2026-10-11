@@ -5,7 +5,7 @@ import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import ButtonPrimary from '@/components/common/ButtonPrimary'
 import { useI18n } from '@/lang'
-
+import { SPACING } from '@/config/spacing'
 
 export interface ParseNameProps {
   fileName: string
@@ -48,7 +48,7 @@ export default memo(({ fileName, onNameChanged, onSingerChanged }: ParseNameProp
 const styles = StyleSheet.create({
   container: {
     // paddingLeft: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   label: {
     marginBottom: 2,

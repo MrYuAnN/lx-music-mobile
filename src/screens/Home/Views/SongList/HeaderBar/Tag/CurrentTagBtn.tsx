@@ -3,7 +3,7 @@ import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import { forwardRef, useImperativeHandle, useState } from 'react'
-
+import { SPACING } from '@/config/spacing'
 
 export interface CurrentTagBtnProps {
   onShowList: () => void
@@ -34,8 +34,8 @@ export default forwardRef<CurrentTagBtnType, CurrentTagBtnProps>(({ onShowList }
 
 const styles = createStyle({
   btn: {
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     justifyContent: 'center',
   },
   sourceMenu: {

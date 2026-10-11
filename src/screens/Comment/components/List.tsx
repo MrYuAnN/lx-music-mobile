@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { type Comment } from '../utils'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<Comment>
 
@@ -133,8 +134,8 @@ const styles = createStyle({
   list: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
   footer: {
     textAlign: 'center',

@@ -8,6 +8,7 @@ import { createStyle, openUrl } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import Text, { FontFamilies } from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 // const qqGroupUrl = 'mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3Du1zyxek8roQAwic44nOkBXtG9CfbAxFw'
 // const qqGroupUrl2 = 'mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3D-l4kNZ2bPQAuvfCQFFhl1UoibvF5wcrQ'
@@ -105,8 +106,8 @@ export default memo(() => {
 
 const styles = createStyle({
   part: {
-    marginLeft: 15,
-    marginRight: 15,
+    marginLeft: SPACING.s16,
+    marginRight: SPACING.s16,
     marginBottom: 10,
     flexDirection: 'row',
     flexWrap: 'wrap',

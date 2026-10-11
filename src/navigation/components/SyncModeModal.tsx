@@ -10,16 +10,16 @@ import ModalContent from './ModalContent'
 import syncState from '@/store/sync/state'
 import CheckBox from '@/components/common/CheckBox'
 import { setSyncModeComponentId } from '@/core/sync'
-
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   main: {
     // flexGrow: 0,
     flexShrink: 1,
-    marginTop: 15,
-    marginLeft: 15,
+    marginTop: SPACING.s16,
+    marginLeft: SPACING.s16,
     // marginRight: 15,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   content: {
     flexGrow: 0,
@@ -27,7 +27,7 @@ const styles = createStyle({
   title: {
     textAlign: 'center',
     marginBottom: 10,
-    marginRight: 15,
+    marginRight: SPACING.s16,
   },
   btnGroup: {
     marginTop: 10,
@@ -50,12 +50,12 @@ const styles = createStyle({
     paddingRight: 8,
     alignItems: 'center',
     borderRadius: 4,
-    marginRight: 15,
+    marginRight: SPACING.s16,
     minWidth: 100,
   },
   tips: {
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     paddingBottom: 10,
   },
   tipTitle: {

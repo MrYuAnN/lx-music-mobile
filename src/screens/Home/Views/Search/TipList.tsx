@@ -8,6 +8,7 @@ import musicSdk from '@/utils/musicSdk'
 import searchState, { type InitState as SearchState } from '@/store/search/state'
 import { setSearchText, setTipList, setTipListInfo } from '@/core/search/search'
 import { debounce } from '@/utils'
+import { SPACING } from '@/config/spacing'
 
 export const ITEM_HEIGHT = scaleSizeH(36)
 
@@ -127,8 +128,8 @@ const styles = createStyle({
     height: ITEM_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
 })

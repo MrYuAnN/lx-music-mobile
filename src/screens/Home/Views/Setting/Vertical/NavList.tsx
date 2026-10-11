@@ -7,7 +7,7 @@ import Text from '@/components/common/Text'
 import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
 import { useI18n } from '@/lang'
 import { BorderRadius, BorderWidths } from '@/theme'
-
+import { SPACING } from '@/config/spacing'
 
 const ListItem = memo(({ id, activeId, onPress }: {
   onPress: (item: SettingScreenIds) => void
@@ -82,8 +82,8 @@ const styles = createStyle({
   listItem: {
     // width: '33.33%',
     height: 40,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     // height: 'auto',
     // flexDirection: 'row',
     // alignItems: 'center',

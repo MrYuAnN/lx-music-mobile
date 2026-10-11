@@ -3,6 +3,7 @@ import { TouchableOpacity, View } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
 
 const TEXT_LIMIT = 160
 const SUB_TEXT_LIMIT = TEXT_LIMIT * 1.2
@@ -54,7 +55,7 @@ const styles = createStyle({
     lineHeight: 19,
   },
   toggle: {
-    marginTop: 15,
+    marginTop: SPACING.s16,
     alignSelf: 'flex-end',
   },
 })

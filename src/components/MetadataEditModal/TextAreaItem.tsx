@@ -6,7 +6,7 @@ import Input from '@/components/common/Input'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
-
+import { SPACING } from '@/config/spacing'
 
 export interface TextAreaItemProps extends InputProps {
   value: string
@@ -54,7 +54,7 @@ export default memo(({ value, label, onOnlineMatch, onChanged, style, ...props }
 const styles = createStyle({
   container: {
     // paddingLeft: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   header: {
     flexDirection: 'row',
@@ -67,7 +67,7 @@ const styles = createStyle({
   },
   btns: {
     flexDirection: 'row',
-    gap: 15,
+    gap: SPACING.s16,
   },
   textarea: {
     flexGrow: 1,

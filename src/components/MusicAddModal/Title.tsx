@@ -2,6 +2,7 @@ import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
+import { SPACING } from '@/config/spacing'
 
 export default ({ musicInfo, isMove }: {
   musicInfo: LX.Music.MusicInfo
@@ -19,7 +20,7 @@ export default ({ musicInfo, isMove }: {
 const styles = createStyle({
   title: {
     textAlign: 'center',
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
   },
 })

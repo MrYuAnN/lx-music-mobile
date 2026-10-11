@@ -7,6 +7,7 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { ScrollView, View } from 'react-native'
 import HistorySearch, { type HistorySearchType } from './HistorySearch'
 import HotSearch, { type HotSearchType } from './HotSearch'
+import { SPACING } from '@/config/spacing'
 
 interface BlankViewProps {
   onSearch: (keyword: string) => void
@@ -69,9 +70,9 @@ export default forwardRef<BlankViewType, BlankViewProps>(({ onSearch }, ref) => 
 const styles = createStyle({
   content: {
     // paddingTop: 15,
-    paddingBottom: 15,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingBottom: SPACING.s16,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
   welcome: {
     flex: 1,

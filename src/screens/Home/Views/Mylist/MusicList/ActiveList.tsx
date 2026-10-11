@@ -13,6 +13,7 @@ import Text from '@/components/common/Text'
 import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import Loading from '@/components/common/Loading'
 import { useSettingValue } from '@/store/setting/hook'
+import { SPACING } from '@/config/spacing'
 
 export interface ActiveListProps {
   onShowSearchBar: () => void
@@ -81,7 +82,7 @@ const styles = createStyle({
     // backgroundColor: 'rgba(0,0,0,0.2)',
   },
   currentListIcon: {
-    paddingLeft: 15,
+    paddingLeft: SPACING.s16,
     paddingRight: 10,
     // paddingTop: 10,
     // paddingBottom: 0,

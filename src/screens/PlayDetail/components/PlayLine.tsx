@@ -9,7 +9,7 @@ import { BorderWidths } from '@/theme'
 import { formatPlayTime2 } from '@/utils'
 import { Icon } from '@/components/common/Icon'
 import { AM_EASE_DURATION, amEase } from '@/utils/animation'
-
+import { SPACING } from '@/config/spacing'
 
 export interface PlayLineType {
   updateScrollInfo: (scrollInfo: NativeSyntheticEvent<NativeScrollEvent>['nativeEvent'] | null) => void
@@ -134,6 +134,6 @@ const styles = createStyle({
   button: {
     flex: 0,
     paddingLeft: 5,
-    paddingRight: 15,
+    paddingRight: SPACING.s16,
   },
 })

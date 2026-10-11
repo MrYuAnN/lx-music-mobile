@@ -10,9 +10,7 @@ import type { InitState } from '@/store/common/state'
 import { exitApp, setNavActiveId } from '@/core/common'
 import { BorderWidths } from '@/theme'
 import { useSettingValue } from '@/store/setting/hook'
-
-
-
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   container: {
@@ -26,8 +24,8 @@ const styles = createStyle({
     width: NAV_WIDTH,
   },
   header: {
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
@@ -41,12 +39,12 @@ const styles = createStyle({
   },
   list: {
     // paddingTop: 10,
-    paddingBottom: 15,
+    paddingBottom: SPACING.s16,
   },
   menuItem: {
     flexDirection: 'row',
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
     // paddingLeft: 25,
     // paddingRight: 25,
     justifyContent: 'center',
@@ -59,7 +57,7 @@ const styles = createStyle({
     alignItems: 'center',
   },
   text: {
-    paddingLeft: 15,
+    paddingLeft: SPACING.s16,
     // fontWeight: '500',
   },
 })

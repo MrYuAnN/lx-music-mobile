@@ -9,7 +9,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { clearHistoryList, getSearchHistory, removeHistoryWord } from '@/core/search/search'
 import { Icon } from '@/components/common/Icon'
-
+import { SPACING } from '@/config/spacing'
 
 export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceList']]>
 
@@ -99,7 +99,7 @@ export default forwardRef<HistorySearchType, HistorySearchProps>((props, ref) =>
 
 const styles = createStyle({
   titleContent: {
-    paddingTop: 15,
+    paddingTop: SPACING.s16,
     flexDirection: 'row',
     alignItems: 'center',
   },

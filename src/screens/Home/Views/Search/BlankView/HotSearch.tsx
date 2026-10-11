@@ -7,7 +7,7 @@ import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-
+import { SPACING } from '@/config/spacing'
 
 interface ListProps {
   onSearch: (keyword: string) => void
@@ -75,7 +75,7 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
 const styles = createStyle({
   title: {
     // paddingLeft: 15,
-    paddingTop: 15,
+    paddingTop: SPACING.s16,
     // paddingBottom: 10,
   },
   list: {

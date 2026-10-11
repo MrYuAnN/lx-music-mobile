@@ -14,6 +14,7 @@ import { Icon } from '@/components/common/Icon'
 import settingState from '@/store/setting/state'
 import apiSourceInfo from '@/utils/musicSdk/api-source-info'
 import { setApiSource } from '@/core/apiSource'
+import { SPACING } from '@/config/spacing'
 
 const formatVersionName = (version: string) => {
   return /^\d/.test(version) ? `v${version}` : version
@@ -130,7 +131,7 @@ const styles = createStyle({
     flexGrow: 0,
   },
   list: {
-    paddingBottom: 15,
+    paddingBottom: SPACING.s16,
     flexDirection: 'column',
   },
   listItem: {
@@ -159,7 +160,7 @@ const styles = createStyle({
   tipText: {
     textAlign: 'center',
     marginTop: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
 })
 

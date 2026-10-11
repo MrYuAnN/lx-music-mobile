@@ -8,6 +8,7 @@ import Dialog, { type DialogType } from '@/components/common/Dialog'
 import Button from '@/components/common/Button'
 import List from './List'
 import ImportBtn from './ImportBtn'
+import { SPACING } from '@/config/spacing'
 
 // interface UrlInputType {
 //   setText: (text: string) => void
@@ -136,18 +137,18 @@ const styles = createStyle({
     // flexGrow: 1,
     flexShrink: 1,
     paddingHorizontal: 8,
-    paddingTop: 15,
+    paddingTop: SPACING.s16,
     paddingBottom: 10,
     flexDirection: 'column',
   },
   title: {
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
     textAlign: 'center',
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   tips: {
     paddingHorizontal: 7,
-    marginTop: 15,
+    marginTop: SPACING.s16,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
@@ -160,8 +161,8 @@ const styles = createStyle({
   btns: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingBottom: 15,
-    paddingLeft: 15,
+    paddingBottom: SPACING.s16,
+    paddingLeft: SPACING.s16,
     // paddingRight: 15,
   },
   btn: {
@@ -169,7 +170,7 @@ const styles = createStyle({
     padding: 10,
     alignItems: 'center',
     borderRadius: 4,
-    marginRight: 15,
+    marginRight: SPACING.s16,
   },
 })
 

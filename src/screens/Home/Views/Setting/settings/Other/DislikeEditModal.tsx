@@ -7,6 +7,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import Dialog, { type DialogType } from '@/components/common/Dialog'
 import Button from '@/components/common/Button'
+import { SPACING } from '@/config/spacing'
 
 interface RuleInputType {
   setText: (text: string) => void
@@ -126,8 +127,8 @@ const styles = createStyle({
   content: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingHorizontal: 15,
-    paddingTop: 15,
+    paddingHorizontal: SPACING.s16,
+    paddingTop: SPACING.s16,
     paddingBottom: 10,
     flexDirection: 'column',
   },
@@ -161,8 +162,8 @@ const styles = createStyle({
   btns: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingBottom: 15,
-    paddingLeft: 15,
+    paddingBottom: SPACING.s16,
+    paddingLeft: SPACING.s16,
     // paddingRight: 15,
   },
   btn: {
@@ -170,7 +171,7 @@ const styles = createStyle({
     padding: 10,
     alignItems: 'center',
     borderRadius: 4,
-    marginRight: 15,
+    marginRight: SPACING.s16,
   },
 })
 

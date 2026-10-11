@@ -5,7 +5,7 @@ import type { InputProps } from '@/components/common/Input'
 import Input from '@/components/common/Input'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
-
+import { SPACING } from '@/config/spacing'
 
 export interface InputItemProps extends InputProps {
   value: string
@@ -31,7 +31,7 @@ export default memo(({ value, label, onChanged, ...props }: InputItemProps) => {
 const styles = StyleSheet.create({
   container: {
     // paddingLeft: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   label: {
     marginBottom: 2,

@@ -13,6 +13,7 @@ import { useI18n } from '@/lang'
 import { useVersionDownloadProgressUpdated, useVersionInfo, useVersionInfoIgnoreVersionUpdated } from '@/store/version/hook'
 import ModalContent from './ModalContent'
 import { checkUpdate, downloadUpdate, hideModal, setIgnoreVersion } from '@/core/version'
+import { SPACING } from '@/config/spacing'
 
 const VersionItem = ({ version, desc }: VersionInfo) => {
   return (
@@ -208,9 +209,9 @@ const styles = createStyle({
   main: {
     // flexGrow: 0,
     flexShrink: 1,
-    marginTop: 15,
-    marginLeft: 15,
-    marginRight: 15,
+    marginTop: SPACING.s16,
+    marginLeft: SPACING.s16,
+    marginRight: SPACING.s16,
     marginBottom: 20,
   },
   content: {
@@ -219,10 +220,10 @@ const styles = createStyle({
   title: {
     fontSize: 18,
     textAlign: 'center',
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   history: {
-    marginTop: 15,
+    marginTop: SPACING.s16,
   },
   versionItem: {
     marginBottom: 10,
@@ -236,15 +237,15 @@ const styles = createStyle({
     lineHeight: 18,
   },
   tip: {
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     paddingBottom: 10,
   },
   btns: {
     flexDirection: 'row',
     justifyContent: 'center',
-    paddingBottom: 15,
-    paddingLeft: 15,
+    paddingBottom: SPACING.s16,
+    paddingLeft: SPACING.s16,
     // paddingRight: 15,
   },
   btn: {
@@ -255,7 +256,7 @@ const styles = createStyle({
     paddingRight: 10,
     alignItems: 'center',
     borderRadius: 4,
-    marginRight: 15,
+    marginRight: SPACING.s16,
   },
 })
 

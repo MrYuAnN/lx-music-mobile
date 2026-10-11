@@ -7,6 +7,7 @@ import { useI18n } from '@/lang'
 
 import { useSettingValue } from '@/store/setting/hook'
 import { createStyle } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 
 type Sources = Readonly<Array<LX.OnlineSource | 'all'>>
 
@@ -75,8 +76,8 @@ const styles = createStyle({
     justifyContent: 'center',
     // paddingTop: 12,
     // paddingBottom: 12,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     // backgroundColor: '#ccc',
 
   },

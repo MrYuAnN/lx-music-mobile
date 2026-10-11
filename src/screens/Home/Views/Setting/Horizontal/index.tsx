@@ -5,6 +5,7 @@ import Main, { type MainType } from '../Main'
 import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
 
 const styles = createStyle({
   container: {
@@ -18,10 +19,10 @@ const styles = createStyle({
     borderRightWidth: BorderWidths.normal,
   },
   main: {
-    paddingLeft: 15,
-    paddingRight: 15,
-    paddingTop: 15,
-    paddingBottom: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
     flex: 0,
   },
 })

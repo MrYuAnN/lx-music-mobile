@@ -18,6 +18,7 @@ import playerState from '@/store/player/state'
 import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playNext } from '@/core/player/player'
+import { SPACING } from '@/config/spacing'
 
 type FlatListProps = _FlatListProps<LX.Music.MusicInfoOnline>
 const ITEM_HEIGHT = scaleSizeH(56)
@@ -457,7 +458,7 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     // backgroundColor: 'rgba(0,0,0,0.2)',
-    paddingLeft: 15,
+    paddingLeft: SPACING.s16,
     paddingRight: 5,
   },
   listItemAlbum: {

@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import { BorderWidths } from '@/theme'
+import { SPACING } from '@/config/spacing'
 
 interface SearchInputProps {
   onSearch: (keywork: string) => void
@@ -161,8 +162,8 @@ const styles = createStyle({
   },
   btn: {
     // flex: 1,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
     alignItems: 'center',
     justifyContent: 'center',
   },

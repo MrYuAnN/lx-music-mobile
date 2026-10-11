@@ -8,6 +8,7 @@ import ControlBtn from './components/ControlBtn'
 import { createStyle } from '@/utils/tools'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useBottomInset } from '@/utils/insetsTool'
+import { SPACING } from '@/config/spacing'
 
 // 控制区基础底距（原型 1:1 dp）；运行时叠加导航栏 inset（edge-to-edge）
 const PLAYER_PADDING_BOTTOM = 15
@@ -31,8 +32,8 @@ const styles = createStyle({
     // paddingTop: progressContentPadding,
     // marginTop: -progressContentPadding,
     // backgroundColor: 'rgba(0, 0, 0, .1)',
-    paddingHorizontal: 15,
-    paddingBottom: 15,
+    paddingHorizontal: SPACING.s16,
+    paddingBottom: SPACING.s16,
     paddingTop: 5,
     // backgroundColor: AppColors.primary,
     // backgroundColor: 'red',

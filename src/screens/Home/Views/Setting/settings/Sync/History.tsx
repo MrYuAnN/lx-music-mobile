@@ -13,6 +13,7 @@ import { useI18n } from '@/lang'
 import { useSettingValue } from '@/store/setting/hook'
 import { createStyle } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
+import { SPACING } from '@/config/spacing'
 
 type SyncHistoryItem = Awaited<ReturnType<typeof getSyncHostHistory>>[number]
 
@@ -152,17 +153,17 @@ const styles = createStyle({
   btn: {
     flexDirection: 'row',
     marginLeft: 25,
-    marginBottom: 15,
+    marginBottom: SPACING.s16,
   },
   tipText: {
     textAlign: 'center',
-    marginTop: 15,
+    marginTop: SPACING.s16,
   },
   list: {
     flexShrink: 1,
     flexGrow: 0,
-    paddingLeft: 15,
-    paddingRight: 15,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
   listItem: {
     flexDirection: 'row',
