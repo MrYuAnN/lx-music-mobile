@@ -24,7 +24,7 @@
     "publish": "node publish"
   },
   "engines": {
-    "node": ">= 18",
+    "node": ">= 22.11",
     "npm": ">= 8.5.2"
   },
   "repository": {
@@ -73,8 +73,7 @@
     "react-native-reanimated": "~3.16.1",
     "react-native-svg": "~15.8.0",
     "react-native-text-ticker": "~1.16.0",
-    "react-native-track-player": "github:lyswhut/react-native-track-player#bfe33933793460e7588d4d8f38eddf7910806f29",
-    "react-native-vector-icons": "10.2.0"
+    "react-native-track-player": "github:lyswhut/react-native-track-player#bfe33933793460e7588d4d8f38eddf7910806f29"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
@@ -90,7 +89,6 @@
     "@types/react": "^18.3.31",
     "@types/react-native": "^0.72.8",
     "@types/react-native-background-timer": "^2.0.2",
-    "@types/react-native-vector-icons": "^6.4.18",
     "babel-plugin-module-resolver": "^5.0.3",
     "changelog-parser": "^3.0.1",
     "eslint-config-standard": "^17.1.0",
