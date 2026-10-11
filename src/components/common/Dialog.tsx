@@ -45,7 +45,7 @@ const styles = createStyle({
   },
   title: {
     paddingLeft: SPACING.s6,
-    paddingRight: 25,
+    paddingRight: SPACING.s26,
     lineHeight: HEADER_HEIGHT,
   },
   closeBtn: {

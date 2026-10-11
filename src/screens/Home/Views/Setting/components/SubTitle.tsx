@@ -20,7 +20,7 @@ export default memo(({ title, children }: {
 
 const styles = createStyle({
   container: {
-    paddingLeft: 25,
+    paddingLeft: SPACING.s26,
     marginBottom: SPACING.s18,
   },
   title: {

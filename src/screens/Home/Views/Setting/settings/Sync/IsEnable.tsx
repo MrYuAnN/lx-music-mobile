@@ -188,11 +188,11 @@ const styles = createStyle({
     marginTop: SPACING.s6,
   },
   textAddr: {
-    marginLeft: 25,
+    marginLeft: SPACING.s26,
     marginTop: SPACING.s6,
   },
   text: {
-    marginLeft: 25,
+    marginLeft: SPACING.s26,
   },
   inputContent: {
     marginTop: SPACING.s8,

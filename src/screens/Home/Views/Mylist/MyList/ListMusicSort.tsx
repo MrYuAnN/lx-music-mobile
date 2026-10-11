@@ -158,7 +158,7 @@ const styles = createStyle({
   title: {
     textAlign: 'center',
     // paddingTop: 15,
-    paddingBottom: 25,
+    paddingBottom: SPACING.s26,
   },
   formSection: {
     marginBottom: SPACING.s16,

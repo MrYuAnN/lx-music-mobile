@@ -31,7 +31,7 @@ const styles = createStyle({
   },
   title: {
     paddingLeft: SPACING.s10,
-    paddingRight: 25,
+    paddingRight: SPACING.s26,
     paddingTop: SPACING.s10,
     paddingBottom: SPACING.s10,
     // lineHeight: 20,

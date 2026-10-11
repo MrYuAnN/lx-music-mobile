@@ -152,7 +152,7 @@ export default memo(({ setHost }: {
 const styles = createStyle({
   btn: {
     flexDirection: 'row',
-    marginLeft: 25,
+    marginLeft: SPACING.s26,
     marginBottom: SPACING.s16,
   },
   tipText: {

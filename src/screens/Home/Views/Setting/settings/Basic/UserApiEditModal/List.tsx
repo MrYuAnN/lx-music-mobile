@@ -159,7 +159,7 @@ const styles = createStyle({
   },
   tipText: {
     textAlign: 'center',
-    marginTop: 25,
+    marginTop: SPACING.s26,
     marginBottom: SPACING.s16,
   },
 })
