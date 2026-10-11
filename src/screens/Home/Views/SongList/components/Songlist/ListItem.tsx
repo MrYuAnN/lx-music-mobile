@@ -45,7 +45,7 @@ export default memo(({ item, index, width, showSource, onPress }: {
 const styles = createStyle({
   listItem: {
     // width: 90,
-    margin: 10,
+    margin: SPACING.s10,
   },
   listItemImg: {
     // backgroundColor: '#eee',
@@ -68,9 +68,9 @@ const styles = createStyle({
     }),
   },
   sourceLabel: {
-    paddingLeft: 4,
-    paddingBottom: 2,
-    paddingRight: 4,
+    paddingLeft: SPACING.s4,
+    paddingBottom: SPACING.s2,
+    paddingRight: SPACING.s4,
     position: 'absolute',
     top: 0,
     right: 0,

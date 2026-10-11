@@ -82,7 +82,7 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.s16,
   },
   label: {
-    marginBottom: 2,
+    marginBottom: SPACING.s2,
   },
   input: {
     backgroundColor: 'rgba(0,0,0,0.2)',

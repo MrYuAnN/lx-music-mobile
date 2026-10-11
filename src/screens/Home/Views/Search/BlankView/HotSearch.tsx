@@ -87,12 +87,12 @@ const styles = createStyle({
   },
   button: {
     textAlign: 'center',
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     paddingTop: SPACING.s6,
     paddingBottom: SPACING.s6,
     borderRadius: 4,
-    marginRight: 10,
-    marginTop: 8,
+    marginRight: SPACING.s10,
+    marginTop: SPACING.s8,
   },
 })

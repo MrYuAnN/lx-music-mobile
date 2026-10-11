@@ -139,7 +139,7 @@ const styles = createStyle({
   },
   footer: {
     textAlign: 'center',
-    padding: 10,
+    padding: SPACING.s10,
   },
 })
 

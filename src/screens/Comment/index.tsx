@@ -196,7 +196,7 @@ const styles = createStyle({
   tabHeader: {
     flexDirection: 'row',
     // paddingLeft: 10,
-    paddingRight: 10,
+    paddingRight: SPACING.s10,
     // justifyContent: 'center',
     borderBottomWidth: BorderWidths.normal,
   },
@@ -207,8 +207,8 @@ const styles = createStyle({
   },
   tabBtn: {
     // flex: 1,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
     alignItems: 'center',
     justifyContent: 'center',
     height: '100%',

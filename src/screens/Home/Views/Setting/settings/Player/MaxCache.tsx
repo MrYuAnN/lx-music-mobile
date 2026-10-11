@@ -6,6 +6,7 @@ import { createStyle, toast } from '@/utils/tools'
 import { useSettingValue } from '@/store/setting/hook'
 import { useI18n } from '@/lang'
 import { updateSetting } from '@/core/common'
+import { SPACING } from '@/config/spacing'
 
 const MAX_SIZE = 1024 * 1024 * 1024
 export default memo(() => {
@@ -46,7 +47,7 @@ export default memo(() => {
 
 const styles = createStyle({
   content: {
-    marginTop: 10,
+    marginTop: SPACING.s10,
   },
 })
 

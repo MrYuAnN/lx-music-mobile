@@ -129,7 +129,7 @@ const styles = createStyle({
     flexShrink: 1,
     paddingHorizontal: SPACING.s16,
     paddingTop: SPACING.s16,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     flexDirection: 'column',
   },
   col: {
@@ -154,7 +154,7 @@ const styles = createStyle({
     paddingBottom: SPACING.s6,
   },
   inputTipText: {
-    marginTop: 8,
+    marginTop: SPACING.s8,
     // lineHeight: 18,
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
@@ -168,7 +168,7 @@ const styles = createStyle({
   },
   btn: {
     flex: 1,
-    padding: 10,
+    padding: SPACING.s10,
     alignItems: 'center',
     borderRadius: 4,
     marginRight: SPACING.s16,

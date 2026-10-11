@@ -12,6 +12,7 @@ import { HEADER_HEIGHT as _HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import commonState from '@/store/common/state'
 import { useStatusbarHeight } from '@/store/common/hook'
+import { SPACING } from '@/config/spacing'
 
 const HEADER_HEIGHT = scaleSizeH(_HEADER_HEIGHT)
 
@@ -62,7 +63,7 @@ const styles = createStyle({
     textAlign: 'center',
   },
   icon: {
-    paddingLeft: 4,
-    paddingRight: 4,
+    paddingLeft: SPACING.s4,
+    paddingRight: SPACING.s4,
   },
 })

@@ -138,7 +138,7 @@ const styles = createStyle({
     flexShrink: 1,
   },
   subName: {
-    marginTop: 2,
+    marginTop: SPACING.s2,
   },
   itemSource: {
     flexGrow: 0,

@@ -20,7 +20,7 @@ const styles = createStyle({
     // justifyContent: 'center',
     // padding: 10,
     borderRightWidth: BorderWidths.normal,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     width: NAV_WIDTH,
   },
   header: {
@@ -32,7 +32,7 @@ const styles = createStyle({
   },
   headerText: {
     textAlign: 'center',
-    marginLeft: 16,
+    marginLeft: SPACING.s16,
   },
   menus: {
     flex: 1,

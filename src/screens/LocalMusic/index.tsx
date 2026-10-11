@@ -375,23 +375,23 @@ const styles = createStyle({
   },
   scanLabel: {
     fontSize: 13,
-    paddingRight: 12,
+    paddingRight: SPACING.s12,
   },
   empty: {
     paddingVertical: 56,
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.s24,
     alignItems: 'center',
-    gap: 10,
+    gap: SPACING.s10,
   },
   emptyHint: {
     textAlign: 'center',
     lineHeight: 22,
   },
   emptyBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.s20,
+    paddingVertical: SPACING.s8,
     borderRadius: 999,
-    marginTop: 4,
+    marginTop: SPACING.s4,
   },
   guide: {
     flex: 1,
@@ -421,10 +421,10 @@ const styles = createStyle({
     borderWidth: 1.7,
   },
   guideTitle: {
-    marginTop: 26,
+    marginTop: SPACING.s26,
   },
   guideDesc: {
-    marginTop: 12,
+    marginTop: SPACING.s12,
     textAlign: 'center',
     lineHeight: 22,
     maxWidth: 280,
@@ -435,10 +435,10 @@ const styles = createStyle({
     borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 28,
+    marginTop: SPACING.s28,
   },
   guideLater: {
-    padding: 10,
-    marginTop: 8,
+    padding: SPACING.s10,
+    marginTop: SPACING.s8,
   },
 })

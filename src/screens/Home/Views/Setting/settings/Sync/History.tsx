@@ -168,8 +168,8 @@ const styles = createStyle({
   listItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: 8,
-    paddingBottom: 8,
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
     borderBottomWidth: BorderWidths.normal,
   },
   listName: {

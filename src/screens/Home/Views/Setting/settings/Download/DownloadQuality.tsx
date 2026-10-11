@@ -9,6 +9,7 @@ import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { qualityLabel } from '@/utils/music'
+import { SPACING } from '@/config/spacing'
 
 const DOWNLOAD_QUALITY_OPTIONS = ['128k', '320k', 'flac', 'flac24bit'] as const
 
@@ -60,7 +61,7 @@ export default memo(() => {
 
 const styles = createStyle({
   value: {
-    paddingLeft: 2,
-    paddingVertical: 4,
+    paddingLeft: SPACING.s2,
+    paddingVertical: SPACING.s4,
   },
 })

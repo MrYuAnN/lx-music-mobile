@@ -419,13 +419,13 @@ const styles = createStyle({
     flexShrink: 0,
     // paddingLeft: 5,
     // paddingRight: 5,
-    paddingVertical: 6,
+    paddingVertical: SPACING.s6,
   },
   tabButton: {
     // height: 38,
     // lineHeight: 38,
     justifyContent: 'center',
-    paddingHorizontal: 6,
+    paddingHorizontal: SPACING.s6,
     // width: 80,
     // backgroundColor: 'rgba(0,0,0,0.1)',
     borderBottomWidth: BorderWidths.normal3,
@@ -434,7 +434,7 @@ const styles = createStyle({
     // height: 38,
     // lineHeight: 38,
     textAlign: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: SPACING.s2,
     paddingVertical: SPACING.s6,
   },
   list: {
@@ -475,18 +475,18 @@ const styles = createStyle({
     flex: 0,
     flexDirection: 'row',
     gap: SPACING.s6,
-    paddingHorizontal: 8,
+    paddingHorizontal: SPACING.s8,
   },
   listItemBtn: {
-    padding: 8,
+    padding: SPACING.s8,
   },
 
   detailContainer: {
     flexDirection: 'row',
     gap: SPACING.s6,
     alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    paddingHorizontal: SPACING.s10,
+    paddingVertical: SPACING.s10,
   },
   detailContainerY: {
     flexDirection: 'column',
@@ -531,8 +531,8 @@ const styles = createStyle({
   },
   button: {
     borderRadius: BorderRadius.normal,
-    paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.s10,
+    paddingVertical: SPACING.s8,
     alignItems: 'center',
   },
 })

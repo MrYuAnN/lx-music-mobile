@@ -14,6 +14,7 @@ import CommentBtn from './CommentBtn'
 import Btn from './Btn'
 import SettingPopup, { type SettingPopupType } from '../../components/SettingPopup'
 import DesktopLyricBtn from './DesktopLyricBtn'
+import { SPACING } from '@/config/spacing'
 
 export const HEADER_HEIGHT = scaleSizeH(_HEADER_HEIGHT)
 
@@ -81,7 +82,7 @@ const styles = StyleSheet.create({
     // textAlign: 'center',
   },
   icon: {
-    paddingLeft: 4,
-    paddingRight: 4,
+    paddingLeft: SPACING.s4,
+    paddingRight: SPACING.s4,
   },
 })

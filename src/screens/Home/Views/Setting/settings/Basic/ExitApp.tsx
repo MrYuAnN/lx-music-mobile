@@ -5,6 +5,7 @@ import { confirmDialog, createStyle, exitApp } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import Button from '../../components/Button'
 import { View } from 'react-native'
+import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -29,8 +30,8 @@ export default memo(() => {
 const styles = createStyle({
   container: {
     flexDirection: 'row',
-    paddingLeft: 2,
-    paddingTop: 2,
-    paddingBottom: 6,
+    paddingLeft: SPACING.s2,
+    paddingTop: SPACING.s2,
+    paddingBottom: SPACING.s6,
   },
 })

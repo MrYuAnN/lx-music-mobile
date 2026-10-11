@@ -341,16 +341,16 @@ export default () => {
 const styles = createStyle({
   container: {
     flex: 1,
-    paddingLeft: 20,
-    paddingRight: 20,
+    paddingLeft: SPACING.s20,
+    paddingRight: SPACING.s20,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   space: {
     paddingTop: '100%',
   },
   line: {
-    paddingTop: 14,
-    paddingBottom: 14,
+    paddingTop: SPACING.s14,
+    paddingBottom: SPACING.s14,
     // opacity: 0,
   },
   lineText: {

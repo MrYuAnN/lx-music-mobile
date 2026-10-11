@@ -14,6 +14,7 @@ import Image from '@/components/common/Image'
 import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
+import { SPACING } from '@/config/spacing'
 
 // AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
 // 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
@@ -225,9 +226,9 @@ const styles = StyleSheet.create({
   quick: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 12,
-    paddingHorizontal: 16,
-    marginBottom: 14,
+    gap: SPACING.s12,
+    paddingHorizontal: SPACING.s16,
+    marginBottom: SPACING.s14,
   },
   tile: {
     width: '48%',
@@ -236,15 +237,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingLeft: 16,
+    gap: SPACING.s12,
+    paddingLeft: SPACING.s16,
   },
   tileLabel: {
     fontFamily: FontFamilies.semibold,
   },
   section: {
-    marginHorizontal: 16,
-    marginBottom: 14,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s14,
     borderRadius: 14,
     overflow: 'hidden',
   },
@@ -253,10 +254,10 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 12,
-    paddingRight: 12,
-    paddingTop: 14,
-    paddingBottom: 10,
+    paddingLeft: SPACING.s12,
+    paddingRight: SPACING.s12,
+    paddingTop: SPACING.s14,
+    paddingBottom: SPACING.s10,
   },
   cardTitle: {
     fontFamily: FontFamilies.bold,
@@ -264,12 +265,12 @@ const styles = StyleSheet.create({
   moreBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: SPACING.s2,
   },
   shelfContent: {
-    paddingHorizontal: 12,
-    paddingBottom: 16,
-    gap: 12,
+    paddingHorizontal: SPACING.s12,
+    paddingBottom: SPACING.s16,
+    gap: SPACING.s12,
   },
   shelfItem: {
     width: 84,
@@ -278,18 +279,18 @@ const styles = StyleSheet.create({
     width: 84,
     height: 84,
     borderRadius: 10,
-    marginBottom: 6,
+    marginBottom: SPACING.s6,
   },
   shelfName: {
-    marginBottom: 2,
+    marginBottom: SPACING.s2,
     fontFamily: FontFamilies.semibold,
   },
   loveRow: {
     height: 60,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
+    gap: SPACING.s12,
+    paddingHorizontal: SPACING.s12,
   },
   loveName: {
     flex: 1,
@@ -297,19 +298,19 @@ const styles = StyleSheet.create({
   },
   sep: {
     height: StyleSheet.hairlineWidth,
-    marginHorizontal: 12,
+    marginHorizontal: SPACING.s12,
   },
   tabsRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
-    paddingHorizontal: 12,
+    gap: SPACING.s20,
+    paddingHorizontal: SPACING.s12,
     borderBottomWidth: 1,
   },
   tabBtn: {
     height: 44,
     justifyContent: 'center',
-    paddingHorizontal: 2,
+    paddingHorizontal: SPACING.s2,
     borderBottomWidth: 2,
   },
   addTab: {
@@ -323,24 +324,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   plist: {
-    paddingTop: 4,
-    paddingBottom: 8,
+    paddingTop: SPACING.s4,
+    paddingBottom: SPACING.s8,
   },
   plistEmpty: {
-    paddingVertical: 24,
+    paddingVertical: SPACING.s24,
     alignItems: 'center',
   },
   listRow: {
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 12,
+    gap: SPACING.s12,
+    paddingHorizontal: SPACING.s12,
   },
   listInfo: {
     flex: 1,
     flexShrink: 1,
-    gap: 2,
+    gap: SPACING.s2,
   },
   plCover: {
     borderRadius: 8,

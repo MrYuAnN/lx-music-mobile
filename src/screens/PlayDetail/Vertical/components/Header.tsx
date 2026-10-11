@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
     // textAlign: 'center',
   },
   icon: {
-    paddingLeft: 4,
-    paddingRight: 4,
+    paddingLeft: SPACING.s4,
+    paddingRight: SPACING.s4,
   },
 })

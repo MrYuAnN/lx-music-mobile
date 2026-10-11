@@ -13,7 +13,7 @@ import commonState from '@/store/common/state'
 import { scaleSizeW, setSpText } from '@/utils/pixelRatio'
 import { useTheme } from '@/store/theme/hook'
 import { FontFamilies } from '@/components/common/Text'
-
+import { SPACING } from '@/config/spacing'
 
 export default ({ componentId }: { componentId: string }) => {
   const musicInfo = usePlayerMusicInfo()
@@ -92,12 +92,12 @@ const styles = createStyle({
     borderRadius: scaleSizeW(12),
   },
   titles: {
-    paddingTop: 14,
+    paddingTop: SPACING.s14,
   },
   title: {
     // fontFamily/fontSize/color 由调用处以 SF Pro 字重与主题色注入
   },
   singer: {
-    paddingTop: 4,
+    paddingTop: SPACING.s4,
   },
 })

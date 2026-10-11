@@ -51,7 +51,7 @@ const styles = createStyle({
     marginVertical: SPACING.s6,
     height: 26,
     // flex: 1,
-    paddingVertical: 2,
+    paddingVertical: SPACING.s2,
     paddingHorizontal: SPACING.s6,
     flexDirection: 'row',
     alignItems: 'center',

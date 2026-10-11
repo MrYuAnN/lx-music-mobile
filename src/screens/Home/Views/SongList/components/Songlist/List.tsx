@@ -10,6 +10,7 @@ import { useI18n } from '@/lang'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<ListInfoItem>
 
@@ -207,11 +208,11 @@ const styles = createStyle({
   },
   list: {
     flex: 1,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
   },
   footer: {
     textAlign: 'center',
-    padding: 10,
+    padding: SPACING.s10,
   },
 })

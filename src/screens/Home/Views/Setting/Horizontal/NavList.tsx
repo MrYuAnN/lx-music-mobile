@@ -107,8 +107,8 @@ const styles = createStyle({
     height: 'auto',
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 10,
-    paddingLeft: 10,
+    paddingRight: SPACING.s10,
+    paddingLeft: SPACING.s10,
     // borderBottomWidth: BorderWidths.normal,
   },
   listActiveIcon: {

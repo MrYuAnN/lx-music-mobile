@@ -3,7 +3,7 @@ import { View } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
-
+import { SPACING } from '@/config/spacing'
 
 interface Props {
   title: string
@@ -31,8 +31,8 @@ const styles = createStyle({
   },
   title: {
     borderLeftWidth: 5,
-    paddingLeft: 12,
-    marginBottom: 10,
+    paddingLeft: SPACING.s12,
+    marginBottom: SPACING.s10,
     // lineHeight: 16,
   },
 })

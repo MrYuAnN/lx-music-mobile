@@ -90,12 +90,12 @@ const styles = createStyle({
     justifyContent: 'center',
   },
   leftTitle: {
-    paddingLeft: 10,
-    paddingRight: 16,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s16,
   },
   rightTitle: {
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
 })
 

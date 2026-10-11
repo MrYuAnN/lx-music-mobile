@@ -136,9 +136,9 @@ const styles = createStyle({
   content: {
     // flexGrow: 1,
     flexShrink: 1,
-    paddingHorizontal: 8,
+    paddingHorizontal: SPACING.s8,
     paddingTop: SPACING.s16,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     flexDirection: 'column',
   },
   title: {
@@ -153,7 +153,7 @@ const styles = createStyle({
     flexWrap: 'wrap',
   },
   tipsText: {
-    marginTop: 8,
+    marginTop: SPACING.s8,
     textAlignVertical: 'bottom',
     // lineHeight: 18,
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
@@ -167,7 +167,7 @@ const styles = createStyle({
   },
   btn: {
     flex: 1,
-    padding: 10,
+    padding: SPACING.s10,
     alignItems: 'center',
     borderRadius: 4,
     marginRight: SPACING.s16,

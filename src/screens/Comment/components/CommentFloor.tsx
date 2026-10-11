@@ -118,7 +118,7 @@ const styles = createStyle({
   },
   right: {
     flex: 1,
-    paddingLeft: 10,
+    paddingLeft: SPACING.s10,
   },
   info: {
     flex: 1,
@@ -128,18 +128,18 @@ const styles = createStyle({
     alignItems: 'center',
   },
   metaInfo: {
-    marginTop: 2,
+    marginTop: SPACING.s2,
     flexDirection: 'row',
   },
   location: {
-    marginLeft: 10,
+    marginLeft: SPACING.s10,
   },
   like: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   likedCount: {
-    marginLeft: 2,
+    marginLeft: SPACING.s2,
   },
   images: {
     paddingTop: SPACING.s6,
@@ -148,7 +148,7 @@ const styles = createStyle({
   },
   replyFloor: {
     marginTop: GAP,
-    marginLeft: 20,
+    marginLeft: SPACING.s20,
     borderTopWidth: BorderWidths.normal,
     // backgroundColor: 'rgba(0,0,0,0.1)',
     borderStyle: 'dashed',

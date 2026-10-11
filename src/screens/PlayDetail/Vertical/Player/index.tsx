@@ -40,7 +40,7 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   status: {
-    marginTop: 10,
+    marginTop: SPACING.s10,
     flexDirection: 'column',
     flex: 0,
     paddingLeft: SPACING.s6,

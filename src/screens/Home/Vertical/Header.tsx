@@ -9,6 +9,7 @@ import Text, { FontFamilies } from '@/components/common/Text'
 import { navigations } from '@/navigation'
 import { ICON_SIZE } from '@/config/constant'
 import { setSpText } from '@/utils/pixelRatio'
+import { SPACING } from '@/config/spacing'
 
 // AM-6 首页头部（同行式，AM 形态）：大标题与右上双圆钮同行垂直居中，
 // 滚动后大标题淡出、固定栏小标题淡入（AM-2 [S-9] 收缩拍板保留）
@@ -95,8 +96,8 @@ const styles = StyleSheet.create({
     height: 56,
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s8,
   },
   miniTitle: {
     flex: 1,
@@ -107,8 +108,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s8,
   },
   largeTitle: {
     flex: 1,

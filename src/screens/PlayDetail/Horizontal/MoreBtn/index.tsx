@@ -4,6 +4,7 @@ import PlayModeBtn from './PlayModeBtn'
 import QueueBtn from '@/screens/PlayDetail/components/QueueBtn'
 import MusicAddBtn from './MusicAddBtn'
 import TimeoutExitBtn from './TimeoutExitBtn'
+import { SPACING } from '@/config/spacing'
 
 export default () => {
   return (
@@ -28,7 +29,7 @@ const styles = createStyle({
     position: 'absolute',
     height: '100%',
     left: 0,
-    gap: 16,
+    gap: SPACING.s16,
     zIndex: 1,
   },
 })

@@ -9,6 +9,7 @@ import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { navigations } from '@/navigation'
 import commonState from '@/store/common/state'
+import { SPACING } from '@/config/spacing'
 
 // export interface OpenListProps {
 //   onTagChange: (name: string, id: string) => void
@@ -62,7 +63,7 @@ const styles = createStyle({
     // backgroundColor: '#ccc',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingLeft: 12,
-    paddingRight: 12,
+    paddingLeft: SPACING.s12,
+    paddingRight: SPACING.s12,
   },
 })

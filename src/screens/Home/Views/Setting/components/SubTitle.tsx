@@ -3,6 +3,7 @@ import { memo } from 'react'
 import { View } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
+import { SPACING } from '@/config/spacing'
 
 export default memo(({ title, children }: {
   title: string
@@ -20,11 +21,11 @@ export default memo(({ title, children }: {
 const styles = createStyle({
   container: {
     paddingLeft: 25,
-    marginBottom: 18,
+    marginBottom: SPACING.s18,
   },
   title: {
     marginLeft: -10,
-    marginBottom: 10,
+    marginBottom: SPACING.s10,
     // lineHeight: 16,
   },
 })

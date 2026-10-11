@@ -316,10 +316,10 @@ const styles = createStyle({
     flex: 0,
     flexDirection: 'row',
     gap: SPACING.s6,
-    paddingHorizontal: 8,
+    paddingHorizontal: SPACING.s8,
   },
   listItemBtn: {
-    padding: 8,
+    padding: SPACING.s8,
   },
   noitem: {
     paddingVertical: 35,

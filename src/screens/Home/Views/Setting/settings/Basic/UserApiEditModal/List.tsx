@@ -135,16 +135,16 @@ const styles = createStyle({
     flexDirection: 'column',
   },
   listItem: {
-    padding: 10,
+    padding: SPACING.s10,
     borderRadius: BorderRadius.normal,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
   },
   listItemLeft: {
-    paddingRight: 10,
+    paddingRight: SPACING.s10,
     flex: 1,
-    gap: 2,
+    gap: SPACING.s2,
   },
   listItemRight: {
     flex: 0,
@@ -154,7 +154,7 @@ const styles = createStyle({
   //   padding: 5,
   // },
   btn: {
-    padding: 10,
+    padding: SPACING.s10,
     // backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   tipText: {

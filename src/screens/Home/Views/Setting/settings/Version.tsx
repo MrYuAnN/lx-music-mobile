@@ -10,6 +10,7 @@ import { useI18n } from '@/lang'
 import { useVersionDownloadProgressUpdated, useVersionInfo } from '@/store/version/hook'
 import Text from '@/components/common/Text'
 import { showModal } from '@/core/version'
+import { SPACING } from '@/config/spacing'
 
 const currentVer = process.versions.app
 export default memo(() => {
@@ -83,7 +84,7 @@ export default memo(() => {
 
 const styles = StyleSheet.create({
   desc: {
-    marginBottom: 8,
+    marginBottom: SPACING.s8,
   },
   btn: {
     flexDirection: 'row',

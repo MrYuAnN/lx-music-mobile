@@ -10,6 +10,7 @@ import { useFontSize } from '@/store/common/hook'
 import Text from '@/components/common/Text'
 import { getTextSize } from '@/utils/pixelRatio'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
 
 const LIST = [
   {
@@ -88,7 +89,7 @@ const styles = StyleSheet.create({
   preview: {
     justifyContent: 'center',
     // paddingTop: 3,
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     height: 45,
   },
   list: {

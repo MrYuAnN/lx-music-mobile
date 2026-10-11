@@ -86,7 +86,7 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }: { component
 
   return (
     <View style={{ ...styles.container, paddingTop: statusBarHeight, borderBottomColor: theme['c-border-background'] }}>
-      <View style={{ flexDirection: 'row', flexGrow: 0, flexShrink: 0, padding: 10 }}>
+      <View style={{ flexDirection: 'row', flexGrow: 0, flexShrink: 0, padding: SPACING.s10 }}>
         <Pic componentId={componentId} playCount={detailInfo.playCount} imgUrl={detailInfo.imgUrl} />
         <View style={{ flexDirection: 'column', flexGrow: 1, flexShrink: 1, paddingLeft: SPACING.s6 }} nativeID={NAV_SHEAR_NATIVE_IDS.songlistDetail_title}>
           <Text size={14} numberOfLines={ 1 }>{detailInfo.name}</Text>

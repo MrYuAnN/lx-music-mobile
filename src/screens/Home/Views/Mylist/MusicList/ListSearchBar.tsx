@@ -150,7 +150,7 @@ const styles = createStyle({
     width: '100%',
     height: '100%',
     flexDirection: 'row',
-    paddingLeft: 10,
+    paddingLeft: SPACING.s10,
     borderBottomWidth: BorderWidths.normal,
   },
   content: {

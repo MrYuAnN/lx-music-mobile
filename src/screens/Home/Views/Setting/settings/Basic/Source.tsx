@@ -14,6 +14,8 @@ import Button from '../../components/Button'
 import UserApiEditModal, { type UserApiEditModalType } from './UserApiEditModal'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
+
 // import { importUserApi, removeUserApi } from '@/core/userApi'
 
 const apiSourceList = apiSourceInfo.map(api => ({
@@ -121,7 +123,7 @@ const styles = createStyle({
     // flexWrap: 'wrap',
   },
   btn: {
-    marginTop: 10,
+    marginTop: SPACING.s10,
     flexDirection: 'row',
   },
   sourceLabel: {

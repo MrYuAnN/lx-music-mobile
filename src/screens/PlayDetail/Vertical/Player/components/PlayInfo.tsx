@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useBufferProgress } from '@/plugins/player'
+import { SPACING } from '@/config/spacing'
 
 // const FONT_SIZE = 13
 
@@ -59,7 +60,7 @@ const styles = createStyle({
   status: {
     flexGrow: 1,
     flexShrink: 1,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
   },
 })

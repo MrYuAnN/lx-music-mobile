@@ -75,7 +75,7 @@ export default forwardRef<ActiveListType, ActiveListProps>(({ onShowSearchBar, o
 const styles = createStyle({
   currentList: {
     flexDirection: 'row',
-    paddingRight: 2,
+    paddingRight: SPACING.s2,
     height: 36,
     alignItems: 'center',
     borderBottomWidth: BorderWidths.normal,
@@ -83,7 +83,7 @@ const styles = createStyle({
   },
   currentListIcon: {
     paddingLeft: SPACING.s16,
-    paddingRight: 10,
+    paddingRight: SPACING.s10,
     // paddingTop: 10,
     // paddingBottom: 0,
   },
@@ -91,7 +91,7 @@ const styles = createStyle({
     flex: 1,
     // minWidth: 70,
     // paddingLeft: 10,
-    paddingRight: 10,
+    paddingRight: SPACING.s10,
     // paddingTop: 10,
     // paddingBottom: 10,
   },

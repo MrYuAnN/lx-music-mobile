@@ -16,6 +16,8 @@ import Player from './Player'
 import { createStyle } from '@/utils/tools'
 import { marginLeftRaw } from './constant'
 import { useStatusbarHeight } from '@/store/common/hook'
+import { SPACING } from '@/config/spacing'
+
 // import MoreBtn from './MoreBtn2'
 
 export default memo(({ componentId }: { componentId: string }) => {
@@ -83,7 +85,7 @@ const styles = createStyle({
   left: {
     flex: 1,
     width: '45%',
-    paddingBottom: 10,
+    paddingBottom: SPACING.s10,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   leftContent: {

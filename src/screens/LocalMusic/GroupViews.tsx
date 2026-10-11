@@ -9,7 +9,7 @@ import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
-import { SPACING } from "@/config/spacing";
+import { SPACING } from '@/config/spacing'
 
 export interface MusicGroup {
   name: string
@@ -147,13 +147,13 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'space-between',
     height: scaleSizeH(40),
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
   gridRow: {
-    paddingHorizontal: 16,
-    gap: 10,
-    marginBottom: 14,
+    paddingHorizontal: SPACING.s16,
+    gap: SPACING.s10,
+    marginBottom: SPACING.s14,
   },
   gridItem: {
     flex: 1,
@@ -164,7 +164,7 @@ const styles = createStyle({
     borderRadius: scaleSizeW(8),
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 6,
+    marginBottom: SPACING.s6,
   },
   gridName: {
     marginBottom: 1,
@@ -173,8 +173,8 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     height: ITEM_HEIGHT,
-    paddingLeft: 16,
-    paddingRight: 16,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
   },
   artistAvatar: {
     width: scaleSizeW(40),
@@ -187,7 +187,7 @@ const styles = createStyle({
   artistInfo: {
     flex: 1,
     flexShrink: 1,
-    gap: 2,
-    marginRight: 6,
+    gap: SPACING.s2,
+    marginRight: SPACING.s6,
   },
 })

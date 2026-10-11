@@ -57,9 +57,9 @@ export default ({ item, activeId, index, longPressIndex, onBoundChange, onShowMe
 const styles = createStyle({
   button: {
     paddingLeft: SPACING.s6,
-    paddingRight: 10,
-    paddingTop: 10,
-    paddingBottom: 10,
+    paddingRight: SPACING.s10,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s10,
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -72,7 +72,7 @@ const styles = createStyle({
   listName: {
     height: '100%',
     justifyContent: 'center',
-    paddingLeft: 6,
+    paddingLeft: SPACING.s6,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
 })

@@ -108,7 +108,7 @@ const styles = createStyle({
   part: {
     marginLeft: SPACING.s16,
     marginRight: SPACING.s16,
-    marginBottom: 10,
+    marginBottom: SPACING.s10,
     flexDirection: 'row',
     flexWrap: 'wrap',
   },

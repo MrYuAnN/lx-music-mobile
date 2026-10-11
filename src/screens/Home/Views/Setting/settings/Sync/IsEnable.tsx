@@ -195,7 +195,7 @@ const styles = createStyle({
     marginLeft: 25,
   },
   inputContent: {
-    marginTop: 8,
+    marginTop: SPACING.s8,
   },
   authCodeContent: {
     flexGrow: 1,

@@ -345,8 +345,8 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     height: TASK_ROW_HEIGHT,
-    paddingLeft: 16,
-    paddingRight: 8,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s8,
   },
   taskPic: {
     width: scaleSizeW(40),
@@ -359,8 +359,8 @@ const styles = createStyle({
   taskInfo: {
     flex: 1,
     flexShrink: 1,
-    gap: 2,
-    marginRight: 6,
+    gap: SPACING.s2,
+    marginRight: SPACING.s6,
   },
   progressTrack: {
     height: 3,
@@ -381,6 +381,6 @@ const styles = createStyle({
   empty: {
     paddingVertical: 40,
     alignItems: 'center',
-    gap: 12,
+    gap: SPACING.s12,
   },
 })

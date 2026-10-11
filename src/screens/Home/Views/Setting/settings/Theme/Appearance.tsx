@@ -53,12 +53,12 @@ const styles = createStyle({
   list: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: SPACING.s10,
     marginTop: SPACING.s6,
   },
   item: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+    paddingHorizontal: SPACING.s14,
+    paddingVertical: SPACING.s8,
     borderRadius: 8,
     borderWidth: 1.2,
   },

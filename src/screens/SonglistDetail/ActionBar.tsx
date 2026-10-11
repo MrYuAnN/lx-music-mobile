@@ -11,6 +11,8 @@ import { handleCollect, handlePlay } from './listAction'
 import songlistState from '@/store/songlist/state'
 import { useI18n } from '@/lang'
 import { useListInfo } from './state'
+import { SPACING } from '@/config/spacing'
+
 // import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 
 export default memo(() => {
@@ -58,10 +60,10 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     width: '33%',
-    paddingTop: 12,
-    paddingBottom: 12,
-    paddingLeft: 10,
-    paddingRight: 10,
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s12,
+    paddingLeft: SPACING.s10,
+    paddingRight: SPACING.s10,
   },
   controlBtnText: {
     fontSize: 13,

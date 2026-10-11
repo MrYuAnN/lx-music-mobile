@@ -9,6 +9,7 @@ import { pump } from '@/core/download'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
+import { SPACING } from '@/config/spacing'
 
 const CONCURRENCY_OPTIONS = [1, 2, 3] as const
 
@@ -61,7 +62,7 @@ export default memo(() => {
 
 const styles = createStyle({
   value: {
-    paddingLeft: 2,
-    paddingVertical: 4,
+    paddingLeft: SPACING.s2,
+    paddingVertical: SPACING.s4,
   },
 })
