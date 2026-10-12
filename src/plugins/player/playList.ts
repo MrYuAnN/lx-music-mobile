@@ -39,6 +39,17 @@ const getCurrentFullLyric = (targetId: string | null) => {
     : undefined
 }
 
+// RN 0.86 TurboModule 直传下 undefined 字段会以 null 落到 native（旧桥会自动丢弃），
+// track 里 album/artwork/lyric/duration 等可选字段的 null 使 fork 的 add 解析抛 NPE，
+// 构造后清掉 undefined 键
+const cleanUndefined = <T extends object>(obj: T): T => {
+  const result = {} as Record<string, unknown>
+  for (const [k, v] of Object.entries(obj)) {
+    if (v !== undefined) result[k] = v
+  }
+  return result as T
+}
+
 const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'], duration?: LX.Player.Track['duration']): LX.Player.Track[] => {
   const mInfo = formatMusicInfo(musicInfo)
   const track = [] as LX.Player.Track[]
@@ -47,7 +58,7 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
   const artwork = isShowNotificationImage && mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
   const lyric = getCurrentFullLyric(mInfo.id)
   if (url) {
-    track.push({
+    track.push(cleanUndefined({
       id: `${mInfo.id}__//${Math.random()}__//${url}`,
       url,
       title: mInfo.name || 'Unknow',
@@ -59,9 +70,9 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
       lyric,
       // original: { ...musicInfo },
       duration,
-    })
+    }))
   }
-  track.push({
+  track.push(cleanUndefined({
     id: `${mInfo.id}__//${Math.random()}__//default`,
     url: defaultUrl,
     title: mInfo.name || 'Unknow',
@@ -72,7 +83,7 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
     lyric,
     // original: { ...musicInfo },
     duration: 0,
-  })
+  }))
   return track
   // console.log('buildTrack', musicInfo.name, url)
 }
@@ -153,35 +164,24 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
   const tracks = buildTracks(musicInfo, url)
   const track = tracks[0]
   // await updateMusicInfo(track)
-  const currentTrackIndex = await TrackPlayer.getActiveTrackIndex()
+  // 已知问题（待跟进）：RN 0.86 + lovegaoshi fork 下 add 装载会在 media3 内部抛 NPE
+  // （与 track 内容无关，诊断日志 RNTPADD 实证堆栈 MusicService→P6.e→media3 T.H2→Q6.g）。
+  // add 的异常被本函数调用方的 catch 兜住（播放静默失败但不闪退）；勿改用 load——其协程
+  // 无异常兜底，同一 NPE 会变成主线程 FATAL 闪退
   await TrackPlayer.add(tracks).then(() => list.push(...tracks))
   const queue = await TrackPlayer.getQueue() as LX.Player.Track[]
-  await TrackPlayer.skip(queue.findIndex(t => t.id == track.id))
+  const skipIndex = queue.findIndex(t => t.id == track.id)
+  if (skipIndex >= 0) await TrackPlayer.skip(skipIndex)
 
-  if (currentTrackIndex == null) {
-    if (!isTempTrack(track.id as string)) {
-      if (time) await TrackPlayer.seekTo(time)
-      if (global.lx.restorePlayInfo) {
-        await TrackPlayer.pause()
-        // let startupAutoPlay = settingState.setting['player.startupAutoPlay']
-        global.lx.restorePlayInfo = null
-
-      // TODO startupAutoPlay
-      // if (startupAutoPlay) store.dispatch(playerAction.playMusic())
-      } else {
-        await TrackPlayer.play()
-      }
-    }
-  } else {
-    await TrackPlayer.pause()
-    if (!isTempTrack(track.id as string)) {
-      await TrackPlayer.seekTo(time)
+  // 队列已清空重建，新 track 恒为 index 0；恢复场景（restorePlayInfo）装载后暂停待用户续播
+  if (!isTempTrack(track.id as string)) {
+    if (time) await TrackPlayer.seekTo(time)
+    if (global.lx.restorePlayInfo) {
+      await TrackPlayer.pause()
+      global.lx.restorePlayInfo = null
+    } else {
       await TrackPlayer.play()
     }
-  }
-
-  if (queue.length > 2) {
-    void TrackPlayer.remove(Array(queue.length - 2).fill(null).map((_, i) => i)).then(() => list.splice(0, list.length - 2))
   }
 }
 let playPromise = Promise.resolve()
@@ -190,7 +190,9 @@ export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: num
   const id = actionId = Math.random()
   void playPromise.finally(() => {
     if (id != actionId) return
-    playPromise = handlePlayMusic(musicInfo, url, time)
+    playPromise = handlePlayMusic(musicInfo, url, time).catch((err: unknown) => {
+      console.warn('play failed:', (err as Error)?.message ?? err)
+    })
   })
 }
 

@@ -136,7 +136,9 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
 
 export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh?: boolean) => {
   // addLoadTimeout()
-  if (!diffCurrentMusicInfo(musicInfo)) return
+  // 同曲守卫仅在播放中生效：停止/错误态下重复点同一首（如恢复失败后再点）也必须重新取 url 播放，
+  // 否则 gettingUrlId 残留 + isPlay=false 时 diff=false 会让点击永远静默无响应
+  if (!diffCurrentMusicInfo(musicInfo) && playerState.isPlay) return
   if (cancelDelayRetry) cancelDelayRetry()
   global.lx.gettingUrlId = createGettingUrlId(musicInfo)
   void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
@@ -148,7 +150,9 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
     global.app_event.error()
     addDelayNextTimeout()
   }).finally(() => {
-    if (musicInfo === playerState.playMusicInfo.musicInfo) {
+    // id 比较替代引用比较：最近播放/临时列表会重建 musicInfo 对象，引用比较在跨列表点击同曲时
+    // 清不掉 gettingUrlId，残留值会让下一次点击同曲被守卫误挡
+    if (musicInfo.id === playerState.playMusicInfo.musicInfo?.id) {
       global.lx.gettingUrlId = ''
       clearLoadTimeout()
     }
@@ -291,6 +295,7 @@ export const playListById = async(listId: string, id: string) => {
  * @param index 播放的歌曲位置
  */
 export const playList = async(listId: string, index: number) => {
+  console.warn('[PLAYDEBUG] playList', listId, index)
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   setPlayMusicInfo(listId, getList(listId)[index])
