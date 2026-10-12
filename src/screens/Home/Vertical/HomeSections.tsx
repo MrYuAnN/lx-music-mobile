@@ -117,6 +117,7 @@ const RecentPlayCard = () => {
             <Text size={11} color={theme['c-font-label']} numberOfLines={1}>{item.musicInfo.singer}</Text>
           </TouchableOpacity>
         )}
+        showsVerticalScrollIndicator={false}
       />
     </View>
   )

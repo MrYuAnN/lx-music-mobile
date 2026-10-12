@@ -270,6 +270,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
                       scrollEnabled={!drag}
                       scrollEventThrottle={16}
                       onScroll={handleScroll}
+                      showsVerticalScrollIndicator={false}
                     />
                     {
                       drag

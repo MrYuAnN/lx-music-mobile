@@ -60,7 +60,7 @@ const CheckSheet = ({
 
   return (
     <SheetBase ref={sheetRef} title={title} onHide={onHide} maxHeight="62%">
-      <ScrollView style={styles.list} keyboardShouldPersistTaps="always">
+      <ScrollView style={styles.list} keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
         {
           options.map(item => {
             const checked = item.action == value

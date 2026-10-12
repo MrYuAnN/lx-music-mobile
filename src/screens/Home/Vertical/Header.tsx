@@ -46,6 +46,7 @@ const Header = ({ children }: { children: React.ReactNode }) => {
       <Animated.ScrollView
         onScroll={scrollHandler}
         scrollEventThrottle={16}
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 92 }}
       >
         <View style={{ paddingTop: statusBarHeight }}>

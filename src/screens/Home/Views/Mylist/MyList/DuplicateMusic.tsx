@@ -197,6 +197,7 @@ const List = ({ listId }: { listId: string }) => {
         renderItem={renderItem}
         keyExtractor={getkey}
         getItemLayout={getItemLayout}
+        showsVerticalScrollIndicator={false}
       />
     ) : (
       <Empty />

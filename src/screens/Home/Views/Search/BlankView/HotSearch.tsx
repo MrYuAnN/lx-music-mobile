@@ -58,7 +58,7 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
   return (
     list.length
       ? (
-          <ScrollView>
+          <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title} size={16}>{t('search_hot_search')}</Text>
             <View style={styles.list}>
               {

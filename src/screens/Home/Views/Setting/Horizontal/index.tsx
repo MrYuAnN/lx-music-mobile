@@ -36,7 +36,7 @@ export default () => {
       <View style={{ ...styles.nav, borderRightColor: theme['c-border-background'] }}>
         <NavList onChangeId={(id) => mainRef.current?.setActiveId(id)} />
       </View>
-      <ScrollView keyboardShouldPersistTaps={'always'}>
+      <ScrollView keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
         <View style={styles.main}>
           <Main ref={mainRef} />
         </View>

@@ -34,7 +34,7 @@ const Tabs = <T extends LX.OnlineSource>({ list, source, onChangeSource }: {
   const scrollViewRef = useRef<ScrollView>(null)
 
   return (
-    <ScrollView ref={scrollViewRef} style={styles.tabContainer} keyboardShouldPersistTaps={'always'} horizontal>
+    <ScrollView ref={scrollViewRef} style={styles.tabContainer} keyboardShouldPersistTaps={'always'} horizontal showsVerticalScrollIndicator={false}>
       {
         list_t.map(s => (
           <TouchableOpacity
@@ -157,6 +157,7 @@ const List = ({ source, lists, onPlay }: {
       renderItem={renderItem}
       keyExtractor={getkey}
       getItemLayout={getItemLayout}
+      showsVerticalScrollIndicator={false}
     />
   )
 }

@@ -262,6 +262,7 @@ export default ({ componentId }: { componentId: string }) => {
                               onOpenSettings={handleGoSettings}
                             />
                           }
+                          showsVerticalScrollIndicator={false}
                         />
                       )
                     : view == 'folder'

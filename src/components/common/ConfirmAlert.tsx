@@ -102,7 +102,7 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(({
   return (
     <Dialog onHide={onHide} keyHide={keyHide} bgHide={bgHide} closeBtn={closeBtn} title={title} ref={dialogRef}>
       <View style={styles.main}>
-        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
+        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
           {children ?? <Text>{text}</Text>}
         </ScrollView>
       </View>

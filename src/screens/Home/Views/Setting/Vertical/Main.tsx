@@ -61,6 +61,7 @@ export default () => {
       windowSize={2}
       // removeClippedSubviews={true}
       initialNumToRender={1}
+      showsVerticalScrollIndicator={false}
     />
   )
 }

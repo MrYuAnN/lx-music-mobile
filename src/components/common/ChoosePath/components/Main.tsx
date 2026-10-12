@@ -44,6 +44,7 @@ export default ({ list, loading, onSetPath, toParentDir }: {
       renderItem={({ item }) => <ListItem item={item} rowInfo={rowInfo.current} onPress={onSetPath} />}
       keyExtractor={item => item.path + '/' + item.name}
       removeClippedSubviews={true}
+      showsVerticalScrollIndicator={false}
     />
   ), [list, onSetPath])
 

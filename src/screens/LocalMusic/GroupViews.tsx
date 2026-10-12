@@ -74,6 +74,7 @@ export const FolderSectionList = ({ folders, actions }: {
       renderItem={({ item, index, section }) => (
         <SongRow item={item} index={index} list={section.data} actions={actions} />
       )}
+      showsVerticalScrollIndicator={false}
     />
   )
 }
@@ -100,6 +101,7 @@ export const AlbumGrid = ({ albums, onGroupPress }: {
           <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.singer}</Text>
         </TouchableOpacity>
       )}
+      showsVerticalScrollIndicator={false}
     />
   )
 }
@@ -129,6 +131,7 @@ export const ArtistList = ({ artists, onGroupPress }: {
           <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-300']} />
         </TouchableOpacity>
       )}
+      showsVerticalScrollIndicator={false}
     />
   )
 }

@@ -54,7 +54,7 @@ export default forwardRef<ListType, ListProps>(({ onTagChange }, ref) => {
 
 
   return (
-    <ScrollView style={{ flexShrink: 1, flexGrow: 0 }} keyboardShouldPersistTaps={'always'}>
+    <ScrollView style={{ flexShrink: 1, flexGrow: 0 }} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
       <View style={styles.tagContainer} onStartShouldSetResponder={() => true}>
         {
           list.map((type, index) => (

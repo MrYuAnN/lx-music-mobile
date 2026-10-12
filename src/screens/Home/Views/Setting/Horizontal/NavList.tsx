@@ -89,6 +89,7 @@ export default ({ onChangeId }: {
       keyExtractor={getkey}
       // extraData={activeIndex}
       getItemLayout={getItemLayout}
+      showsVerticalScrollIndicator={false}
     />
   )
 }

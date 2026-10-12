@@ -65,7 +65,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
             )
           : null
       }
-      <ScrollView style={styles.list} keyboardShouldPersistTaps="always">
+      <ScrollView style={styles.list} keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
         {
           menus.map(menu => (
             menu.disabled

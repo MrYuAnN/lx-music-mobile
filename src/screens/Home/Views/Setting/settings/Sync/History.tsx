@@ -102,7 +102,7 @@ const HistoryList = forwardRef<HistoryListType, HistoryListProps>(({ onSelect },
     visible
       ? (
           <Popup ref={popupRef} title={t('setting_sync_history_title')}>
-            <ScrollView style={styles.list}>
+            <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
               {
                 list.length
                   ? list.map((item, index) => (

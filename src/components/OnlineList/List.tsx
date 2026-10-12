@@ -264,6 +264,7 @@ const List = forwardRef<ListType, ListProps>(({
       ListHeaderComponent={ListHeaderComponent}
       refreshControl={refreshControl}
       ListFooterComponent={footerComponent}
+      showsVerticalScrollIndicator={false}
     />
   )
 })

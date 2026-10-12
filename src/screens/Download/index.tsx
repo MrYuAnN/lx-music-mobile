@@ -210,6 +210,7 @@ export default ({ componentId }: { componentId: string }) => {
                   />
                 )}
                 ListEmptyComponent={<EmptyList tab={tab} />}
+                showsVerticalScrollIndicator={false}
               />
             )
           : (
@@ -232,6 +233,7 @@ export default ({ componentId }: { componentId: string }) => {
                   />
                 )}
                 ListEmptyComponent={<EmptyList tab={tab} />}
+                showsVerticalScrollIndicator={false}
               />
             )
       }

@@ -131,6 +131,7 @@ export default ({ onShowMenu }: {
       keyExtractor={getkey}
       // extraData={activeIndex}
       getItemLayout={getItemLayout}
+      showsVerticalScrollIndicator={false}
     />
   )
 }

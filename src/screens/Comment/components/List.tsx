@@ -101,6 +101,7 @@ const List = forwardRef<ListType, ListProps>(({
       onEndReached={handleLoadMore}
       refreshControl={refreshControl}
       ListFooterComponent={footerComponent}
+      showsVerticalScrollIndicator={false}
     />
   )
 })

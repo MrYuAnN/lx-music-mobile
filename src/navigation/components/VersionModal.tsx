@@ -42,7 +42,7 @@ const Content = memo(({ title, newVersionInfo }: {
   return (
     <View style={styles.main}>
       <Text style={styles.title}>{title}</Text>
-      <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
+      <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
         <Text style={styles.label}>{t('version_label_latest_ver')}{newVersionInfo?.version}</Text>
         <Text style={styles.label}>{t('version_label_current_ver')}{currentVer}</Text>
         {

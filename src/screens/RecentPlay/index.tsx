@@ -123,6 +123,7 @@ export default ({ componentId }: { componentId: string }) => {
           />
         )}
         ListEmptyComponent={EmptyList}
+        showsVerticalScrollIndicator={false}
       />
       <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} />
       <ListMusicAdd ref={listMusicAddRef} />

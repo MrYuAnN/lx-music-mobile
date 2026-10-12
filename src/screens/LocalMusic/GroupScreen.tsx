@@ -64,6 +64,7 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
             onShowMenu={itemInfo => { menuRef.current?.show(itemInfo as LX.Music.MusicInfoLocal, list) }}
           />
         )}
+        showsVerticalScrollIndicator={false}
       />
       <LocalMusicMenu ref={menuRef} />
       <PlayerBarPlaceholder />

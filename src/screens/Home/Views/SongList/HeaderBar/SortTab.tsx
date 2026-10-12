@@ -42,7 +42,7 @@ export default forwardRef<SortTabType, SortTabProps>(({ onSortChange }, ref) => 
   }
 
   return (
-    <ScrollView ref={scrollViewRef} style={styles.container} keyboardShouldPersistTaps={'always'} horizontal>
+    <ScrollView ref={scrollViewRef} style={styles.container} keyboardShouldPersistTaps={'always'} horizontal showsVerticalScrollIndicator={false}>
       {
         sorts.map(s => (
           <TouchableOpacity style={styles.button} onPress={() => { handleSortChange(s.id) }} key={s.id}>

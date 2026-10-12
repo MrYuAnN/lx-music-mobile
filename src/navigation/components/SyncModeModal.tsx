@@ -82,7 +82,7 @@ const ListModeModal = () => {
     <>
       <View style={styles.main}>
         <Text style={styles.title} size={16}>{t('sync__list_mode_title', { name: syncState.serverName })}</Text>
-        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
+        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
           <View style={{ ...styles.btnGroup, marginTop: 0 }}>
             <Text size={14}>{t('sync__mode_merge_tip')}</Text>
             <View style={styles.btns}>
@@ -148,7 +148,7 @@ const DislikeModeModal = () => {
     <>
       <View style={styles.main}>
         <Text style={styles.title} size={16}>{t('sync__dislike_mode_title', { name: syncState.serverName })}</Text>
-        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'}>
+        <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
           <View style={{ ...styles.btnGroup, marginTop: 0 }}>
             <Text size={14}>{t('sync__mode_merge_tip')}</Text>
             <View style={styles.btns}>
