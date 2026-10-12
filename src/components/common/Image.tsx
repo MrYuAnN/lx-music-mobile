@@ -30,8 +30,18 @@ const EmptyPic = memo(({ style, nativeID }: { style: ImageProps['style'], native
 
   return (
     <View style={StyleSheet.compose({ ...styles.emptyPic, backgroundColor: theme['c-primary-light-900-alpha-200'], gap: size * 0.1 }, style)} onLayout={onLayout} nativeID={nativeID}>
-      <Text size={size} color={theme['c-primary-light-400-alpha-200']}>L</Text>
-      <Text size={size} color={theme['c-primary-light-400-alpha-200']} style={styles.text}>X</Text>
+      {
+        // 首渲染 width 尚未测量（恒 0）：fontSize=0 的 Text 在 RN 0.86 Fabric 布局校验下
+        // 直接崩溃（TextAttributeProps require(fontSize>0)），测量就绪前不挂文字
+        size > 0
+          ? (
+              <>
+                <Text size={size} color={theme['c-primary-light-400-alpha-200']}>L</Text>
+                <Text size={size} color={theme['c-primary-light-400-alpha-200']} style={styles.text}>X</Text>
+              </>
+            )
+          : null
+      }
     </View>
   )
 })
