@@ -106,17 +106,19 @@ export const isTempId = (trackId = global.lx.playerTrackId) => !trackId || tempI
 //   },
 // }
 
-const playMusic = ((fn: (musicInfo: LX.Player.PlayMusic, url: string, time: number) => void, delay = 800) => {
+const playMusic = ((fn: (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => void, delay = 800) => {
   let delayTimer: number | null = null
   let isDelayRun = false
   let timer: number | null = null
   let _musicInfo: LX.Player.PlayMusic | null = null
   let _url = ''
   let _time = 0
-  return (musicInfo: LX.Player.PlayMusic, url: string, time: number) => {
+  let _pauseAfterLoad: boolean | undefined
+  return (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
     _musicInfo = musicInfo
     _url = url
     _time = time
+    _pauseAfterLoad = pauseAfterLoad
     if (timer) {
       BackgroundTimer.clearTimeout(timer)
       timer = null
@@ -131,27 +133,29 @@ const playMusic = ((fn: (musicInfo: LX.Player.PlayMusic, url: string, time: numb
         let musicInfo = _musicInfo
         let url = _url
         let time = _time
+        let pauseAfterLoad = _pauseAfterLoad
         _musicInfo = null
         _url = ''
         _time = 0
+        _pauseAfterLoad = undefined
         isDelayRun = false
-        fn(musicInfo!, url, time)
+        fn(musicInfo!, url, time, pauseAfterLoad)
       }, delay)
     } else {
       isDelayRun = true
-      fn(musicInfo, url, time)
+      fn(musicInfo, url, time, pauseAfterLoad)
       delayTimer = BackgroundTimer.setTimeout(() => {
         delayTimer = null
         isDelayRun = false
       }, 500)
     }
   }
-})((musicInfo, url, time) => {
-  handlePlayMusic(musicInfo, url, time)
+})((musicInfo, url, time, pauseAfterLoad) => {
+  handlePlayMusic(musicInfo, url, time, pauseAfterLoad)
 })
 
-export const setResource = (musicInfo: LX.Player.PlayMusic, url: string, duration?: number) => {
-  playMusic(musicInfo, url, duration ?? 0)
+export const setResource = (musicInfo: LX.Player.PlayMusic, url: string, duration?: number, pauseAfterLoad?: boolean) => {
+  playMusic(musicInfo, url, duration ?? 0, pauseAfterLoad)
 }
 
 export const setPlay = async() => TrackPlayer.play()

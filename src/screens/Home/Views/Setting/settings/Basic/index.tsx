@@ -3,7 +3,6 @@ import { memo } from 'react'
 import Theme from '../Theme'
 import Section from '../../components/Section'
 import Source from './Source'
-import SourceName from './SourceName'
 import Language from './Language'
 import ShareType from './ShareType'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
@@ -34,7 +33,6 @@ export default memo(() => {
       <Language />
       <ShareType />
       <Source />
-      <SourceName />
     </Section>
   )
 })

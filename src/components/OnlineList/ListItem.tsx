@@ -90,7 +90,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
             : null
         }
         <View style={styles.info}>
-          <Text size={15} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
+          <Text size={15} style={styles.title} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
           <View style={styles.sublineRow}>
             <QualityTag qualitys={qualitys} source={item.source} showSource={showSource} />
             <Text size={12} style={styles.sublineText} color={active ? theme['c-primary-alpha-200'] : theme['c-font-label']} numberOfLines={1}>{subline}</Text>
@@ -171,11 +171,15 @@ const styles = createStyle({
   sublineRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: SPACING.s4,
+    marginTop: SPACING.s2,
   },
   sublineText: {
     flexGrow: 0,
     flexShrink: 1,
+    lineHeight: 16,
+  },
+  title: {
+    lineHeight: 20,
   },
   likeBtn: {
     width: 32,

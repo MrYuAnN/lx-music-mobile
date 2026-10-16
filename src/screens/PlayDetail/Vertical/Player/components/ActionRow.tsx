@@ -18,8 +18,9 @@ import commonState from '@/store/common/state'
 import { updateSetting } from '@/core/common'
 import { toggleTranslation } from '@/core/lyric'
 import { toggleDesktopLyricLock as lrcToggleDesktopLyricLock } from '@/core/desktopLyric'
-import { setMusicUrl } from '@/core/player/player'
+import { reloadCurrentWithQuality } from '@/core/player/player'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
+import { qualityLabel } from '@/utils/music'
 import { useLrcHasTranslation } from '@/plugins/lyric'
 import { usePlayMusicInfo } from '@/store/player/hook'
 import { createStyle } from '@/utils/tools'
@@ -120,9 +121,8 @@ const ActionRow = ({ page }: ActionRowProps) => {
   const handleQualityChange = useCallback((item: CheckSheetItem) => {
     if (item.action == playQuality) return
     updateSetting({ 'player.playQuality': item.action as typeof playQuality })
-    // 当前歌重取链续播（换音质即时生效，可能触发换源）
-    const musicInfo = playerState.playMusicInfo.musicInfo
-    if (musicInfo) setMusicUrl(musicInfo, true)
+    // 当前歌按新档重取链续播（恢复进度、失败不打断、暂停态保持暂停；可能触发换源）
+    reloadCurrentWithQuality()
   }, [playQuality])
 
   const showFontSizeSheet = useCallback(() => {
@@ -215,21 +215,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   )
 }
 
-// 音质档位文案：128k=标准（补键），HQ/SQ/24bit 复用既有键，其余档位裸露码率（不进选项集，仅标签兜底）
-const qualityLabel = (quality: LX.Quality, t: ReturnType<typeof useI18n>) => {
-  switch (quality) {
-    case '128k':
-      return t('quality_128k')
-    case '320k':
-      return t('quality_high_quality')
-    case 'flac':
-      return t('quality_lossless')
-    case 'flac24bit':
-      return t('quality_lossless_24bit')
-    default:
-      return quality
-  }
-}
+// 音质档位文案单源 utils/music qualityLabel（2026-10-12 审查收口，原本地副本退役）
 
 const ICON_SIZE_ACTION = scaleSizeW(24)
 

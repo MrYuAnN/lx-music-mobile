@@ -13,19 +13,25 @@ export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQual
   return item.source == 'local' ? undefined : (item.meta)._qualitys
 }
 
-// 音质档位文案（与播放页 ActionRow 同口径：128k=标准，HQ/SQ/24bit 复用既有键；ape 归 SQ 档语义）
-export const qualityLabel = (quality: LX.Quality, t: ReturnType<typeof useI18n>) => {
+// 音质档位归一单源（列表标签色/文案与设置页/选项文案共用，防双处维护漂移）：
+// 128k=标准，192k/320k=高品，flac/ape/wav=无损，flac24bit=母带
+export type QualityTierKey = 'quality_128k' | 'quality_high_quality' | 'quality_lossless' | 'quality_lossless_24bit'
+export const qualityTier = (quality: LX.Quality): QualityTierKey => {
   switch (quality) {
     case '128k':
-      return t('quality_128k')
+      return 'quality_128k'
+    case '192k':
     case '320k':
-      return t('quality_high_quality')
+      return 'quality_high_quality'
     case 'flac':
     case 'ape':
-      return t('quality_lossless')
+    case 'wav':
+      return 'quality_lossless'
     case 'flac24bit':
-      return t('quality_lossless_24bit')
-    default:
-      return quality
+      return 'quality_lossless_24bit'
   }
+}
+
+export const qualityLabel = (quality: LX.Quality, t: ReturnType<typeof useI18n>) => {
+  return t(qualityTier(quality))
 }

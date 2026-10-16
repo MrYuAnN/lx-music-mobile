@@ -50,6 +50,15 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     'c-quality-24bit': theme.isDark ? '#E3B341' : '#B8860B',
     'c-quality-sq': theme.isDark ? '#7CC98A' : '#3D9A50',
     'c-quality-hq': theme.isDark ? '#93B1D8' : '#5E81AC',
+    // 来源标签文字色（品牌色相深化/提亮，白底/暗底对文字档 4.5:1 达 WCAG AA；品牌原色淡底在
+    // QualityTag SOURCE_BRAND_COLORS，不随主题）。取色口径见 doc/plans/tag-quality-v2-grilling.md §改动三：
+    // wy=网易云音乐品牌红 / tx=QQ音乐品牌绿（2026-10-16 审查席 web 核实：设计圈广泛引用、腾讯无官方色值文档）
+    // kg=酷狗官网logo实测 / kw=酷我橙黄 / mg=咪咕音乐favicon实测（均 2026-10-16）
+    'c-source-wy': theme.isDark ? '#FF6B6B' : '#C20C0C',
+    'c-source-tx': theme.isDark ? '#3DDC97' : '#187A50',
+    'c-source-kg': theme.isDark ? '#55A9F2' : '#1B6DC0',
+    'c-source-kw': theme.isDark ? '#FFB85C' : '#9C5B00',
+    'c-source-mg': theme.isDark ? '#FF5C99' : '#D10054',
     'c-button-font': theme.config.themeColors['c-primary-alpha-100'],
     'c-button-font-selected': theme.config.themeColors['c-primary-dark-100-alpha-100'],
     'c-button-background': theme.config.themeColors['c-primary-light-400-alpha-700'],

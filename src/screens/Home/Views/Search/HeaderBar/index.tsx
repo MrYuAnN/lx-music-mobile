@@ -6,7 +6,6 @@ import DorpDownMenu from '@/components/common/DorpDownMenu'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
-import { useSettingValue } from '@/store/setting/hook'
 import { SPACING } from '@/config/spacing'
 import { type Source as MusicSource } from '@/store/search/music/state'
 import { type Source as SonglistSource } from '@/store/search/songlist/state'
@@ -32,7 +31,6 @@ export interface HeaderBarType {
 export default forwardRef<HeaderBarType, HeaderBarProps>(({ onSourceChange, onTipSearch, onSearch, onHideTipList, onShowTipList }, ref) => {
   const t = useI18n()
   const theme = useTheme()
-  const sourceNameType = useSettingValue('common.sourceNameType')
   const searchBarRef = useRef<SearchBarType>(null)
   const [sourceList, setSourceList] = useState<Sources>([] as unknown as Sources)
   const [source, setSource] = useState<Sources[number]>('kw')
@@ -51,8 +49,8 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onSourceChange, onTi
   }), [])
 
   const menus = useMemo(() => {
-    return sourceList.map(s => ({ label: t(`source_${sourceNameType}_${s}`), action: s }))
-  }, [sourceList, sourceNameType, t])
+    return sourceList.map(s => ({ label: t(`source_real_${s}`), action: s }))
+  }, [sourceList, t])
 
   const handleChangeSource = ({ action }: { action: string }) => {
     onSourceChange(action as Sources[number])
@@ -61,9 +59,10 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onSourceChange, onTi
 
   const prefix = sourceList.length
     ? (
-        <DorpDownMenu menus={menus} onPress={handleChangeSource} activeId={source} btnStyle={styles.sourceBtn}>
+        // 窄触发器（来源名+▾）钉死菜单宽会截断「酷狗音乐」等长源名，菜单宽自适应内容
+        <DorpDownMenu menus={menus} onPress={handleChangeSource} activeId={source} btnStyle={styles.sourceBtn} fitMenuWidth>
           <View style={styles.sourcePrefix}>
-            <Text size={13} color={theme['c-font']} numberOfLines={1}>{t(`source_${sourceNameType}_${source}`)}</Text>
+            <Text size={13} color={theme['c-font']} numberOfLines={1}>{t(`source_real_${source}`)}</Text>
             <Text size={8} style={styles.caret} color={theme['c-font-label']}>▼</Text>
           </View>
         </DorpDownMenu>

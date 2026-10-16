@@ -159,7 +159,7 @@ export const initTrackInfo = async(musicInfo: LX.Player.PlayMusic, mInfo: LX.Pla
 }
 
 
-const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time: number) => {
+const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
 // console.log(tracks, time)
   const tracks = buildTracks(musicInfo, url)
   const track = tracks[0]
@@ -173,12 +173,15 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
   const skipIndex = queue.findIndex(t => t.id == track.id)
   if (skipIndex >= 0) await TrackPlayer.skip(skipIndex)
 
-  // 队列已清空重建，新 track 恒为 index 0；恢复场景（restorePlayInfo）装载后暂停待用户续播
+  // 队列已清空重建，新 track 恒为 index 0；恢复场景（restorePlayInfo）与暂停态切档（pauseAfterLoad，
+  // 独立参数勿复用 restorePlayInfo 全局标志——其会被消费清空）装载后暂停待用户续播
   if (!isTempTrack(track.id as string)) {
     if (time) await TrackPlayer.seekTo(time)
     if (global.lx.restorePlayInfo) {
       await TrackPlayer.pause()
       global.lx.restorePlayInfo = null
+    } else if (pauseAfterLoad) {
+      await TrackPlayer.pause()
     } else {
       await TrackPlayer.play()
     }
@@ -186,11 +189,11 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
 }
 let playPromise = Promise.resolve()
 let actionId = Math.random()
-export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: number) => {
+export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
   const id = actionId = Math.random()
   void playPromise.finally(() => {
     if (id != actionId) return
-    playPromise = handlePlayMusic(musicInfo, url, time).catch((err: unknown) => {
+    playPromise = handlePlayMusic(musicInfo, url, time, pauseAfterLoad).catch((err: unknown) => {
       console.warn('play failed:', (err as Error)?.message ?? err)
     })
   })

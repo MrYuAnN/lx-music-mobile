@@ -3,6 +3,7 @@ import { View, Platform, TouchableOpacity } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import { type ListInfoItem } from '@/store/songlist/state'
 import Text from '@/components/common/Text'
+import { useI18n } from '@/lang'
 import { scaleSizeW } from '@/utils/pixelRatio'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
@@ -19,6 +20,7 @@ export default memo(({ item, index, width, showSource, onPress }: {
   onPress: (item: ListInfoItem, index: number) => void
 }) => {
   const theme = useTheme()
+  const t = useI18n()
   const itemWidth = width - gap
   // 封面飞入源侧（RNN sharedElement fromId 的替代）：挂载时注册测距，push 时实测源矩形
   const sourceRef = useRef<View>(null)
@@ -43,7 +45,7 @@ export default memo(({ item, index, width, showSource, onPress }: {
                 <View ref={sourceRef} style={{ width: itemWidth, height: itemWidth }}>
                   <Image url={item.img} nativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_from_${item.id}`} style={{ width: itemWidth, height: itemWidth, borderRadius: 4 }} />
                 </View>
-                { showSource ? <Text style={styles.sourceLabel} size={9} color="#fff" >{item.source}</Text> : null }
+                { showSource ? <Text style={styles.sourceLabel} size={9} color="#fff" >{t(`source_short_${item.source}`)}</Text> : null }
               </TouchableOpacity>
             </View>
             <TouchableOpacity activeOpacity={0.5} onPress={handlePress}>

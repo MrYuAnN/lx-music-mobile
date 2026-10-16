@@ -74,13 +74,13 @@ const diffCurrentMusicInfo = (curMusicInfo: LX.Music.MusicInfo | LX.Download.Lis
 }
 
 let cancelDelayRetry: (() => void) | null = null
-const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false): Promise<string | null> => {
+const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, allowReload = false): Promise<string | null> => {
   // if (cancelDelayRetry) cancelDelayRetry()
   return new Promise<string | null>((resolve, reject) => {
     const time = getRandom(2, 6)
     setStatusText(global.i18n.t('player__getting_url_delay_retry', { time }))
     const tiemout = setTimeout(() => {
-      getMusicPlayUrl(musicInfo, isRefresh, true).then((result) => {
+      getMusicPlayUrl(musicInfo, isRefresh, true, allowReload).then((result) => {
         cancelDelayRetry = null
         resolve(result)
       }).catch(async(err: any) => {
@@ -95,7 +95,14 @@ const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, i
     }
   })
 }
-const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false): Promise<string | null> => {
+// 请求过期判定：默认走 diffCurrentMusicInfo（10-13 语义）；切档重链（allowReload）下放宽为
+// 仅曲 id 变化视为过期——diff 含 || playerState.isPlay 项，播放中恒 true，会把同曲重链静默拦死
+const isRequestStale = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, allowReload: boolean): boolean => {
+  return allowReload
+    ? musicInfo.id != playerState.playMusicInfo.musicInfo?.id
+    : diffCurrentMusicInfo(musicInfo)
+}
+const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false, allowReload = false): Promise<string | null> => {
   // this.musicInfo.url = await getMusicPlayUrl(targetSong, type)
   setStatusText(global.i18n.t('player__getting_url'))
   addLoadTimeout()
@@ -112,25 +119,57 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
       musicInfo,
       isRefresh,
       onToggleSource(mInfo) {
-        if (diffCurrentMusicInfo(musicInfo)) return
+        if (isRequestStale(musicInfo, allowReload)) return
         setStatusText(global.i18n.t('toggle_source_try'))
       },
     })
   }).then(url => {
-    if (global.lx.isPlayedStop || diffCurrentMusicInfo(musicInfo)) return null
+    if (global.lx.isPlayedStop || isRequestStale(musicInfo, allowReload)) return null
 
     return url
   }).catch(async err => {
     // console.log('err', err.message)
     if (global.lx.isPlayedStop ||
-      diffCurrentMusicInfo(musicInfo) ||
+      isRequestStale(musicInfo, allowReload) ||
       err.message == requestMsg.cancelRequest) return null
 
-    if (err.message == requestMsg.tooManyRequests) return delayRetry(musicInfo, isRefresh)
+    if (err.message == requestMsg.tooManyRequests) return delayRetry(musicInfo, isRefresh, allowReload)
 
-    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true)
+    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true, allowReload)
 
     throw err
+  })
+}
+
+// 取链公共样板（setMusicUrl 与切档重链共用）：gettingUrlId 设置/清理（id 比较清理，10-13 语义）
+// 与超时管理单点维护；成功/失败策略由调用方注入
+let loadSessionSeq = 0
+const startMusicUrlLoad = (
+  musicInfo: LX.Music.MusicInfo | LX.Download.ListItem,
+  isRefresh: boolean,
+  options: {
+    allowReload: boolean
+    onLoaded: (url: string) => void
+    onError: (err: Error) => void
+  },
+) => {
+  if (cancelDelayRetry) cancelDelayRetry()
+  global.lx.gettingUrlId = createGettingUrlId(musicInfo)
+  // 会话序号：同曲并发取链（连续切档/暂停态在途×切档）时区分先后——过期回包（已有更新发起）
+  // 不落地，清理只归最新会话（防旧会话 finally 清掉新会话的守卫与挂死超时兜底）
+  const sessionId = ++loadSessionSeq
+  void getMusicPlayUrl(musicInfo, isRefresh, false, options.allowReload).then((url) => {
+    if (!url) return
+    if (sessionId !== loadSessionSeq) return
+    options.onLoaded(url)
+  }).catch(options.onError).finally(() => {
+    if (sessionId !== loadSessionSeq) return
+    // id 比较替代引用比较：最近播放/临时列表会重建 musicInfo 对象，引用比较在跨列表点击同曲时
+    // 清不掉 gettingUrlId，残留值会让下一次点击同曲被守卫误挡
+    if (musicInfo.id === playerState.playMusicInfo.musicInfo?.id) {
+      global.lx.gettingUrlId = ''
+      clearLoadTimeout()
+    }
   })
 }
 
@@ -139,23 +178,39 @@ export const setMusicUrl = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   // 同曲守卫仅在播放中生效：停止/错误态下重复点同一首（如恢复失败后再点）也必须重新取 url 播放，
   // 否则 gettingUrlId 残留 + isPlay=false 时 diff=false 会让点击永远静默无响应
   if (!diffCurrentMusicInfo(musicInfo) && playerState.isPlay) return
-  if (cancelDelayRetry) cancelDelayRetry()
-  global.lx.gettingUrlId = createGettingUrlId(musicInfo)
-  void getMusicPlayUrl(musicInfo, isRefresh).then((url) => {
-    if (!url) return
-    setResource(musicInfo, url, playerState.progress.nowPlayTime)
-  }).catch((err: any) => {
-    console.log(err)
-    setStatusText(err.message as string)
-    global.app_event.error()
-    addDelayNextTimeout()
-  }).finally(() => {
-    // id 比较替代引用比较：最近播放/临时列表会重建 musicInfo 对象，引用比较在跨列表点击同曲时
-    // 清不掉 gettingUrlId，残留值会让下一次点击同曲被守卫误挡
-    if (musicInfo.id === playerState.playMusicInfo.musicInfo?.id) {
-      global.lx.gettingUrlId = ''
-      clearLoadTimeout()
-    }
+  startMusicUrlLoad(musicInfo, isRefresh ?? false, {
+    allowReload: false,
+    onLoaded: (url) => {
+      setResource(musicInfo, url, playerState.progress.nowPlayTime)
+    },
+    onError: (err) => {
+      console.log(err)
+      setStatusText(err.message)
+      global.app_event.error()
+      addDelayNextTimeout()
+    },
+  })
+}
+
+// 播放页切音质：当前歌按新全局默认档重取链续播（恢复进度），失败不打断当前播放
+export const reloadCurrentWithQuality = () => {
+  const musicInfo = playerState.playMusicInfo.musicInfo
+  if (!musicInfo) return
+  const targetQuality = settingState.setting['player.playQuality']
+  startMusicUrlLoad(musicInfo, true, {
+    allowReload: true,
+    onLoaded: (url) => {
+      // 乱序防线（与会话序号丢弃双保险）：切档必发起新取链，比对发起时目标档，被更新切档覆盖则丢弃
+      if (settingState.setting['player.playQuality'] !== targetQuality) return
+      if (musicInfo.id !== playerState.playMusicInfo.musicInfo?.id) return
+      // 播放态实时读：取链窗口内用户手动暂停/播放以最新意图为准（暂停态切档保持暂停待续播）
+      setResource(musicInfo, url, playerState.progress.nowPlayTime, !playerState.isPlay)
+    },
+    onError: (err) => {
+      console.log(err)
+      // 与 setMusicUrl 的失败差异：仅提示，不触发 error 事件（UI 暂停错位）、不延迟自动切歌
+      setStatusText(err.message)
+    },
   })
 }
 
@@ -295,7 +350,6 @@ export const playListById = async(listId: string, id: string) => {
  * @param index 播放的歌曲位置
  */
 export const playList = async(listId: string, index: number) => {
-  console.warn('[PLAYDEBUG] playList', listId, index)
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   setPlayMusicInfo(listId, getList(listId)[index])

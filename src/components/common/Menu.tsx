@@ -11,7 +11,8 @@ import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { SPACING } from '@/config/spacing'
 
 const menuItemHeight = scaleSizeH(40)
-const menuItemWidth = scaleSizeW(100)
+// 菜单兜底宽（fitMenuWidth 未启用/未估出时的固定宽），DorpDownMenu 的 fitWidth 下限同源引用
+export const menuItemWidth = scaleSizeW(100)
 
 export interface Position { w: number, h: number, x: number, y: number, menuWidth?: number, menuHeight?: number }
 export interface MenuSize { width?: number, height?: number }

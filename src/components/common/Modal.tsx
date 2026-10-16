@@ -79,15 +79,15 @@ export default forwardRef<ModalType, ModalProps>(({
 
   const memoChildren = useMemo(async() => children, [children])
 
-  // Modal 独立窗口的手势条透明已由 patches/react-native+0.73.11.patch 补齐（navigationBarColor 透明
-  // + 内容延伸，近似 RN 0.74 navigationBarTranslucent，新批问题3）；sheet 已按 navBarInset 垫高避让。
-  // 升 RN 0.74+ 时删补丁换官方属性
+  // NB-3 原生补丁（0.73 Modal 窗口延伸到手势条下）已由官方属性接管：RN 0.86 不传
+  // navigationBarTranslucent 时原生显式 disableEdgeToEdge（ReactModalHostView），窗口止于手势条上沿
   return (
     <Modal
       animationType="fade"
       transparent={true}
       hardwareAccelerated={true}
       statusBarTranslucent={true}
+      navigationBarTranslucent={true}
       visible={visible}
       onRequestClose={handleRequestClose}
       {...props}

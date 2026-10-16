@@ -276,6 +276,11 @@ declare global {
       'c-quality-24bit': string
       'c-quality-sq': string
       'c-quality-hq': string
+      'c-source-wy': string
+      'c-source-tx': string
+      'c-source-kg': string
+      'c-source-kw': string
+      'c-source-mg': string
       'c-button-font-selected': string
       'c-button-background': string
       'c-button-background-selected': string

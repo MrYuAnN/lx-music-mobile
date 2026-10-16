@@ -6,6 +6,7 @@ import Button from '@/components/common/Button'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
+import { useI18n, type Message } from '@/lang'
 import { View } from 'react-native'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { getListMusics } from '@/core/list'
@@ -35,6 +36,7 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
   const currentListIdRef = useRef('')
   const currentKeywordRef = useRef('')
   const theme = useTheme()
+  const t = useI18n()
 
   const handleShowList = (keyword: string, height: number) => {
     searchTipListRef.current?.setHeight(height)
@@ -101,7 +103,7 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
           <Text numberOfLines={1}>{item.name}</Text>
           <Text style={styles.subName} numberOfLines={1} size={12} color={theme['c-font-label']}>{item.singer} ({item.meta.albumName})</Text>
         </View>
-        <Text style={styles.itemSource} size={12} color={theme['c-font-label']}>{item.source}</Text>
+        <Text style={styles.itemSource} size={12} color={theme['c-font-label']}>{t(`source_short_${item.source}` as keyof Message) || item.source}</Text>
       </Button>
     )
   }
