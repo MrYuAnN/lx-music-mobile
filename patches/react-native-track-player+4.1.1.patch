@@ -1,0 +1,38 @@
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+index 48a591c..df8ca42 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/doublesymmetry/trackplayer/module/MusicModule.kt
+@@ -419,6 +419,14 @@ class MusicModule(reactContext: ReactApplicationContext) : NativeTrackPlayerSpec
+             callback.reject("no_current_item", "There is no current item in the player")
+ 
+         Arguments.toBundle(map)?.let {
++            // fork semantics: this replaces the queue item, so a bare metadata map
++            // (lx-style notification updates carry no url) poisons the current item
++            // with a "null" uri, killing playback with an ENOENT loop. Reuse the
++            // current item's url when the caller didn't supply one.
++            if (!it.containsKey("url")) {
++                val current = musicService.currentTrack
++                current.uri?.let { u -> it.putString("url", u.toString()) }
++            }
+             val track = bundleToTrack(it)
+             musicService.updateNowPlayingMetadata(track)
+         }
+diff --git a/node_modules/react-native-track-player/android/src/main/java/com/lovegaoshi/kotlinaudio/player/components/MediaFactory.kt b/node_modules/react-native-track-player/android/src/main/java/com/lovegaoshi/kotlinaudio/player/components/MediaFactory.kt
+index 1b1ffb4..04a4433 100644
+--- a/node_modules/react-native-track-player/android/src/main/java/com/lovegaoshi/kotlinaudio/player/components/MediaFactory.kt
++++ b/node_modules/react-native-track-player/android/src/main/java/com/lovegaoshi/kotlinaudio/player/components/MediaFactory.kt
+@@ -120,8 +120,13 @@ class MediaFactory (
+         return if (cache == null) {
+             factory
+         } else {
++            // Kotlin scope trap: bare `cache` inside `apply` resolves to
++            // CacheDataSource.Factory.getCache() (always null on a fresh Factory),
++            // NOT this class' constructor field — the `!!` NPE'd on every http track
++            // as soon as a cache size was configured, silently failing all playback.
++            val mediaCache = cache!!
+             CacheDataSource.Factory().apply {
+-                setCache(cache!!)
++                setCache(mediaCache)
+                 setUpstreamDataSourceFactory(factory)
+                 setFlags(CacheDataSource.FLAG_IGNORE_CACHE_ON_ERROR)
+             }
