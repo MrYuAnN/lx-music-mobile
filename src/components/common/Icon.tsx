@@ -33,4 +33,6 @@ export const Icon = memo(({ name, size = ICON_SIZE.list, color, style }: IconPro
       <Path d={glyph.d} transform={glyph.t} fill={fill} />
     </Svg>
   )
-}, () => true)
+  // 默认浅比较：() => true 会连 name 变化都吞掉（播放/暂停图标僵死的根因），
+  // Icon props 全为原始值，浅比较即是正确的重渲门槛
+})
