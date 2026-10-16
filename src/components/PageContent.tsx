@@ -27,6 +27,11 @@ interface Props {
    * 常规页面使用纯色底（AM 观感），不传即默认 false。
    */
   coverBg?: boolean
+  /**
+   * 静态封面氛围源（歌单页专用，歌单页重构批②）：传入歌单封面即启用氛围层，
+   * 与 coverBg 互斥（同时传时 coverBg 优先）。取色/模糊/交叉淡入机制同播放页（审查 A6）。
+   */
+  ambientPic?: string | null
 }
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
@@ -89,40 +94,51 @@ const clampTint = (hex: string, isDark: boolean): string => {
   return hslToHex(hsl)
 }
 
-// 订阅当前曲目封面变化（原 core/init/common.ts 的动态背景逻辑收编于此，
-// theme.dynamicBg 设置随 AM 化退役，封面背景仅由 coverBg 显式开启）
-const usePlayerCover = (enabled: boolean) => {
+// 提取器通用层（审查 A6 两层抽象）：pic 源无关的预载+取色。stale 守卫替代原播放页的
+// 「比对当前曲目」守卫（L104/L110 旧实现）：源切换/卸载即弃在途回包，静态源（歌单页）
+// 与事件源（播放页）共用。取色 dominant→average 兜底；defaultColor 为原生取色失败兜底；
+// headers 与可见封面请求一致；失败告警后回退纯模糊底
+export const useCoverAmbient = (sourcePic: string | null) => {
   const [pic, setPic] = useState<string | null>(null)
   const [tint, setTint] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!enabled) return
-    const handleUpdatePic = (pic: string) => {
-      if (!pic) return
-      const picUrl = formatUri(pic)
-      void prefetch(picUrl).catch(() => {}).then(() => {
-        if (pic != playerState.musicInfo.pic) return
-        setPic(picUrl)
-      })
-      // 主色提取（AM 播放页氛围渐变；原生返回平台对象，取 dominant→average 兜底；
-      // defaultColor 为原生取色失败兜底；headers 与可见封面请求一致；失败告警后回退纯模糊底）
-      void getColors(picUrl, { defaultColor: '#2288cc', cache: true, headers: defaultHeaders }).then(result => {
-        if (pic != playerState.musicInfo.pic) return
-        const tint = result.dominant ?? result.average ?? null
-        if (tint) setTint(tint)
-      }).catch(err => {
-        console.warn('image colors failed', err)
-      })
+    if (!sourcePic) {
+      // 无封面（自建歌单/本地歌/封面加载失败）：清空回默认底，避免残留上一份氛围
+      setPic(null)
+      setTint(null)
+      return
     }
+    const picUrl = formatUri(sourcePic)
+    let stale = false
+    void prefetch(picUrl).catch(() => {}).then(() => {
+      if (stale) return
+      setPic(picUrl)
+    })
+    void getColors(picUrl, { defaultColor: '#2288cc', cache: true, headers: defaultHeaders }).then(result => {
+      if (stale) return
+      const nextTint = result.dominant ?? result.average ?? null
+      if (nextTint) setTint(nextTint)
+    }).catch(err => {
+      console.warn('image colors failed', err)
+    })
+    return () => {
+      stale = true
+    }
+  }, [sourcePic])
+
+  return { pic, tint }
+}
+
+// 源层（播放页）：订阅当前曲目封面变化，交提取器通用层处理
+const usePlayerCover = (enabled: boolean) => {
+  const [musicPic, setMusicPic] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!enabled) return
     const handlePicUpdate = () => {
       const pic = playerState.musicInfo.pic
-      if (pic && pic != playerState.loadErrorPicUrl) {
-        handleUpdatePic(pic)
-      } else {
-        // 无封面曲目（本地歌/封面加载失败）：清空回默认底，避免残留上一首氛围
-        setPic(null)
-        setTint(null)
-      }
+      setMusicPic(pic && pic != playerState.loadErrorPicUrl ? pic : null)
     }
     handlePicUpdate()
     global.state_event.on('playerMusicInfoChanged', handlePicUpdate)
@@ -131,13 +147,17 @@ const usePlayerCover = (enabled: boolean) => {
     }
   }, [enabled])
 
-  return { pic, tint }
+  return useCoverAmbient(musicPic)
 }
 
-export default ({ children, coverBg = false }: Props) => {
+export default ({ children, coverBg = false, ambientPic }: Props) => {
   const theme = useTheme()
   const windowSize = useWindowSize()
-  const { pic, tint } = usePlayerCover(coverBg)
+  // 氛围源二选一：coverBg（播放页，跟随当前曲目）优先；否则用静态源（歌单页）。两层 hook
+  // 恒定运行（disabled/空源时为空实现），仅取值按开关路由，保证 hooks 顺序稳定
+  const playerAmbient = usePlayerCover(coverBg)
+  const staticAmbient = useCoverAmbient(coverBg ? null : ambientPic ?? null)
+  const { pic, tint } = coverBg ? playerAmbient : staticAmbient
 
   // 渐变过渡：切歌时旧 tint 淡出→换色→新 tint 淡入，避免主色跳变；
   // 起链前打断旧链 + 最新值守卫，防快速切歌时过期回调回写旧色
@@ -208,7 +228,7 @@ export default ({ children, coverBg = false }: Props) => {
   return (
     <>
       <SizeView />
-      {coverBg ? coverComponent : solidComponent}
+      {coverBg || ambientPic != null ? coverComponent : solidComponent}
     </>
   )
 }

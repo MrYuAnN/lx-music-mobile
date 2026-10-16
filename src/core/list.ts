@@ -4,6 +4,17 @@ import listState from '@/store/list/state'
 import settingState from '@/store/setting/state'
 import { fixNewMusicInfoQuality } from '@/utils'
 import { saveListPrevSelectId } from '@/utils/data'
+import { isListContentReadonly } from '@/utils/listManage'
+import { toast } from '@/utils/tools'
+
+// 收藏歌单只读守卫（歌单页重构批①，拍板 #2/审查 A5）：内容写函数统一拦截（加歌/删歌/
+// 移动/更新/移位/清空），防歌单页之外的旁路写入（如其他页「添加到」选收藏歌单）；
+// 同步合法写入走 overwriteListMusics 不拦
+const guardListWritable = (listId: string) => {
+  if (!isListContentReadonly(listId)) return true
+  toast(global.i18n.t('list_readonly_tip'))
+  return false
+}
 
 /**
  * 覆盖全部列表数据
@@ -47,6 +58,7 @@ export const updateUserListPosition = async(position: number, ids: string[]) => 
  * 批量添加歌曲到列表
  */
 export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType) => {
+  if (!guardListWritable(id)) return
   await global.list_event.list_music_add(id, musicInfos, addMusicLocationType)
 }
 
@@ -54,6 +66,9 @@ export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[],
  * 跨列表批量移动歌曲
  */
 export const moveListMusics = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType) => {
+  // 移动=从 from 移除 + 向 to 写入，双向守卫（审查 C2：仅守 from 时「移动到收藏歌单」旁路写入）
+  if (!guardListWritable(fromId)) return
+  if (!guardListWritable(toId)) return
   await global.list_event.list_music_move(fromId, toId, musicInfos, addMusicLocationType)
 }
 
@@ -61,6 +76,7 @@ export const moveListMusics = async(fromId: string, toId: string, musicInfos: LX
  * 批量删除列表内歌曲
  */
 export const removeListMusics = async(listId: string, ids: string[]) => {
+  if (!guardListWritable(listId)) return
   await global.list_event.list_music_remove(listId, ids)
 }
 
@@ -68,6 +84,10 @@ export const removeListMusics = async(listId: string, ids: string[]) => {
  * 批量更新列表内歌曲
  */
 export const updateListMusics = async(infos: Array<{ id: string, musicInfo: LX.Music.MusicInfo }>) => {
+  if (infos.some(info => isListContentReadonly(info.id))) {
+    toast(global.i18n.t('list_readonly_tip'))
+    return
+  }
   await global.list_event.list_music_update(infos)
 }
 
@@ -75,6 +95,7 @@ export const updateListMusics = async(infos: Array<{ id: string, musicInfo: LX.M
  * 批量移动列表内歌曲的位置
  */
 export const updateListMusicPosition = async(listId: string, position: number, ids: string[]) => {
+  if (!guardListWritable(listId)) return
   await global.list_event.list_music_update_position(listId, position, ids)
 }
 
@@ -89,6 +110,10 @@ export const overwriteListMusics = async(listId: string, musicInfos: LX.Music.Mu
  * 覆盖列表内的歌曲
  */
 export const clearListMusics = async(ids: string[]) => {
+  if (ids.some(id => isListContentReadonly(id))) {
+    toast(global.i18n.t('list_readonly_tip'))
+    return
+  }
   await global.list_event.list_music_clear(ids)
 }
 
@@ -124,12 +149,14 @@ export const overwriteList = async(listInfoFull: LX.List.MyDefaultListInfoFull |
  * @param listInfo
  * @param musics
  */
-export const createList = async({ name, id = `userlist_${Date.now()}`, list = [], source, sourceListId, position = -1 }: {
+export const createList = async({ name, id = `userlist_${Date.now()}`, list = [], source, sourceListId, pic, collectTime, position = -1 }: {
   name?: string
   id?: string
   list?: LX.Music.MusicInfo[]
   source?: LX.OnlineSource
   sourceListId?: string
+  pic?: string
+  collectTime?: number
   position?: number
 }) => {
   await createUserList(position < 0 ? listState.userList.length : position, [
@@ -138,10 +165,16 @@ export const createList = async({ name, id = `userlist_${Date.now()}`, list = []
       name: name ?? 'list',
       source,
       sourceListId,
+      pic,
+      collectTime,
       locationUpdateTime: position < 0 ? null : Date.now(),
     },
   ])
-  if (list) await addListMusics(id, list, settingState.setting['list.addMusicLocationType'])
+  if (list) {
+    // 创建链豁免只读守卫（审查 C1）：新建收藏/克隆/备份导入的列表经 list_create 已带 source
+    // 入 userLists，复用 addListMusics 会被自身守卫拦截致歌曲丢失；与远程同步同走事件层豁免通道
+    await global.list_event.list_music_add(id, list, settingState.setting['list.addMusicLocationType'])
+  }
 }
 
 /**

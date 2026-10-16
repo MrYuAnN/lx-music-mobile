@@ -1,6 +1,6 @@
 import { playList } from '@/core/player/player'
 import { useMemo, useRef, useState, useEffect, forwardRef, useImperativeHandle } from 'react'
-import { FlatList, type NativeScrollEvent, type NativeSyntheticEvent, type FlatListProps } from 'react-native'
+import { View, FlatList, type NativeScrollEvent, type NativeSyntheticEvent, type FlatListProps } from 'react-native'
 
 import listState from '@/store/list/state'
 import playerState from '@/store/player/state'
@@ -22,6 +22,7 @@ export interface ListProps {
   onShowMenu: (musicInfo: LX.Music.MusicInfo, index: number, position: Position) => void
   onMuiltSelectMode: () => void
   onSelectAll: (isAll: boolean) => void
+  header?: React.ReactElement
 }
 export interface ListType {
   setIsMultiSelectMode: (isMultiSelectMode: boolean) => void
@@ -45,7 +46,7 @@ const usePlayIndex = () => {
 }
 
 
-const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll }, ref) => {
+const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll, header }, ref) => {
   // const t = useI18n()
   const flatListRef = useRef<FlatList>(null)
   const [currentList, setList] = useState<LX.List.ListMusics>([])
@@ -126,6 +127,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
                 } catch {}
               }
             }
+            // 头部化后存量保存偏移少一个头高，恢复一次性偏上、滚动保存后自愈（审查 S-1/S2 装机验证点）
             flatListRef.current?.scrollToOffset({ offset: position, animated: false })
           })
         })
@@ -259,7 +261,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       index={index}
       rowInfo={rowInfo.current}
       selectedList={selectedList}
-      showIndex
+      showIndex={false}
       showCover={false}
       showSource={false}
       showInterval={isShowInterval}
@@ -273,8 +275,15 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id
+  // 头部（歌单页头部随列表滚动，批②）：高度计入 getItemLayout offset，否则 scrollToIndex 定位漂移
+  const [headerHeight, setHeaderHeight] = useState(0)
+  const headerElement = header
+    ? (
+        <View onLayout={(e) => { setHeaderHeight(e.nativeEvent.layout.height) }}>{header}</View>
+      )
+    : null
   const getItemLayout: FlatListType['getItemLayout'] = (data, index) => {
-    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
+    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index + headerHeight, index }
   }
 
   return (
@@ -293,6 +302,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       renderItem={renderItem}
       keyExtractor={getkey}
       extraData={activeIndex}
+      ListHeaderComponent={headerElement}
       getItemLayout={getItemLayout}
       showsVerticalScrollIndicator={false}
     />

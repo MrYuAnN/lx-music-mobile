@@ -4,6 +4,7 @@ import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position 
 import { hasDislike } from '@/core/dislikeList'
 import { existsFile } from '@/utils/fs'
 import { hasMusicUrlByMusic } from '@/utils/data'
+import { isReadonlyList } from './listAction'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfo
@@ -54,7 +55,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
   useImperativeHandle(ref, () => ({
     show(selectInfo) {
       selectInfoRef.current = selectInfo
-      handleSetMenu(selectInfo.musicInfo)
+      handleSetMenu(selectInfo.musicInfo, selectInfo.listId)
       if (visible) menuRef.current?.show()
       else {
         setVisible(true)
@@ -65,38 +66,45 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
     },
   }))
 
-  const handleSetMenu = (musicInfo: LX.Music.MusicInfo) => {
+  const handleSetMenu = (musicInfo: LX.Music.MusicInfo, listId: string) => {
     let edit_metadata = false
     let has_url_cache = false
     const isLocal = musicInfo.source == 'local'
-    const menu = [
+    // 收藏歌单只读（拍板 #2，审查 A5）：隐藏一切写当前歌单的入口（移动/移位/换源/删除/
+    // 元数据编辑）；「添加到」写目标歌单合法保留；handler 层另有守卫防多选旁路
+    const readonly = isReadonlyList(listId)
+    const menu: ActionSheetItem[] = [
       { action: 'play', label: t('play'), icon: 'play' },
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },
       ...(isLocal ? [] : [{ action: 'download', label: t('download_action'), icon: 'download-2' }]),
       { action: 'add', label: t('add_to'), icon: 'add-to' },
-      { action: 'move', label: t('move_to'), icon: 'move-to' },
-      { action: 'changePosition', label: t('change_position'), icon: 'change-position' },
-      { action: 'toggleSource', label: t('toggle_source'), icon: 'toggle-source' },
+      ...(readonly ? [] : [{ action: 'move', label: t('move_to'), icon: 'move-to' }]),
+      ...(isLocal && !readonly ? [{ action: 'editMetadata', disabled: !edit_metadata, label: t('edit_metadata'), icon: 'edit-metadata' }] : []),
+      ...(readonly ? [] : [
+        { action: 'changePosition', label: t('change_position'), icon: 'change-position' },
+        { action: 'toggleSource', label: t('toggle_source'), icon: 'toggle-source' },
+      ]),
       { action: 'copyName', label: t('copy_name'), icon: 'copy-name' },
       { action: 'musicSourceDetail', disabled: isLocal, label: t('music_source_detail'), icon: 'source-detail' },
       { action: 'removeCache', disabled: !has_url_cache, label: t('list_remove_cache'), icon: 'remove-cache' },
       // { action: 'musicSearch', label: t('music_search') },
       { action: 'dislike', disabled: hasDislike(musicInfo), label: t('dislike'), icon: 'dislike-add' },
-      { action: 'remove', label: t('delete'), icon: 'trash', destructive: true },
+      ...(readonly ? [] : [{ action: 'remove', label: t('delete'), icon: 'trash', destructive: true }]),
     ]
-    if (isLocal) menu.splice(5, 0, { action: 'editMetadata', disabled: !edit_metadata, label: t('edit_metadata'), icon: 'edit-metadata' })
     setMenus(menu)
-    void Promise.all([isLocal ? hasEditMetadata(musicInfo) : Promise.resolve(false), hasUrlCache(musicInfo)]).then(([_edit_metadata, _has_url_cache]) => {
+    void Promise.all([isLocal && !readonly ? hasEditMetadata(musicInfo) : Promise.resolve(false), hasUrlCache(musicInfo)]).then(([_edit_metadata, _has_url_cache]) => {
       // console.log(_edit_metadata)
       let isUpdated = false
-      if (edit_metadata != _edit_metadata) {
+      const editIdx = menu.findIndex(m => m.action == 'editMetadata')
+      if (editIdx > -1 && edit_metadata != _edit_metadata) {
         edit_metadata = _edit_metadata
-        menu[menu.findIndex(m => m.action == 'editMetadata')].disabled = !edit_metadata
+        menu[editIdx].disabled = !edit_metadata
         isUpdated ||= true
       }
-      if (has_url_cache != _has_url_cache) {
+      const cacheIdx = menu.findIndex(m => m.action == 'removeCache')
+      if (cacheIdx > -1 && has_url_cache != _has_url_cache) {
         has_url_cache = _has_url_cache
-        menu[menu.findIndex(m => m.action == 'removeCache')].disabled = !has_url_cache
+        menu[cacheIdx].disabled = !has_url_cache
         isUpdated ||= true
       }
 

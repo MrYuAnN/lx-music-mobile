@@ -1,4 +1,4 @@
-import { addListMusics, removeListMusics, updateListMusicPosition, updateListMusics } from '@/core/list'
+import { addListMusics, createList, getListMusics, removeListMusics, updateListMusicPosition, updateListMusics } from '@/core/list'
 import { playList, playListById, playNext } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import settingState from '@/store/setting/state'
@@ -10,8 +10,29 @@ import playerState from '@/store/player/state'
 import type { SelectInfo } from './ListMenu'
 import { type Metadata } from '@/components/MetadataEditModal'
 import musicSdk from '@/utils/musicSdk'
-import { getListMusicSync } from '@/utils/listManage'
+import { getListMusicSync, isListContentReadonly } from '@/utils/listManage'
 import { clearMusicUrlByMusic } from '@/utils/data'
+
+// 收藏歌单只读判定单源在 utils/listManage.isListContentReadonly（core 内容写守卫同源）
+export { isListContentReadonly as isReadonlyList }
+
+// 写操作守卫：只读歌单静默拒绝 + 提示，返回 false 供调用方短路
+export const guardWritableList = (listId: string) => {
+  if (!isListContentReadonly(listId)) return true
+  toast(global.i18n.t('list_readonly_tip'))
+  return false
+}
+
+// 克隆收藏歌单为自建歌单（拍板 #10：不带 source/sourceListId，pic 沿用，名「· 副本」）
+export const handleCloneList = async(listInfo: LX.List.UserListInfo) => {
+  const list = await getListMusics(listInfo.id)
+  await createList({
+    name: global.i18n.t('list_clone_name', { name: listInfo.name }),
+    list,
+    pic: listInfo.pic,
+  })
+  toast(global.i18n.t('list_clone_success'))
+}
 
 export const handlePlay = (listId: SelectInfo['listId'], index: SelectInfo['index']) => {
   void playList(listId, index)

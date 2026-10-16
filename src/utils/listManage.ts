@@ -14,6 +14,13 @@ import { LIST_IDS } from '@/config/constant'
 export const userLists: LX.List.UserListInfo[] = []
 export const allMusicList = new Map<string, LX.Music.MusicInfo[]>()
 
+// 收藏歌单内容只读判定（歌单页重构批①，拍板 #2/#4.1）：带 source 标记的歌单为收藏副本，
+// 内容只读；唯一合法写入方=同步（syncSourceList 走 overwriteListMusics，不经内容写函数守卫）。
+// 元数据级操作（重命名/删除收藏）走 updateList/removeUserList，不受此守卫限制
+export const isListContentReadonly = (listId: string) => {
+  return userLists.find(l => l.id == listId)?.source != null
+}
+
 export const setUserLists = (lists: LX.List.UserListInfo[]) => {
   userLists.splice(0, userLists.length, ...lists)
   return userLists
@@ -33,6 +40,8 @@ const createUserList = ({
   id,
   source,
   sourceListId,
+  pic,
+  collectTime,
   locationUpdateTime,
 }: LX.List.UserListInfo, position: number) => {
   if (position < 0 || position >= userLists.length) {
@@ -41,6 +50,8 @@ const createUserList = ({
       id,
       source,
       sourceListId,
+      pic,
+      collectTime,
       locationUpdateTime,
     })
   } else {
@@ -49,6 +60,8 @@ const createUserList = ({
       id,
       source,
       sourceListId,
+      pic,
+      collectTime,
       locationUpdateTime,
     })
   }
@@ -59,6 +72,8 @@ const updateList = ({
   id,
   source,
   sourceListId,
+  pic,
+  collectTime,
   // meta,
   locationUpdateTime,
 }: LX.List.UserListInfo & { meta?: { id?: string } }) => {
@@ -70,11 +85,18 @@ const updateList = ({
     case LIST_IDS.TEMP:
     //   tempList.meta = meta ?? {}
       // break
-    default:
+    default: {
       index = userLists.findIndex(l => l.id == id)
-      if (index < 0) return
-      userLists.splice(index, 1, { ...userLists[index], name, source, sourceListId, locationUpdateTime })
+      if (index < 0) break
+      // pic/collectTime 仅在新值存在时覆盖（undefined 保旧）：导入/备份恢复等
+      // overwrite 链路不带这两个字段，显式 undefined 会抹掉已落库值（审查 A1/I-2）
+      const prev = userLists[index]
+      const merged: LX.List.UserListInfo = { ...prev, name, source, sourceListId, locationUpdateTime }
+      if (pic != null) merged.pic = pic
+      if (collectTime != null) merged.collectTime = collectTime
+      userLists.splice(index, 1, merged)
       break
+    }
   }
 }
 
@@ -136,11 +158,13 @@ export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }:
   return updatedListIds
 }
 
-export const userListCreate = ({ name, id, source, sourceListId, position, locationUpdateTime }: {
+export const userListCreate = ({ name, id, source, sourceListId, pic, collectTime, position, locationUpdateTime }: {
   name: string
   id: string
   source?: LX.OnlineSource
   sourceListId?: string
+  pic?: string
+  collectTime?: number
   position: number
   locationUpdateTime: number | null
 }) => {
@@ -150,6 +174,8 @@ export const userListCreate = ({ name, id, source, sourceListId, position, locat
     id,
     source,
     sourceListId,
+    pic,
+    collectTime,
     locationUpdateTime,
   }
   createUserList(newList, position)

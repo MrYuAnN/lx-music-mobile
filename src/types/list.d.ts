@@ -6,6 +6,10 @@ declare namespace LX {
       // list: LX.Music.MusicInfo[]
       source?: LX.OnlineSource
       sourceListId?: string
+      // 收藏歌单封面（2026-10-16）：收藏/懒加载补齐时落库，缺失回退渐变占位
+      pic?: string
+      // 收藏时间（2026-10-16 歌单页重构批0）：仅收藏时记录；存量无值降级显示（不可回源）
+      collectTime?: number
       // position?: number
       locationUpdateTime: number | null
     }

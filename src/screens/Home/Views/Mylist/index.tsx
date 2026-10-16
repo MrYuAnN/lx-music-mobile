@@ -1,68 +1,21 @@
-import { useEffect, useRef } from 'react'
+import { View } from 'react-native'
 import MusicList from './MusicList'
-import MyList from './MyList'
-import { useTheme } from '@/store/theme/hook'
-import DrawerLayoutFixed, { type DrawerLayoutFixedType } from '@/components/common/DrawerLayoutFixed'
-import { COMPONENT_IDS } from '@/config/constant'
-import { scaleSizeW } from '@/utils/pixelRatio'
-import type { InitState as CommonState } from '@/store/common/state'
+import PageContent from '@/components/PageContent'
+import { useActiveListId, useMyList } from '@/store/list/hook'
 
-const MAX_WIDTH = scaleSizeW(400)
-
+// 歌单页根容器（歌单页重构批③）：我的歌单侧滑抽屉已退役（拍板 #7，切换走首页 shelf，
+// 管理操作并入歌单页 ⋮ 菜单）；原 DrawerLayoutFixed/changeLoveListVisible/nav_love
+// fixWidth 事件链一并移除。氛围层随当前激活歌单封面（push 屏与横屏 pane 两形态共用本组件）
 export default () => {
-  const drawer = useRef<DrawerLayoutFixedType>(null)
-  const theme = useTheme()
-  // const [width, setWidth] = useState(0)
-
-  useEffect(() => {
-    const handleFixDrawer = (id: CommonState['navActiveId']) => {
-      if (id == 'nav_love') drawer.current?.fixWidth()
-    }
-    const changeVisible = (visible: boolean) => {
-      if (visible) {
-        requestAnimationFrame(() => {
-          drawer.current?.openDrawer()
-        })
-      } else {
-        drawer.current?.closeDrawer()
-      }
-    }
-
-    // setWidth(getWindowSise().width * 0.82)
-
-    global.state_event.on('navActiveIdUpdated', handleFixDrawer)
-    global.app_event.on('changeLoveListVisible', changeVisible)
-
-    // 就放旋转屏幕后的宽度没有更新的问题
-    // const changeEvent = onDimensionChange(({ window }) => {
-    //   setWidth(window.width * 0.82)
-    //   drawer.current?.setNativeProps({
-    //     width: window.width,
-    //   })
-    // })
-
-    return () => {
-      global.state_event.off('navActiveIdUpdated', handleFixDrawer)
-      global.app_event.off('changeLoveListVisible', changeVisible)
-    // changeEvent.remove()
-    }
-  }, [])
-
-  const navigationView = () => <MyList />
-  // console.log('render drawer content')
+  const lists = useMyList()
+  const activeListId = useActiveListId()
+  const activeListInfo = lists.find(l => l.id === activeListId) as LX.List.UserListInfo | undefined
 
   return (
-    <DrawerLayoutFixed
-      ref={drawer}
-      visibleNavNames={[COMPONENT_IDS.home]}
-      // drawerWidth={width}
-      widthPercentage={0.82}
-      widthPercentageMax={MAX_WIDTH}
-      renderNavigationView={navigationView}
-      drawerBackgroundColor={theme['c-content-background']}
-      style={{ elevation: 1 }}
-    >
-      <MusicList />
-    </DrawerLayoutFixed>
+    <View style={{ flex: 1 }}>
+      <PageContent ambientPic={activeListInfo?.pic ?? null}>
+        <MusicList />
+      </PageContent>
+    </View>
   )
 }

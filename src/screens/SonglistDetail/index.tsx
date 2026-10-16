@@ -30,7 +30,7 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
 
 
   return (
-    <PageContent>
+    <PageContent ambientPic={info.img ?? null}>
       <StatusBar />
       <ListInfoContext.Provider value={info}>
         <MusicList ref={musicListRef} componentId={componentId} />

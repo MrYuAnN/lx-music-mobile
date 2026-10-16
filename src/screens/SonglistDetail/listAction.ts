@@ -31,7 +31,23 @@ export const handlePlay = async(id: string, source: Source, list?: LX.Music.Musi
   }
 }
 
-export const handleCollect = async(id: string, source: Source, name: string) => {
+// 随机播放（歌单页重构批②三钮行；审查 I5 两段式）：先首页即播随机起点（与 handlePlay 同构，
+// 大歌单无需等全量），后台补全量；播放顺序跟随当前播放模式
+export const handlePlayShuffle = async(id: string, source: Source) => {
+  const listId = getListId(id, source)
+  const first = await getListDetail(id, source, 1)
+  const list = first.list
+  if (!list.length) return
+  await setTempList(listId, [...list])
+  void playList(LIST_IDS.TEMP, Math.floor(Math.random() * list.length))
+  const fullList = await getListDetailAll(source, id)
+  if (!fullList.length) return
+  if (listState.tempListMeta.id == listId) {
+    await setTempList(listId, [...fullList])
+  }
+}
+
+export const handleCollect = async(id: string, source: Source, name: string, pic?: string) => {
   const listId = getListId(id, source)
 
   const targetList = listState.userList.find(l => l.sourceListId == listId)
@@ -53,6 +69,8 @@ export const handleCollect = async(id: string, source: Source, name: string) => 
     list,
     source,
     sourceListId: id,
+    pic,
+    collectTime: Date.now(),
   })
   toast(global.i18n.t('collect_success'))
 }
