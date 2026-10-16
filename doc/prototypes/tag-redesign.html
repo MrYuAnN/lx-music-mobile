@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>音质/来源标签重设计 · 原型</title>
+<style>
+  :root { --gold-l:#B8860B; --green-l:#3D9A50; --hq-l:#5E81AC; --gray-l:#8A8A8E;
+          --gold-d:#E3B341; --green-d:#7CC98A; --hq-d:#93B1D8; --gray-d:#98989F; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background:#E9E9EE; font-family:-apple-system,'SF Pro Text','Segoe UI','Microsoft YaHei UI','Microsoft YaHei',sans-serif;
+         padding:32px 24px 48px; color:#1d1d1f; }
+  h1 { font-size:22px; margin-bottom:6px; }
+  .sub { font-size:13px; color:#6e6e73; margin-bottom:28px; }
+  h2 { font-size:16px; margin:34px 0 12px; }
+  .row { display:flex; gap:20px; flex-wrap:wrap; align-items:flex-start; }
+
+  /* ── 手机框 ── */
+  .phone { width:390px; border-radius:24px; overflow:hidden; border:1px solid #d5d5da; box-shadow:0 8px 28px rgba(0,0,0,.10); }
+  .phone.light { background:#FFFFFF; }
+  .phone.dark  { background:#1C1C1E; }
+  .cap { font-size:12px; color:#6e6e73; padding:8px 16px; background:#F2F2F7; border-bottom:1px solid #E5E5EA; }
+  .phone.dark .cap { background:#2C2C2E; border-color:#3A3A3C; color:#98989F; }
+  .list { padding:4px 0 8px; }
+
+  /* ── 列表行：现状 ── */
+  .li { display:flex; align-items:center; padding:0 16px 0 16px; height:58px; }
+  .li .info { flex:1; min-width:0; padding-right:8px; }
+  .li .title { font-size:15px; }
+  .li .subrow { display:flex; align-items:center; margin-top:4px; }
+  .li .singer { font-size:12px; margin-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .light .title { color:#000; } .light .singer { color:#8A8A8E; }
+  .dark  .title { color:#fff; } .dark  .singer { color:#98989F; }
+  .num { width:26px; text-align:center; font-size:13px; }
+  .light .num { color:#AEAEB2; } .dark .num { color:#636366; }
+
+  /* ── 标签：现状（描边 9px） ── */
+  .tag-old { display:inline-flex; align-items:center; height:15px; padding:0 4px; margin-right:4px;
+             border:1px solid; border-radius:3px; font-size:9px; line-height:1; letter-spacing:.3px; }
+
+  /* ── 标签：新版（淡底胶囊 10px Medium） ── */
+  .tag { display:inline-flex; align-items:center; height:16px; padding:0 5px; margin-right:4px;
+         border-radius:999px; font-size:10px; font-weight:500; line-height:16px; letter-spacing:.2px; }
+  .tag + .singer { margin-left:0; }
+
+  /* 淡底（新版）：底 = 同色 12% */
+  .light .t-gold  { color:var(--gold-l);  background:#B8860B1F; }
+  .light .t-green { color:var(--green-l); background:#3D9A501F; }
+  .light .t-hq    { color:var(--hq-l);    background:#5E81AC1F; }
+  .light .t-gray  { color:var(--gray-l);  background:#8A8A8E1F; }
+  .dark  .t-gold  { color:var(--gold-d);  background:#E3B3411F; }
+  .dark  .t-green { color:var(--green-d); background:#7CC98A1F; }
+  .dark  .t-hq    { color:var(--hq-d);    background:#93B1D81F; }
+  .dark  .t-gray  { color:var(--gray-d);  background:#98989F1F; }
+
+  /* ── 方案2：B 更轻（彩标底 10%、盒高 15、灰标底 8%）——置于 .light/.dark 规则后，同特异性后者胜 ── */
+  .v2 .tag { height:15px; line-height:15px; }
+  .v2 .t-gold  { background:#B8860B1A; }
+  .v2 .t-green { background:#3D9A501A; }
+  .v2 .t-hq    { background:#5E81AC1A; }
+  .v2 .t-gray  { background:#8A8A8E14; }
+  .dark .v2 .t-gold  { background:#E3B3411A; }
+  .dark .v2 .t-green { background:#7CC98A1A; }
+  .dark .v2 .t-hq    { background:#93B1D81A; }
+  .dark .v2 .t-gray  { background:#98989F14; }
+
+  /* 形态对比条着色（不依赖 .light/.dark 祖先，显式匹配） */
+  .form-strip:not(.dark-strip) { background:#fff; }
+  .form-strip:not(.dark-strip) .t-gold  { color:var(--gold-l);  background:#B8860B1F; }
+  .form-strip:not(.dark-strip) .t-green { color:var(--green-l); background:#3D9A501F; }
+  .form-strip:not(.dark-strip) .t-hq    { color:var(--hq-l);    background:#5E81AC1F; }
+  .form-strip:not(.dark-strip) .t-gray  { color:var(--gray-l);  background:#8A8A8E1F; }
+  .form-strip.dark-strip .t-gold  { color:var(--gold-d); background:#E3B3411F; }
+  .form-strip.dark-strip .t-green { color:var(--green-d); background:#7CC98A1F; }
+  .form-strip.dark-strip .t-hq    { color:var(--hq-d);    background:#93B1D81F; }
+  .form-strip.dark-strip .t-gray  { color:var(--gray-d);  background:#98989F1F; }
+
+  /* 实底变体（形态 C 对比用） */
+  .t-solid { color:#fff !important; }
+  .form-strip:not(.dark-strip) .t-solid.t-gold  { background:var(--gold-l) !important; }
+  .form-strip:not(.dark-strip) .t-solid.t-green { background:var(--green-l) !important; }
+  .form-strip:not(.dark-strip) .t-solid.t-hq    { background:var(--hq-l) !important; }
+  .form-strip:not(.dark-strip) .t-solid.t-gray  { background:#AEAEB2 !important; }
+  .form-strip.dark-strip .t-solid { color:#1C1C1E !important; }
+  .form-strip.dark-strip .t-solid.t-gold  { background:var(--gold-d) !important; }
+  .form-strip.dark-strip .t-solid.t-green { background:var(--green-d) !important; }
+  .form-strip.dark-strip .t-solid.t-hq    { background:var(--hq-d) !important; }
+  .form-strip.dark-strip .t-solid.t-gray  { background:#8E8E93 !important; }
+  .light .t-solid.t-gold  { background:var(--gold-l); }
+  .light .t-solid.t-green { background:var(--green-l); }
+  .light .t-solid.t-hq    { background:var(--hq-l); }
+  .light .t-solid.t-gray  { background:#AEAEB2; }
+  .dark  .t-solid.t-gold  { background:var(--gold-d); color:#1C1C1E !important; }
+  .dark  .t-solid.t-green { background:var(--green-d); color:#1C1C1E !important; }
+  .dark  .t-solid.t-hq    { background:var(--hq-d); color:#1C1C1E !important; }
+  .dark  .t-solid.t-gray  { background:#8E8E93; color:#1C1C1E !important; }
+
+  /* 新版行距：标题 lineHeight 20、副行 marginTop 2 */
+  .new .title { line-height:20px; }
+  .new .subrow { margin-top:2px; }
+  .new .singer { line-height:16px; }
+
+  /* ── 形态对比块 ── */
+  .form-strip { width:640px; border-radius:16px; border:1px solid #d5d5da; overflow:hidden; }
+  .form-strip .opt { padding:14px 18px; }
+  .form-strip .opt + .opt { border-top:1px solid #E5E5EA; }
+  .form-strip .opt-label { font-size:11px; color:#6e6e73; margin-bottom:8px; }
+  .form-strip.dark-strip { background:#1C1C1E; }
+  .form-strip.dark-strip .opt + .opt { border-top-color:#3A3A3C; }
+  .form-strip.dark-strip .opt-label { color:#98989F; }
+  .form-strip .title { font-size:15px; color:#000; }
+  .form-strip .singer { font-size:12px; color:#8A8A8E; margin-left:4px; }
+  .dark-strip .title { color:#fff; } .dark-strip .singer { color:#98989F; }
+  .pick { color:#FA233B; font-weight:600; }
+
+  /* ── 特写 ── */
+  .zoom { display:flex; gap:20px; flex-wrap:wrap; }
+  .zoom-card { border-radius:16px; padding:18px 20px; border:1px solid #d5d5da; }
+  .zoom-card.light { background:#fff; } .zoom-card.dark { background:#1C1C1E; }
+  .zoom-card .tag { transform:scale(1.6); transform-origin:left center; margin:14px 14px 14px 0; }
+  .zoom-note { font-size:11px; color:#6e6e73; margin-top:14px; }
+
+  table { border-collapse:collapse; font-size:12.5px; background:#fff; border-radius:12px; overflow:hidden; }
+  th,td { border:1px solid #E5E5EA; padding:7px 14px; text-align:left; }
+  th { background:#F2F2F7; }
+</style>
+</head>
+<body>
+
+<h1>音质 / 来源标签重设计 · 原型</h1>
+<div class="sub">拾音 · 在线音乐列表（显示来源开）· 规格见页尾表格 · 盒内文字 Android 真机偏下问题（includeFontPadding）网页无法复现，以居中呈现</div>
+
+<h2>① 整行效果：现状 → 改后（浅色）</h2>
+<div class="row">
+  <div class="phone light">
+    <div class="cap">现状 · 描边 9px / 行距松</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--gold-l);border-color:var(--gold-l);">24bit</span><span class="tag-old" style="color:var(--gray-l);border-color:var(--gray-l);">kw</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--green-l);border-color:var(--green-l);">SQ</span><span class="tag-old" style="color:var(--gray-l);border-color:var(--gray-l);">kg</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--hq-l);border-color:var(--hq-l);">HQ</span><span class="tag-old" style="color:var(--gray-l);border-color:var(--gray-l);">wy</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--gray-l);border-color:var(--gray-l);">mg</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+  <div class="phone light new">
+    <div class="cap">改后 · 淡底胶囊 10px / 行距紧 <span class="pick">← 推荐</span></div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>② 整行效果：现状 → 改后（深色）</h2>
+<div class="row">
+  <div class="phone dark">
+    <div class="cap">现状 · 深色</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--gold-d);border-color:var(--gold-d);">24bit</span><span class="tag-old" style="color:var(--gray-d);border-color:var(--gray-d);">kw</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--green-d);border-color:var(--green-d);">SQ</span><span class="tag-old" style="color:var(--gray-d);border-color:var(--gray-d);">kg</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--hq-d);border-color:var(--hq-d);">HQ</span><span class="tag-old" style="color:var(--gray-d);border-color:var(--gray-d);">wy</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag-old" style="color:var(--gray-d);border-color:var(--gray-d);">mg</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+  <div class="phone dark new">
+    <div class="cap">改后 · 深色 <span class="pick">← 推荐</span></div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>②-B 方案1 vs 方案2 · 同屏对比（差异细微：底 12%→10%、盒高 16→15、灰标底 12%→8%，重点看「标准/来源」灰标的退后程度）</h2>
+<div class="row">
+  <div class="phone light new">
+    <div class="cap">方案1 · 定稿 · 同色12%底 · 高16</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+  <div class="phone light new v2">
+    <div class="cap">方案2 · 更轻 · 彩标10%底 · 高15 · 灰标8%底</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+</div>
+<div class="row" style="margin-top:20px;">
+  <div class="phone dark new">
+    <div class="cap">方案1 · 深色</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+  <div class="phone dark new v2">
+    <div class="cap">方案2 · 深色</div>
+    <div class="list">
+      <div class="li"><div class="num">1</div><div class="info"><div class="title">晚风信笺</div>
+        <div class="subrow"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子 03:48</span></div></div></div>
+      <div class="li"><div class="num">2</div><div class="info"><div class="title">海上日出</div>
+        <div class="subrow"><span class="tag t-green">无损</span><span class="tag t-gray">酷狗</span><span class="singer">陈绮贞 · 夏日 04:12</span></div></div></div>
+      <div class="li"><div class="num">3</div><div class="info"><div class="title">城市漫游指南</div>
+        <div class="subrow"><span class="tag t-hq">高品</span><span class="tag t-gray">网易</span><span class="singer">五月天 · 自传 03:55</span></div></div></div>
+      <div class="li"><div class="num">4</div><div class="info"><div class="title">夜车驶向南方</div>
+        <div class="subrow"><span class="tag t-gray">标准</span><span class="tag t-gray">咪咕</span><span class="singer">草东没有派对 · 粗丑 05:01</span></div></div></div>
+    </div>
+  </div>
+</div>
+
+<h2>②-C 两案标签特写对比（1.6×，上=方案1 / 下=方案2）</h2>
+<div class="zoom">
+  <div class="zoom-card light">
+    <div class="zoom-note" style="margin-top:0;">方案1 · 同色12%底 · 高16</div>
+    <div><span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span></div>
+    <div class="zoom-note">方案2 · 彩标10%底 · 高15 · 灰标8%底</div>
+    <div class="v2"><span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span></div>
+  </div>
+  <div class="zoom-card dark">
+    <div class="zoom-note" style="margin-top:0;color:#98989F;">方案1 · 深色 · 12%底</div>
+    <div><span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span></div>
+    <div class="zoom-note" style="color:#98989F;">方案2 · 深色 · 10%底 · 灰标8%底</div>
+    <div class="v2"><span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span></div>
+  </div>
+</div>
+
+<h2>③ 形态对比（同浅色行 · 放大看质感）</h2>
+<div class="row">
+  <div class="form-strip">
+    <div class="opt">
+      <div class="opt-label">A · 现状描边（1px 线 + 透明底）</div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag-old" style="color:var(--gold-l);border-color:var(--gold-l);">24bit</span><span class="tag-old" style="color:var(--gray-l);border-color:var(--gray-l);">kw</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+    <div class="opt">
+      <div class="opt-label">B · 淡底胶囊（同色 12% 底 + 同色字）<span class="pick">← 推荐：有边界但轻，AM/iOS badge 惯例</span></div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+    <div class="opt">
+      <div class="opt-label">C · 实底填充（网易云式，视觉最重）</div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag t-gold t-solid">Hi-Res</span><span class="tag t-gray t-solid">酷我</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+  </div>
+  <div class="form-strip dark-strip">
+    <div class="opt">
+      <div class="opt-label">A · 现状描边（深色）</div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag-old" style="color:var(--gold-d);border-color:var(--gold-d);">24bit</span><span class="tag-old" style="color:var(--gray-d);border-color:var(--gray-d);">kw</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+    <div class="opt">
+      <div class="opt-label">B · 淡底胶囊（深色）<span class="pick">← 推荐</span></div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+    <div class="opt">
+      <div class="opt-label">C · 实底填充（深色）</div>
+      <div class="title">晚风信笺</div>
+      <div class="subrow" style="margin-top:6px;"><span class="tag t-gold t-solid">Hi-Res</span><span class="tag t-gray t-solid">酷我</span><span class="singer">周深 · 花西子</span></div>
+    </div>
+  </div>
+</div>
+
+<h2>④ 四档 + 来源标签特写（1.6×）</h2>
+<div class="zoom">
+  <div class="zoom-card light">
+    <span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span>
+    <div class="zoom-note">128k→标准 · 320k→高品 · flac/ape→无损 · flac24bit→Hi-Res<br>kw→酷我 kg→酷狗 mg→咪咕 wy→网易 tx→企鹅 bd→百度</div>
+  </div>
+  <div class="zoom-card dark">
+    <span class="tag t-gray">标准</span><span class="tag t-hq">高品</span><span class="tag t-green">无损</span><span class="tag t-gold">Hi-Res</span><span class="tag t-gray">酷我</span>
+    <div class="zoom-note" style="color:#98989F;">深色 token：#E3B341 / #7CC98A / #93B1D8 / #98989F</div>
+  </div>
+</div>
+
+<h2>⑤ 规格</h2>
+<table>
+  <tr><th>项</th><th>现状</th><th>改后</th></tr>
+  <tr><td>标签盒</td><td>高15 · 圆角3 · 描边1px · 透明底</td><td>高16 · 胶囊999 · 无描边 · 同色12%底</td></tr>
+  <tr><td>文字</td><td>9px Regular（中文偏小）</td><td>10px Medium</td></tr>
+  <tr><td>音质文案</td><td>24bit / SQ / HQ（128k 不打标）</td><td>Hi-Res / 无损 / 高品 / 标准（四档全打标）</td></tr>
+  <tr><td>来源文案</td><td>kw / kg / mg…（原始代号）</td><td>酷我 / 酷狗 / 咪咕 / 网易 / 企鹅 / 百度</td></tr>
+  <tr><td>行距</td><td>标题默认行高 + 副行 marginTop 4</td><td>标题 lineHeight 20 + 副行 lineHeight 16 · marginTop 2</td></tr>
+  <tr><td>居中</td><td>Android includeFontPadding 致偏下</td><td>includeFontPadding:false + lineHeight 16 对齐盒高</td></tr>
+</table>
+
+</body>
+</html>

@@ -1,6 +1,6 @@
 # RN 升级方案 v2：0.73.11 → 0.86.x（新架构一步到位）
 
-> 状态：**方案定稿并实施中——N0/N1/N2 已完成推送（N2 三角色代码审查闭环，批次记录 doc/plans/rn-upgrade-n2.md），真机走查统一推迟到全部批次完成后；剩余 N3 回归加固**。
+> 状态：**专项代码侧全部闭环（2026-10-11）——N0/N1/N2 + N2 后挂账清理批全部推送（最新 39de493e），五验证绿 + 三角色审查闭环 + patches 真归零；N3 全功能矩阵经用户拍板取消专门走查，转入日常真机反馈修复模式（问题随报随修，批量修复照常走审查）。批次记录 doc/plans/rn-upgrade-n0/n1/n2.md。**
 > 触发：低版本 RN 导致效果实现持续受限（NB-3 Modal patch、MF-4 edge-to-edge 手动兜底、inset 首读观测等补丁链），旧 v1「0.81 老架构过渡」线按效果优先被推翻——0.81 是官方冻结线（2025-06 起），拿不到 0.85 动画后端 / 0.86 导航栏修复，且导航迁移工作量与直达新架构相同。
 > v1（0.81 老架构线 B，2026-10-09 搁置）拍板记录见文末附录。
 
@@ -84,7 +84,7 @@
 | N0 环境 | **前置：收干净工作区（spacing 批余量提交）→ tag `rn-0.73-baseline`（回滚锚点，指向干净 commit）**；装 Node 22 LTS（`engines.node` 同步 ≥22.11）、NDK 27.1；JDK 17 核对；grep 全项目 `react-native/Libraries` 深导入与三方库深导入，出清理清单；vector-icons codemod 迁移（独立小批，独立 commit） | 环境就绪；tag 存在且指向干净工作区；深导入清单成文；图标库迁移冒烟通过 |
 | N1 导航迁移（在 0.73 上） | RNN → react-navigation 7（老架构兼容线）等价重建：现有 IA（抽屉为自绘 JS 组件随 React 层平移，无需 drawer navigator）、**16 处组件注册（13 stack 屏 + 3 overlay）**、`Navigation.events()` → hooks/事件订阅、pushTransitionScreen 自绘转场 → native-stack animation 配置、**封面飞入 + 标题动画两类转场（RNN sharedElementTransitions + elementTransitions）用 reanimated 自定义等价实现**、**RNN overlay 体系重建：迷你条根级悬浮层（层级/触摸拦截/黑名单屏隐藏时序重设计）+ VersionModal/SyncModeModal 弹窗迁移（RN Modal 或等价）+ currentScreen 机制改 navigation state 驱动**、MainApplication/MainActivity 去 RNN 化、Navigation/performance 等工具函数收口、RNN patch 与 overrides 退役。**N1 中间态不单独对外出包**（仅 commit + 装机验收，避免双版本维护） | 全屏对照旧版走查通过；播放链路全通；横屏回归通过；深浅色正常；**迷你条黑名单屏进出无闪现、overlay 弹窗开关正常**；封面/标题转场观感对照旧版可接受 |
 | N2 大跳跃（新架构） | upgrade-helper `0.73.11→0.86.x` 单 diff 全量消化（gradle.properties/build.gradle/libs.versions.toml/MainApplication/index.js/**devDeps @react-native/* + @types/* 全量对齐：移除 @types/react-native、@types/react 升 19**）；newArchEnabled=true；minSdk 24/targetSdk 36；**targetSdk 36 三项适配：① MusicService foregroundServiceType manifest merge（实证 lovegaoshi fork 是否自带，缺则 app 层补）② POST_NOTIFICATIONS 声明 + 运行时请求 ③ READ_MEDIA_AUDIO 授权迁移；+ requestLegacyExternalStorage 遗留清理**；§2 新架构依赖组落地（含 react-native-fs → @dr.pogodin 替换）；track-player 换装 + 播放封装层 API 对齐；**interop 装机验证（三 fork + 自研六模块，桌面歌词/自定义音源/下载必测）**；**封面/标题过渡升级 reanimated 4.2+ 内置 SET 验证（feature flag，仅 native-stack；不可用则平移 N1 自定义方案）**；async-storage 3.x 适配（见 §4 风险 9）；**gradle.properties 存量注入清理（AsyncStorage_* 三行；reactNativeArchitectures 单架构维持与否显式拍板；configuration cache 重评估）**；edge-to-edge 重适配（**退役 NB-3 Modal patch、MF-4 手动兜底**） | **assembleDebug + assembleRelease 均成功，release 装机冒烟通过**；装机启动 + 冒烟全绿（含 menu/clipboard/image-colors/linear-gradient/text-ticker **运行时渲染**、quickjs wrapper 音源引擎、quick-base64/md5 JSI）；播放全链路（播放/切歌/队列/通知栏/媒体按钮/桌面歌词/定时关闭）专项通过；**覆盖安装专项：通知栏出现、本地音乐扫描授权、设置/歌单/播放历史存量数据保留**；edge-to-edge 专项（页头 88dp、播放条、抽屉遮罩、Modal）通过 |
-| N3 回归加固 | 全功能矩阵走查（主题三态×横竖屏×播放中/未播放）**× 双档设备（API 24/26 低档 + API 33+/36 高档）**；后台播放/蓝牙耳机场景；**迷你条点击/展开专项（overlay 交互新架构行为，衔接 10-11 暂停的 minibar-click 排查）**；性能抽查（冷启动/列表滚动）；patch 目录清点归零核查 | 矩阵全绿；三角色代码审查（必做）→ 用户确认后 commit |
+| N3 回归加固 | ~~全功能矩阵走查~~ **（2026-10-11 用户拍板：取消专门走查，转入日常真机反馈修复模式——装机后正常使用，发现问题直接反馈按 bug 流程修，批量修复照常走三角色审查）**；mini条专项（minibar-click）V1-V10 真机清单保留在 n2.md §11.6 备查（日常使用自然覆盖 V1 基础路径）；patch 目录清点归零核查已完成（挂账批，patches 真归零） | ~~矩阵全绿~~ → 专项代码侧闭环；后续问题修复按既有流程 |
 
 每批：eslint + tsc + 装机冒烟；N0（图标小批）/ N1 / N2 各自独立 commit（用户确认后提交），单独可 revert。N2 如遇阻断，官方推荐降档路径 = 中间落 0.81 + 开启新架构验证档（老架构库已换完，0.81 是官方背书的验证站）再续跳 0.86。
 
