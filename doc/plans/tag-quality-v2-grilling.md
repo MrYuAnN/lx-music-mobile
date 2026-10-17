@@ -85,3 +85,7 @@
 - 测试①「四档等宽」验收口径 = zh-cn（zh-tw「高品質」3 字为前批文案，不等宽非本批回归）；来源胶囊 minWidth 拍板口径 = 防「QQ」两字母偏窄，en locale 自适应不视为缺陷。
 - 亮色主题来源文字色深化达 WCAG AA 4.5:1（tx #187A50 / kg #1B6DC0 / kw #9C5B00 / mg #D10054，wy 原值达标）；品牌原色仅作 8% 淡底（QualityTag SOURCE_BRAND_COLORS，明暗自适应）。
 - 排除项：临时 track（//default 占位）重链不受 pauseAfterLoad 控制的场景不存在（isTempTrack 语义核实）。
+
+## 形态拍板补记（2026-10-16 第二轮 grilling）
+
+- 音质标/来源标由胶囊（r999）改 **4dp 小圆角矩形**（对标 QQ/网易云/酷狗/Tidal 矩形系音质标，业界无胶囊先例）；淡底色系、尺寸、字号均不动。歌曲/歌单 chips 维持胶囊（Spotify/YTM 口径）；排行榜触发器维持 r8 字段形（单选字段≠chips，同构搜索框），仅修头注释「胶囊」漂移。语义圆角阶梯定稿：**信息标 r4 < 字段/输入 r8 < 交互 chips r999**。
