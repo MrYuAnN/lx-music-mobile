@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
-import { FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
+import { Animated, FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
 
 // import { useMusicList } from '@/store/list/hook'
 import ListItem, { ITEM_HEIGHT } from './ListItem'
@@ -19,6 +19,11 @@ import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
 
+// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2），
+// 模块级构造防重挂；as typeof FlatList 回填泛型（createAnimatedComponent 擦除类型参数）；
+// 未传 scrollYAnimated 的使用方（排行榜/搜索）无 native 事件，行为与原生 FlatList 一致
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
+
 export type {
   RowInfoType,
 }
@@ -36,6 +41,8 @@ export interface ListProps {
   rowType?: RowInfoType
   showIndex?: boolean
   rankBadge?: boolean
+  /** 顶栏滚动进度（QQ 式渐显 D2）：可选，未传不挂 onScroll（排行榜/搜索页零 diff，审查 I-A） */
+  scrollYAnimated?: Animated.Value
 }
 export interface ListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
@@ -62,6 +69,7 @@ const List = forwardRef<ListType, ListProps>(({
   rowType,
   showIndex = false,
   rankBadge = false,
+  scrollYAnimated,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
@@ -244,10 +252,21 @@ const List = forwardRef<ListType, ListProps>(({
     )
   }, [onLoadMore, status, visibleMultiSelect])
 
+  // 顶栏 progress 直驱（D2，可选）：未传 prop 时不挂 onScroll（排行榜/搜索页零 diff）
+  const handleAnimatedScroll = useMemo(() => {
+    if (!scrollYAnimated) return undefined
+    return Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollYAnimated } } }],
+      { useNativeDriver: true },
+    )
+  }, [scrollYAnimated])
+
   return (
-    <FlatList
+    <AnimatedFlatList
       ref={flatListRef}
       style={styles.list}
+      onScroll={handleAnimatedScroll}
+      scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       data={currentList}
       numColumns={rowInfo.current.rowNum}
       horizontal={false}

@@ -14,7 +14,7 @@ import List, { type ListType } from './List'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import { createStyle, toast } from '@/utils/tools'
-import { type LayoutChangeEvent, View } from 'react-native'
+import { Animated, type LayoutChangeEvent, View } from 'react-native'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
 import ListSearchBar, { type ListSearchBarType } from './ListSearchBar'
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
@@ -22,9 +22,12 @@ import MusicPositionModal, { type MusicPositionModalType } from './MusicPosition
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { addDownloadTask } from '@/core/download'
-import { playList } from '@/core/player/player'
+import { playList, togglePlay } from '@/core/player/player'
+import { updateSetting } from '@/core/common'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
+import { useIsPlay, usePlayMusicInfo } from '@/store/player/hook'
 import PlaylistHeader from '@/components/common/PlaylistHeader'
+import PlaylistTopBar from '@/components/common/PlaylistTopBar'
 import { LIST_IDS } from '@/config/constant'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
@@ -50,10 +53,14 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
   const isShowMultipleModeBar = useRef(false)
   const isShowSearchBarModeBar = useRef(false)
   const selectedInfoRef = useRef<SelectInfo | undefined>(undefined)
+  // 顶栏滚动进度（QQ 式渐显 D2）：列表 onScroll Animated.event 直驱（native driver，不刷渲染）
+  const scrollY = useRef(new Animated.Value(0)).current
 
   const activeListId = useActiveListId()
   const lists = useMyList()
   const fetching = useListFetching(activeListId)
+  const isPlay = useIsPlay()
+  const playMusicInfo = usePlayMusicInfo()
   // 曲数/列表元数据随事件刷新（HomeSections MyMusic 同款机制）
   const [, setListVersion] = useState(0)
   const bump = useCallback(() => { setListVersion(v => v + 1) }, [])
@@ -196,19 +203,14 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
     if (!musicCount) return
     void playList(activeListId, 0)
   }, [activeListId, musicCount])
+  // 真乱序随机播放（D3 拍板）：切全局 random 模式（播放页循环图标同步可见）+ 从第一首开始；
+  // 空列表守卫必须前置（审查 I-2）——防空歌单清空当前播放信息 + 白切全局模式
   const handlePlayShuffle = useCallback(() => {
     const list = getListMusicSync(activeListId)
     if (!list?.length) return
-    void playList(activeListId, Math.floor(Math.random() * list.length))
+    void updateSetting({ 'player.togglePlayMethod': 'random' })
+    void playList(activeListId, 0)
   }, [activeListId])
-  const handleThird = useCallback(() => {
-    if (isCollectList) {
-      const info = activeListInfo as LX.List.UserListInfo
-      handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) })
-      return
-    }
-    addMusicSheetRef.current?.show(activeListId)
-  }, [isCollectList, activeListInfo, activeListId])
 
   const header = useMemo(() => (
     <PlaylistHeader
@@ -216,19 +218,13 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       subtitle={subtitle}
       pic={(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
       fetching={fetching}
-      thirdAction={isCollectList ? 'clone' : 'addMusic'}
-      showBack={showBack}
-      onBack={onBack}
-      showSearch
-      showManage={!isTempList}
-      onSearch={handleShowSearch}
-      onManageMenu={() => { if (activeListInfo) manageMenuRef.current?.show(activeListInfo) }}
+      playing={isPlay && playMusicInfo.listId == activeListId}
+      onTogglePlay={togglePlay}
       onPlay={handlePlayAll}
-      onShuffle={handlePlayShuffle}
-      onThird={handleThird}
+      onShufflePlay={handlePlayShuffle}
       onScrollToTop={hancelScrollToTop}
     />
-  ), [currentListName, subtitle, activeListInfo, fetching, isCollectList, isTempList, showBack, onBack, handleShowSearch, handlePlayAll, handlePlayShuffle, handleThird, hancelScrollToTop])
+  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, handlePlayAll, handlePlayShuffle, hancelScrollToTop])
 
 
   return (
@@ -250,6 +246,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
         <List
           ref={listRef}
           header={header}
+          scrollYAnimated={scrollY}
           onShowMenu={showMenu}
           onMuiltSelectMode={hancelMultiSelect}
           onSelectAll={isAll => multipleModeBarRef.current?.setIsSelectAll(isAll)}
@@ -259,6 +256,17 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
           onScrollToInfo={handleScrollToInfo}
         />
       </View>
+      <PlaylistTopBar
+        title={currentListName}
+        progress={scrollY}
+        onArtwork={!!(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
+        showBack={showBack}
+        onBack={onBack}
+        showSearch
+        onSearch={handleShowSearch}
+        showManage={!isTempList}
+        onManageMenu={() => { if (activeListInfo) manageMenuRef.current?.show(activeListInfo) }}
+      />
       <ListMusicAdd ref={listMusicAddRef} onAdded={hancelExitSelect} />
       <ListMusicMultiAdd ref={listMusicMultiAddRef} onAdded={hancelExitSelect} />
       <MusicPositionModal ref={musicPositionModalRef}
@@ -286,6 +294,8 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       />
       <ListManageMenu
         ref={manageMenuRef}
+        onAddMusic={info => { addMusicSheetRef.current?.show(info.id) }}
+        onCloneLocal={info => { handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) }) }}
         onRename={info => listNameEditRef.current?.show(info)}
         onSort={info => listMusicSortRef.current?.show(info)}
         onDuplicateMusic={info => duplicateMusicRef.current?.show(info)}

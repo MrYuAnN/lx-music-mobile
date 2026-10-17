@@ -10,6 +10,10 @@ import { SONGLIST_DETAIL_SCREEN } from '../screenNames'
 // push：列表行封面（源，挂载时注册测距）→ 详情头封面（目标，layout 后实测接力）；
 // pop：栈提交帧（目标屏转场期内仍挂载可测）反向飞回源矩形（列表若滚动则实测新位）。
 // 飞行层挂根级（App 内 NavigationContainer 之上），飞行中源图/目标图保持可见，飞抵点两者重合。
+//
+// 【休眠】hero v2（QQ 式全页融合，2026-10-17）摘除调用：歌单详情页无封面落点，普通 push 转场。
+// 本体保留（后续「飞入展开为背景」增强可能复用）。复活须知：withCoverSource（写 pendingFly）
+// 与 useCoverFlyTarget（消费接力）必须同批恢复，单端恢复会重演 pendingFly 泄漏（审查 R5）。
 
 export interface CoverRect {
   x: number
@@ -59,7 +63,7 @@ export const withCoverSource = (id: string, uri: string, push: () => void) => {
 
 // 命令式控制器（Host 挂载后注册；共享值必须在组件内创建）
 let controller: {
-  fly: (from: CoverRect, to: CoverRect, uri: string, onDone: () => void) => void
+  fly: (from: CoverRect, to: CoverRect, uri: string, onDone: () => void, targetRadius?: number) => void
   hide: () => void
 } | null = null
 
@@ -67,8 +71,9 @@ let controller: {
 // settled 语义与原 appear 驱动的 animated 一致（飞抵后才显播放数/刷新图）。
 // relativeTo：屏根侧祖先的 ref（须为 ref 所在 View 的祖先，且自身落定于屏内 (0,0)）——
 // 目标矩形用相对该祖先的布局测量，布局真源运行时获取，不依赖调用方手工镜像偏移
-// （真机反馈：parentOffset 手工补偏漏算状态栏高度致封面飞抵点悬在头图上方，审查 S-3 根治）
-export const useCoverFlyTarget = (id: string, relativeTo: RefObject<View | null>) => {
+// （真机反馈：parentOffset 手工补偏漏算状态栏高度致封面飞抵点悬在头图上方，审查 S-3 根治）。
+// targetRadius：目标圆角（hero 改版后详情头为直角 0，源列表封面恒 4dp，飞行层圆角随程过渡）
+export const useCoverFlyTarget = (id: string, relativeTo: RefObject<View | null>, targetRadius = 4) => {
   const ref = useRef<View>(null)
   const measuredRef = useRef(false)
   const [settled, setSettled] = useState(!pendingFly || pendingFly.id !== id)
@@ -101,7 +106,7 @@ export const useCoverFlyTarget = (id: string, relativeTo: RefObject<View | null>
       controller.fly(info.sourceRect, targetRect, info.uri, () => {
         pendingFly = null
         setSettled(true)
-      })
+      }, targetRadius)
     }, () => {
       // 测量失败：放弃飞行直接落定，清 pendingFly 防残留误消费
       pendingFly = null
@@ -151,6 +156,7 @@ export const CoverFlyHost = memo(() => {
   const y = useSharedValue(0)
   const w = useSharedValue(0)
   const h = useSharedValue(0)
+  const radius = useSharedValue(4)
   const opacity = useSharedValue(0)
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [uri, setUri] = useState('')
@@ -176,7 +182,7 @@ export const CoverFlyHost = memo(() => {
       }, SETTLE_HIDE_DELAY)
     }
     controller = {
-      fly: (from, to, imageUri, onDone) => {
+      fly: (from, to, imageUri, onDone, targetRadius = 4) => {
         cancelPendingHide()
         setUri(imageUri)
         x.value = from.x
@@ -184,6 +190,9 @@ export const CoverFlyHost = memo(() => {
         w.value = from.width
         h.value = from.height
         opacity.value = 1
+        // 圆角随程过渡（源列表封面 4dp → 目标 hero 直角 0，审查 S-5）：避免落定瞬间圆角跳变
+        radius.value = 4
+        radius.value = withTiming(targetRadius, { duration: FLY_DURATION, easing })
         x.value = withTiming(to.x, { duration: FLY_DURATION, easing }, finished => {
           if (finished) runOnJS(settleAndHide)(onDone)
         })
@@ -200,12 +209,13 @@ export const CoverFlyHost = memo(() => {
       cancelPendingHide()
       controller = null
     }
-  }, [x, y, w, h, opacity])
+  }, [x, y, w, h, radius, opacity])
 
   const style = useAnimatedStyle(() => ({
     opacity: opacity.value,
     width: w.value,
     height: h.value,
+    borderRadius: radius.value,
     transform: [{ translateX: x.value }, { translateY: y.value }],
   }), [])
 
@@ -235,6 +245,6 @@ const styles = StyleSheet.create({
   image: {
     width: '100%',
     height: '100%',
-    borderRadius: 4,
+    // 圆角由飞行层容器 Animated borderRadius 接管（随目标矩形过渡，hero 直角归零）
   },
 })

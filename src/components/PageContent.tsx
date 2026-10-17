@@ -1,24 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { Animated, View, StyleSheet } from 'react-native'
 import LinearGradient from 'react-native-linear-gradient'
-import RNImageColors from 'react-native-image-colors'
 import { useTheme } from '@/store/theme/hook'
 import { useWindowSize } from '@/utils/hooks'
 import { scaleSizeAbsHR } from '@/utils/pixelRatio'
 import { AM_EASE_DURATION, amEase } from '@/utils/animation'
+import { withAlpha } from '@/utils/color'
+import { formatAmbientUri, getAmbientColors } from '@/utils/ambientColor'
+import { getPlaylistHeroHeight } from '@/components/common/PlaylistHeader'
 import ImageBackground, { prefetch } from './common/ImageBackground'
 import { defaultHeaders } from './common/Image'
 import SizeView from './SizeView'
 import playerState from '@/store/player/state'
-// 包类型声明与运行时导出不一致：metro 实际入口 src/index.ts 仅有 default 导出
-// （getColors 挂在 default 对象上），须按运行时形态取用，勿改为命名导入（AM-6 回归教训）
-const getColors = (RNImageColors as unknown as {
-  getColors: (source: string, config?: {
-    defaultColor?: string
-    cache?: boolean
-    headers?: Record<string, string>
-  }) => Promise<{ dominant?: string, average?: string, platform: string }>
-}).getColors
 
 interface Props {
   children: React.ReactNode
@@ -35,8 +28,9 @@ interface Props {
 }
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
-
-const formatUri = (url: string) => (url.startsWith('/') ? `file://${url}` : url)
+// 歌单页静态氛围（QQ 式两段式，hero v2 拍板）：上半=封面背景图（轻模糊），下半=封面采样主色
+// 延伸（clampTint 按主题钳亮度的 displayTint 铺满整页），交界渐变融化；播放页维持重模糊+均匀纱罩
+const STATIC_BLUR_RADIUS = Math.max(scaleSizeAbsHR(6), 4)
 
 // 主色亮度钳制：暗色模式压亮度上限防刺眼，亮色模式抬下限防发灰（AM 氛围层观感）
 const TINT_LIGHTNESS_RANGE = {
@@ -109,13 +103,13 @@ export const useCoverAmbient = (sourcePic: string | null) => {
       setTint(null)
       return
     }
-    const picUrl = formatUri(sourcePic)
+    const picUrl = formatAmbientUri(sourcePic)
     let stale = false
     void prefetch(picUrl).catch(() => {}).then(() => {
       if (stale) return
       setPic(picUrl)
     })
-    void getColors(picUrl, { defaultColor: '#2288cc', cache: true, headers: defaultHeaders }).then(result => {
+    void getAmbientColors(picUrl).then(result => {
       if (stale) return
       const nextTint = result.dominant ?? result.average ?? null
       if (nextTint) setTint(nextTint)
@@ -199,16 +193,65 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
     </View>
   )
 
-  const coverComponent = (
+  // 歌单页 QQ 式两段式（拍板 2026-10-17）：整页先铺「采样主色」=下半的采样延伸（displayTint
+  // 经 clampTint 按主题钳亮度，文字对比有保障），上半叠封面背景图（轻模糊），图底以
+  // 「透明→采样主色」渐变融化，无分界线。播放页维持原结构。
+  // 首帧淡入（真机反馈 2026-10-17）：取色异步到位瞬间页面底色白→采样色硬切闪变——采样色层
+  // 以 opacity 淡入；封面图 prefetch 完成后 onLoad 淡入接管，消弹入感
+  const bg = theme['c-content-background']
+  const isStaticAmbient = !coverBg
+  const sampleColor = displayTint ?? bg
+  const heroHeight = getPlaylistHeroHeight(windowSize.height)
+  const sampleOpacity = useRef(new Animated.Value(0)).current
+  const [heroImgLoaded, setHeroImgLoaded] = useState(false)
+
+  useEffect(() => {
+    if (isStaticAmbient && displayTint) {
+      Animated.timing(sampleOpacity, { toValue: 1, duration: AM_EASE_DURATION, easing: amEase, useNativeDriver: true }).start()
+    } else {
+      sampleOpacity.setValue(0)
+    }
+  }, [isStaticAmbient, displayTint, sampleOpacity])
+
+  useEffect(() => {
+    setHeroImgLoaded(false)
+  }, [pic])
+
+  const staticComponent = (
+    <View style={{ flex: 1, backgroundColor: bg }}>
+      <Animated.View
+        style={{ ...StyleSheet.absoluteFill, backgroundColor: sampleColor, opacity: sampleOpacity }}
+        pointerEvents="none"
+      />
+      <ImageBackground
+        style={{ position: 'absolute', left: 0, top: 0, height: heroHeight, width: '100%', opacity: heroImgLoaded ? 1 : 0 }}
+        source={pic ? { uri: pic, headers: defaultHeaders } : undefined}
+        resizeMode="cover"
+        blurRadius={STATIC_BLUR_RADIUS}
+        onLoad={() => { setHeroImgLoaded(true) }}
+      >
+        <LinearGradient
+          colors={[withAlpha(sampleColor, 0), sampleColor]}
+          locations={[0.55, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </ImageBackground>
+      <View style={{ flex: 1, flexDirection: 'column' }}>
+        {children}
+      </View>
+    </View>
+  )
+
+  const coverComponent = isStaticAmbient ? staticComponent : (
     <>
       <View style={{ flex: 1, overflow: 'hidden' }}>
         <ImageBackground
-          style={{ position: 'absolute', left: 0, top: 0, height: windowSize.height, width: windowSize.width, backgroundColor: theme['c-content-background'] }}
+          style={{ position: 'absolute', left: 0, top: 0, height: windowSize.height, width: windowSize.width, backgroundColor: bg }}
           source={pic ? { uri: pic, headers: defaultHeaders } : undefined}
           resizeMode="cover"
           blurRadius={BLUR_RADIUS}
         >
-          <View style={{ flex: 1, flexDirection: 'column', backgroundColor: theme['c-content-background'], opacity: 0.76 }}></View>
+          <View style={{ flex: 1, flexDirection: 'column', backgroundColor: bg, opacity: 0.76 }}></View>
           {displayTint ? (
             <Animated.View style={StyleSheet.absoluteFill} pointerEvents="none">
               <LinearGradient

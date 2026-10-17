@@ -1,20 +1,20 @@
-import { forwardRef, useRef, useState, useImperativeHandle } from 'react'
+import { forwardRef, useState, useImperativeHandle } from 'react'
 import { View } from 'react-native'
 
 import PlaylistHeader from '@/components/common/PlaylistHeader'
-import { useCoverFlyTarget } from '@/navigation/transitions/coverFly'
-import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useMyList } from '@/store/list/hook'
+import { useIsPlay, usePlayMusicInfo } from '@/store/player/hook'
+import listState from '@/store/list/state'
 import songlistState from '@/store/songlist/state'
-import commonState from '@/store/common/state'
-import { pop } from '@/navigation'
 import { useI18n } from '@/lang'
-import { handleCollect, handlePlay, handlePlayShuffle } from './listAction'
+import { togglePlay } from '@/core/player/player'
+import { handleCollect, handlePlay, handlePlayShuffle, getListId } from './listAction'
 import { useListInfo } from './state'
+import { LIST_IDS } from '@/config/constant'
 import { createStyle, toast } from '@/utils/tools'
 
-// 歌单页重构批②c：在线歌单详情页新头部（与本地歌单页同构 PlaylistHeader）。
-// coverFly 封面飞入转场保留：目标测量容器=本头部根 View（原结构同款，容器矩形运行时测得）
+// 歌单页重构批②c：在线歌单详情页头部（与本地歌单页同构 PlaylistHeader）。
+// hero v2（QQ 式融合）：无独立封面落点，封面飞入转场停用（D3，普通 push 转场）
 export interface HeaderProps {
   componentId: string
 }
@@ -37,9 +37,9 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
   const t = useI18n()
   const info = useListInfo()
   const lists = useMyList()
-  const containerRef = useRef<View>(null)
+  const isPlay = useIsPlay()
+  const playMusicInfo = usePlayMusicInfo()
   const [detailInfo, setDetailInfo] = useState<DetailInfo>({ name: '', desc: '', imgUrl: info.img })
-  const fly = useCoverFlyTarget(info.id, containerRef)
 
   useImperativeHandle(ref, () => ({
     setInfo(info) {
@@ -47,7 +47,7 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
     },
   }), [])
 
-  // 已收藏态（审查 S1）：○+ 显示 ✓（love-fill），点击仍走 handleCollect 的查重转同步确认
+  // 已收藏态（审查 S1）：♥ 实心/空心 toggle，点击仍走 handleCollect 的查重转同步确认
   const collectedInfo = lists.find(l => (l as LX.List.UserListInfo).source == info.source && (l as LX.List.UserListInfo).sourceListId == info.id) as LX.List.UserListInfo | undefined
   const collected = !!collectedInfo
   const sourceName = info.source ? t(`source_real_${info.source}` as never) : ''
@@ -60,34 +60,35 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
         ? t('music_count', { count: songlistState.listDetailInfo.total })
         : undefined)
 
+  // 主胶囊两态判定（AM 语义，审查 I-D）：在线歌单播的是 TEMP 队列，须再比对队列元 id
+  const playingThisList = isPlay &&
+    playMusicInfo.listId == LIST_IDS.TEMP &&
+    listState.tempListMeta.id == getListId(info.id, info.source)
+
   return (
-    <View ref={containerRef} style={styles.container} pointerEvents="box-none">
+    <View style={styles.container} pointerEvents="box-none">
       <PlaylistHeader
         title={detailInfo.name || info.name}
         subtitle={subtitle}
-        pic={detailInfo.imgUrl}
+        // 占位判定用（I-D 装饰层）：异步回填前回退路由图，避免「有封面源却显示装饰层」闪变
+        pic={detailInfo.imgUrl ?? info.img}
         desc={detailInfo.desc || undefined}
         collected={collected}
-        thirdAction="collect"
-        showBack
-        onBack={() => { pop(commonState.componentIds.songlistDetail) }}
+        showCollectHeart
+        onCollectToggle={() => {
+          if (!songlistState.listDetailInfo.info.name) return
+          void handleCollect(info.id, info.source, songlistState.listDetailInfo.info.name || info.name, songlistState.listDetailInfo.info.img)
+        }}
+        playing={playingThisList}
+        onTogglePlay={togglePlay}
         onPlay={() => {
           if (!songlistState.listDetailInfo.info.name) return
           void handlePlay(info.id, info.source, songlistState.listDetailInfo.list)
         }}
-        onShuffle={() => {
+        onShufflePlay={() => {
           if (!songlistState.listDetailInfo.info.name) return
           handlePlayShuffle(info.id, info.source).catch(() => { toast(t('list_error')) })
         }}
-        onThird={() => {
-          if (!songlistState.listDetailInfo.info.name) return
-          void handleCollect(info.id, info.source, songlistState.listDetailInfo.info.name || info.name, songlistState.listDetailInfo.info.img)
-        }}
-        coverContainerRef={fly.ref}
-        coverOnLayout={fly.onLayout}
-        coverNativeID={`${NAV_SHEAR_NATIVE_IDS.songlistDetail_pic}_to_${info.id}`}
-        coverSettled={fly.settled}
-        coverImageStyle={fly.imageStyle}
       />
     </View>
   )

@@ -17,7 +17,6 @@ import {
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
 import { markSkipIntro } from './transitions/intro'
-import { withCoverSource } from './transitions/coverFly'
 import { type ListInfoItem } from '@/store/songlist/state'
 
 // RNN push API 的 react-navigation 等价（N1 迁移）：
@@ -47,10 +46,8 @@ export function pushPlayDetailScreen(componentId: string, skipAnimation = false)
 
 export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem) {
   void componentId
-  // 封面飞入：有已挂载源封面则实测源矩形后 push（withCoverSource 内保底普通 push）
-  withCoverSource(info.id, info.img ?? '', () => {
-    pushRoute(SONGLIST_DETAIL_SCREEN, { info })
-  })
+  // 封面飞入已随 hero v2（QQ 式全页融合）停用（D3）：页面无封面落点，普通 push 转场
+  pushRoute(SONGLIST_DETAIL_SCREEN, { info })
 }
 
 export function pop(componentId?: string) {

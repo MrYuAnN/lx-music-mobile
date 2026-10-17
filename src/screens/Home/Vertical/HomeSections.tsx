@@ -18,6 +18,7 @@ import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
 import { SPACING } from '@/config/spacing'
 import { hapticImpactLight } from '@/utils/haptic'
+import { prefetchAmbientColor } from '@/utils/ambientColor'
 
 // AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
 // 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
@@ -208,6 +209,14 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
   const dragIdRef = useRef<string | null>(null)
   const listsRef = useRef(lists)
   listsRef.current = lists
+  // 采样主色预热（hero v2 QQ 式）：shelf 渲染封面时按 URI 提取并记忆，点进歌单页取色即时命中，
+  // 消首次进入的采样色闪变（真机反馈 2026-10-17）
+  useEffect(() => {
+    lists.forEach(list => {
+      const pic = (list as LX.List.UserListInfo).pic
+      if (pic) prefetchAmbientColor(pic)
+    })
+  }, [lists])
   const dragTx = useRef(new Animated.Value(0)).current
   const itemTxs = useRef<Animated.Value[]>([])
   while (itemTxs.current.length < lists.length) itemTxs.current.push(new Animated.Value(0))

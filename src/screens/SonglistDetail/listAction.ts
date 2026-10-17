@@ -1,5 +1,6 @@
 import { createList, setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
+import { updateSetting } from '@/core/common'
 import { getListDetail, getListDetailAll } from '@/core/songlist'
 import { LIST_IDS } from '@/config/constant'
 import listState from '@/store/list/state'
@@ -7,7 +8,8 @@ import syncSourceList from '@/core/syncSourceList'
 import { confirmDialog, toMD5, toast } from '@/utils/tools'
 import { type Source } from '@/store/songlist/state'
 
-const getListId = (id: string, source: LX.OnlineSource) => `${source}__${id}`
+// 在线歌单落临时队列的队列 id（收藏态判定与主胶囊播放态判定共用，Header 同款）
+export const getListId = (id: string, source: Source) => `${source}__${id}`
 
 export const handlePlay = async(id: string, source: Source, list?: LX.Music.MusicInfoOnline[], index = 0) => {
   const listId = getListId(id, source)
@@ -31,15 +33,16 @@ export const handlePlay = async(id: string, source: Source, list?: LX.Music.Musi
   }
 }
 
-// 随机播放（歌单页重构批②三钮行；审查 I5 两段式）：先首页即播随机起点（与 handlePlay 同构，
-// 大歌单无需等全量），后台补全量；播放顺序跟随当前播放模式
+// 随机播放（真乱序，D3 拍板；审查 I3 两段式保留）：切全局 random 模式 + 首页即播从第一首
+// （大歌单无需等全量），后台补全量；空列表守卫前置（防空队列清空播放信息 + 白切全局模式）
 export const handlePlayShuffle = async(id: string, source: Source) => {
   const listId = getListId(id, source)
   const first = await getListDetail(id, source, 1)
   const list = first.list
   if (!list.length) return
+  void updateSetting({ 'player.togglePlayMethod': 'random' })
   await setTempList(listId, [...list])
-  void playList(LIST_IDS.TEMP, Math.floor(Math.random() * list.length))
+  void playList(LIST_IDS.TEMP, 0)
   const fullList = await getListDetailAll(source, id)
   if (!fullList.length) return
   if (listState.tempListMeta.id == listId) {

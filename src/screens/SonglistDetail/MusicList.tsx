@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
+import { Animated } from 'react-native'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
 import { clearListDetail, getListDetail, setListDetail, setListDetailInfo } from '@/core/songlist'
 import songlistState from '@/store/songlist/state'
@@ -8,13 +9,15 @@ import { useListInfo } from './state'
 
 export interface MusicListProps {
   componentId: string
+  /** 顶栏滚动进度（QQ 式渐显 D2）：透传 OnlineList，页面级创建（审查 S-1 同层） */
+  scrollYAnimated?: Animated.Value
 }
 
 export interface MusicListType {
   loadList: (source: LX.OnlineSource, listId: string) => void
 }
 
-export default forwardRef<MusicListType, MusicListProps>(({ componentId }, ref) => {
+export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollYAnimated }, ref) => {
   const listRef = useRef<OnlineListType>(null)
   const headerRef = useRef<HeaderType>(null)
   const isUnmountedRef = useRef(false)
@@ -115,6 +118,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId }, ref) 
     onRefresh={handleRefresh}
     onLoadMore={handleLoadMore}
     ListHeaderComponent={header}
+    scrollYAnimated={scrollYAnimated}
     // progressViewOffset={}
    />
 })

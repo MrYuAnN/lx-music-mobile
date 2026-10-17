@@ -1,5 +1,5 @@
 import { useRef, forwardRef, useImperativeHandle } from 'react'
-import { View } from 'react-native'
+import { Animated, View } from 'react-native'
 // import LoadingMask, { LoadingMaskType } from '@/components/common/LoadingMask'
 import List, { type ListProps, type ListType, type Status, type RowInfoType } from './List'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
@@ -20,6 +20,8 @@ export interface OnlineListProps {
   rowType?: RowInfoType
   showIndex?: boolean
   rankBadge?: boolean
+  /** 顶栏滚动进度（QQ 式渐显 D2）：可选透传（排行榜/搜索页等未传使用方零 diff，审查 I-A） */
+  scrollYAnimated?: Animated.Value
 }
 export interface OnlineListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
@@ -36,6 +38,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   rowType,
   showIndex,
   rankBadge,
+  scrollYAnimated,
 }, ref) => {
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
@@ -101,6 +104,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
           rowType={rowType}
           showIndex={showIndex}
           rankBadge={rankBadge}
+          scrollYAnimated={scrollYAnimated}
         />
         <MultipleModeBar
           ref={multipleModeBarRef}

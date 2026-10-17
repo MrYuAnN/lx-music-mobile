@@ -19,6 +19,8 @@ export interface ActionSheetItem {
   disabled?: boolean
   icon?: string
   destructive?: boolean
+  /** 菜单项角标（如「新」；hero 改版批 D4 三义分流入口标注，向后兼容存量调用方） */
+  badge?: string
 }
 
 export interface ActionSheetProps {
@@ -54,6 +56,16 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
     sheetRef.current?.setVisible(false)
   }
 
+  // 角标（「新」等）：红底白字小胶囊随 destructive 红双态，跟随 label 行尾
+  const renderBadge = (menu: ActionSheetItem) => {
+    if (!menu.badge) return null
+    return (
+      <View style={{ ...styles.badge, backgroundColor: theme.isDark ? '#FB4B54' : '#FA233B' }}>
+        <Text size={10} color="#FFFFFF" numberOfLines={1}>{menu.badge}</Text>
+      </View>
+    )
+  }
+
   return (
     <SheetBase ref={sheetRef} onHide={onHide} maxHeight="62%">
       {
@@ -73,6 +85,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                   <View key={menu.action} style={styles.item}>
                     <Icon name={menu.icon ?? 'full_stop'} size={ICON_SIZE.list} color={theme['c-font-label']} style={styles.icon} />
                     <Text size={15} color={theme['c-font-label']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
+                    { renderBadge(menu) }
                   </View>
                 )
               : (
@@ -90,6 +103,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                       style={styles.icon}
                     />
                     <Text size={15} color={menu.destructive ? (theme.isDark ? '#FB4B54' : '#FA233B') : theme['c-font']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
+                    { renderBadge(menu) }
                   </TouchableOpacity>
                 )
           ))
@@ -121,6 +135,13 @@ const styles = createStyle({
   },
   label: {
     paddingLeft: scaleSizeW(12),
+  },
+  badge: {
+    borderRadius: 999,
+    paddingHorizontal: scaleSizeW(7),
+    paddingVertical: scaleSizeH(2),
+    marginLeft: scaleSizeW(8),
+    flexShrink: 0,
   },
 })
 
