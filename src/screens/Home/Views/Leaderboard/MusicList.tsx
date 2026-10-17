@@ -92,6 +92,7 @@ export default forwardRef<MusicListType, {}>((props, ref) => {
     checkHomePagerIdle
     rowType='medium'
     showIndex
+    rankBadge
    />
 })
 

@@ -35,6 +35,7 @@ export interface ListProps {
   checkHomePagerIdle: boolean
   rowType?: RowInfoType
   showIndex?: boolean
+  rankBadge?: boolean
 }
 export interface ListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
@@ -60,6 +61,7 @@ const List = forwardRef<ListType, ListProps>(({
   checkHomePagerIdle,
   rowType,
   showIndex = false,
+  rankBadge = false,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
@@ -194,6 +196,7 @@ const List = forwardRef<ListType, ListProps>(({
       rowInfo={rowInfo.current}
       selectedList={selectedList}
       showIndex={showIndex}
+      rankBadge={rankBadge}
       showCover={false}
       showSource={showSource}
       showInterval={isShowInterval}

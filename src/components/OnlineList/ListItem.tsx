@@ -1,9 +1,9 @@
 import { memo, useRef, type ComponentRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
-import QualityTag, { getOnlineQualitys } from '@/components/common/QualityTag'
+import QualityTag, { getOnlineQualitys, getTintBackground } from '@/components/common/QualityTag'
 import DotsVertical from '@/components/common/DotsVertical'
 import { useTheme } from '@/store/theme/hook'
 import { useAssertApiSupport } from '@/store/common/hook'
@@ -15,15 +15,21 @@ import { SPACING } from '@/config/spacing'
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 
+// 排行榜前三序号 token（c-chart-1/2/3 金银铜，见 theme/themes/index.ts）；
+// 封闭三元组 + 模板下标取值，避免 `c-chart-${n}` 动态键破坏 ActiveTheme 字面量类型
+const CHART_COLOR_KEYS = ['c-chart-1', 'c-chart-2', 'c-chart-3'] as const
+
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
   selectedList: LX.Music.MusicInfo[]
   showIndex: boolean
+  /** 排行榜前三金银铜徽章开关（显式化，三席审查 S-F：此前隐含「showIndex=true 恒榜单场景」的注释约定，无类型约束） */
+  rankBadge?: boolean
   showCover: boolean
   showSource: boolean
   showInterval: boolean
@@ -60,6 +66,10 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
 
   const qualitys = qualityOverride ?? getOnlineQualitys(item)
 
+  // 排行榜前三徽章 token（拍板#7）：rankBadge 显式开启（当前唯一来源=Leaderboard/MusicList）；
+  // index<3 时取金银铜色键，4+ 名/未开启为 null 走普通灰数字
+  const chartColorKey = rankBadge && index < 3 ? CHART_COLOR_KEYS[index] : null
+
   let subline = item.singer || t('singer_unknown')
   if (isShowAlbumName && item.meta.albumName) subline += ` · ${item.meta.albumName}`
   if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
@@ -71,8 +81,23 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
           showIndex
             ? (
                 active
-                  ? <Icon style={styles.sn} name="play-outline" size={ICON_SIZE.inline} color={theme['c-primary-font']} />
-                  : <Text style={styles.sn} size={13} color={theme['c-300']}>{index + 1}</Text>
+                  ? (
+                      // 播放中整槽让位播放图标（拍板 I-5）：徽章/数字均不显示；不沿用旧 sn 样式
+                      // （width 定宽会非均匀拉伸 Svg），改容器居中
+                      <View style={styles.snView}>
+                        <Icon name="play-outline" size={ICON_SIZE.inline} color={theme['c-primary-font']} />
+                      </View>
+                    )
+                  : chartColorKey
+                    ? (
+                        // 排行榜前三淡底徽章（拍板#7）：22×22/r7、底=色12%（复用音质标签淡底）、数字 13/600
+                        <View style={styles.snView}>
+                          <View style={{ ...styles.snBadge, backgroundColor: getTintBackground(theme[chartColorKey]) }}>
+                            <Text style={styles.snBadgeText} size={13} color={theme[chartColorKey]}>{index + 1}</Text>
+                          </View>
+                        </View>
+                      )
+                    : <Text style={styles.snText} size={13} color={theme['c-300']}>{index + 1}</Text>
               )
             : null
         }
@@ -120,6 +145,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, showCover,
   return !!(prevProps.item === nextProps.item &&
     prevProps.index === nextProps.index &&
     prevProps.showIndex === nextProps.showIndex &&
+    prevProps.rankBadge === nextProps.rankBadge &&
     prevProps.showCover === nextProps.showCover &&
     prevProps.showSource === nextProps.showSource &&
     prevProps.showInterval === nextProps.showInterval &&
@@ -148,9 +174,31 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  sn: {
-    width: 26,
+  snText: {
+    width: 32,
     textAlign: 'center',
+    fontFamily: FontFamilies.medium,
+    fontVariant: ['tabular-nums'],
+  },
+  snView: {
+    width: 32,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  snBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 7,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  snBadgeText: {
+    fontFamily: FontFamilies.semibold,
+    fontVariant: ['tabular-nums'],
+    // includeFontPadding:false + lineHeight 对齐盒高 + textAlign 居中，修 Android 小字号在徽章内偏上偏左（QualityTag 同款）
+    lineHeight: 22,
+    textAlign: 'center',
+    includeFontPadding: false,
   },
   pic: {
     width: scaleSizeW(40),

@@ -50,6 +50,11 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     'c-quality-24bit': theme.isDark ? '#E3B341' : '#B8860B',
     'c-quality-sq': theme.isDark ? '#7CC98A' : '#3D9A50',
     'c-quality-hq': theme.isDark ? '#93B1D8' : '#5E81AC',
+    // 排行榜前三名序号色（金银铜，淡底徽章用）：浅色档按「含 12% 混白淡底后对数字 ≥4.5:1
+    // （WCAG AA，与 c-source 系列同口径，代码审查 I-C 实测加深）」取色；深色金与 c-quality-24bit 同源
+    'c-chart-1': theme.isDark ? '#E3B341' : '#8B6509',
+    'c-chart-2': theme.isDark ? '#AEB6C6' : '#616C80',
+    'c-chart-3': theme.isDark ? '#C98F68' : '#965E38',
     // 来源标签文字色（品牌色相深化/提亮，白底/暗底对文字档 4.5:1 达 WCAG AA；品牌原色淡底在
     // QualityTag SOURCE_BRAND_COLORS，不随主题）。取色口径见 doc/plans/tag-quality-v2-grilling.md §改动三：
     // wy=网易云音乐品牌红 / tx=QQ音乐品牌绿（2026-10-16 审查席 web 核实：设计圈广泛引用、腾讯无官方色值文档）

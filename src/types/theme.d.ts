@@ -276,6 +276,9 @@ declare global {
       'c-quality-24bit': string
       'c-quality-sq': string
       'c-quality-hq': string
+      'c-chart-1': string
+      'c-chart-2': string
+      'c-chart-3': string
       'c-source-wy': string
       'c-source-tx': string
       'c-source-kg': string
