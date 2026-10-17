@@ -1,5 +1,5 @@
-import { memo, useEffect, useRef, useState } from 'react'
-import { Image, StyleSheet, View, type LayoutChangeEvent } from 'react-native'
+import { memo, useEffect, useRef, useState, type RefObject } from 'react'
+import { Image, StyleSheet, View } from 'react-native'
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { subscribeCurrentScreen } from '../currentScreen'
@@ -27,6 +27,9 @@ interface FlyInfo {
 }
 
 const FLY_DURATION = 350
+// 飞抵后延迟隐藏飞行层的等待拍（本产品自定数值，无业界对标）：等 settled 状态的目标图完成渲染接管（下一帧），
+// 防目标图未显示先藏飞行层的闪帧；比 requestAnimationFrame 惯例略宽，高刷机上更稳
+const SETTLE_HIDE_DELAY = 50
 
 // 源测距注册表（RNN nativeID 查找的替代）：同 id 多列表可见时后挂载者覆盖（可见者即最新）
 const sourceMeasurers = new Map<string, Measurer>()
@@ -57,33 +60,50 @@ export const withCoverSource = (id: string, uri: string, push: () => void) => {
 // 命令式控制器（Host 挂载后注册；共享值必须在组件内创建）
 let controller: {
   fly: (from: CoverRect, to: CoverRect, uri: string, onDone: () => void) => void
+  hide: () => void
 } | null = null
 
 // 目标侧 hook（歌单详情头封面）：无待接力源则直接落定；有待接力则 layout 实测后起飞，
-// settled 语义与原 appear 驱动的 animated 一致（飞抵后才显播放数/刷新图）
-export const useCoverFlyTarget = (id: string) => {
+// settled 语义与原 appear 驱动的 animated 一致（飞抵后才显播放数/刷新图）。
+// relativeTo：屏根侧祖先的 ref（须为 ref 所在 View 的祖先，且自身落定于屏内 (0,0)）——
+// 目标矩形用相对该祖先的布局测量，布局真源运行时获取，不依赖调用方手工镜像偏移
+// （真机反馈：parentOffset 手工补偏漏算状态栏高度致封面飞抵点悬在头图上方，审查 S-3 根治）
+export const useCoverFlyTarget = (id: string, relativeTo: RefObject<View | null>) => {
   const ref = useRef<View>(null)
   const measuredRef = useRef(false)
   const [settled, setSettled] = useState(!pendingFly || pendingFly.id !== id)
 
-  const onLayout = ({ nativeEvent }: LayoutChangeEvent) => {
+  const onLayout = () => {
     if (measuredRef.current || settled) return
     const info = pendingFly
     if (!info || info.id !== id) {
       setSettled(true)
       return
     }
-    measuredRef.current = true
-    // 目标矩形取屏内相对布局（slide 转场平移的是屏容器，屏内布局坐标即终位窗口坐标）；
-    // 不用 measureInWindow——转场期间它读到含平移的在途坐标（审查 I-A，RN#55153 同类问题）
-    const { x, y, width, height } = nativeEvent.layout
-    if (!controller || !width) {
+    const view = ref.current
+    const ancestor = relativeTo.current
+    if (!view || !ancestor) {
       setSettled(true)
       return
     }
-    activeFly = info
-    settledTargetRect = { x, y, width, height }
-    controller.fly(info.sourceRect, settledTargetRect, info.uri, () => {
+    measuredRef.current = true
+    // 目标矩形取相对祖先的布局测量（slide 转场平移的是屏容器 transform，不污染布局值，
+    // 屏容器落定于 (0,0) 时相对屏根祖先的布局即终位窗口坐标）；
+    // 不用 measureInWindow——转场期间它读到含平移的在途坐标（审查 I-A，RN#55153 同类问题）
+    view.measureLayout(ancestor, (x, y, width, height) => {
+      if (!controller || !width) {
+        setSettled(true)
+        return
+      }
+      const targetRect = { x, y, width, height }
+      activeFly = info
+      settledTargetRect = targetRect
+      controller.fly(info.sourceRect, targetRect, info.uri, () => {
+        pendingFly = null
+        setSettled(true)
+      })
+    }, () => {
+      // 测量失败：放弃飞行直接落定，清 pendingFly 防残留误消费
       pendingFly = null
       setSettled(true)
     })
@@ -111,9 +131,17 @@ subscribeCurrentScreen((screen, prevScreen) => {
   pendingFly = null
   const targetRect = settledTargetRect
   const measure = sourceMeasurers.get(info.id)
-  if (!measure) return
+  if (!measure) {
+    // 无源可归（列表已卸载等）：飞行层无处落定，直接清理防残留（飞行层无终态即永久悬浮）
+    controller?.hide()
+    return
+  }
   measure(sourceRect => {
-    if (!sourceRect || !controller) return
+    if (!sourceRect || !controller) {
+      // 测量失败同上：直接清理，防「封面飘在屏上关不掉」
+      controller?.hide()
+      return
+    }
     controller.fly(targetRect, sourceRect, info.uri, () => {})
   })
 })
@@ -124,12 +152,32 @@ export const CoverFlyHost = memo(() => {
   const w = useSharedValue(0)
   const h = useSharedValue(0)
   const opacity = useSharedValue(0)
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [uri, setUri] = useState('')
 
   useEffect(() => {
     const easing = Easing.out(Easing.quad)
+    // 在途隐藏拍取消：飞抵后 SETTLE_HIDE_DELAY 内再次起飞（快速 pop 反飞/极快重进）时，
+    // 旧定时器不得把新飞行层藏掉（三席审查 I-2）
+    const cancelPendingHide = () => {
+      if (hideTimerRef.current != null) {
+        clearTimeout(hideTimerRef.current)
+        hideTimerRef.current = null
+      }
+    }
+    // 飞抵收尾：先回调（目标屏 settled 接管），延迟一拍再隐藏飞行层。
+    // 飞行层 opacity 无终态清理会永久悬浮在屏上（真机反馈「封面飘出关不掉」的根因之一）：
+    // 落定即清理后，即使落点再有偏差也只是动画终点偏一瞬，不再残留
+    const settleAndHide = (onDone: () => void) => {
+      onDone()
+      hideTimerRef.current = setTimeout(() => {
+        hideTimerRef.current = null
+        opacity.value = 0
+      }, SETTLE_HIDE_DELAY)
+    }
     controller = {
       fly: (from, to, imageUri, onDone) => {
+        cancelPendingHide()
         setUri(imageUri)
         x.value = from.x
         y.value = from.y
@@ -137,14 +185,19 @@ export const CoverFlyHost = memo(() => {
         h.value = from.height
         opacity.value = 1
         x.value = withTiming(to.x, { duration: FLY_DURATION, easing }, finished => {
-          if (finished) runOnJS(onDone)()
+          if (finished) runOnJS(settleAndHide)(onDone)
         })
         y.value = withTiming(to.y, { duration: FLY_DURATION, easing })
         w.value = withTiming(to.width, { duration: FLY_DURATION, easing })
         h.value = withTiming(to.height, { duration: FLY_DURATION, easing })
       },
+      hide: () => {
+        cancelPendingHide()
+        opacity.value = 0
+      },
     }
     return () => {
+      cancelPendingHide()
       controller = null
     }
   }, [x, y, w, h, opacity])

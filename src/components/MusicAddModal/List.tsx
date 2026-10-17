@@ -3,6 +3,7 @@ import { ScrollView, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { useMyList } from '@/store/list/hook'
+import { isListContentReadonly } from '@/utils/listManage'
 import ListItem, { styles as listStyles } from './ListItem'
 import CreateUserList from './CreateUserList'
 import { useWindowSize } from '@/utils/hooks'
@@ -56,7 +57,8 @@ export default ({ musicInfo, onPress }: {
   onPress: (listInfo: LX.List.MyListInfo) => void
 }) => {
   const windowSize = useWindowSize()
-  const allList = useMyList()
+  // 收藏歌单只读（拍板 #2，审查 C2）：目标列表过滤，源头不可达
+  const allList = useMyList().filter(l => !isListContentReadonly(l.id))
   const itemWidth = useMemo(() => {
     let w = Math.floor(windowSize.width * 0.9 - PADDING)
     let n = Math.floor(w / MIN_WIDTH)

@@ -1,6 +1,7 @@
 import { memo, useState, type RefObject } from 'react'
 import { TouchableOpacity, View } from 'react-native'
 import { Icon } from '@/components/common/Icon'
+import DotsVertical from '@/components/common/DotsVertical'
 import Image from '@/components/common/Image'
 import Text from '@/components/common/Text'
 import Loading from '@/components/common/Loading'
@@ -86,7 +87,8 @@ export default memo(({
           showManage
             ? (
                 <TouchableOpacity style={styles.topBtn} onPress={onManageMenu} activeOpacity={0.6}>
-                  <Icon color={theme['c-font']} name="dots-vertical" size={20} />
+                  {/* 三点恒竖向（项目级 UI 约定）：Icon 的 dots-vertical glyph 实为横向三点，不可用 */}
+                  <DotsVertical color={theme['c-font']} />
                 </TouchableOpacity>
               )
             : null

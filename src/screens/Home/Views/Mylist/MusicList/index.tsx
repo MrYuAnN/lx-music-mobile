@@ -29,7 +29,7 @@ import { LIST_IDS } from '@/config/constant'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
 
-export default () => {
+export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void }) => {
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
@@ -217,6 +217,8 @@ export default () => {
       pic={(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
       fetching={fetching}
       thirdAction={isCollectList ? 'clone' : 'addMusic'}
+      showBack={showBack}
+      onBack={onBack}
       showSearch
       showManage={!isTempList}
       onSearch={handleShowSearch}
@@ -226,7 +228,7 @@ export default () => {
       onThird={handleThird}
       onScrollToTop={hancelScrollToTop}
     />
-  ), [currentListName, subtitle, activeListInfo, fetching, isCollectList, isTempList, handleShowSearch, handlePlayAll, handlePlayShuffle, handleThird, hancelScrollToTop])
+  ), [currentListName, subtitle, activeListInfo, fetching, isCollectList, isTempList, showBack, onBack, handleShowSearch, handlePlayAll, handlePlayShuffle, handleThird, hancelScrollToTop])
 
 
   return (
