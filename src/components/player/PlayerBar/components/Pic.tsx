@@ -8,7 +8,7 @@ import { useCallback } from 'react'
 import { setLoadErrorPicUrl, setMusicInfo } from '@/core/player/playInfo'
 import { useCurrentScreen } from '@/navigation/currentScreen'
 
-const PIC_HEIGHT = 46
+const PIC_HEIGHT = 52
 
 const styles = StyleSheet.create({
   image: {

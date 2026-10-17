@@ -17,8 +17,10 @@ import { SPACING } from '@/config/spacing'
 
 // 迷你播放条全局 overlay（新批问题4 v3 定稿）：一份实例悬浮于全部 screen 之上，转场原地不动。
 // 显隐=isHome 屏推导（封面长按跳列表位置仅 Home 生效）与黑名单（播放页/评论页不显示）同源于当前屏单值；
-// 垫导航栏 inset（横屏手势条在侧缘时垫 right，批4审查 I-3）
-export const BAR_HEIGHT = 54
+// 垫导航栏 inset（横屏手势条在侧缘时垫 right，批4审查 I-3）。
+// 2026-10-16 真机反馈整体加大：BAR_HEIGHT 54→60、封面 46→52、控制钮 44→48（满足 ≥44-48dp
+// 触控最小尺寸通行惯例，Material/Apple HIG 同口径；2026-10-17 三席审查 S-H 补记来源）
+export const BAR_HEIGHT = 60
 export const BAR_BOTTOM = 14
 export const BAR_SIDE = 12
 

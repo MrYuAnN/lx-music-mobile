@@ -2,6 +2,7 @@ import { memo, useCallback, useMemo, useRef, useState } from 'react'
 import { View, TouchableOpacity } from 'react-native'
 
 import { Icon } from '@/components/common/Icon'
+import DotsVertical from '@/components/common/DotsVertical'
 import Text from '@/components/common/Text'
 import MusicAddModal, { type MusicAddModalType } from '@/components/MusicAddModal'
 import DesktopLyricEnable, { type DesktopLyricEnableType } from '@/components/DesktopLyricEnable'
@@ -148,7 +149,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
       { id: 'comment', icon: 'comment', label: t('comment'), onPress: showCommentScreen },
       // 无可消费档位（本地歌等）置灰 + 中性文案，不弹空壳（缺失能力不上界面）
       { id: 'quality', icon: 'album', label: hasQualityOptions ? qualityLabel(playQuality, t) : t('quality'), onPress: showQualitySheet, disabled: !hasQualityOptions },
-      { id: 'more', icon: 'dots-vertical', label: t('more_action'), onPress: showSettingPopup },
+      { id: 'more', icon: 'more', label: t('more_action'), onPress: showSettingPopup },
     ]
   }, [t, playQuality, hasQualityOptions, showMusicAddModal, showCommentScreen, showQualitySheet, showSettingPopup])
 
@@ -158,7 +159,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
       { id: 'font_size', icon: 'edit-metadata', label: t('font_size'), onPress: showFontSizeSheet },
       { id: 'translation', icon: 'toggle-source', label: t('translation'), onPress: handleToggleTranslation, disabled: !hasTranslation },
       { id: 'desktop_lyric', icon: enabledLyric ? 'lyric-on' : 'lyric-off', label: t('desktop_lyric'), onPress: toggleDesktopLyric, onLongPress: toggleDesktopLyricLock },
-      { id: 'more', icon: 'dots-vertical', label: t('more_action'), onPress: showSettingPopup },
+      { id: 'more', icon: 'more', label: t('more_action'), onPress: showSettingPopup },
     ]
   }, [t, hasTranslation, enabledLyric, showFontSizeSheet, handleToggleTranslation, toggleDesktopLyric, toggleDesktopLyricLock, showSettingPopup])
 
@@ -176,11 +177,12 @@ const ActionRow = ({ page }: ActionRowProps) => {
             onPress={action.onPress}
             onLongPress={action.onLongPress}
           >
-            <Icon
-              name={action.icon}
-              size={ICON_SIZE_ACTION}
-              color={action.disabled ? theme['c-font-label'] : theme['c-font']}
-            />
+            {
+              // 「更多」用 DotsVertical 组件（Icon 三点字形为横向，项目约定恒竖向；业界 AM/Spotify 同为 ellipsis 唤起菜单）
+              action.id === 'more'
+                ? <View style={styles.moreIconSlot}><DotsVertical color={action.disabled ? theme['c-font-label'] : theme['c-font']} /></View>
+                : <Icon name={action.icon} size={ICON_SIZE_ACTION} color={action.disabled ? theme['c-font-label'] : theme['c-font']} />
+            }
             <Text style={styles.label} size={11} numberOfLines={1} color={theme['c-font-label']}>{action.label}</Text>
           </TouchableOpacity>
         ))
@@ -220,6 +222,12 @@ const ActionRow = ({ page }: ActionRowProps) => {
 const ICON_SIZE_ACTION = scaleSizeW(24)
 
 const styles = createStyle({
+  moreIconSlot: {
+    width: ICON_SIZE_ACTION,
+    height: ICON_SIZE_ACTION,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   container: {
     flexDirection: 'row',
     flexGrow: 0,
