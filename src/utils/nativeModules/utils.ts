@@ -109,6 +109,22 @@ export const getNavigationBarInset = async(): Promise<number> => {
   const inset = await UtilsModule.getNavigationBarInset()
   return inset / scale
 }
+
+// Modal Dialog 窗口 ime inset 订阅（物理像素→dp 由消费端换算，对齐 window-insets-changed 口径）：
+// Android 15+ e2e 强制后 Modal 窗口键盘避让专用通道（SheetBase avoidKeyboard）
+export const onDialogImeChange = (handler: (imeBottom: number) => void): () => void => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  const eventEmitter = new NativeEventEmitter(UtilsModule)
+  const eventListener = eventEmitter.addListener('dialog-ime-changed', event => {
+    handler(event.imeBottom as number)
+  })
+
+  return () => {
+    eventListener.remove()
+  }
+}
+// Modal Dialog 窗口触摸穿透（关闭退场期调用）：sheet 动画照常播放，触摸直接落到底层页面
+export const makeDialogTouchPassthrough = UtilsModule.makeDialogTouchPassthrough
 export const watchWindowInsets = UtilsModule.watchWindowInsets
 
 // edge-to-edge insets 变化订阅（导航栏/键盘，弹窗体系批 §问题2）

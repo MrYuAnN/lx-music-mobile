@@ -1,5 +1,5 @@
 // import { createStyle } from '@/utils/tools'
-import { useImperativeHandle, forwardRef, useState, useMemo } from 'react'
+import { useImperativeHandle, forwardRef, useState } from 'react'
 import { Modal, TouchableWithoutFeedback, View, type ModalProps as _ModalProps } from 'react-native'
 import { useStatusbarHeight } from '@/store/common/hook'
 // import { useWindowSize } from '@/utils/hooks'
@@ -37,6 +37,11 @@ export interface ModalProps extends Omit<_ModalProps, 'visible'> {
    * 是否填充状态栏
    */
   statusBarPadding?: boolean
+  /**
+   * 透传 RN Modal：false 时原生 disableEdgeToEdge → SOFT_INPUT_ADJUST_RESIZE 生效（仅 Android 14-；
+   * 15+ e2e 系统强制，RN getter 无视此值，键盘避让走原生 dialog-ime 事件，见 SheetBase）
+   */
+  navigationBarTranslucent?: boolean
 }
 
 
@@ -50,6 +55,7 @@ export default forwardRef<ModalType, ModalProps>(({
   bgHide = true,
   bgColor = 'rgba(0,0,0,0)',
   statusBarPadding = true,
+  navigationBarTranslucent = true,
   children,
   ...props
 }: ModalProps, ref) => {
@@ -77,8 +83,6 @@ export default forwardRef<ModalType, ModalProps>(({
     },
   }))
 
-  const memoChildren = useMemo(async() => children, [children])
-
   // NB-3 原生补丁（0.73 Modal 窗口延伸到手势条下）已由官方属性接管：RN 0.86 不传
   // navigationBarTranslucent 时原生显式 disableEdgeToEdge（ReactModalHostView），窗口止于手势条上沿
   return (
@@ -87,7 +91,7 @@ export default forwardRef<ModalType, ModalProps>(({
       transparent={true}
       hardwareAccelerated={true}
       statusBarTranslucent={true}
-      navigationBarTranslucent={true}
+      navigationBarTranslucent={navigationBarTranslucent}
       visible={visible}
       onRequestClose={handleRequestClose}
       {...props}
@@ -96,7 +100,7 @@ export default forwardRef<ModalType, ModalProps>(({
       {/* <View style={{ flex: 1, paddingTop: statusBarPadding ? StatusBar.currentHeight : 0 }}> */}
       <TouchableWithoutFeedback style={{ flex: 1, paddingTop: statusBarPadding ? statusBarHeight : 0 }} onPress={handleBgClose}>
         <View style={{ flex: 1, backgroundColor: bgColor }}>
-          {memoChildren}
+          {children}
         </View>
       </TouchableWithoutFeedback>
       {/* </View> */}

@@ -1,5 +1,5 @@
-import { forwardRef, useImperativeHandle, useMemo, useRef, type JSX } from 'react'
-import { Animated, PanResponder, TouchableWithoutFeedback, View } from 'react-native'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, type JSX } from 'react'
+import { Animated, Dimensions, Keyboard, PanResponder, TouchableWithoutFeedback, View } from 'react-native'
 
 import Modal, { type ModalType } from './Modal'
 import Text from './Text'
@@ -8,6 +8,7 @@ import { useWindowSize } from '@/utils/hooks'
 import { useBottomInset } from '@/utils/insetsTool'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
+import { onDialogImeChange, makeDialogTouchPassthrough } from '@/utils/nativeModules/utils'
 import { AM_SHEET_SPRING, AM_EASE_DURATION, amEase } from '@/utils/animation'
 
 // 底部弹层共享基座（弹窗体系方案 §问题8）：Modal 窗口 + 自驱遮罩淡入淡出 + 把手/标题区 spring 上滑与下拉关闭。
@@ -30,12 +31,33 @@ export const sheetHandleStyles = createStyle({
 
 export interface SheetBaseProps {
   onHide?: () => void
+  /** Modal onShow 透传（Dialog 显示即触发）：带输入的弹层在此聚焦，键盘动画与 sheet 上滑重叠成一阶段 */
+  onShow?: () => void
   /** 醒目标题（左对齐加粗，输入/单选类弹层用；菜单类留空自渲染小标签） */
   title?: string
   children: React.ReactNode | React.ReactNode[]
   keyHide?: boolean
   bgHide?: boolean
   maxHeight?: `${number}%`
+  /**
+   * 透传 Modal：false 时原生窗口不 edge-to-edge，SOFT_INPUT_ADJUST_RESIZE 生效（键盘顶起窗口），
+   * 代价=窗口止于手势条上沿。仅 Android 14- 真实生效（15+ e2e 系统强制，RN getter 无视此值）
+   */
+  navigationBarTranslucent?: boolean
+  /**
+   * navigationBarTranslucent=false 时窗口已自动避让手势条与键盘，sheet 不再垫 bottomInset（防双垫）
+   */
+  systemAvoidsInsets?: boolean
+  /**
+   * 键盘避让抬升（Android 15+ e2e Modal 专用）：订阅原生 dialog-ime 事件，键盘弹出时
+   * sheet 本体 translateY 逐帧抬到键盘上方（遮罩不动）。Android 14- 走系统 resize 勿开（ime 恒 0）
+   */
+  avoidKeyboard?: boolean
+  /**
+   * avoidKeyboard 弹层键盘收起（ime 归 0）时回调：ROM 在键盘弹着时消费外部第一击（touch 进不了
+   * RN，点外部只收键盘），由本回调接续关弹窗，实现一次点击全关。确认流程中勿关由调用方守卫
+   */
+  onKeyboardDismissed?: () => void
 }
 
 export interface SheetBaseType {
@@ -50,11 +72,16 @@ const MASK_COLOR = 'rgba(50,50,50,.2)'
 
 const SheetBase = ({
   onHide,
+  onShow,
   title,
   children,
   keyHide = true,
   bgHide = true,
   maxHeight = '80%',
+  navigationBarTranslucent = true,
+  systemAvoidsInsets = false,
+  avoidKeyboard = false,
+  onKeyboardDismissed,
 }: SheetBaseProps, ref: React.Ref<SheetBaseType>) => {
   const theme = useTheme()
   const modalRef = useRef<ModalType>(null)
@@ -63,10 +90,65 @@ const SheetBase = ({
   const windowSizeRef = useRef(windowSize)
   windowSizeRef.current = windowSize
   const closingRef = useRef(false)
+  // 会话可见性（三席审查 S-J）：dialog-ime 为全局广播（原生无窗口标识），非本 sheet 会话期间
+  // （未开/已关）的 ime 事件不消费，防多 Dialog 场景串扰驱动 imeAnim / 误触 onKeyboardDismissed
+  const visibleRef = useRef(false)
   const slideAnim = useRef(new Animated.Value(0)).current
   const maskAnim = useRef(new Animated.Value(0)).current
-  // 贴底容器统一 inset 消费（键盘×导航栏 max 语义收口在 insetsTool，批4审查 S-1）
-  const bottomInset = useBottomInset()
+  // 贴底容器统一 inset 消费（键盘×导航栏 max 语义收口在 insetsTool，批4审查 S-1）；
+  // 窗口不 edge-to-edge 时（systemAvoidsInsets）系统 resize 已含避让，再垫会双垫出空隙
+  const bottomInsetRaw = useBottomInset()
+  const bottomInset = systemAvoidsInsets ? 0 : bottomInsetRaw
+
+  // 键盘避让抬升（avoidKeyboard）：ime 全高已含手势条区，sheet 常态垫的 navInset 需扣除防双垫；
+  // navInset 走 ref 镜像供事件回调取最新值。收起判定双路径：连续 3 帧下降（键盘收起动画特征，
+  // 立即接续关弹窗与键盘收起并行退场）为主，归零 150ms 去抖（单帧跳变路径）兜底——输入法弹起期
+  // relayout 会产生「高度→0→高度」0 帧（真机实证：闪屏+弹窗误关），单帧跳变不算收起。
+  // lastIme 会话守卫防迟到事件误关新开的弹窗
+  const imeAnim = useRef(new Animated.Value(0)).current
+  const navInsetRef = useRef(bottomInsetRaw)
+  navInsetRef.current = bottomInsetRaw
+  const lastImeRef = useRef(0)
+  const prevImeRef = useRef(0)
+  const imeDropCountRef = useRef(0)
+  const imeDismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const onKeyboardDismissedRef = useRef(onKeyboardDismissed)
+  onKeyboardDismissedRef.current = onKeyboardDismissed
+  const clearImeDismissTimer = () => {
+    if (imeDismissTimerRef.current) {
+      clearTimeout(imeDismissTimerRef.current)
+      imeDismissTimerRef.current = null
+    }
+  }
+  useEffect(() => {
+    if (!avoidKeyboard) return
+    return onDialogImeChange(imePx => {
+      // 关闭中冻结 ime 消费：sheet 下滑动画接管（handleClose 已并行归零 imeAnim）；非本会话事件不消费
+      if (closingRef.current || !visibleRef.current) return
+      const ime = imePx / Dimensions.get('window').scale
+      if (ime > 0) {
+        clearImeDismissTimer()
+        lastImeRef.current = ime
+        imeAnim.setValue(-Math.max(0, ime - navInsetRef.current))
+        // 连续下降计数：键盘收起动画逐帧递减；relayout 抖动单帧跳变后回弹，计不满
+        imeDropCountRef.current = ime < prevImeRef.current * 0.95 ? imeDropCountRef.current + 1 : 0
+        prevImeRef.current = ime
+        if (imeDropCountRef.current >= 3) {
+          imeDropCountRef.current = 0
+          lastImeRef.current = 0
+          onKeyboardDismissedRef.current?.()
+        }
+      } else if (lastImeRef.current > 0) {
+        if (imeDismissTimerRef.current) return
+        imeDismissTimerRef.current = setTimeout(() => {
+          imeDismissTimerRef.current = null
+          lastImeRef.current = 0
+          onKeyboardDismissedRef.current?.()
+        }, 150)
+      }
+    })
+  }, [avoidKeyboard, imeAnim])
+  useEffect(() => clearImeDismissTimer, [])
 
   const springTo = (toValue: number, after?: () => void) => {
     Animated.spring(slideAnim, {
@@ -78,9 +160,35 @@ const SheetBase = ({
     })
   }
 
+  // 关闭退场下滑：timing 与遮罩淡出同时长同曲线（spring 收敛慢于 350ms 且不与遮罩对齐），
+  // Dialog 销毁时刻提前到 350ms，缩短窗口存续期
+  const closeSlideTo = (after?: () => void) => {
+    Animated.timing(slideAnim, {
+      toValue: windowSizeRef.current.height,
+      duration: AM_EASE_DURATION,
+      easing: amEase,
+      useNativeDriver: true,
+    }).start(({ finished }) => {
+      if (finished) after?.()
+    })
+  }
+
   const handleClose = () => {
     if (closingRef.current) return
     closingRef.current = true
+    visibleRef.current = false
+    // 键盘收起与 sheet 下滑并行（不等 Dialog 销毁才 blur）：触摸恢复提前一整个下滑动画时长，
+    // 也避免「弹窗已关键盘才收」的错位观感；IME 收起动画本身挡触摸是系统行为不可根除
+    Keyboard.dismiss()
+    // 抬升量同步动画归零（ime 事件已冻结）：sheet 边落边滑出，防停在屏内抬升位
+    Animated.timing(imeAnim, {
+      toValue: 0,
+      duration: AM_EASE_DURATION,
+      easing: amEase,
+      useNativeDriver: true,
+    }).start()
+    // Dialog 窗口触摸穿透：sheet 动画照常播放，触摸立即落到底层页面（主页可滑不必等 Dialog 销毁）
+    if (avoidKeyboard) makeDialogTouchPassthrough()
     // sheet 下滑与遮罩淡出并行，时长对齐保证同步退场（iOS sheet 惯例）
     Animated.timing(maskAnim, {
       toValue: 0,
@@ -88,7 +196,7 @@ const SheetBase = ({
       easing: amEase,
       useNativeDriver: true,
     }).start()
-    springTo(windowSizeRef.current.height, () => {
+    closeSlideTo(() => {
       // Modal 的 setVisible(false) 会触发自身 onHide 回调，此处不重复调用
       modalRef.current?.setVisible(false)
       closingRef.current = false
@@ -105,7 +213,7 @@ const SheetBase = ({
     onPanResponderRelease: (_e, gesture) => {
       // 关闭动画进行中不接续拖拽，直接继续完成关闭（防「复活」竞态）
       if (closingRef.current || gesture.dy > DRAG_CLOSE_DISTANCE || gesture.vy > DRAG_CLOSE_VELOCITY) {
-        if (closingRef.current) springTo(windowSizeRef.current.height)
+        if (closingRef.current) closeSlideTo()
         else handleClose()
       } else {
         springTo(0)
@@ -120,8 +228,15 @@ const SheetBase = ({
     setVisible(visible: boolean) {
       if (visible) {
         closingRef.current = false
+        visibleRef.current = true
         slideAnim.setValue(windowSizeRef.current.height)
         maskAnim.setValue(0)
+        // 键盘未起时打开：清上次会话残留（弹窗在键盘弹着时被直接销毁，ime 事件流中断收不到归零帧）
+        imeAnim.setValue(0)
+        lastImeRef.current = 0
+        prevImeRef.current = 0
+        imeDropCountRef.current = 0
+        clearImeDismissTimer()
         modalRef.current?.setVisible(true)
         requestAnimationFrame(() => {
           springTo(0)
@@ -144,13 +259,18 @@ const SheetBase = ({
       : null
   }, [title, theme])
 
+  // 组合位移稳定引用（三席审查 S-A）：inline Animated.add 每次 render 新建节点反复向 native driver 重挂
+  const slideCombined = useMemo(() => Animated.add(slideAnim, imeAnim), [slideAnim, imeAnim])
+
   return (
     <Modal
       ref={modalRef}
       onHide={onHide}
+      onShow={onShow}
       animationType="none"
       bgHide={false}
       statusBarPadding={false}
+      navigationBarTranslucent={navigationBarTranslucent}
       onRequestClose={() => { if (keyHide) handleClose() }}
     >
       {/* 遮罩自驱淡入淡出；点击关闭由本层接管（Modal 内置 bgHide 关闭） */}
@@ -166,7 +286,7 @@ const SheetBase = ({
             maxHeight,
             paddingBottom: bottomInset,
             backgroundColor: theme['c-content-background'],
-            transform: [{ translateY: slideAnim }],
+            transform: [{ translateY: slideCombined }],
           }}
           onStartShouldSetResponder={() => true}
         >

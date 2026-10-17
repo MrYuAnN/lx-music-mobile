@@ -12,6 +12,7 @@ public class UtilsEvent {
   final String SCREEN_STATE = "screen-state";
   final String SCREEN_SIZE_CHANGED = "screen-size-changed";
   final String WINDOW_INSETS_CHANGED = "window-insets-changed";
+  final String DIALOG_IME_CHANGED = "dialog-ime-changed";
 
   private final ReactApplicationContext reactContext;
   UtilsEvent(ReactApplicationContext reactContext) { this.reactContext = reactContext; }

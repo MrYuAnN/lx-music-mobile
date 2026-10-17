@@ -12,12 +12,15 @@ import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
 import android.util.Log;
+import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.InputMethodManager;
 
 import androidx.core.app.LocaleManagerCompat;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsAnimationCompat;
 import androidx.core.view.WindowInsetsCompat;
 import androidx.core.content.FileProvider;
 import androidx.core.os.LocaleListCompat;
@@ -30,9 +33,12 @@ import com.facebook.react.bridge.ReactMethod;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableNativeArray;
+import com.facebook.react.interfaces.ExtraWindowEventListener;
+import com.facebook.react.views.view.WindowUtilKt;
 
 import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -50,6 +56,7 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
     utilsEvent = new UtilsEvent(reactContext);
     registerScreenBroadcastReceiver();
     reactContext.addLifecycleEventListener(this);
+    reactContext.addExtraWindowEventListener(extraWindowListener);
   }
 
   @Override
@@ -380,6 +387,79 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
     }
     WindowInsetsCompat insets = WindowInsetsCompat.toWindowInsetsCompat(rawInsets);
     promise.resolve(insets.getInsets(WindowInsetsCompat.Type.navigationBars()).bottom);
+  }
+
+  // Modal Dialog 窗口 ime inset 监听（2026-10-16 键盘避让定案，替代已删的 getImeBottom 轮询插桩）：
+  // Android 15+（targetSdk 36）e2e 系统强制，Modal 恒 edge-to-edge——ADJUST_RESIZE 被忽略、
+  // RN Keyboard 事件不派发（CustomGlobalLayoutListener 只挂主窗口）。经 RN 官方 ExtraWindowEventListener
+  // 拿到每个 Modal Dialog 窗口，挂 WindowInsetsAnimation 逐帧推 ime 高度给 JS（SheetBase 抬升）。
+  // Android 14- 上 Modal 非 e2e、系统 resize 自动抬升（ime insets 被消费恒 0），不挂避免与
+  // ReactModalHostView 的 setStatusBarTranslucency 抢 decorView 的 onApplyWindowInsets 单槽。
+  private int lastDialogIme = -1;
+  // 存活 Modal Dialog 窗口栈（嵌套确认弹窗时栈顶为最新窗口）：穿透取栈顶存活窗口——
+  // 单字段会在嵌套弹窗销毁时被清空导致主流程穿透失效（三席审查 #4）；destroy 按实例移除
+  private final java.util.concurrent.CopyOnWriteArrayList<Window> dialogWindows =
+    new java.util.concurrent.CopyOnWriteArrayList<>();
+
+  private final ExtraWindowEventListener extraWindowListener = new ExtraWindowEventListener() {
+    @Override
+    public void onExtraWindowCreate(Window window) {
+      dialogWindows.add(window);
+      if (!WindowUtilKt.isEdgeToEdgeFeatureFlagOn()) return;
+      View decorView = window.getDecorView();
+      ViewCompat.setWindowInsetsAnimationCallback(decorView,
+        new WindowInsetsAnimationCompat.Callback(WindowInsetsAnimationCompat.Callback.DISPATCH_MODE_CONTINUE_ON_SUBTREE) {
+          @Override
+          public WindowInsetsCompat onProgress(WindowInsetsCompat insets, List<WindowInsetsAnimationCompat> runningAnimations) {
+            emitDialogIme(insets.getInsets(WindowInsetsCompat.Type.ime()).bottom);
+            return insets;
+          }
+        });
+      // 终态兜底（无动画跳变路径），与动画通道同值去重
+      ViewCompat.setOnApplyWindowInsetsListener(decorView, (v, windowInsets) -> {
+        emitDialogIme(windowInsets.getInsets(WindowInsetsCompat.Type.ime()).bottom);
+        return windowInsets;
+      });
+      // Dialog 窗口获得焦点时若已有聚焦 view（JS onShow 的 focus 已设 view 焦点，仅 IME 请求
+      // 被 show 前的 FLAG_NOT_FOCUSABLE 吞掉），立即重发 showSoftInput——键盘启动从 JS 300ms
+      // 兜底提前到窗口焦点就绪（~100ms），与 sheet 上滑重叠成一阶段（真机反馈 2026-10-16）
+      decorView.getViewTreeObserver().addOnWindowFocusChangeListener(hasFocus -> {
+        if (!hasFocus) return;
+        View focused = decorView.findFocus();
+        if (focused == null) return;
+        InputMethodManager imm = (InputMethodManager) reactContext.getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null) imm.showSoftInput(focused, 0);
+      });
+    }
+
+    @Override
+    public void onExtraWindowDestroy(Window window) {
+      // decorView 随窗口销毁，无需解挂；重置去重基线防跨窗口粘连
+      lastDialogIme = -1;
+      dialogWindows.remove(window);
+    }
+  };
+
+  // 关闭退场期让 Modal Dialog 窗口触摸穿透（FLAG_NOT_TOUCHABLE）：sheet 下滑动画期间窗口
+  // 不再拦截底层页面触摸，主页立即可滑，不必等动画放完 Dialog 销毁（真机反馈 2026-10-16）。
+  // 取栈顶存活窗口（嵌套确认弹窗销毁后仍能命中 InputSheet 自身）；每次 show 都是新 Dialog，
+  // flags 不跨会话残留
+  @ReactMethod
+  public void makeDialogTouchPassthrough() {
+    Window window = dialogWindows.isEmpty() ? null : dialogWindows.get(dialogWindows.size() - 1);
+    Activity activity = reactContext.getCurrentActivity();
+    // activity 判空：后台期关闭弹层时可为 null（三席审查 #1，对齐同文件 watchWindowInsets 惯例）
+    if (window == null || activity == null) return;
+    activity.runOnUiThread(() ->
+      window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE));
+  }
+
+  private void emitDialogIme(int imeBottom) {
+    if (imeBottom == lastDialogIme) return;
+    lastDialogIme = imeBottom;
+    WritableMap params = Arguments.createMap();
+    params.putInt("imeBottom", imeBottom);
+    utilsEvent.sendEvent(utilsEvent.DIALOG_IME_CHANGED, params);
   }
 
   // ime/navigationBars inset 变化监听：decorFitsSystemWindows(false) 后 adjustResize 失效，
