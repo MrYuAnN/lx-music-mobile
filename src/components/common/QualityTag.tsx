@@ -48,10 +48,13 @@ const getQualityTagInfo = (qualitys?: LX.Music._MusicQualityType): { textKey: Qu
   return { textKey, color: TIER_COLORS[textKey] }
 }
 
-// 淡底胶囊（AM/iOS badge 惯例）：底=文字色 12% alpha、无描边；includeFontPadding:false +
+// 淡底圆角矩形 r4（2026-10-16 拍板：对标 QQ/网易云/Tidal 矩形系音质标，业界无胶囊先例；
+// 与可点控件语义分级——信息标 r4 < 字段/输入 r8 < 交互 chips r999）：底=文字色 12% alpha、无描边；
+// includeFontPadding:false +
 // lineHeight 对齐盒高，修 Android 小字号文字偏下。c-font-label 走主题覆盖路径，非 6 位 hex 时回退固定灰
-// 来源标签传更低 alpha（从属元数据低于音质一档：同形态靠尺寸+透明度分级）
-const getTintBackground = (color: string, alpha = '1F'): string => {
+// 来源标签传更低 alpha（从属元数据低于音质一档：同形态靠尺寸+透明度分级）。
+// 导出共享：OnlineList 排行榜前三序号徽章等淡底场景复用，防 alpha 档位多源漂移
+export const getTintBackground = (color: string, alpha = '1F'): string => {
   return /^#[0-9A-Fa-f]{6}$/.test(color) ? `${color}${alpha}` : `#8A8A8E${alpha}`
 }
 
@@ -103,7 +106,7 @@ const styles = createStyle({
   tag: {
     height: 16,
     paddingHorizontal: SPACING.s4,
-    borderRadius: 999,
+    borderRadius: 4,
     justifyContent: 'center',
     marginRight: SPACING.s4,
   },
@@ -117,7 +120,7 @@ const styles = createStyle({
     height: 14,
     minWidth: 36,
     paddingHorizontal: SPACING.s4,
-    borderRadius: 999,
+    borderRadius: 4,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: SPACING.s4,
