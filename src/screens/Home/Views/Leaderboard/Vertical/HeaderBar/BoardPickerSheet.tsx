@@ -8,6 +8,7 @@ import ListMenu, { type ListMenuType } from '../../BoardsList/ListMenu'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle, toast } from '@/utils/tools'
+import { SPACING } from '@/config/spacing'
 import { getBoardsList } from '@/core/leaderboard'
 import leaderboardState, { type BoardItem } from '@/store/leaderboard/state'
 
@@ -112,6 +113,8 @@ export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoun
 
   return (
     <SheetBase ref={sheetRef} title={t('leaderboard_select_board')} maxHeight="64%">
+      {/* 「音源」分区标题：与歌单 SonglistPickerSheet 同构（2026-10-18 真机反馈轮统一两弹层分区） */}
+      <Text style={styles.zoneLabel} size={12} color={theme['c-font-label']}>{t('filter_source')}</Text>
       <ScrollView horizontal style={styles.srcRow} contentContainerStyle={styles.srcRowContent} showsHorizontalScrollIndicator={false}>
         {
           leaderboardState.sources.map(s => {
@@ -129,6 +132,8 @@ export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoun
           })
         }
       </ScrollView>
+      {/* 「榜单」分区标题：与歌单弹层 zone 标题同构（真机反馈轮 2 轮补） */}
+      <Text style={styles.boardsLabel} size={12} color={theme['c-font-label']}>{t('leaderboard_zone_boards')}</Text>
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
         {
           boards.map((item, index) => {
@@ -163,6 +168,16 @@ export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoun
 })
 
 const styles = createStyle({
+  // zone 标题间距与歌单 SonglistPickerSheet 同构（二轮审查 S-3 统一 s10/s8）
+  zoneLabel: {
+    marginTop: SPACING.s10,
+    marginBottom: SPACING.s8,
+    paddingHorizontal: SPACING.s20,
+  },
+  boardsLabel: {
+    marginBottom: SPACING.s8,
+    paddingHorizontal: SPACING.s20,
+  },
   // 来源行不参与压缩（flexShrink:0）：sheet 内容超限时此前与榜单列表按 shrink 比例分摊，
   // chips 被纵向裁掉上半（真机反馈 2026-10-16）；限高滚动由榜单列表独自承担
   srcRow: {

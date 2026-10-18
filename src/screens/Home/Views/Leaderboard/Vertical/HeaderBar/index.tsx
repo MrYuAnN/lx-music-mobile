@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
 
-import Text, { FontFamilies } from '@/components/common/Text'
+import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
@@ -25,6 +25,7 @@ export interface HeaderBarType {
 // · 分隔点 · 当前榜名（主位），点开唯一级联 sheet；原音源下拉+榜单名双控件移除。
 // 高 28 不随系统字号缩放（Text 组件默认 allowFontScaling=false，SearchBar h38 同策）；
 // 图标集无 chevron-down，以 chevron-right 旋转 90° 复用（零资源变更）。
+// 榜名段 2026-10-18 随歌单页改版同步 12/400（拍板 3：全 app 筛选胶囊字号字重统一，仅颜色分层）。
 export default forwardRef<HeaderBarType, HeaderBarProps>(({ onBoundSelect, onSourceChange, onPlay, onCollect }, ref) => {
   const theme = useTheme()
   const t = useI18n()
@@ -63,7 +64,7 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onBoundSelect, onSou
                 // 榜名未就绪（init 网络返回前）时不渲染分隔点与空段，避免「酷我 ·  ⌄」（审查 S-3）
                 <>
                   <Text size={12} style={styles.chipText} color={theme['c-250']}>·</Text>
-                  <Text size={14} color={theme['c-primary']} numberOfLines={1} style={styles.boardName}>{boardName}</Text>
+                  <Text size={12} color={theme['c-primary']} numberOfLines={1} style={styles.boardName}>{boardName}</Text>
                 </>
               )
             : null
@@ -104,7 +105,6 @@ const styles = createStyle({
     lineHeight: 18,
   },
   boardName: {
-    fontFamily: FontFamilies.semibold,
     lineHeight: 18,
   },
   caret: {
