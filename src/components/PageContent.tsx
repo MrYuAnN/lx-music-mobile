@@ -28,9 +28,13 @@ interface Props {
 }
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
-// 歌单页静态氛围（QQ 式两段式，hero v2 拍板）：上半=封面背景图（轻模糊），下半=封面采样主色
+// 歌单页静态氛围（QQ 式两段式，hero v2 拍板）：上半=封面背景图，下半=封面采样主色
 // 延伸（clampTint 按主题钳亮度的 displayTint 铺满整页），交界渐变融化；播放页维持重模糊+均匀纱罩
-const STATIC_BLUR_RADIUS = Math.max(scaleSizeAbsHR(6), 4)
+// 2026-10-18 真机反馈轮 3：blur 6→3、纱罩渐变起点 0.55→0.72——Android blurRadius 同值观感重于 iOS，
+// 叠纱罩后封面糊到不可辨识，顶部段多露原貌
+// 2026-10-18 真机反馈轮 4：blur 3→0（原图沉浸，网易云/QQ 歌单头式）——轻糊中间态两头不靠，
+// 既无原图辨识度又无重模糊氛围感；辨识度交原图承担，可读性交渐变纱罩承担
+const STATIC_BLUR_RADIUS = 0
 
 // 主色亮度钳制：暗色模式压亮度上限防刺眼，亮色模式抬下限防发灰（AM 氛围层观感）
 const TINT_LIGHTNESS_RANGE = {
@@ -232,7 +236,7 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
       >
         <LinearGradient
           colors={[withAlpha(sampleColor, 0), sampleColor]}
-          locations={[0.55, 1]}
+          locations={[0.72, 1]}
           style={StyleSheet.absoluteFill}
         />
       </ImageBackground>
