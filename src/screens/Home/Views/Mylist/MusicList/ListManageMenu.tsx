@@ -67,7 +67,8 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
         { action: 'sync', disabled: !notFetching || !musicSdk[userList.source]?.songList, label: t('list_sync'), icon: 'toggle-source' },
         { action: 'rename', label: t('list_rename'), icon: 'edit-metadata' },
         { action: 'export', label: t('list_export'), icon: 'share' },
-        { action: 'remove', label: t('list_remove'), icon: 'trash', destructive: true },
+        // 收藏克隆歌单的移除=「取消收藏」（与详情页红心同款确认删除——2026-10-18 收藏闭环拍板，文案分流对标网易云收藏/创建分组）
+        { action: 'remove', label: t('list_uncollect'), icon: 'heart-outline', destructive: true },
       ])
       return
     }

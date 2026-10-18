@@ -13,7 +13,7 @@ import { SPACING } from '@/config/spacing'
 // 歌单页共享头部（两页同构；QQ 式全页融合改版 2026-10-17 拍板 D1）：
 // 头部区=透明占位（透出下层全页氛围画布，模糊封面与整页同层→分界线构造性消失），
 // 无封面歌单渲染品牌渐变+音符装饰层（I-D，浮于纯色底，非封面）；
-// 名称区（标题+副行[右侧 ♥ 收藏位，仅在线页]）+ 双胶囊行（播放[本列表两态，AM 语义]/随机播放）+ 简介。
+// 名称区（标题+副行[♥ 紧跟副文居中组，仅在线页，真机反馈轮 4 拍板]）+ 双胶囊行（播放[本列表两态，AM 语义]/随机播放）+ 简介。
 // 顶栏已移出滚动流为固定悬浮组件（PlaylistTopBar，滚动渐显 D2）。
 // 明暗文字对比由 PageContent 氛围层纱罩保证；头部长按=回顶（审查 A10）。
 // 对标边界（v1 批 I-E 披露延续）：AM 26.4 全幅仅限官方内容，QQ 式全页融合对标用户实拍
@@ -90,16 +90,16 @@ export default memo(({
                 ? <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{subtitle}</Text>
                 : null
             }
+            {
+              showCollectHeart
+                ? (
+                    <TouchableOpacity style={styles.heartBtn} onPress={onCollectToggle} activeOpacity={0.6}>
+                      <Icon name={collected ? 'love-fill' : 'love'} size={22} color={collected ? heartColor : theme['c-font-label']} />
+                    </TouchableOpacity>
+                  )
+                : null
+            }
           </View>
-          {
-            showCollectHeart
-              ? (
-                  <TouchableOpacity style={styles.heartBtn} onPress={onCollectToggle} activeOpacity={0.6}>
-                    <Icon name={collected ? 'love-fill' : 'love'} size={22} color={collected ? heartColor : theme['c-font-label']} />
-                  </TouchableOpacity>
-                )
-              : null
-          }
         </View>
         <View style={styles.actions}>
           <TouchableOpacity
@@ -175,12 +175,11 @@ const styles = createStyle({
     justifyContent: 'center',
     maxWidth: '78%',
   },
+  // ♥ 紧跟副文（居中组内流式排布，真机反馈轮 4：原 absolute 右缘钉死离居中内容过远显偏）
   heartBtn: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 40,
+    marginLeft: SPACING.s6,
+    paddingHorizontal: SPACING.s8,
+    height: 36,
     justifyContent: 'center',
     alignItems: 'center',
   },

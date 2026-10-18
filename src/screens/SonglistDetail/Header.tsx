@@ -8,7 +8,7 @@ import listState from '@/store/list/state'
 import songlistState from '@/store/songlist/state'
 import { useI18n } from '@/lang'
 import { togglePlay } from '@/core/player/player'
-import { handleCollect, handlePlay, handlePlayShuffle, getListId } from './listAction'
+import { handleCollect, handleUncollect, handlePlay, handlePlayShuffle, getListId } from './listAction'
 import { useListInfo } from './state'
 import { LIST_IDS } from '@/config/constant'
 import { createStyle, toast } from '@/utils/tools'
@@ -47,7 +47,7 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
     },
   }), [])
 
-  // 已收藏态（审查 S1）：♥ 实心/空心 toggle，点击仍走 handleCollect 的查重转同步确认
+  // 已收藏态（收藏闭环 2026-10-18 拍板）：♥ 两态 toggle——未收藏=收藏克隆，已收藏=确认后取消（删本地克隆）
   const collectedInfo = lists.find(l => (l as LX.List.UserListInfo).source == info.source && (l as LX.List.UserListInfo).sourceListId == info.id) as LX.List.UserListInfo | undefined
   const collected = !!collectedInfo
   const sourceName = info.source ? t(`source_real_${info.source}` as never) : ''
@@ -76,6 +76,10 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
         collected={collected}
         showCollectHeart
         onCollectToggle={() => {
+          if (collectedInfo) {
+            void handleUncollect(collectedInfo)
+            return
+          }
           if (!songlistState.listDetailInfo.info.name) return
           void handleCollect(info.id, info.source, songlistState.listDetailInfo.info.name || info.name, songlistState.listDetailInfo.info.img)
         }}

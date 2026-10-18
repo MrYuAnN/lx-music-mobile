@@ -10,6 +10,7 @@ import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
 import DuplicateMusic, { type DuplicateMusicType } from '../manage/DuplicateMusic'
 import ListImportExport, { type ListImportExportType } from '../manage/ListImportExport'
 import { handleRemove as handleRemoveList, handleSync } from '../manage/listAction'
+import { handleUncollect } from '@/screens/SonglistDetail/listAction'
 import List, { type ListType } from './List'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
@@ -217,6 +218,16 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       title={currentListName}
       subtitle={subtitle}
       pic={(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
+      // 收藏闭环（2026-10-18 拍板）：仅收藏克隆歌单显示实心红心，取消=确认后删本地克隆；
+      // 自建/内置无红心（业界定式，管理走 ⋮）
+      showCollectHeart={isCollectList}
+      collected={isCollectList}
+      onCollectToggle={isCollectList && activeListInfo ? () => {
+        void handleUncollect(activeListInfo as LX.List.UserListInfo).then(removed => {
+          // 取消收藏的是当前查看的列表：返回上一屏（真机反馈轮 5，不落默认歌单页）
+          if (removed && (activeListInfo as LX.List.UserListInfo).id == activeListId) onBack?.()
+        })
+      } : undefined}
       fetching={fetching}
       playing={isPlay && playMusicInfo.listId == activeListId}
       onTogglePlay={togglePlay}
@@ -224,7 +235,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       onShufflePlay={handlePlayShuffle}
       onScrollToTop={hancelScrollToTop}
     />
-  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, handlePlayAll, handlePlayShuffle, hancelScrollToTop])
+  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, isCollectList, handlePlayAll, handlePlayShuffle, hancelScrollToTop, onBack])
 
 
   return (
@@ -303,7 +314,11 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
         onImportLocalFile={(info, index) => listImportExportRef.current?.selectFile(info, index)}
         onExport={(info, index) => listImportExportRef.current?.export(info, index)}
         onSync={info => handleSync(info)}
-        onRemove={info => handleRemoveList(info)}
+        // 收藏克隆 ⋮ 取消收藏与红心同款确认+toast（二轮审查 I-2 分流）；自建走删除；删当前列表 pop 回来路
+        onRemove={info => {
+          const action = info.source ? handleUncollect(info) : handleRemoveList(info)
+          void action.then(removed => { if (removed && info.id == activeListId) onBack?.() })
+        }}
       />
       <ListNameEdit ref={listNameEditRef} />
       <ListMusicSort ref={listMusicSortRef} />

@@ -9,13 +9,19 @@ import settingState from '@/store/setting/state'
 import BackgroundTimer from 'react-native-background-timer'
 import { type FileType } from '@/utils/fs'
 
+// 删除歌单（确认→移除）：返回是否实际删除——调用方据此决定删除当前查看的列表后返回上一屏
+// （真机反馈轮 5：详情页删当前歌单不再落默认歌单页）
 export const handleRemove = (listInfo: LX.List.UserListInfo) => {
-  void confirmDialog({
+  return confirmDialog({
     message: global.i18n.t('list_remove_tip', { name: listInfo.name }),
     confirmButtonText: global.i18n.t('list_remove_tip_button'),
   }).then(isRemove => {
-    if (!isRemove) return
-    void removeUserList([listInfo.id])
+    if (!isRemove) return false
+    // 乐观返回 true（pop 先行）；失败兜底 toast（二轮审查 S-2）
+    void removeUserList([listInfo.id]).catch(() => {
+      toast(global.i18n.t('load_failed_tip'))
+    })
+    return true
   })
 }
 
