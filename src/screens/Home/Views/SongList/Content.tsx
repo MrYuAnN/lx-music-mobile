@@ -1,72 +1,185 @@
+import { useEffect, useRef, useState } from 'react'
+import { View } from 'react-native'
+
+import HeaderBar from './HeaderBar'
+import HotTagRow from './HeaderBar/HotTagRow'
+import Songlist, { type SonglistType } from './components/Songlist'
+import type { Status } from './components/Songlist/List'
+import { clearList, getList, getTags, setList, setListInfo } from '@/core/songlist'
+import songlistState, { type Source, type TagInfo, type TagInfoItem } from '@/store/songlist/state'
 import { getSongListSetting, saveSongListSetting } from '@/utils/data'
-import { useEffect, useRef } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { createStyle, toast } from '@/utils/tools'
+import { useI18n } from '@/lang'
 
-// import List from './List/List'
-import HeaderBar, { type HeaderBarProps, type HeaderBarType } from './HeaderBar'
-import songlistState, { type InitState, type SortInfo } from '@/store/songlist/state'
-import List, { type ListType } from './List'
-
+type TagsStatus = 'loading' | 'error' | 'ready'
 
 interface SonglistInfo {
-  source: InitState['sources'][number]
-  sortId: SortInfo['id']
+  source: Source
+  sortId: string
   tagId: string
+  tagName: string
 }
 
+// 数据链拓扑（方案「数据链拓扑」节，单链宿主 = Content）：
+// getList 六条触发链（进页首拉/热门行点选/弹层点选/切源/refresh/loadMore）全部经 fetchList 收口——
+// 发起时以 infoRef 快照参数，seq 递增；响应落地时 seq 与三元参数（source/tagId/sortId）双重比对，
+// 不一致即丢弃（复审 R-1：refresh/loadMore 在途响应不再以切源后的新元数据脏写旧源数据）。
+// getTags 单链（挂载/切源/sheet 打开补拉/失败重试四入口，同一 seq）；失败降级不回滚源
+// （拍板 6 失败分层：列表 getList 失败走 error footer，目录 getTags 失败仅标签区降级 + toast）。
 export default () => {
-  const headerBarRef = useRef<HeaderBarType>(null)
-  const listRef = useRef<ListType>(null)
-  const songlistInfo = useRef<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '' })
+  const listRef = useRef<SonglistType>(null)
+  const [info, setInfoState] = useState<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
+  const infoRef = useRef<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
+  const [hotTags, setHotTags] = useState<TagInfoItem[]>([])
+  const [tagGroups, setTagGroups] = useState<TagInfo['tags']>([])
+  const [tagsState, setTagsState] = useState<TagsStatus>('loading')
+  const listSeqRef = useRef(0)
+  const tagsSeqRef = useRef(0)
+  const t = useI18n()
+
+  const updateInfo = (patch: Partial<SonglistInfo>) => {
+    infoRef.current = { ...infoRef.current, ...patch }
+    setInfoState(infoRef.current)
+    void saveSongListSetting(patch)
+  }
+
+  const fetchList = (page: number, opts: { status: Status, isRefresh?: boolean, keepList?: boolean }) => {
+    const seq = ++listSeqRef.current
+    const snapshot = { ...infoRef.current }
+    if (!opts.keepList) listRef.current?.setList([])
+    listRef.current?.setStatus(opts.status)
+    void getList(snapshot.source, snapshot.tagId, snapshot.sortId, page, opts.isRefresh).then(result => {
+      if (seq != listSeqRef.current) return
+      // 双保险：三元比对（当前拓扑下 setListInfo 唯一写入方是本组件各 handler，先于 fetch 同步执行，
+      // 此分支正常不可达——留作未来新增写入方的防脏写闸，二轮审查 S-6）
+      const current = songlistState.listInfo
+      if (current.source != snapshot.source || current.tagId != snapshot.tagId || current.sortId != snapshot.sortId) return
+      const listInfo = setList(result, snapshot.tagId, snapshot.sortId, page)
+      listRef.current?.setList(listInfo.list)
+      listRef.current?.setStatus(listInfo.maxPage <= page ? 'end' : 'idle')
+    }).catch(() => {
+      if (seq != listSeqRef.current) return
+      if (songlistState.listInfo.list.length && page == 1) clearList()
+      listRef.current?.setStatus('error')
+    })
+  }
+
+  // 进页首拉：本会话已有同参列表（tab 重挂）直接恢复，否则按持久化参数首拉
+  const initList = () => {
+    const current = infoRef.current
+    const listInfo = songlistState.listInfo
+    if (listInfo.tagId == current.tagId && listInfo.sortId == current.sortId && listInfo.source == current.source && listInfo.list.length) {
+      requestAnimationFrame(() => {
+        listRef.current?.setList(listInfo.list)
+        listRef.current?.setStatus(listInfo.maxPage <= listInfo.page ? 'end' : 'idle')
+      })
+    } else {
+      setListInfo(current.source, current.tagId, current.sortId)
+      fetchList(1, { status: 'loading' })
+    }
+  }
+
+  const handleSelectTag = (name: string, id: string) => {
+    if (id == infoRef.current.tagId) return
+    updateInfo({ tagId: id, tagName: name })
+    setListInfo(infoRef.current.source, id, infoRef.current.sortId)
+    fetchList(1, { status: 'loading' })
+  }
+
+  const handleSelectSort = (id: string) => {
+    if (id == infoRef.current.sortId) return
+    updateInfo({ sortId: id })
+    setListInfo(infoRef.current.source, infoRef.current.tagId, id)
+    fetchList(1, { status: 'loading' })
+  }
+
+  // 切源（拍板 6 沿用现状语义）：标签重置默认、排序重置该源第一项
+  const handleSwitchSource = (source: Source) => {
+    if (source == infoRef.current.source) return
+    const sortId = songlistState.sortList[source]![0].id
+    updateInfo({ source, sortId, tagId: '', tagName: '' })
+    setListInfo(source, '', sortId)
+    fetchList(1, { status: 'loading' })
+    void loadTags(source)
+  }
+
+  const handleRefresh = () => {
+    fetchList(1, { status: 'refreshing', isRefresh: true, keepList: true })
+  }
+
+  const handleLoadMore = () => {
+    const page = songlistState.listInfo.list.length ? songlistState.listInfo.page + 1 : 1
+    fetchList(page, { status: 'loading', keepList: true })
+  }
+
+  const applyTagInfo = (tagInfo: TagInfo) => {
+    setHotTags(tagInfo.hotTag)
+    setTagGroups(tagInfo.tags)
+    setTagsState('ready')
+  }
+
+  // getTags 单链：seq 在入口统一递增（缓存命中同样作废在途旧源响应——三席审查 I-2）；
+  // 网络分支先行清空热门行/分组（切源窗口不残留旧源标签可点，拍板 4「未就绪仅默认 chip」——三席审查 I-1）
+  const loadTags = (source: Source) => {
+    const seq = ++tagsSeqRef.current
+    const cached = songlistState.tags[source]
+    if (cached) {
+      applyTagInfo(cached)
+      return
+    }
+    setHotTags([])
+    setTagGroups([])
+    setTagsState('loading')
+    void getTags(source).then(tagInfo => {
+      if (seq != tagsSeqRef.current) return
+      applyTagInfo(tagInfo)
+    }).catch(() => {
+      if (seq != tagsSeqRef.current) return
+      setHotTags([])
+      setTagGroups([])
+      setTagsState('error')
+      toast(t('load_failed_tip'))
+    })
+  }
 
   useEffect(() => {
-    void getSongListSetting().then(info => {
-      songlistInfo.current.source = info.source
-      songlistInfo.current.sortId = info.sortId
-      songlistInfo.current.tagId = info.tagId
-      headerBarRef.current?.setSource(info.source, info.sortId, info.tagName, info.tagId)
-      listRef.current?.loadList(info.source, info.sortId, info.tagId)
+    void getSongListSetting().then(({ source, sortId, tagId, tagName }) => {
+      infoRef.current = { source, sortId, tagId, tagName }
+      setInfoState(infoRef.current)
+      initList()
+      void loadTags(source)
     })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
-
-  const handleSortChange: HeaderBarProps['onSortChange'] = (id) => {
-    songlistInfo.current.sortId = id
-    void saveSongListSetting({ sortId: id })
-    listRef.current?.loadList(songlistInfo.current.source, id, songlistInfo.current.tagId)
-  }
-
-  const handleTagChange: HeaderBarProps['onTagChange'] = (name, id) => {
-    songlistInfo.current.tagId = id
-    void saveSongListSetting({ tagName: name, tagId: id })
-    listRef.current?.loadList(songlistInfo.current.source, songlistInfo.current.sortId, id)
-  }
-
-  const handleSourceChange: HeaderBarProps['onSourceChange'] = (source) => {
-    songlistInfo.current.source = source
-    songlistInfo.current.tagId = ''
-    songlistInfo.current.sortId = songlistState.sortList[source]![0].id
-    void saveSongListSetting({ sortId: songlistInfo.current.sortId, source, tagId: '', tagName: '' })
-    headerBarRef.current?.setSource(source, songlistInfo.current.sortId, '', songlistInfo.current.tagId)
-    listRef.current?.loadList(source, songlistInfo.current.sortId, songlistInfo.current.tagId)
-  }
 
   return (
     <View style={styles.container}>
       <HeaderBar
-        ref={headerBarRef}
-        onSortChange={handleSortChange}
-        onTagChange={handleTagChange}
-        onSourceChange={handleSourceChange}
+        source={info.source}
+        tagName={info.tagName}
+        sortId={info.sortId}
+        activeTagId={info.tagId}
+        tagGroups={tagGroups}
+        tagsState={tagsState}
+        onSelectTag={handleSelectTag}
+        onSelectSort={handleSelectSort}
+        onSwitchSource={handleSwitchSource}
+        onRetryTags={() => { loadTags(infoRef.current.source) }}
+        onEnsureTags={() => { if (tagsState != 'loading') loadTags(infoRef.current.source) }}
       />
-      <List ref={listRef} />
+      <HotTagRow
+        hotTags={hotTags}
+        activeTagId={info.tagId}
+        onSelect={handleSelectTag}
+      />
+      <Songlist ref={listRef} onRefresh={handleRefresh} onLoadMore={handleLoadMore} />
     </View>
   )
 }
 
-const styles = StyleSheet.create({
+const styles = createStyle({
   container: {
     position: 'relative',
     flex: 1,
   },
 })
-

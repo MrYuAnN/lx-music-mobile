@@ -2,21 +2,21 @@ import { useRef, useState, useMemo, forwardRef, useImperativeHandle } from 'reac
 import { FlatList, View, RefreshControl, type FlatListProps } from 'react-native'
 
 import ListItem from './ListItem'
-// import { navigations } from '@/navigation'
 import { type ListInfoItem } from '@/store/songlist/state'
 import { useLayout } from '@/utils/hooks'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-import { scaleSizeW } from '@/utils/pixelRatio'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<ListInfoItem>
 
-// const MAX_WIDTH = scaleSizeW(110)
-const MIN_WIDTH = scaleSizeW(110)
-const GAP = scaleSizeW(20)
+// 卡片网格（拍板 8）：两列大卡为本品基准（业界手机端主流），内容区 >560dp 断点升三列
+// （平板自适应，复用项目内 560 宽度档）。numColumns 变更经 key 重挂（横竖屏旋转安全）。
+const THREE_COL_BREAKPOINT = 560
+const COLUMN_GAP = SPACING.s14
+const GRID_PADDING_H = SPACING.s16
 
 export interface ListProps {
   onRefresh: () => void
@@ -26,6 +26,7 @@ export interface ListProps {
 export type Status = 'loading' | 'refreshing' | 'end' | 'error' | 'idle'
 
 export interface ListType {
+  // showSource：搜索页聚合模式传 true 显示源角标；歌单页不传（恒 false）
   setList: (list: ListInfoItem[], showSource?: boolean) => void
   setStatus: (val: Status) => void
 }
@@ -37,11 +38,9 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
   const [status, setStatus] = useState<Status>('idle')
   const { onLayout, width } = useLayout()
   const theme = useTheme()
-  // console.log('render songlist')
 
   useImperativeHandle(ref, () => ({
     setList(list, showSource = false) {
-      // rawListRef.current = list
       setList(list)
       setShowSource(showSource)
     },
@@ -65,9 +64,6 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id
-  // const getItemLayout: FlatListType['getItemLayout'] = (data, index) => {
-  //   return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
-  // }
   const refreshControl = useMemo(() => (
     <RefreshControl
       colors={[theme['c-primary']]}
@@ -99,31 +95,14 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
     )
   }, [onLoadMore, status])
 
-
-  // const itemWidth = useMemo(() => {
-  //   let itemWidth = Math.max(Math.trunc(width * 0.125), MAX_WIDTH)
-  //   // if (itemWidth < )
-  // }, [width])
-  // const computedItemWidth = useMemo(() => {
-  //   let w = width - GAP
-  //   let n = width / (MIN_WIDTH + GAP)
-  //   if (n > 10) n = 10
-  //   return Math.floor(w / n)
-  // }, [width])
-  // console.log(Math.trunc(width * 0.125), itemWidth)
-  // console.log(itemWidth, MIN_WIDTH, GAP, width)
   const rowInfo = useMemo(() => {
-    let w = width - GAP
-    let n = width / (MIN_WIDTH + GAP)
-    if (n > 10) n = 10
-    let computedItemWidth = Math.floor(w / n)
-    const num = Math.max(Math.floor(width / computedItemWidth), 2)
+    const num = width > THREE_COL_BREAKPOINT ? 3 : 2
     return {
       num,
-      width: (width - GAP) / num,
+      width: Math.floor((width - GRID_PADDING_H * 2 - COLUMN_GAP * (num - 1)) / num),
     }
   }, [width])
-  // console.log(rowNum)
+  // 末行白块填充（占位防列错位，沿用现状口径）
   const list = useMemo(() => {
     const list = [...currentList]
     let whiteItemNum = (list.length % rowInfo.num)
@@ -142,7 +121,6 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
     }
     return list
   }, [currentList, rowInfo])
-  // console.log(listInfo.list.map((item) => item.id))
 
   return (
     <View style={styles.container} onLayout={onLayout}>
@@ -154,7 +132,7 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
                 key={String(rowInfo.num)}
                 ref={flatListRef}
                 style={styles.list}
-                columnWrapperStyle={{ justifyContent: 'space-evenly' }}
+                columnWrapperStyle={{ gap: COLUMN_GAP }}
                 numColumns={rowInfo.num}
                 data={list}
                 maxToRenderPerBatch={4}
@@ -209,8 +187,8 @@ const styles = createStyle({
   },
   list: {
     flex: 1,
-    paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s10,
+    paddingLeft: GRID_PADDING_H,
+    paddingRight: GRID_PADDING_H,
   },
   footer: {
     textAlign: 'center',

@@ -1,7 +1,6 @@
 import { setNavActiveId } from '@/core/common'
 import Event from './Event'
 import commonState from '@/store/common/state'
-import { type Source as SonglistSource } from '@/store/songlist/state'
 import { type SearchType } from '@/store/search/state'
 
 
@@ -180,18 +179,6 @@ export class AppEvent extends Event {
         this.emit('jumpListPosition')
       }, 200)
     }
-  }
-
-  showSonglistTagList(source: SonglistSource, activeId: string) {
-    this.emit('showSonglistTagList', source, activeId)
-  }
-
-  hideSonglistTagList() {
-    this.emit('hideSonglistTagList')
-  }
-
-  songlistTagInfoChange(name: string, id: string) {
-    this.emit('songlistTagInfoChange', name, id)
   }
 
   selectSyncMode(mode: LX.Sync.ModeType) {

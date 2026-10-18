@@ -10,6 +10,7 @@ export interface SonglistProps {
   onLoadMore: ListProps['onLoadMore']
 }
 export interface SonglistType {
+  // showSource：搜索页聚合模式传 true 显示源角标（活参数）；歌单页不传（恒 false，顶栏胶囊已示源）
   setList: (list: ListInfoItem[], showSource?: boolean) => void
   setStatus: (val: Status) => void
 }
@@ -22,7 +23,7 @@ export default forwardRef<SonglistType, SonglistProps>(({
   // const loadingMaskRef = useRef<LoadingMaskType>(null)
 
   useImperativeHandle(ref, () => ({
-    setList(list, showSource) {
+    setList(list, showSource = false) {
       listRef.current?.setList(list, showSource)
     },
     setStatus(val) {
