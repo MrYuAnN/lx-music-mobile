@@ -62,6 +62,9 @@ const defaultSetting: LX.AppSetting = {
   'list.isShowInterval': true,
   'list.isSaveScrollLocation': true,
   'list.addMusicLocationType': 'top',
+  // 「我喜欢」自定义封面（歌单封面机制批②，方案 §2.2-1）：LOVE 无自动轨，非空即自定义；
+  // 存本地文件路径，不随备份导出（ListSaveInfo 仅列表数据）——恢复回红心为预期行为
+  'list.lovePic': null,
 
   'download.fileName': '歌名 - 歌手',
   'download.quality': '320k',

@@ -8,6 +8,7 @@ import { readMetadata, scanAudioFiles, type MusicMetadataFull } from '@/utils/lo
 import settingState from '@/store/setting/state'
 import BackgroundTimer from 'react-native-background-timer'
 import { type FileType } from '@/utils/fs'
+import { cleanListCoverFiles } from '@/utils/playlistCoverGen'
 
 // 删除歌单（确认→移除）：返回是否实际删除——调用方据此决定删除当前查看的列表后返回上一屏
 // （真机反馈轮 5：详情页删当前歌单不再落默认歌单页）
@@ -21,6 +22,8 @@ export const handleRemove = (listInfo: LX.List.UserListInfo) => {
     void removeUserList([listInfo.id]).catch(() => {
       toast(global.i18n.t('load_failed_tip'))
     })
+    // 封面文件清理（歌单封面机制批③，方案 §2.3-2）：两轨全清，失败静默
+    void cleanListCoverFiles(listInfo.id)
     return true
   })
 }

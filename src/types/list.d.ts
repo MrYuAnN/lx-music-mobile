@@ -8,6 +8,9 @@ declare namespace LX {
       sourceListId?: string
       // 收藏歌单封面（2026-10-16）：收藏/懒加载补齐时落库，缺失回退渐变占位
       pic?: string
+      // 封面自定义标记（2026-10-18 歌单封面机制批①）：用户手动设置后冻结自动生成轨，
+      // 自动生成链路写回前检查此标记丢弃结果；undefined 保旧同 pic（批0 同款契约）
+      picCustom?: boolean
       // 收藏时间（2026-10-16 歌单页重构批0）：仅收藏时记录；存量无值降级显示（不可回源）
       collectTime?: number
       // position?: number

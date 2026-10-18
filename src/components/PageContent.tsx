@@ -29,12 +29,23 @@ interface Props {
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
 // 歌单页静态氛围（QQ 式两段式，hero v2 拍板）：上半=封面背景图，下半=封面采样主色
-// 延伸（clampTint 按主题钳亮度的 displayTint 铺满整页），交界渐变融化；播放页维持重模糊+均匀纱罩
+// 延伸（displayTint 铺满整页，钳制按分支取 clampTint/refineTint，见下方治理批注释），交界渐变融化；播放页维持重模糊+均匀纱罩
 // 2026-10-18 真机反馈轮 3：blur 6→3、纱罩渐变起点 0.55→0.72——Android blurRadius 同值观感重于 iOS，
 // 叠纱罩后封面糊到不可辨识，顶部段多露原貌
 // 2026-10-18 真机反馈轮 4：blur 3→0（原图沉浸，网易云/QQ 歌单头式）——轻糊中间态两头不靠，
 // 既无原图辨识度又无重模糊氛围感；辨识度交原图承担，可读性交渐变纱罩承担
 const STATIC_BLUR_RADIUS = 0
+
+// 2026-10-18 可读性治理轮 5（grilling 四拍板+三席方案审查 0C/4I/9S）：blur=0 后鲜艳封面暴露两短板——
+// 取色只钳亮度不钳饱和度（高饱和大红铺满页）、纱罩 0.72 起坡致 hero 顶部 72% 零遮罩（行压锐利原图）。
+// 纱罩改双层：中性主题纱（亮白/暗黑，行压区兜底不依赖单张封面明暗）+ tint 三停渐变（顶段非零浓度→
+// 起坡→hero 底全实融）。亮色纱 0.35 低于 Material light scrim 官方区间下限（40%），有意偏离——
+// 轮 4 辨识度优先拍板+仿真 A 组（图区最差对比 亮/暗：vivid 5.2/6.2、neon 3.6/5.4、dark 4.2/10.6、
+// white 11.5/3.2、teal 6.8/5.3）；首屏不压图，滚动停止后行可停驻顶部弱纱段，极端对角封面不保
+// WCAG 4.5（业界同样不保，验收口径=可辨认），真机不可接受时预案=调 C 组（veil.40/top.45/onset.40）
+const STATIC_SCRIM_ONSET = 0.45
+const STATIC_TOP_ALPHA = 0.4
+const STATIC_VEIL_OPACITY = 0.35
 
 // 主色亮度钳制：暗色模式压亮度上限防刺眼，亮色模式抬下限防发灰（AM 氛围层观感）
 const TINT_LIGHTNESS_RANGE = {
@@ -89,6 +100,24 @@ const clampTint = (hex: string, isDark: boolean): string => {
   const [min, max] = isDark ? TINT_LIGHTNESS_RANGE.dark : TINT_LIGHTNESS_RANGE.light
   const hsl = rgbToHsl(hexToRgb(hex))
   hsl[2] = Math.min(Math.max(hsl[2], min), max)
+  return hslToHex(hsl)
+}
+
+// 歌单页静态氛围取色治理（轮 5 拍板）：饱和度钳上限 + 亮度直接取对主题文字对比度最优端点
+// （亮色黑字→推浅、暗色白字→推深，业界「固定前景、管住背景」口径）。播放页分支不走此路径
+// （保留 clampTint 原亮度钳制，播放页零变化）。三数值无业界同构先例（M3 HCT tone≠HSL L），
+// 本产品自定=对比度与 tint 保色的平衡点（纯白/纯黑数学最优但杀色相）。回归锚（同实现 WCAG 仿真，
+// dominant→亮色输出/对黑字对比 | 暗色输出/对白字对比，改动三常量前先核对不回退 4.5:1 底线）：
+//   蜘蛛侠红(227,23,10)→#d59490/7.09 | #6f2e2a/9.58    近白(240,240,238)→#b7b7ae/8.71 | #515148/7.68
+//   teal(24,117,118)→#90d4d5/10.52 | #2a6e6f/5.65      霓虹底(8,40,10)→#90d594/10.16 | #2a6f2e/5.90
+const TINT_SATURATION_CAP = 0.45
+const TINT_LIGHT_ENDPOINT = 0.7
+const TINT_DARK_ENDPOINT = 0.3
+
+const refineTint = (hex: string, isDark: boolean): string => {
+  const hsl = rgbToHsl(hexToRgb(hex))
+  hsl[1] = Math.min(hsl[1], TINT_SATURATION_CAP)
+  hsl[2] = isDark ? TINT_DARK_ENDPOINT : TINT_LIGHT_ENDPOINT
   return hslToHex(hsl)
 }
 
@@ -171,7 +200,8 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
       setDisplayTint(null)
       return
     }
-    const next = clampTint(tint, theme.isDark)
+    // 播放页保留原亮度钳制（分支隔离，displayTint 产色零变化）；静态歌单页走治理后端点钳制
+    const next = coverBg ? clampTint(tint, theme.isDark) : refineTint(tint, theme.isDark)
     latestTintRef.current = next
     tintAlpha.stopAnimation()
     if (!displayTint) {
@@ -188,7 +218,7 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
       tintAlpha.stopAnimation()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tint, theme.isDark])
+  }, [tint, theme.isDark, coverBg])
 
   // 常规页面：AM 式纯色底（c-app-background），无主题背景图/动态背景
   const solidComponent = (
@@ -197,9 +227,9 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
     </View>
   )
 
-  // 歌单页 QQ 式两段式（拍板 2026-10-17）：整页先铺「采样主色」=下半的采样延伸（displayTint
-  // 经 clampTint 按主题钳亮度，文字对比有保障），上半叠封面背景图（轻模糊），图底以
-  // 「透明→采样主色」渐变融化，无分界线。播放页维持原结构。
+  // 歌单页 QQ 式两段式（拍板 2026-10-17，可读性治理轮 5 修订）：整页先铺「采样主色」=下半的采样
+  // 延伸（displayTint 经 refineTint 治理：饱和度钳制+方向性亮度端点，文字对比有保障），上半叠封面
+  // 原图（blur=0，轮 4），图底以「中性主题纱+tint 三停渐变」双层纱融化，无分界线。播放页维持原结构。
   // 首帧淡入（真机反馈 2026-10-17）：取色异步到位瞬间页面底色白→采样色硬切闪变——采样色层
   // 以 opacity 淡入；封面图 prefetch 完成后 onLoad 淡入接管，消弹入感
   const bg = theme['c-content-background']
@@ -234,9 +264,13 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
         blurRadius={STATIC_BLUR_RADIUS}
         onLoad={() => { setHeroImgLoaded(true) }}
       >
+        <View
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.isDark ? '#000000' : '#ffffff', opacity: STATIC_VEIL_OPACITY }}
+          pointerEvents="none"
+        />
         <LinearGradient
-          colors={[withAlpha(sampleColor, 0), sampleColor]}
-          locations={[0.72, 1]}
+          colors={[withAlpha(sampleColor, STATIC_TOP_ALPHA), withAlpha(sampleColor, STATIC_TOP_ALPHA), sampleColor]}
+          locations={[0, STATIC_SCRIM_ONSET, 1]}
           style={StyleSheet.absoluteFill}
         />
       </ImageBackground>

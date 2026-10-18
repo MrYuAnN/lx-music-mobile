@@ -45,7 +45,8 @@ export const hash = async(path: string, algorithm: HashAlgorithm) => FileSystem.
 export const readFile = async(path: string, encoding?: Encoding) => FileSystem.readFile(path, encoding)
 
 
-// export const copyFile = async(fromPath: string, toPath: string) => FileSystem.cp(fromPath, toPath)
+// 启用（歌单封面机制批③）：封面文件跨目录复制（克隆歌单本地封面副本隔离，方案 §2.3-1）
+export const copyFile = async(fromPath: string, toPath: string) => FileSystem.cp(fromPath, toPath)
 
 export const moveFile = async(fromPath: string, toPath: string) => FileSystem.mv(fromPath, toPath)
 export const gzipFile = async(fromPath: string, toPath: string) => FileSystem.gzipFile(fromPath, toPath)

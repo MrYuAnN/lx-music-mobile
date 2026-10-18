@@ -19,6 +19,10 @@ import CreateListDialog, { type CreateListDialogType } from '@/components/common
 import { SPACING } from '@/config/spacing'
 import { hapticImpactLight } from '@/utils/haptic'
 import { prefetchAmbientColor } from '@/utils/ambientColor'
+import { syncShelfCovers } from '@/utils/playlistCoverGen'
+import { existsFile } from '@/utils/fs'
+import { setLoveCover } from '@/core/loveCover'
+import { useSettingValue } from '@/store/setting/hook'
 
 // AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
 // 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
@@ -155,13 +159,26 @@ const RecentPlayCard = () => {
 
 // 「我喜欢的音乐」独立卡（C 案，doc/plans/home-music-section-c.md）：与其他卡片同底色，红心图标即辨识（真机反馈 2026-10-16 拍板）。
 // 播放键语义=固定第一首开始，顺序完全跟随播放页播放模式设置（2026-10-16 用户拍板，无隐藏随机）
+// 自定义封面（歌单封面机制批②）：有 lovePic 时红心让渡为 84dp 方图；文件缺失兜底清键回红心
+// （lovePic 指向 DocumentDir 文件，清数据/换机后丢失——方案审查 I-a/N2 降级路径）
 const LoveCard = ({ count, onOpen, onPlay }: { count: number, onOpen: () => void, onPlay: () => void }) => {
   const theme = useTheme()
   const t = useI18n()
+  const lovePic = useSettingValue('list.lovePic')
+  useEffect(() => {
+    if (!lovePic) return
+    void existsFile(lovePic).then(ok => {
+      if (!ok) void setLoveCover(null)
+    }).catch(() => {})
+  }, [lovePic])
   const canPlay = count > 0
   return (
     <TouchableOpacity style={{ ...styles.loveCard, backgroundColor: theme['c-content-background'] }} activeOpacity={0.7} onPress={onOpen}>
-      <Icon name="love-fill" size={30} color={theme['c-primary']} />
+      {
+        lovePic
+          ? <Image url={lovePic} style={styles.loveCover} />
+          : <Icon name="love-fill" size={30} color={theme['c-primary']} />
+      }
       <View style={styles.loveInfo}>
         <Text style={styles.loveName} size={15} color={theme['c-font']} numberOfLines={1}>{t('list_name_love')}</Text>
         <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{t('music_count', { count })}</Text>
@@ -436,6 +453,12 @@ const MyMusic = () => {
   // shelf = 默认歌单（恒首位）+ userLists 原序混排（自有/收藏不区分，收藏带来源角标）
   const shelfLists = useMemo(() => [lists[0], ...lists.slice(2)], [lists])
 
+  // 自建歌单自动封面补漏（歌单封面机制批①）：pic 三态分流+会话级退避在 gen 模块内，
+  // 此处仅随 shelf 内容变化触发检查
+  useEffect(() => {
+    syncShelfCovers(shelfLists)
+  }, [shelfLists])
+
   const handlePlayLove = () => {
     if (!loveCount) return
     void playList(LIST_IDS.LOVE, 0)
@@ -547,6 +570,12 @@ const styles = StyleSheet.create({
     paddingRight: SPACING.s12,
     borderRadius: 14,
     overflow: 'hidden',
+  },
+  // 「我喜欢」自定义封面（歌单封面机制批②）：横条卡内嵌 84dp 方图，红心位让渡
+  loveCover: {
+    width: 84,
+    height: 84,
+    borderRadius: 10,
   },
   loveInfo: {
     flex: 1,

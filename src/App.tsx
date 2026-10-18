@@ -18,6 +18,7 @@ import RootStack from '@/navigation/RootStack'
 import { navigationRef, handleNavigationStateChange } from '@/navigation'
 import { CoverFlyHost } from '@/navigation/transitions/coverFly'
 import { VersionModalHost, SyncModeModalHost } from '@/navigation/ModalHosts'
+import PlaylistCoverGenHost from '@/components/common/PlaylistCoverGenHost'
 import PlayerBar from '@/components/player/PlayerBar'
 
 // 单根组件（N1：RNN NavigationActivity/setRoot 体系 → AppRegistry 常驻根）：
@@ -96,6 +97,7 @@ const AppRoot = () => {
           : null
       }
       <CoverFlyHost />
+      <PlaylistCoverGenHost />
       <StatusBar translucent backgroundColor="transparent" barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
     </View>
   )

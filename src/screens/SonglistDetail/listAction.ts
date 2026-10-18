@@ -6,6 +6,7 @@ import { LIST_IDS } from '@/config/constant'
 import listState from '@/store/list/state'
 import { confirmDialog, toMD5, toast } from '@/utils/tools'
 import { type Source } from '@/store/songlist/state'
+import { cleanListCoverFiles } from '@/utils/playlistCoverGen'
 
 // 在线歌单落临时队列的队列 id（收藏态判定与主胶囊播放态判定共用，Header 同款）
 export const getListId = (id: string, source: Source) => `${source}__${id}`
@@ -83,6 +84,8 @@ export const handleUncollect = (targetList: LX.List.UserListInfo) => {
     }).catch(() => {
       toast(global.i18n.t('load_failed_tip'))
     })
+    // 封面文件清理（歌单封面机制批③，方案 §2.3-2）：收藏歌单通常无本地封面，防御性清理，失败静默
+    void cleanListCoverFiles(targetList.id)
     return true
   })
 }

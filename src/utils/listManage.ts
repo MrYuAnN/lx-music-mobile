@@ -41,6 +41,7 @@ const createUserList = ({
   source,
   sourceListId,
   pic,
+  picCustom,
   collectTime,
   locationUpdateTime,
 }: LX.List.UserListInfo, position: number) => {
@@ -51,6 +52,7 @@ const createUserList = ({
       source,
       sourceListId,
       pic,
+      picCustom,
       collectTime,
       locationUpdateTime,
     })
@@ -61,6 +63,7 @@ const createUserList = ({
       source,
       sourceListId,
       pic,
+      picCustom,
       collectTime,
       locationUpdateTime,
     })
@@ -73,6 +76,7 @@ const updateList = ({
   source,
   sourceListId,
   pic,
+  picCustom,
   collectTime,
   // meta,
   locationUpdateTime,
@@ -88,11 +92,12 @@ const updateList = ({
     default: {
       index = userLists.findIndex(l => l.id == id)
       if (index < 0) break
-      // pic/collectTime 仅在新值存在时覆盖（undefined 保旧）：导入/备份恢复等
-      // overwrite 链路不带这两个字段，显式 undefined 会抹掉已落库值（审查 A1/I-2）
+      // pic/collectTime/picCustom 仅在新值存在时覆盖（undefined 保旧）：导入/备份恢复等
+      // overwrite 链路不带这几个字段，显式 undefined 会抹掉已落库值（审查 A1/I-2）
       const prev = userLists[index]
       const merged: LX.List.UserListInfo = { ...prev, name, source, sourceListId, locationUpdateTime }
       if (pic != null) merged.pic = pic
+      if (picCustom != null) merged.picCustom = picCustom
       if (collectTime != null) merged.collectTime = collectTime
       userLists.splice(index, 1, merged)
       break

@@ -27,6 +27,8 @@ export interface InputSheetProps {
   confirmText?: string
   onConfirm?: (text: string) => void | Promise<void>
   onHide?: () => void
+  /** 可选扩展位（渲染于输入框上方）：新建歌单面板的封面选择位等（歌单封面机制批②） */
+  children?: React.ReactNode
 }
 
 export interface InputSheetType {
@@ -43,6 +45,7 @@ const InputSheet = ({
   confirmText,
   onConfirm,
   onHide,
+  children,
 }: InputSheetProps, ref: React.Ref<InputSheetType>) => {
   const theme = useTheme()
   const t = useI18n()
@@ -138,6 +141,7 @@ const InputSheet = ({
       avoidKeyboard={imeAvoid}
     >
       <View style={styles.container}>
+        {children}
         <Input
           ref={inputRef}
           style={styles.input}

@@ -18,6 +18,7 @@ interface Props {
   onAddMusic: (listInfo: LX.List.MyListInfo) => void
   onCloneLocal: (listInfo: LX.List.UserListInfo) => void
   onRename: (listInfo: LX.List.UserListInfo) => void
+  onEditLoveCover: () => void
   onSort: (listInfo: LX.List.MyListInfo) => void
   onDuplicateMusic: (listInfo: LX.List.MyListInfo) => void
   onImportFile: (listInfo: LX.List.MyListInfo, index: number) => void
@@ -53,10 +54,15 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
 
   const handleSetMenu = (listInfo: LX.List.MyListInfo) => {
     if (listInfo.id == LIST_IDS.DEFAULT || listInfo.id == LIST_IDS.LOVE) {
-      setMenus([
+      const menus: ActionSheetItem[] = [
         { action: 'add_music', label: t('list_manage_add_music'), icon: 'add-music', badge: t('badge_new') },
-        { action: 'export', label: t('list_export'), icon: 'share' },
-      ])
+      ]
+      // 「我喜欢」封面编辑入口（歌单封面机制批②，方案 §2.2-1）；DEFAULT 不加（非用户创作物拍板）
+      if (listInfo.id == LIST_IDS.LOVE) {
+        menus.push({ action: 'edit_love_cover', label: t('list_love_edit_cover'), icon: 'edit-metadata' })
+      }
+      menus.push({ action: 'export', label: t('list_export'), icon: 'share' })
+      setMenus(menus)
       return
     }
     const userList = listInfo as LX.List.UserListInfo
@@ -74,8 +80,9 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
     }
     setMenus([
       { action: 'add_music', label: t('list_manage_add_music'), icon: 'add-music', badge: t('badge_new') },
-      { action: 'rename', label: t('list_rename'), icon: 'edit-metadata' },
-      { action: 'sort', label: t('list_sort'), icon: 'change-position' },
+        // 自建「重命名」升级「编辑歌单」（歌单封面机制批②）；收藏分支保留「重命名」（仅名字形态，拍板 S-h）
+        { action: 'rename', label: t('list_edit_list'), icon: 'edit-metadata' },
+        { action: 'sort', label: t('list_sort'), icon: 'change-position' },
       { action: 'duplicateMusic', label: t('lists__duplicate'), icon: 'copy-name' },
       { action: 'import', label: t('list_import'), icon: 'download-2' },
       { action: 'local_file', disabled: !notFetching, label: t('list_select_local_file'), icon: 'move-to' },
@@ -96,6 +103,9 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
         break
       case 'rename':
         props.onRename(listInfo as LX.List.UserListInfo)
+        break
+      case 'edit_love_cover':
+        props.onEditLoveCover()
         break
       case 'sort':
         props.onSort(listInfo)

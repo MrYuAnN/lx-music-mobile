@@ -12,6 +12,9 @@ import { type Metadata } from '@/components/MetadataEditModal'
 import musicSdk from '@/utils/musicSdk'
 import { getListMusicSync, isListContentReadonly } from '@/utils/listManage'
 import { clearMusicUrlByMusic } from '@/utils/data'
+import { copyFile } from '@/utils/fs'
+import { coversDirPath } from '@/utils/playlistCoverGen'
+import { customCoversDirPath } from '@/utils/playlistCoverEdit'
 
 // 收藏歌单只读判定单源在 utils/listManage.isListContentReadonly（core 内容写守卫同源）
 export { isListContentReadonly as isReadonlyList }
@@ -23,13 +26,30 @@ export const guardWritableList = (listId: string) => {
   return false
 }
 
-// 克隆收藏歌单为自建歌单（拍板 #10：不带 source/sourceListId，pic 沿用，名「· 副本」）
+// 克隆收藏歌单为自建歌单（拍板 #10：不带 source/sourceListId，pic 沿用，名「· 副本」）。
+// pic 为本地封面文件（自动轨/自定义轨，歌单封面机制批③）：复制为新 id 命名再继承——
+// 防源后续重生成/移除封面波及副本（方案 §2.3-1）；复制失败降级共享原路径（经自动轨自愈兜底）；
+// picCustom 随 pic 语义同步继承（副本=完全复制心智）
 export const handleCloneList = async(listInfo: LX.List.UserListInfo) => {
   const list = await getListMusics(listInfo.id)
+  let pic = listInfo.pic
+  if (pic && pic.startsWith('/')) {
+    try {
+      const dir = pic.startsWith(customCoversDirPath) ? customCoversDirPath : coversDirPath
+      const ext = pic.lastIndexOf('.') > 0 ? pic.substring(pic.lastIndexOf('.')) : '.png'
+      const fileName = `userlist_${Date.now()}${ext}`
+      const target = `${dir}/${fileName}`
+      await copyFile(pic.replace(/^file:\/\//, ''), target)
+      pic = target
+    } catch {
+      /* 降级共享原路径 */
+    }
+  }
   await createList({
     name: global.i18n.t('list_clone_name', { name: listInfo.name }),
     list,
-    pic: listInfo.pic,
+    pic,
+    picCustom: listInfo.picCustom,
   })
   toast(global.i18n.t('list_clone_success'))
 }

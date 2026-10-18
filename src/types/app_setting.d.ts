@@ -298,6 +298,12 @@ declare global {
       'list.addMusicLocationType': AddMusicLocationType
 
       /**
+       * 「我喜欢」自定义封面（歌单封面机制批②）：本地文件路径，null=红心占位；
+       * LOVE 无自动轨，非空即自定义；不随备份导出
+       */
+      'list.lovePic': string | null
+
+      /**
        * 文件命名方式（分享文案用，历史键归属分享场景）
        */
       'download.fileName': '歌名 - 歌手' | '歌手 - 歌名' | '歌名'

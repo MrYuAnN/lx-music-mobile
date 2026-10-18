@@ -26,6 +26,7 @@ import { addDownloadTask } from '@/core/download'
 import { playList, togglePlay } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
+import { useSettingValue } from '@/store/setting/hook'
 import { useIsPlay, usePlayMusicInfo } from '@/store/player/hook'
 import PlaylistHeader from '@/components/common/PlaylistHeader'
 import PlaylistTopBar from '@/components/common/PlaylistTopBar'
@@ -60,6 +61,8 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
   const activeListId = useActiveListId()
   const lists = useMyList()
   const fetching = useListFetching(activeListId)
+  // 「我喜欢」自定义封面（歌单封面机制批②）：LOVE 详情页头部与氛围底共用此响应式取值
+  const lovePic = useSettingValue('list.lovePic')
   const isPlay = useIsPlay()
   const playMusicInfo = usePlayMusicInfo()
   // 曲数/列表元数据随事件刷新（HomeSections MyMusic 同款机制）
@@ -217,7 +220,8 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
     <PlaylistHeader
       title={currentListName}
       subtitle={subtitle}
-      pic={(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
+      // 「我喜欢」封面走 lovePic setting 单键（歌单封面机制批②，updateList 对 LOVE 拦截）
+      pic={activeListId == LIST_IDS.LOVE ? (lovePic ?? undefined) : (activeListInfo as LX.List.UserListInfo | undefined)?.pic}
       // 收藏闭环（2026-10-18 拍板）：仅收藏克隆歌单显示实心红心，取消=确认后删本地克隆；
       // 自建/内置无红心（业界定式，管理走 ⋮）
       showCollectHeart={isCollectList}
@@ -235,7 +239,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       onShufflePlay={handlePlayShuffle}
       onScrollToTop={hancelScrollToTop}
     />
-  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, isCollectList, handlePlayAll, handlePlayShuffle, hancelScrollToTop, onBack])
+  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, isCollectList, lovePic, handlePlayAll, handlePlayShuffle, hancelScrollToTop, onBack])
 
 
   return (
@@ -308,6 +312,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
         onAddMusic={info => { addMusicSheetRef.current?.show(info.id) }}
         onCloneLocal={info => { handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) }) }}
         onRename={info => listNameEditRef.current?.show(info)}
+        onEditLoveCover={() => listNameEditRef.current?.showLove()}
         onSort={info => listMusicSortRef.current?.show(info)}
         onDuplicateMusic={info => duplicateMusicRef.current?.show(info)}
         onImportFile={(info, index) => listImportExportRef.current?.import(info, index)}
