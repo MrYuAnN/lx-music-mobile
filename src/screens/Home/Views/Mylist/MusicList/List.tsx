@@ -9,7 +9,6 @@ import { getListPosition, getListPrevSelectId, saveListPosition } from '@/utils/
 import { getListMusics, setActiveList } from '@/core/list'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { createStyle, getRowInfo } from '@/utils/tools'
-import { useWindowSize } from '@/utils/hooks'
 import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
@@ -28,8 +27,12 @@ export interface ListProps {
   onMuiltSelectMode: () => void
   onSelectAll: (isAll: boolean) => void
   header?: React.ReactElement
-  /** 顶栏滚动进度（QQ 式渐显 D2）：传入时 onScroll 走 Animated.event 直驱（native driver） */
+  /** 顶栏滚动进度+氛围图块背板位移（QQ 式渐显 D2）：传入时 onScroll 走 Animated.event 直驱（native driver） */
   scrollYAnimated?: Animated.Value
+  /** 程序化落位（位置恢复/切列表入口/跳播放位）回调：页面层重置顶栏入场锁定 */
+  onProgrammaticScroll?: () => void
+  /** 首次真实滚动回调（|offset-最近落位值|>1dp 判定，落位合成事件不相交）：页面层解锁顶栏 */
+  onFirstRealScroll?: () => void
 }
 export interface ListType {
   setIsMultiSelectMode: (isMultiSelectMode: boolean) => void
@@ -53,11 +56,15 @@ const usePlayIndex = () => {
 }
 
 
-const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll, header, scrollYAnimated }, ref) => {
+const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll, header, scrollYAnimated, onProgrammaticScroll, onFirstRealScroll }, ref) => {
   // const t = useI18n()
   const flatListRef = useRef<FlatList>(null)
   const [currentList, setList] = useState<LX.List.ListMusics>([])
   const listFirstScrollRef = useRef(false)
+  // 最近一次程序化落位偏移（syncScrollY 维护）：首滚解锁判定基准（氛围滚动批 2026-10-19）
+  const lastProgrammaticOffsetRef = useRef(0)
+  // 首滚上报 once 守卫（代码审查 S-3）：解锁后不再逐帧上抛，重锁时经 syncScrollY/切列表入口重新武装
+  const firstRealScrollReportedRef = useRef(false)
   const isMultiSelectModeRef = useRef(false)
   const selectModeRef = useRef<SelectMode>('single')
   const prevSelectIndexRef = useRef(-1)
@@ -66,7 +73,6 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const currentListIdRef = useRef('')
   const waitJumpListPositionRef = useRef(false)
   const rowInfo = useRef(getRowInfo())
-  const { height: winHeight } = useWindowSize()
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
   // console.log('render music list')
@@ -116,6 +122,12 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       if (currentListIdRef.current == id) return
       isUpdateingList = true
       setList([])
+      // 切列表入口即重置顶栏锁定（审查 I-A）：早于 setList([]) 塌缩 clamp 窗口，落位点重置兜底；
+      // 落位基准同步归零+重新武装首滚上报（代码审查 I-1/S-3）——塌缩 clamp 合成事件（offset≈0）
+      // 与基准差≤1 不得误解锁
+      onProgrammaticScroll?.()
+      lastProgrammaticOffsetRef.current = 0
+      firstRealScrollReportedRef.current = false
       currentListIdRef.current = id
       void Promise.all([getListMusics(id), getListPosition(id)]).then(([list, position]) => {
         requestAnimationFrame(() => {
@@ -132,8 +144,9 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
                 try {
                   const index = Math.floor(playerState.playInfo.playIndex / (rowInfo.current.rowNum ?? 1))
                   flatListRef.current?.scrollToIndex({ index, viewPosition: 0.3, animated: false })
-                  // viewPosition 0.3 的落点估算（±百 dp 内，顶栏渐显容差足够）
-                  syncScrollY(index * ITEM_HEIGHT + headerHeightRef.current - Math.floor((winHeight - ITEM_HEIGHT) * 0.3))
+                  // viewPosition 0.3 落点估算（背板对齐容差 ±百 dp 不可感；headerHeight/viewportHeight
+                  // 走 ref 取实测实时值——视口高实测防 winHeight 含 footer/多选条占用的恒定偏差，审查 I-2b）
+                  syncScrollY(index * ITEM_HEIGHT + headerHeightRef.current - Math.floor((viewportHeightRef.current - ITEM_HEIGHT) * 0.3))
                   return
                 } catch {}
               }
@@ -190,7 +203,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       global.app_event.off('myListMusicUpdate', handleChange)
       global.app_event.off('jumpListPosition', handleJumpPosition)
     }
-    // syncScrollY/winHeight：恢复落位估算一次性使用，refs/首渲染值即所需（挂载仅一次）
+    // 闭包仅 refs/模块方法/scrollYAnimated/落位回调（首渲染值即所需：回调闭包 setState 稳定，挂载仅一次）
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -261,22 +274,39 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   }
 
   const handleScroll = ({ nativeEvent }: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offset = nativeEvent.contentOffset.y
+    // 首滚解锁判定（I-B/I-4）：|offset-最近落位值|>1dp（RN JS 层单位即 dp）视为真实滚动；
+    // 落位合成事件 offset 与落位值相等不解锁；animated:true 程序化滚动（搜索定位/回顶/直跳）
+    // 视同真实滚动逐帧偏离自然解锁（scrollEdgeAppearance 近似先例，方案拍板 2026-10-19）。
+    // 判定置于 listFirstScrollRef 守卫之前，防「无合成事件平台」吞掉首次真实滚动
+    if (!firstRealScrollReportedRef.current && Math.abs(offset - lastProgrammaticOffsetRef.current) > 1) {
+      firstRealScrollReportedRef.current = true
+      onFirstRealScroll?.()
+    }
     if (listFirstScrollRef.current) {
       listFirstScrollRef.current = false
       return
     }
-    void saveListPosition(listState.activeListId, nativeEvent.contentOffset.y)
+    void saveListPosition(listState.activeListId, offset)
   }
 
-  // 恢复落位同步（审查 I-A/I-2）：程序化 animated:false 滚动不派发 onScroll，
-  // 顶栏 progress 须手动对齐，否则带保存偏移重进页面时顶栏态与内容脱节
+  // 程序化落位（位置恢复/跳播放位）同步：图块背板（translateY=-scrollY）与顶栏 progress 消费
+  // 真实偏移，须与 scrollToOffset/Index 落位对齐（氛围滚动批 2026-10-19）；落位值 ref 供上判定，
+  // 并通知页面层重置顶栏入场锁定+重新武装首滚上报（早间「入场顶栏隐藏」拍板的承接机制）
   const syncScrollY = (offset: number) => {
-    scrollYAnimated?.setValue(Math.max(0, offset))
+    const clamped = Math.max(0, offset)
+    lastProgrammaticOffsetRef.current = clamped
+    firstRealScrollReportedRef.current = false
+    scrollYAnimated?.setValue(clamped)
+    onProgrammaticScroll?.()
   }
 
 
   // 顶栏 progress 直驱（D2）：Animated.event native driver（不刷渲染）+ 原位置保存 listener；
-  // 选型注记（审查 S-5）：opacity 插值最小需求，RN Animated 足够，不引入 reanimated handler
+  // 选型注记（审查 S-5）：opacity 插值最小需求，RN Animated 足够，不引入 reanimated handler。
+  // 注：deps 仅 scrollYAnimated（既有结构，eslint warning 既有）——handleScroll 闭包固化首渲染
+  // 版本，其引用的回调（onFirstRealScroll/onProgrammaticScroll）须恒稳定（页面层传 setState
+  // 稳定闭包），改依赖非稳定值前先调整依赖
   const handleAnimatedScroll = useMemo(() => {
     if (!scrollYAnimated) return handleScroll
     return Animated.event(
@@ -307,8 +337,10 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const getkey: FlatListType['keyExtractor'] = item => item.id
   // 头部（歌单页头部随列表滚动，批②）：高度计入 getItemLayout offset，否则 scrollToIndex 定位漂移
   const [headerHeight, setHeaderHeight] = useState(0)
-  // 恢复落位同步用当前值（useEffect [] 闭包捕获首渲染 state 恒 0，ref 取实时值）
+  // 跳播放位落点估算用实时值（挂载仅一次 effect 闭包捕获首渲染 state 恒 0，ref 取实时值）
   const headerHeightRef = useRef(0)
+  // 列表视口高实测（FlatList onLayout，代码审查 I-2b）：估算修正项用视口高而非窗口高
+  const viewportHeightRef = useRef(0)
   const headerElement = header
     ? (
         <View onLayout={(e) => {
@@ -325,6 +357,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     <AnimatedFlatList
       ref={flatListRef}
       onScroll={handleAnimatedScroll}
+      onLayout={(e) => { viewportHeightRef.current = e.nativeEvent.layout.height }}
       scrollEventThrottle={16}
       style={styles.list}
       data={currentList}

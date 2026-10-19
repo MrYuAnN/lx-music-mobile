@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, View, StyleSheet } from 'react-native'
 import LinearGradient from 'react-native-linear-gradient'
 import { useTheme } from '@/store/theme/hook'
@@ -23,8 +23,12 @@ interface Props {
   /**
    * 静态封面氛围源（歌单页专用，歌单页重构批②）：传入歌单封面即启用氛围层，
    * 与 coverBg 互斥（同时传时 coverBg 优先）。取色/模糊/交叉淡入机制同播放页（审查 A6）。
+   * 路由语义（氛围滚动批 2026-10-19）：未传=非歌单页走纯色底；传 null=歌单页无封面，
+   * 同样走氛围层结构（纱罩+bg 色渐变，随滚动滚走）。
    */
   ambientPic?: string | null
+  /** 歌单页滚动偏移（页面级 Animated.Value）：氛围图块 translateY=-scrollY 随内容 1:1 滚走（AM 同构） */
+  scrollY?: Animated.Value
 }
 
 const BLUR_RADIUS = Math.max(scaleSizeAbsHR(18), 10)
@@ -177,7 +181,7 @@ const usePlayerCover = (enabled: boolean) => {
   return useCoverAmbient(musicPic)
 }
 
-export default ({ children, coverBg = false, ambientPic }: Props) => {
+export default ({ children, coverBg = false, ambientPic, scrollY }: Props) => {
   const theme = useTheme()
   const windowSize = useWindowSize()
   // 氛围源二选一：coverBg（播放页，跟随当前曲目）优先；否则用静态源（歌单页）。两层 hook
@@ -251,29 +255,47 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
     setHeroImgLoaded(false)
   }, [pic])
 
+  // 氛围图块随滚动 1:1 滚走（2026-10-19 拍板，AM 同构）：具象封面层附着内容离场、与 hero
+  // 相对静止，全屏 tint 层驻留承接（图块底部渐变终点=满 tint，无缝无硬边）；translateY 节点
+  // useMemo 稳定，未传 scrollY 不挂 transform（旧行为兜底）
+  const heroTranslate = useMemo(() => (scrollY ? Animated.multiply(scrollY, -1) : null), [scrollY])
+
   const staticComponent = (
     <View style={{ flex: 1, backgroundColor: bg }}>
       <Animated.View
         style={{ ...StyleSheet.absoluteFill, backgroundColor: sampleColor, opacity: sampleOpacity }}
         pointerEvents="none"
       />
-      <ImageBackground
-        style={{ position: 'absolute', left: 0, top: 0, height: heroHeight, width: '100%', opacity: heroImgLoaded ? 1 : 0 }}
-        source={pic ? { uri: pic, headers: defaultHeaders } : undefined}
-        resizeMode="cover"
-        blurRadius={STATIC_BLUR_RADIUS}
-        onLoad={() => { setHeroImgLoaded(true) }}
+      <Animated.View
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: 0,
+          height: heroHeight,
+          width: '100%',
+          transform: heroTranslate ? [{ translateY: heroTranslate }] : undefined,
+        }}
       >
-        <View
-          style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.isDark ? '#000000' : '#ffffff', opacity: STATIC_VEIL_OPACITY }}
-          pointerEvents="none"
-        />
-        <LinearGradient
-          colors={[withAlpha(sampleColor, STATIC_TOP_ALPHA), withAlpha(sampleColor, STATIC_TOP_ALPHA), sampleColor]}
-          locations={[0, STATIC_SCRIM_ONSET, 1]}
-          style={StyleSheet.absoluteFill}
-        />
-      </ImageBackground>
+        {/* 无封面（pic=null）不走 onLoad 淡入门控（永不触发会让整层不可见，审查复审 S-A）：
+            纱罩+bg 色渐变层直接可见并随滚走 */}
+        <ImageBackground
+          style={{ ...StyleSheet.absoluteFill, opacity: pic && !heroImgLoaded ? 0 : 1 }}
+          source={pic ? { uri: pic, headers: defaultHeaders } : undefined}
+          resizeMode="cover"
+          blurRadius={STATIC_BLUR_RADIUS}
+          onLoad={() => { setHeroImgLoaded(true) }}
+        >
+          <View
+            style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.isDark ? '#000000' : '#ffffff', opacity: STATIC_VEIL_OPACITY }}
+            pointerEvents="none"
+          />
+          <LinearGradient
+            colors={[withAlpha(sampleColor, STATIC_TOP_ALPHA), withAlpha(sampleColor, STATIC_TOP_ALPHA), sampleColor]}
+            locations={[0, STATIC_SCRIM_ONSET, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </ImageBackground>
+      </Animated.View>
       <View style={{ flex: 1, flexDirection: 'column' }}>
         {children}
       </View>
@@ -309,7 +331,7 @@ export default ({ children, coverBg = false, ambientPic }: Props) => {
   return (
     <>
       <SizeView />
-      {coverBg || ambientPic != null ? coverComponent : solidComponent}
+      {coverBg || ambientPic !== undefined ? coverComponent : solidComponent}
     </>
   )
 }

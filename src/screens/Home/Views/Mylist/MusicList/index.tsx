@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 
 import listState from '@/store/list/state'
+import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
 import { clearMusicUrl, guardWritableList, handleCloneList, handleDislikeMusic, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleShowMusicSourceDetail, handleUpdateMusicInfo, handleUpdateMusicPosition } from './listAction'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
@@ -34,7 +35,7 @@ import { LIST_IDS } from '@/config/constant'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
 
-export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void }) => {
+export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: () => void, scrollY: Animated.Value }) => {
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
@@ -55,14 +56,18 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
   const isShowMultipleModeBar = useRef(false)
   const isShowSearchBarModeBar = useRef(false)
   const selectedInfoRef = useRef<SelectInfo | undefined>(undefined)
-  // 顶栏滚动进度（QQ 式渐显 D2）：列表 onScroll Animated.event 直驱（native driver，不刷渲染）
-  const scrollY = useRef(new Animated.Value(0)).current
+  // 顶栏滚动进度（QQ 式渐显 D2）：页面级（MylistView）创建经 prop 传入，氛围图块滚走/顶栏/列表共用
+  // 入场锁定（氛围滚动批 2026-10-19）：程序化落位（恢复/切列表/跳播放位）重置锁定，顶栏从隐藏态
+  // 起步且图标回退主题字色；首滚解锁（|offset-落位值|>1dp 判定在 List 内），解锁后交滚动插值接管
+  const [entranceLocked, setEntranceLocked] = useState(true)
 
   const activeListId = useActiveListId()
   const lists = useMyList()
   const fetching = useListFetching(activeListId)
-  // 「我喜欢」自定义封面（歌单封面机制批②）：LOVE 详情页头部与氛围底共用此响应式取值
+  // 「我喜欢」自定义封面（歌单封面机制批②）：LOVE 详情页头部与氛围底共用此响应式取值；
+  // 「默认歌单」同款 defaultPic（2026-10-18 拍板纳入封面机制，setting 双键通道）
   const lovePic = useSettingValue('list.lovePic')
+  const defaultPic = useSettingValue('list.defaultPic')
   const isPlay = useIsPlay()
   const playMusicInfo = usePlayMusicInfo()
   // 曲数/列表元数据随事件刷新（HomeSections MyMusic 同款机制）
@@ -220,8 +225,8 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
     <PlaylistHeader
       title={currentListName}
       subtitle={subtitle}
-      // 「我喜欢」封面走 lovePic setting 单键（歌单封面机制批②，updateList 对 LOVE 拦截）
-      pic={activeListId == LIST_IDS.LOVE ? (lovePic ?? undefined) : (activeListInfo as LX.List.UserListInfo | undefined)?.pic}
+      // 封面走 getListCoverPic 单源三态（LOVE/DEFAULT setting 单键，封面机制批）；null 归一 undefined
+      pic={getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as LX.List.UserListInfo | undefined) ?? undefined}
       // 收藏闭环（2026-10-18 拍板）：仅收藏克隆歌单显示实心红心，取消=确认后删本地克隆；
       // 自建/内置无红心（业界定式，管理走 ⋮）
       showCollectHeart={isCollectList}
@@ -239,7 +244,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       onShufflePlay={handlePlayShuffle}
       onScrollToTop={hancelScrollToTop}
     />
-  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, isCollectList, lovePic, handlePlayAll, handlePlayShuffle, hancelScrollToTop, onBack])
+  ), [currentListName, subtitle, activeListInfo, fetching, isPlay, playMusicInfo.listId, activeListId, isCollectList, lovePic, defaultPic, handlePlayAll, handlePlayShuffle, hancelScrollToTop, onBack])
 
 
   return (
@@ -262,6 +267,8 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
           ref={listRef}
           header={header}
           scrollYAnimated={scrollY}
+          onProgrammaticScroll={() => { setEntranceLocked(true) }}
+          onFirstRealScroll={() => { setEntranceLocked(false) }}
           onShowMenu={showMenu}
           onMuiltSelectMode={hancelMultiSelect}
           onSelectAll={isAll => multipleModeBarRef.current?.setIsSelectAll(isAll)}
@@ -274,7 +281,9 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
       <PlaylistTopBar
         title={currentListName}
         progress={scrollY}
-        onArtwork={!!(activeListInfo as LX.List.UserListInfo | undefined)?.pic}
+        // 封面三态与 MylistView ambientPic 同源（代码审查 S-B/S-1）：LOVE/DEFAULT 自定义封面也回白图标
+        onArtwork={!!getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as LX.List.UserListInfo | undefined)}
+        entranceLocked={entranceLocked}
         showBack={showBack}
         onBack={onBack}
         showSearch
@@ -313,6 +322,7 @@ export default ({ showBack, onBack }: { showBack?: boolean, onBack?: () => void 
         onCloneLocal={info => { handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) }) }}
         onRename={info => listNameEditRef.current?.show(info)}
         onEditLoveCover={() => listNameEditRef.current?.showLove()}
+        onEditDefaultCover={() => listNameEditRef.current?.showDefault()}
         onSort={info => listMusicSortRef.current?.show(info)}
         onDuplicateMusic={info => duplicateMusicRef.current?.show(info)}
         onImportFile={(info, index) => listImportExportRef.current?.import(info, index)}

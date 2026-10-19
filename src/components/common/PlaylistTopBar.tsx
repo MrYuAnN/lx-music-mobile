@@ -27,6 +27,9 @@ export interface PlaylistTopBarProps {
   progress: Animated.Value
   /** 当前是否浮于封面画布上（有封面=true 白图标；无封面纯色底回退主题字色） */
   onArtwork?: boolean
+  /** 入场锁定（氛围滚动批 2026-10-19）：程序化落位后顶栏从隐藏态起步——玻璃底+标题 opacity 压 0、
+   * 图标回退主题字色（无玻璃底垫）；首次真实滚动解锁后交回滚动插值。仅本地歌单页消费 */
+  entranceLocked?: boolean
   showBack?: boolean
   onBack?: () => void
   showSearch?: boolean
@@ -35,16 +38,18 @@ export interface PlaylistTopBarProps {
   onManageMenu?: () => void
 }
 
-export default ({ title, progress, onArtwork = true, showBack, onBack, showSearch, onSearch, showManage, onManageMenu }: PlaylistTopBarProps) => {
+export default ({ title, progress, onArtwork = true, entranceLocked = false, showBack, onBack, showSearch, onSearch, showManage, onManageMenu }: PlaylistTopBarProps) => {
   const theme = useTheme()
   const statusbarHeight = useStatusbarHeight()
   const bgOpacity = progress.interpolate({ inputRange: [BG_FADE_RANGE[0], BG_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
   const titleOpacity = progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
-  const iconColor = onArtwork ? '#FFFFFF' : theme['c-font']
+  // 锁定态图标回退主题字色（审查复审 I-3）：锁定时玻璃底被压 0，白图标压亮 tint/列表行对比无保障；
+  // 解锁后玻璃底渐显有垫，回白
+  const iconColor = onArtwork && !entranceLocked ? '#FFFFFF' : theme['c-font']
 
   return (
     <Animated.View style={{ ...styles.container, height: SCREEN_HEADER_HEIGHT + statusbarHeight, paddingTop: statusbarHeight }} pointerEvents="box-none">
-      <Animated.View style={{ ...styles.barBg, opacity: bgOpacity }} pointerEvents="none" />
+      <Animated.View style={[styles.barBg, { opacity: entranceLocked ? 0 : bgOpacity }]} pointerEvents="none" />
       <View style={styles.row} pointerEvents="box-none">
         {
           showBack
@@ -55,7 +60,7 @@ export default ({ title, progress, onArtwork = true, showBack, onBack, showSearc
               )
             : null
         }
-        <Animated.View style={[styles.titleWrap, { opacity: titleOpacity }]} pointerEvents="none">
+        <Animated.View style={[styles.titleWrap, { opacity: entranceLocked ? 0 : titleOpacity }]} pointerEvents="none">
           <Text style={styles.title} numberOfLines={1} color={iconColor}>{title}</Text>
         </Animated.View>
         {
