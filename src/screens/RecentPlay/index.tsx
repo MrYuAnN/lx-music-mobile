@@ -1,30 +1,36 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { FlatList, View } from 'react-native'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, FlatList, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import ActionSheet, { type ActionSheetType, type ActionSheetItem } from '@/components/common/ActionSheet'
 import ListMusicAdd, { type MusicAddModalType } from '@/components/MusicAddModal'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { getRecentPlayList, removeRecentPlay, type RecentPlayItem } from '@/core/player/recentPlay'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 
 const RECENT_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_RECENT
+
+// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 
 // 最近播放（问题 1 §2.6）：统一歌曲行（封面行首、无序号、行尾菜单）；
 // 挂载快照不重排（浏览期间不实时重排，点击播放用快照索引），快照注入临时列表播放；
 // 显式删除记录例外——就地移除该行（快照语义仅豁免播放自动新增）
 export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
   const [list, setList] = useState<RecentPlayItem[]>(() => [...getRecentPlayList()])
   // 广播同步（新批问题1）：空表时整表采纳（initRecentPlay 初值灌入）；其后保序替换命中行并移除已删行，
   // 新增不插入（浏览期不重排约定不变，仅豁免封面回写与删除的行内容同步）
@@ -54,6 +60,13 @@ export default ({ componentId }: { componentId: string }) => {
   }, [])
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
+  // 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：header 悬浮玻璃，列表延伸整屏 paddingTop 补偿
+  const statusBarHeight = useStatusbarHeight()
+  const scrollY = useRef(new Animated.Value(0)).current
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
   const menuRef = useRef<ActionSheetType>(null)
   const listMusicAddRef = useRef<MusicAddModalType>(null)
   const selectedRef = useRef<{ item: LX.Music.MusicInfo, index: number }>({ item: null as unknown as LX.Music.MusicInfo, index: -1 })
@@ -98,9 +111,11 @@ export default ({ componentId }: { componentId: string }) => {
 
   return (
     <PageContent>
-      <ScreenHeader componentId={componentId} title={t('recent_play')} />
-      <FlatList
+      <AnimatedFlatList
         style={styles.list}
+        contentContainerStyle={{ paddingTop: statusBarHeight + SCREEN_HEADER_HEIGHT, paddingBottom: bottomInset }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={list}
         keyExtractor={item => `${item.musicInfo.source}__${item.musicInfo.id}`}
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
@@ -125,6 +140,8 @@ export default ({ componentId }: { componentId: string }) => {
         ListEmptyComponent={EmptyList}
         showsVerticalScrollIndicator={false}
       />
+      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
+      <ScreenHeader componentId={componentId} title={t('recent_play')} progress={scrollY} />
       <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} />
       <ListMusicAdd ref={listMusicAddRef} />
       <PlayerBarPlaceholder />

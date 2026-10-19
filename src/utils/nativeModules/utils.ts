@@ -127,6 +127,24 @@ export const onDialogImeChange = (handler: (imeBottom: number) => void): () => v
 export const makeDialogTouchPassthrough = UtilsModule.makeDialogTouchPassthrough
 export const watchWindowInsets = UtilsModule.watchWindowInsets
 
+// 弹层玻璃（毛玻璃全体系阶段二，方案 §2.2）：show 前置位 blur-behind arm+当刻可用性同调用
+// 返回（consume-once+原生 1s 新鲜度守卫，滞留自动失效），查询类=isDialogBlurBehindEnabled
+// （挂载预探测用，不置位）。只有弹层族调用，实色警示弹窗不波及
+export const armDialogBlurBehind = async(): Promise<boolean> => {
+  try {
+    return await UtilsModule.armDialogBlurBehind()
+  } catch {
+    return false
+  }
+}
+export const isDialogBlurBehindEnabled = async(): Promise<boolean> => {
+  try {
+    return await UtilsModule.isDialogBlurBehindEnabled()
+  } catch {
+    return false
+  }
+}
+
 // edge-to-edge insets 变化订阅（导航栏/键盘，弹窗体系批 §问题2）
 export const onWindowInsetsChange = (handler: (insets: { navBarBottom: number, navBarRight: number, imeBottom: number }) => void): () => void => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument

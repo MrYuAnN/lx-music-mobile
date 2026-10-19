@@ -1,4 +1,4 @@
-import { memo, useRef, type ComponentRef } from 'react'
+import { memo, useRef, useState, type ComponentRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
@@ -18,6 +18,13 @@ export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
 // 排行榜前三序号 token（c-chart-1/2/3 金银铜，见 theme/themes/index.ts）；
 // 封闭三元组 + 模板下标取值，避免 `c-chart-${n}` 动态键破坏 ActiveTheme 字面量类型
 const CHART_COLOR_KEYS = ['c-chart-1', 'c-chart-2', 'c-chart-3'] as const
+
+// 行按压高亮（毛玻璃全体系阶段一行微交互，方案 §1）：高亮底色无位移、内容不随按压减淡
+// （activeOpacity 恒 1，按压反馈全交底色，AM 列表行同构）；数值自定待真机校准（审查 S-c）
+const PRESSED_BACKGROUND = {
+  light: 'rgba(0, 0, 0, 0.06)',
+  dark: 'rgba(255, 255, 255, 0.12)',
+}
 
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
@@ -66,6 +73,8 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
 
   const qualitys = qualityOverride ?? getOnlineQualitys(item)
 
+  const [pressed, setPressed] = useState(false)
+
   // 排行榜前三徽章 token（拍板#7）：rankBadge 显式开启（当前唯一来源=Leaderboard/MusicList）；
   // index<3 时取金银铜色键，4+ 名/未开启为 null 走普通灰数字
   const chartColorKey = rankBadge && index < 3 ? CHART_COLOR_KEYS[index] : null
@@ -75,8 +84,8 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
   return (
-    <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
-      <TouchableOpacity style={styles.main} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
+    <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : pressed ? PRESSED_BACKGROUND[theme.isDark ? 'dark' : 'light'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
+      <TouchableOpacity style={styles.main} activeOpacity={1} onPressIn={() => { setPressed(true) }} onPressOut={() => { setPressed(false) }} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
         {
           showIndex
             ? (

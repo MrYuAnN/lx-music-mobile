@@ -22,6 +22,8 @@ export interface OnlineListProps {
   rankBadge?: boolean
   /** 顶栏滚动进度（QQ 式渐显 D2）：可选透传（排行榜/搜索页等未传使用方零 diff，审查 I-A） */
   scrollYAnimated?: Animated.Value
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：列表延伸整屏 paddingTop 补偿，未传零 diff */
+  contentPaddingTop?: number
 }
 export interface OnlineListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
@@ -39,6 +41,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   showIndex,
   rankBadge,
   scrollYAnimated,
+  contentPaddingTop,
 }, ref) => {
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
@@ -105,6 +108,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
           showIndex={showIndex}
           rankBadge={rankBadge}
           scrollYAnimated={scrollYAnimated}
+          contentPaddingTop={contentPaddingTop}
         />
         <MultipleModeBar
           ref={multipleModeBarRef}

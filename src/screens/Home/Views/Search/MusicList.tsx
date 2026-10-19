@@ -1,5 +1,6 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
+import type { Animated } from 'react-native'
 import { search } from '@/core/search/music'
 import searchMusicState, { type Source } from '@/store/search/music/state'
 
@@ -13,7 +14,13 @@ export interface MusicListType {
   loadList: (text: string, source: Source) => void
 }
 
-export default forwardRef<MusicListType, {}>((props, ref) => {
+export interface SearchMusicListProps {
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选接线，未传零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
+}
+
+export default forwardRef<MusicListType, SearchMusicListProps>(({ scrollYAnimated, contentPaddingTop }, ref) => {
   const listRef = useRef<OnlineListType>(null)
   const searchInfoRef = useRef<{ text: string, source: Source }>({ text: '', source: 'kw' })
   const isUnmountedRef = useRef(false)
@@ -83,6 +90,8 @@ export default forwardRef<MusicListType, {}>((props, ref) => {
     onRefresh={handleRefresh}
     onLoadMore={handleLoadMore}
     checkHomePagerIdle
+    scrollYAnimated={scrollYAnimated}
+    contentPaddingTop={contentPaddingTop}
   />
 })
 

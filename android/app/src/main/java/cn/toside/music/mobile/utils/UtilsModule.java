@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.net.wifi.WifiInfo;
 import android.net.wifi.WifiManager;
 import android.os.Build;
+import android.os.SystemClock;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
@@ -401,10 +402,43 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
   private final java.util.concurrent.CopyOnWriteArrayList<Window> dialogWindows =
     new java.util.concurrent.CopyOnWriteArrayList<>();
 
+  // 弹层玻璃 arm 时间戳（毛玻璃全体系阶段二，方案 §2.2，consume-once+新鲜度守卫）：JS show 前
+  // 置位，下一个创建的 dialog 窗口消费——时间戳超窗（1s，桥往返+窗口创建远小于此）视为滞留
+  // 自动失效，防「重复 setVisible(true) 被 Modal 短路 → arm 滞留 → 被后续无关弹窗误消费」把
+  // blur 挂到实色警示弹窗上（审查优化师 I-1）。只有弹层族（SheetBase/Menu）arm，
+  // Dialog/ConfirmAlert/Loading 等实色警示窗口不受波及（方案 §4 不玻璃清单）
+  private static final long DIALOG_BLUR_ARM_FRESH_MS = 1000;
+  private volatile long dialogBlurBehindArmedAt = 0;
+
+  // blur-behind 挂窗（C-1 拍板 A）：窗口级属性，观感=弹层打开时背景全域模糊——iOS sheet 同构；
+  // 压暗仍由 JS 自绘 MASK_COLOR 承担，不启用系统 FLAG_DIM_BEHIND（遮罩/键盘避让机制零接触，
+  // 方案 §2.2）。API<31 静默跳过；系统关闭态（省电模式等）引擎自动失效，JS 侧经
+  // isDialogBlurBehindEnabled 同步回退实色底板
+  private void applyDialogBlurBehind(Window window) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return;
+    try {
+      float density = reactContext.getResources().getDisplayMetrics().density;
+      WindowManager.LayoutParams attrs = window.getAttributes();
+      // API 36 桩 blurBehindRadius 字段已隐藏，走 accessor（javap 实证 setBlurBehindRadius(int)）
+      attrs.setBlurBehindRadius((int) (20 * density));
+      window.setAttributes(attrs);
+      window.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND);
+    } catch (Exception e) {
+      Log.e("UtilsModule", "applyDialogBlurBehind failed", e);
+    }
+  }
+
   private final ExtraWindowEventListener extraWindowListener = new ExtraWindowEventListener() {
     @Override
     public void onExtraWindowCreate(Window window) {
       dialogWindows.add(window);
+      if (dialogBlurBehindArmedAt > 0) {
+        long armedAt = dialogBlurBehindArmedAt;
+        dialogBlurBehindArmedAt = 0;
+        if (SystemClock.uptimeMillis() - armedAt <= DIALOG_BLUR_ARM_FRESH_MS) {
+          applyDialogBlurBehind(window);
+        }
+      }
       if (!WindowUtilKt.isEdgeToEdgeFeatureFlagOn()) return;
       View decorView = window.getDecorView();
       ViewCompat.setWindowInsetsAnimationCallback(decorView,
@@ -461,6 +495,31 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
     if (window == null || activity == null) return;
     activity.runOnUiThread(() ->
       window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE));
+  }
+
+  // show 前置位（consume-once+新鲜度守卫）：置位下一个创建的 dialog 窗口的 blur-behind arm，
+  // 并同调用返回当刻跨窗模糊可用性（arm+probe 单次桥往返，审查优化师 S-2）
+  @ReactMethod
+  public void armDialogBlurBehind(Promise promise) {
+    dialogBlurBehindArmedAt = SystemClock.uptimeMillis();
+    Activity activity = reactContext.getCurrentActivity();
+    if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      promise.resolve(false);
+      return;
+    }
+    promise.resolve(activity.getWindow().getWindowManager().isCrossWindowBlurEnabled());
+  }
+
+  // JS 侧面板底色分流（玻璃 tint vs 实色）：API<31 或系统跨窗模糊关闭（省电模式等）=false。
+  // 主窗口 WindowManager 取 isCrossWindowBlurEnabled（系统全局开关，dialog 窗口同源）
+  @ReactMethod
+  public void isDialogBlurBehindEnabled(Promise promise) {
+    Activity activity = reactContext.getCurrentActivity();
+    if (activity == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+      promise.resolve(false);
+      return;
+    }
+    promise.resolve(activity.getWindow().getWindowManager().isCrossWindowBlurEnabled());
   }
 
   private void emitDialogIme(int imeBottom) {

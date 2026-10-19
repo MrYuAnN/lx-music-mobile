@@ -8,6 +8,9 @@ import commonState from '@/store/common/state'
 export interface SonglistProps {
   onRefresh: ListProps['onRefresh']
   onLoadMore: ListProps['onLoadMore']
+  /** 顶栏族穿行化（毛玻璃全体系阶段三）：可选接线，未传零 diff */
+  scrollYAnimated?: ListProps['scrollYAnimated']
+  contentPaddingTop?: ListProps['contentPaddingTop']
 }
 export interface SonglistType {
   // showSource：搜索页聚合模式传 true 显示源角标（活参数）；歌单页不传（恒 false，顶栏胶囊已示源）
@@ -18,6 +21,8 @@ export interface SonglistType {
 export default forwardRef<SonglistType, SonglistProps>(({
   onRefresh,
   onLoadMore,
+  scrollYAnimated,
+  contentPaddingTop,
 }, ref) => {
   const listRef = useRef<ListType>(null)
   // const loadingMaskRef = useRef<LoadingMaskType>(null)
@@ -41,6 +46,8 @@ export default forwardRef<SonglistType, SonglistProps>(({
       onRefresh={onRefresh}
       onLoadMore={onLoadMore}
       onOpenDetail={handleOpenDetail}
+      scrollYAnimated={scrollYAnimated}
+      contentPaddingTop={contentPaddingTop}
     />
   )
 })

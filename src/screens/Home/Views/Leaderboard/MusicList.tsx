@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
+import type { Animated } from 'react-native'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
 import { clearListDetail, getListDetail, setListDetail, setListDetailInfo } from '@/core/leaderboard'
 import boardState from '@/store/leaderboard/state'
@@ -14,7 +15,13 @@ export interface MusicListType {
   loadList: (source: LX.OnlineSource, listId: string) => void
 }
 
-export default forwardRef<MusicListType, {}>((props, ref) => {
+export interface MusicListProps {
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选透传，未传零 diff（横屏宿主） */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
+}
+
+export default forwardRef<MusicListType, MusicListProps>(({ scrollYAnimated, contentPaddingTop }, ref) => {
   const listRef = useRef<OnlineListType>(null)
   const isUnmountedRef = useRef(false)
   useImperativeHandle(ref, () => ({
@@ -93,6 +100,8 @@ export default forwardRef<MusicListType, {}>((props, ref) => {
     rowType='medium'
     showIndex
     rankBadge
+    scrollYAnimated={scrollYAnimated}
+    contentPaddingTop={contentPaddingTop}
    />
 })
 

@@ -1,25 +1,33 @@
-import { Animated, TouchableOpacity, View } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import DotsVertical from '@/components/common/DotsVertical'
 import Text, { FontFamilies } from '@/components/common/Text'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { setSpText } from '@/utils/pixelRatio'
 import { SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
-import { BorderWidths } from '@/theme'
 import { SPACING } from '@/config/spacing'
 
 // 歌单页固定悬浮顶栏（QQ 式融合改版拍板 D2）：脱离滚动流，滚动渐显——
-// 未滚动=透明底白图标；列表上滑 progress 0→1（映射 [140,320]dp），深色玻璃底+发丝描边
+// 未滚动=透明底白图标；列表上滑 progress 0→1（映射 GLASS_FADE_RANGE），玻璃底+发丝描边
 // 与歌单名（tail 截断）淡入。结构/高度/图标尺寸对齐 ScreenHeader 统一规格
 // （54dp 高、返回键 52 热区、ICON_SIZE.nav 图标、semibold 17 标题，真机反馈 2026-10-17）。
-// 图标色：有封面时白色浮于封面画布；无封面（纯色浅底）回退主题字色（审查 I-B 可读性）。
-// 玻璃底=独立层 opacity 插值（native driver 不支持 backgroundColor 动画，审查 S-6）；
-// 容器 pointerEvents="box-none"（审查 S-3）：非按钮区透传，不吞 hero 长按回顶与列表首行。
-// 选型注记（审查 S-5）：RN Animated 插值满足最小需求，不引入 reanimated useAnimatedScrollHandler。
-const BG_FADE_RANGE = [140, 320]
+// 玻璃底=GlassSurface 双态（毛玻璃全体系阶段一，方案 §3）：亮=白磨砂+黑字、暗=深玻璃+白字；
+// API<31/降级开关回退半透明矩形（fallbackColor 随主题）。玻璃底 opacity 插值（native driver
+// 不支持 backgroundColor 动画，审查 S-6 先例）；容器 pointerEvents="box-none"（审查 S-3）：
+// 非按钮区透传，不吞 hero 长按回顶与列表首行。
+// 字色离散切换（审查 I-D 落档）：玻璃底 opacity 过半（scrollY≈COLOR_SWITCH_OFFSET=GLASS_FADE_RANGE
+// 中点）时图标/标题
+// 白↔主题字色一次切换，JS listener 仅跨越阈值时 setState（单向阈值，防滚动热路径每帧 render，
+// 复审 S-R3）；entranceLocked 恒主题字色。选型注记（审查 S-5）：RN Animated 插值满足最小需求。
+// 玻璃底渐显区间=GLASS_FADE_RANGE（GlassSurface 单源，子头批 S-A 收敛）；标题二次淡入区间独立
 const TITLE_FADE_RANGE = [180, 320]
+// 字色切换阈值=GLASS_FADE_RANGE 中点（与玻璃底 opacity 0.5 对齐，AM「滚动中点换字色」同构；
+// 随 2026-10-20 校准轮二区间前移同步改 70，防「玻璃已满图标仍白字」的隐形窗口）
+const COLOR_SWITCH_OFFSET = 70
 
 export interface PlaylistTopBarProps {
   title: string
@@ -41,15 +49,44 @@ export interface PlaylistTopBarProps {
 export default ({ title, progress, onArtwork = true, entranceLocked = false, showBack, onBack, showSearch, onSearch, showManage, onManageMenu }: PlaylistTopBarProps) => {
   const theme = useTheme()
   const statusbarHeight = useStatusbarHeight()
-  const bgOpacity = progress.interpolate({ inputRange: [BG_FADE_RANGE[0], BG_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
+  const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const titleOpacity = progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
+
+  // 字色离散切换（审查 I-D/S-R3）：listener 每帧回调但仅在跨越 230 时 setState 一次；
+  // 注册时先以 progress 当前值对齐一次初值（架构席 I-1）：页面级 scrollY 在顶栏重挂载时保留
+  // 大值，listener 只对后续变化回调，不对齐会「挂载即越阈值仍白字压亮磨砂」。
+  // _value 为 RN Animated 私有字段（当前值同步的通行口径），此处只读一次性
+  const [pastMid, setPastMid] = useState(false)
+  const pastMidRef = useRef(false)
+  useEffect(() => {
+    const initialCrossed = ((progress as unknown as { _value?: number })._value ?? 0) >= COLOR_SWITCH_OFFSET
+    pastMidRef.current = initialCrossed
+    if (initialCrossed) setPastMid(true)
+    const listener = progress.addListener(({ value }) => {
+      const crossed = value >= COLOR_SWITCH_OFFSET
+      if (crossed != pastMidRef.current) {
+        pastMidRef.current = crossed
+        setPastMid(crossed)
+      }
+    })
+    return () => {
+      progress.removeListener(listener)
+    }
+  }, [progress])
+
   // 锁定态图标回退主题字色（审查复审 I-3）：锁定时玻璃底被压 0，白图标压亮 tint/列表行对比无保障；
-  // 解锁后玻璃底渐显有垫，回白
-  const iconColor = onArtwork && !entranceLocked ? '#FFFFFF' : theme['c-font']
+  // 解锁后玻璃底渐显有垫，回白。过中点后字色交主题（亮=黑压白磨砂/暗=白压深玻璃）
+  const iconColor = onArtwork && !entranceLocked && !pastMid ? '#FFFFFF' : theme['c-font']
 
   return (
     <Animated.View style={{ ...styles.container, height: SCREEN_HEADER_HEIGHT + statusbarHeight, paddingTop: statusbarHeight }} pointerEvents="box-none">
-      <Animated.View style={[styles.barBg, { opacity: entranceLocked ? 0 : bgOpacity }]} pointerEvents="none" />
+      <Animated.View style={[styles.barBgWrap, { opacity: entranceLocked ? 0 : bgOpacity }]} pointerEvents="none">
+        {/* fallback 透明度（0.72/0.78）高于玻璃 tint（0.55/0.62）：无模糊时需更高遮蔽保可读性（审查 PM S-6）。
+            iOS 已知限制（审查优化师 I-1，Apple UIVisualEffectView 官方口径）：effect view 及其父级
+            alpha<1 行为未定义，本处 opacity 淡入在 iOS 可能退化为硬切——本批 iOS 仅核对不炸，
+            已入方案 §7 风险表与验收③口径 */}
+        <GlassSurface style={styles.barBgGlass} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+      </Animated.View>
       <View style={styles.row} pointerEvents="box-none">
         {
           showBack
@@ -95,15 +132,15 @@ const styles = createStyle({
     right: 0,
     top: 0,
   },
-  barBg: {
+  barBgWrap: {
     position: 'absolute',
     left: 0,
     right: 0,
     top: 0,
     bottom: 0,
-    backgroundColor: 'rgba(18, 12, 16, 0.72)',
-    borderBottomWidth: BorderWidths.normal,
-    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  barBgGlass: {
+    ...StyleSheet.absoluteFill,
   },
   row: {
     height: SCREEN_HEADER_HEIGHT,

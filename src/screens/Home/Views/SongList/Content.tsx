@@ -1,15 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
-import { View } from 'react-native'
+import { Animated, StyleSheet, View } from 'react-native'
 
 import HeaderBar from './HeaderBar'
 import HotTagRow from './HeaderBar/HotTagRow'
 import Songlist, { type SonglistType } from './components/Songlist'
 import type { Status } from './components/Songlist/List'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import { clearList, getList, getTags, setList, setListInfo } from '@/core/songlist'
 import songlistState, { type Source, type TagInfo, type TagInfoItem } from '@/store/songlist/state'
 import { getSongListSetting, saveSongListSetting } from '@/utils/data'
 import { createStyle, toast } from '@/utils/tools'
 import { useI18n } from '@/lang'
+import { useTheme } from '@/store/theme/hook'
 
 type TagsStatus = 'loading' | 'error' | 'ready'
 
@@ -26,7 +28,20 @@ interface SonglistInfo {
 // 不一致即丢弃（复审 R-1：refresh/loadMore 在途响应不再以切源后的新元数据脏写旧源数据）。
 // getTags 单链（挂载/切源/sheet 打开补拉/失败重试四入口，同一 seq）；失败降级不回滚源
 // （拍板 6 失败分层：列表 getList 失败走 error footer，目录 getTags 失败仅标签区降级 + toast）。
-export default () => {
+export interface SongListContentProps {
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：竖屏 screen 宿主传入启用穿行；缺省零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
+}
+
+export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) => {
+  const theme = useTheme()
+  // 源选择条+热门标签行固定子头实测高（钉 header 下方，玻璃垫层渐显穿行——Search 终轮 C-2 同款）
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0)
+  // 子头玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源；接线态才有）
+  const subHeaderFade = scrollYAnimated == null
+    ? undefined
+    : scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const listRef = useRef<SonglistType>(null)
   const [info, setInfoState] = useState<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
   const infoRef = useRef<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
@@ -152,8 +167,21 @@ export default () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  return (
-    <View style={styles.container}>
+  // 悬浮子头（源选择+热门标签）：接线态 absolute 钉位+玻璃垫层渐显（后声明压列表之上，C-1 层级）；
+  // 未接线（横屏宿主）流内且声明在列表前（终轮架构 I-2 沉底修复）
+  const subHeaderElement = (
+    <View
+      style={scrollYAnimated != null
+        ? { ...styles.subHeader, top: contentPaddingTop ?? 0, overflow: 'hidden' }
+        : styles.subHeaderFlow}
+      onLayout={(e) => { const h = e.nativeEvent.layout.height; setSubHeaderHeight(prev => Math.max(prev, h)) }}
+    >
+      {/* 渐显只作用于玻璃垫层，内容控件恒显（Search 终轮 C-2 同款） */}
+      {scrollYAnimated != null && (
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
+          <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+        </Animated.View>
+      )}
       <HeaderBar
         source={info.source}
         tagName={info.tagName}
@@ -172,12 +200,33 @@ export default () => {
         activeTagId={info.tagId}
         onSelect={handleSelectTag}
       />
-      <Songlist ref={listRef} onRefresh={handleRefresh} onLoadMore={handleLoadMore} />
+    </View>
+  )
+
+  return (
+    <View style={styles.container}>
+      {scrollYAnimated == null && subHeaderElement}
+      <Songlist
+        ref={listRef}
+        onRefresh={handleRefresh}
+        onLoadMore={handleLoadMore}
+        scrollYAnimated={scrollYAnimated}
+        contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
+      />
+      {scrollYAnimated != null && subHeaderElement}
     </View>
   )
 }
 
 const styles = createStyle({
+  subHeader: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  subHeaderFlow: {
+    flexGrow: 0,
+  },
   container: {
     position: 'relative',
     flex: 1,

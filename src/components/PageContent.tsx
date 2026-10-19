@@ -231,29 +231,16 @@ export default ({ children, coverBg = false, ambientPic, scrollY }: Props) => {
     </View>
   )
 
-  // 歌单页 QQ 式两段式（拍板 2026-10-17，可读性治理轮 5 修订）：整页先铺「采样主色」=下半的采样
-  // 延伸（displayTint 经 refineTint 治理：饱和度钳制+方向性亮度端点，文字对比有保障），上半叠封面
-  // 原图（blur=0，轮 4），图底以「中性主题纱+tint 三停渐变」双层纱融化，无分界线。播放页维持原结构。
-  // 首帧淡入（真机反馈 2026-10-17）：取色异步到位瞬间页面底色白→采样色硬切闪变——采样色层
-  // 以 opacity 淡入；封面图 prefetch 完成后 onLoad 淡入接管，消弹入感
+  // 歌单页头部氛围（基底①拍板 2026-10-19，推翻 10-19 tint 全屏驻留——真机实证滚走后全屏平面
+  // 采样色浑浊+残影）：氛围只活在头部带——封面原图（blur=0）+中性主题纱+tint 顶段淡纱随内容
+  // 1:1 滚走，图块底渐变终点=主题底色无缝衔接，滚走后整页回归纯白/纯黑主题底（Spotify/YTM
+  // 同构）；播放页维持原结构（分支物理隔离）。sampleColor 语义已随驻留层删除收窄为「顶段淡纱色」
+  // （终轮优化师 S-2 改名提案因真机二分撤回——改名与空白疑云同期，保命名留注释）。取色晚到时
+  // 顶段纱色轻跳变为已知观察项（审查 S-a，验收①走查）
   const bg = theme['c-content-background']
   const isStaticAmbient = !coverBg
   const sampleColor = displayTint ?? bg
   const heroHeight = getPlaylistHeroHeight(windowSize.height)
-  const sampleOpacity = useRef(new Animated.Value(0)).current
-  const [heroImgLoaded, setHeroImgLoaded] = useState(false)
-
-  useEffect(() => {
-    if (isStaticAmbient && displayTint) {
-      Animated.timing(sampleOpacity, { toValue: 1, duration: AM_EASE_DURATION, easing: amEase, useNativeDriver: true }).start()
-    } else {
-      sampleOpacity.setValue(0)
-    }
-  }, [isStaticAmbient, displayTint, sampleOpacity])
-
-  useEffect(() => {
-    setHeroImgLoaded(false)
-  }, [pic])
 
   // 氛围图块随滚动 1:1 滚走（2026-10-19 拍板，AM 同构）：具象封面层附着内容离场、与 hero
   // 相对静止，全屏 tint 层驻留承接（图块底部渐变终点=满 tint，无缝无硬边）；translateY 节点
@@ -262,10 +249,6 @@ export default ({ children, coverBg = false, ambientPic, scrollY }: Props) => {
 
   const staticComponent = (
     <View style={{ flex: 1, backgroundColor: bg }}>
-      <Animated.View
-        style={{ ...StyleSheet.absoluteFill, backgroundColor: sampleColor, opacity: sampleOpacity }}
-        pointerEvents="none"
-      />
       <Animated.View
         style={{
           position: 'absolute',
@@ -276,21 +259,22 @@ export default ({ children, coverBg = false, ambientPic, scrollY }: Props) => {
           transform: heroTranslate ? [{ translateY: heroTranslate }] : undefined,
         }}
       >
-        {/* 无封面（pic=null）不走 onLoad 淡入门控（永不触发会让整层不可见，审查复审 S-A）：
-            纱罩+bg 色渐变层直接可见并随滚走 */}
+        {/* 恒不门控（真机反馈 2026-10-19：onLoad 在 Fresco 缓存命中时不触发/绘制不失效——
+            首进歌单封面空白、滑动改 transform 强制重绘才显；基底①后页面底即白，门控防闪变
+            前提已消失，图加载完成由 Fresco 原生失效上屏）。无封面（pic=null）同理直接可见：
+            纱罩+bg 色渐变层随滚走 */}
         <ImageBackground
-          style={{ ...StyleSheet.absoluteFill, opacity: pic && !heroImgLoaded ? 0 : 1 }}
+          style={StyleSheet.absoluteFill}
           source={pic ? { uri: pic, headers: defaultHeaders } : undefined}
           resizeMode="cover"
           blurRadius={STATIC_BLUR_RADIUS}
-          onLoad={() => { setHeroImgLoaded(true) }}
         >
           <View
             style={{ ...StyleSheet.absoluteFill, backgroundColor: theme.isDark ? '#000000' : '#ffffff', opacity: STATIC_VEIL_OPACITY }}
             pointerEvents="none"
           />
           <LinearGradient
-            colors={[withAlpha(sampleColor, STATIC_TOP_ALPHA), withAlpha(sampleColor, STATIC_TOP_ALPHA), sampleColor]}
+            colors={[withAlpha(sampleColor, STATIC_TOP_ALPHA), withAlpha(sampleColor, STATIC_TOP_ALPHA), bg]}
             locations={[0, STATIC_SCRIM_ONSET, 1]}
             style={StyleSheet.absoluteFill}
           />

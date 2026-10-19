@@ -1,0 +1,113 @@
+import { Platform, StyleSheet, View } from 'react-native'
+import type { StyleProp, ViewStyle } from 'react-native'
+import BlurView from '@sbaiahmed1/react-native-blur'
+import { useTheme } from '@/store/theme/hook'
+import { createStyle } from '@/utils/tools'
+import { BorderWidths } from '@/theme'
+
+// 玻璃材质单源（毛玻璃全体系方案 §2.1，2026-10-19 三席审查定稿）：blur 引擎=@sbaiahmed1/react-native-blur
+// （Android 12+ RenderEffect 硬件实时模糊/iOS UIVisualEffectView），主题双态 tint+发丝描边同源。
+// API<31 或降级开关关闭时回退 fallbackColor（消费方现状底色），无玻璃不残缺（方案 §7.1）。
+// 圆角裁切由外层容器 overflow hidden 承担（对照 PlayerBar floatCard 用法），本组件不重复裁切。
+// 校准期整体降级开关（方案 §1）：玻璃参数真机定稿后随定稿移除。
+// 2026-10-19 晚 hero 空白疑云二分第一轮「关玻璃」后未拨回，已确认系排查残留（结论=bundle 陈旧），恢复实施值 true
+const GLASS_ENABLED = true
+// RenderEffect 硬件实时模糊门槛
+const GLASS_MIN_ANDROID_API = 31
+// 模糊强度（2026-10-20 真机校准：轮一 24→48，轮二 48→64——白底内容页可感知度仍不足）
+const GLASS_BLUR_AMOUNT = 64
+// 引擎 blurType 恒取最小内置叠色（light='regular'≈14% 白 / dark='systemUltraThinMaterialDark'≈25% 暗），
+// 精准 tint 由本组件 overlay 层单源承担，防 blurType 内置色与 overlay 双计漂移。
+// 该前提在 Android 端为代码级实证（库 ReactNativeBlurView.kt setBlurType→setOverlayColor 生效，
+// 审查 PM 席核）但引擎级观感未真机实证——真机首日对拍 blurType 换挡截图（审查优化师 I-3），
+// 若引擎忽略内置叠色则 TINT 初值按单层承担重算。
+// iOS 已知限制：UIVisualEffectView 不支持 alpha<1（Apple 官方口径），消费方对本组件做 opacity
+// 动画在 iOS 可能退化为硬切（PlaylistTopBar 注释/方案 §7 已备案，本批 iOS 仅核对不炸）
+const BLUR_TYPE = { light: 'regular', dark: 'systemUltraThinMaterialDark' } as const
+// 顶栏/迷你条/播放页钮 overlay tint（2026-10-20 真机校准：轮一 白 0.62→0.38/暗 0.55→0.45，
+// 轮二 白 0.38→0.26/暗 0.45→0.38——白底内容页可感知度仍不足，继续增透；可读性由发丝线兜底）
+const BAR_TINT = {
+  light: 'rgba(255, 255, 255, 0.26)',
+  dark: 'rgba(22, 16, 18, 0.38)',
+}
+// 弹层族跨窗模糊 tint（SheetBase/Menu blur-behind 无引擎内置叠色，维持较高遮蔽保浮层可读性，
+// 不随顶栏族校准联动）。GLASS_TINT 同源导出供跨窗模糊面板复用
+const TINT = {
+  light: 'rgba(255, 255, 255, 0.62)',
+  dark: 'rgba(22, 16, 18, 0.55)',
+}
+export const GLASS_TINT = TINT
+const HAIRLINE_COLOR = {
+  light: 'rgba(0, 0, 0, 0.10)',
+  dark: 'rgba(255, 255, 255, 0.10)',
+}
+// 顶栏/钉位子头玻璃 chrome 渐显区间（方案 §5 单源）。2026-10-20 校准轮二：[140,320]→[20,120]——
+// 原区间过渡带过长，内容从 scroll≈0 就钻到子头底下，半透明玻璃+半可见内容+垫层底缘硬切=穿模感
+// （用户真机反馈）；压缩后内容刚到玻璃已满（iOS 导航栏同构）。真机校准调参只改此处
+export const GLASS_FADE_RANGE = [20, 120]
+// 玻璃不可用（API<31/降级开关）时顶栏与钉位子头的回退底色——回退态无模糊需更高遮蔽保可读性
+// （审查 PM S-6 口径，高于 tint）；子头批三席审查 S-A 收敛为单源（原 8 处字面量复制）
+export const GLASS_BAR_FALLBACK = {
+  light: 'rgba(255, 255, 255, 0.78)',
+  dark: 'rgba(18, 12, 16, 0.72)',
+}
+
+export const isGlassSupported = () => {
+  return Platform.OS == 'ios' || Number(Platform.Version) >= GLASS_MIN_ANDROID_API
+}
+
+interface Props {
+  style?: StyleProp<ViewStyle>
+  /** 模糊强度 0-100（方案 §1 初值 24，校准点） */
+  blurAmount?: number
+  /** 发丝描边形态（方案 §1）：all=四周边框（悬浮卡），bottom=底缘（顶栏），none=无 */
+  hairline?: 'all' | 'bottom' | 'none'
+  /** 玻璃不可用回退底色（必填：回退态不模糊，消费方须按自身场景给足遮蔽，架构席 S-2） */
+  fallbackColor: string
+  children?: React.ReactNode
+}
+
+export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', fallbackColor, children }: Props) => {
+  const theme = useTheme()
+  const mode = theme.isDark ? 'dark' : 'light'
+  const hairlineColor = { borderColor: HAIRLINE_COLOR[mode] }
+  const hairlineStyles = [
+    hairline == 'all' && styles.hairlineAll,
+    hairline == 'bottom' && styles.hairlineBottom,
+    hairline != 'none' && hairlineColor,
+  ]
+
+  if (!GLASS_ENABLED || !isGlassSupported()) {
+    // 透明回退底（播放页钮类「回退=现状无底色」）连发丝线一起跳过——透明底+描边=悬空框，
+    // 违反「回退=现状」（终轮架构 I-5/优化师 I-1）；实色回退（顶栏/迷你条）保留描边
+    const isTransparentFallback = fallbackColor == 'rgba(0, 0, 0, 0)' || fallbackColor == 'transparent'
+    return (
+      <View style={[styles.surface, { backgroundColor: fallbackColor }, ...(isTransparentFallback ? [] : hairlineStyles), style]}>
+        {children}
+      </View>
+    )
+  }
+
+  return (
+    <View style={[styles.surface, ...hairlineStyles, style]}>
+      <BlurView style={styles.backdrop} blurType={BLUR_TYPE[mode]} blurAmount={blurAmount} />
+      {/* overlay tint 层：顶栏族 BAR_TINT 单源精准承担（弹层族走 GLASS_TINT 跨窗路径，不共用） */}
+      <View style={[styles.backdrop, { backgroundColor: BAR_TINT[mode] }]} pointerEvents="none" />
+      {children}
+    </View>
+  )
+}
+
+const styles = createStyle({
+  surface: {},
+  backdrop: {
+    // N2：RN 0.86 移除 absoluteFillObject，absoluteFill 为普通对象可展开
+    ...StyleSheet.absoluteFill,
+  },
+  hairlineAll: {
+    borderWidth: BorderWidths.normal,
+  },
+  hairlineBottom: {
+    borderBottomWidth: BorderWidths.normal,
+  },
+})

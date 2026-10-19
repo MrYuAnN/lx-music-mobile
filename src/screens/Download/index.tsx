@@ -1,16 +1,19 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppState, FlatList, TouchableOpacity, View } from 'react-native'
+import { Animated, AppState, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import ActionSheet, { type ActionSheetType, type ActionSheetItem } from '@/components/common/ActionSheet'
 import CategoryChips from '@/components/common/CategoryChips'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
+import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import {
   initDownloadList, getDownloadListSnapshot, pauseDownloadTask, resumeDownloadTask,
@@ -18,7 +21,7 @@ import {
 } from '@/core/download'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
-import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, ICON_SIZE, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { qualityLabel as formatQuality } from '@/utils/music'
 import { createStyle } from '@/utils/tools'
 import { SPACING } from '@/config/spacing'
@@ -34,11 +37,27 @@ const EMPTY_ICON_SIZE = 54
 
 // 下载管理页（multifix 问题 4 §5.4）：四 chips 带计数，行态=进行中(进度条+暂停/已暂停+继续)/
 // 排队中(取消)/失败(重试)/已完成(统一行)；进页恢复任务表+重查 Wi-Fi 挂起+续跑未完成任务
+// 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：header 悬浮玻璃+chips 钉其下（玻璃垫层渐显
+// 穿行，Search 终轮 C-2 同款），列表延伸整屏 paddingTop 补偿——内容从玻璃底下穿过实现真穿行
 export default ({ componentId }: { componentId: string }) => {
   void componentId
   const t = useI18n()
+  const theme = useTheme()
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
+  const statusBarHeight = useStatusbarHeight()
+  const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
+  const scrollY = useRef(new Animated.Value(0)).current
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
+  // chips 玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源）
+  const chipsFade = scrollY.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
+  // chips 固定子头实测高（分类条内边距随内容，onLayout 取实测防写死漂移）
+  const [chipsHeight, setChipsHeight] = useState(0)
   const [tasks, setTasks] = useState<LX.Download.ListItem[]>(() => getDownloadListSnapshot())
   const [tab, setTab] = useState<TabId>('running')
   const menuRef = useRef<ActionSheetType>(null)
@@ -178,17 +197,19 @@ export default ({ componentId }: { componentId: string }) => {
 
   return (
     <PageContent>
-      <ScreenHeader componentId={componentId} title={t('nav_download')} />
-      <View style={styles.chips}>
-        <CategoryChips items={tabs} activeId={tab} onChange={id => { setTab(id as TabId) }} />
-      </View>
       {
         tab == 'completed'
           ? (
-              <FlatList
+              <AnimatedFlatList
+                key={tab}
                 style={styles.list}
+                contentContainerStyle={{ paddingTop: headerTotal + chipsHeight, paddingBottom: bottomInset }}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
                 data={completedItems}
                 keyExtractor={({ task }) => task.id}
+                // getItemLayout offset 不含 contentContainer padding（RN 已知口径）：本列表无
+                // scrollToIndex 调用故无漂移路径（Mylist MusicList/List.tsx 同款先例注记）
                 getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
                 renderItem={({ item, index }) => (
                   <ListItem
@@ -214,10 +235,15 @@ export default ({ componentId }: { componentId: string }) => {
               />
             )
           : (
-              <FlatList
+              <AnimatedFlatList
+                key={tab}
                 style={styles.list}
+                contentContainerStyle={{ paddingTop: headerTotal + chipsHeight, paddingBottom: bottomInset }}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
                 data={filtered}
                 keyExtractor={task => task.id}
+                // getItemLayout offset 口径注记同上（completed 列表）
                 getItemLayout={(_, index) => ({ length: TASK_ROW_HEIGHT, offset: TASK_ROW_HEIGHT * index, index })}
                 renderItem={({ item }) => (
                   <TaskRow
@@ -237,6 +263,15 @@ export default ({ componentId }: { componentId: string }) => {
               />
             )
       }
+      {/* 悬浮头/钉位子头后声明（RN 后声明者在上，C-1 层级修复） */}
+      <View style={{ ...styles.chips, top: headerTotal, overflow: 'hidden' }} onLayout={(e) => { const h = e.nativeEvent.layout.height; setChipsHeight(prev => Math.max(prev, h)) }}>
+        {/* 渐显只作用于玻璃垫层，内容控件恒显（Search 终轮 C-2 同款） */}
+        <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: chipsFade }]}>
+          <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+        </Animated.View>
+        <CategoryChips items={tabs} activeId={tab} onChange={id => { setTab(id as TabId); scrollY.stopAnimation(); scrollY.setValue(0) }} />
+      </View>
+      <ScreenHeader componentId={componentId} title={t('nav_download')} progress={scrollY} />
       {
         menuVisible
           ? <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} onHide={() => { setMenuVisible(false) }} />
@@ -337,6 +372,9 @@ const EmptyList = ({ tab }: { tab: TabId }) => {
 
 const styles = createStyle({
   chips: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
     paddingTop: SPACING.s8,
     paddingBottom: SPACING.s2,
   },

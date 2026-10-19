@@ -1,8 +1,10 @@
 import { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
-import { Animated, FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
+import { Animated, type FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
 
 // import { useMusicList } from '@/store/list/hook'
 import ListItem, { ITEM_HEIGHT } from './ListItem'
+import { AnimatedFlatList } from '@/components/common/AnimatedLists'
+import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { createStyle, getRowInfo, type RowInfoType } from '@/utils/tools'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
@@ -18,11 +20,6 @@ import { hapticImpactLight } from '@/utils/haptic'
 import { SPACING } from '@/config/spacing'
 
 type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
-
-// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2），
-// 模块级构造防重挂；as typeof FlatList 回填泛型（createAnimatedComponent 擦除类型参数）；
-// 未传 scrollYAnimated 的使用方（排行榜/搜索）无 native 事件，行为与原生 FlatList 一致
-const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 
 export type {
   RowInfoType,
@@ -43,6 +40,8 @@ export interface ListProps {
   rankBadge?: boolean
   /** 顶栏滚动进度（QQ 式渐显 D2）：可选，未传不挂 onScroll（排行榜/搜索页零 diff，审查 I-A） */
   scrollYAnimated?: Animated.Value
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：列表延伸整屏时的 paddingTop 补偿（状态栏+顶栏[+固定子头]），未传零 diff */
+  contentPaddingTop?: number
 }
 export interface ListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
@@ -70,10 +69,12 @@ const List = forwardRef<ListType, ListProps>(({
   showIndex = false,
   rankBadge = false,
   scrollYAnimated,
+  contentPaddingTop,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
-  const flatListRef = useRef<FlatList>(null)
+  const bottomInset = usePlayerBarBottomInset()
+  const flatListRef = useRef<FlatList<LX.Music.MusicInfoOnline>>(null)
   const [currentList, setList] = useState<LX.Music.MusicInfoOnline[]>([])
   const [showSource, setShowSource] = useState(false)
   const isMultiSelectModeRef = useRef(false)
@@ -265,6 +266,8 @@ const List = forwardRef<ListType, ListProps>(({
     <AnimatedFlatList
       ref={flatListRef}
       style={styles.list}
+      // 底部穿行契约（2026-10-20）：占位块改悬浮后列表延伸到屏底，此处让位保证末行可滚出迷你条
+      contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
       onScroll={handleAnimatedScroll}
       scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       data={currentList}

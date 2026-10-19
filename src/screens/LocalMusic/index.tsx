@@ -1,21 +1,25 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppState, FlatList, Linking, NativeModules, Platform, TouchableOpacity, View } from 'react-native'
+import { Animated, AppState, Linking, NativeModules, Platform, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import SearchBar from '@/components/common/SearchBar'
 import CategoryChips from '@/components/common/CategoryChips'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
+import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { SPACING } from '@/config/spacing'
 import DotsVertical from '@/components/common/DotsVertical'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { FolderSectionList, AlbumGrid, ArtistList, splitSingers, type MusicGroup, type GroupViewActions } from './GroupViews'
-import { storageDataPrefix, LIST_IDS } from '@/config/constant'
+import { storageDataPrefix, LIST_IDS, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { scanLocalMusic, useLocalMusicList, useLocalMusicScanning, useLocalMusicScanProgress, toMusicInfoLocal } from '@/core/localMusic'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
@@ -29,6 +33,9 @@ type ViewId = 'all' | 'folder' | 'album' | 'artist'
 
 // 本地音乐（multifix 问题 3）：混合判定授权流（老用户无感 / 未授权走 MANAGE 开关页引导）
 // + 纯净搜索框 + 页头 ⋮ 菜单（重新扫描）+ 四视图 chips（全部/文件夹/专辑/歌手）
+// 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：搜索框+chips 钉固定子头（玻璃垫层渐显，Search
+// 终轮 C-2 同款），'all' 主列表延伸整屏真穿行；folder/album/artist 三视图滚动容器已接同一
+// scrollY（子头批转正，方案 §5 已知名额闭环），四视图穿行玻璃行为统一
 export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -38,6 +45,19 @@ export default ({ componentId }: { componentId: string }) => {
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
   const menuRef = useRef<LocalMusicMenuType>(null)
+  const statusBarHeight = useStatusbarHeight()
+  const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
+  const scrollY = useRef(new Animated.Value(0)).current
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
+  // 子头玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源）
+  const subHeaderFade = scrollY.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
+  // 搜索框+chips 固定子头实测高
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0)
   const [view, setView] = useState<ViewId>('all')
   const [keyword, setKeyword] = useState('')
   const [permissionDenied, setPermissionDenied] = useState(false)
@@ -208,33 +228,26 @@ export default ({ componentId }: { componentId: string }) => {
 
   return (
     <PageContent>
-      <ScreenHeader componentId={componentId} title={t('local_music')} right={headerRight} />
       {
         showAuthGuide
           ? <AuthGuide onGoSettings={handleGoSettings} onLater={() => { setShowAuthGuide(false) }} />
           : (
               <>
-                <View style={styles.searchBar}>
-                  <SearchBar
-                    placeholder={t('local_music_search_placeholder')}
-                    value={keyword}
-                    onChangeText={setKeyword}
-                    onSubmit={() => {}}
-                    onClear={() => { setKeyword('') }}
-                    tone="plain"
-                  />
-                </View>
-                <View style={styles.chips}>
-                  <CategoryChips items={chips} activeId={view} onChange={id => { setView(id as ViewId) }} />
-                </View>
                 {
                   view == 'all'
                     ? (
-                        <FlatList
+                        <AnimatedFlatList
                           style={styles.list}
+                          contentContainerStyle={{ paddingTop: headerTotal + subHeaderHeight, paddingBottom: bottomInset }}
+                          onScroll={handleScroll}
+                          scrollEventThrottle={16}
                           data={filtered}
                           keyExtractor={item => item.id}
-                          getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
+                          getItemLayout={
+                            // offset 不含 contentContainer padding（RN 已知口径，Mylist MusicList/List.tsx
+                            // 同款先例注记）：本列表无 scrollToIndex 调用故无漂移路径
+                            (_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })
+                          }
                           renderItem={({ item, index }) => (
                             <ListItem
                               item={item}
@@ -266,14 +279,41 @@ export default ({ componentId }: { componentId: string }) => {
                         />
                       )
                     : view == 'folder'
-                      ? <FolderSectionList folders={folders} actions={groupActions} />
+                      ? <FolderSectionList folders={folders} actions={groupActions} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
                       : view == 'album'
-                        ? <AlbumGrid albums={albums} onGroupPress={group => { handleGroupPress('album', group) }} />
-                        : <ArtistList artists={artists} onGroupPress={group => { handleGroupPress('artist', group) }} />
+                        ? <AlbumGrid albums={albums} onGroupPress={group => { handleGroupPress('album', group) }} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
+                        : <ArtistList artists={artists} onGroupPress={group => { handleGroupPress('artist', group) }} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
                 }
               </>
             )
       }
+      {/* 悬浮头/钉位子头后声明（RN 后声明者在上，C-1 层级修复）；渐显只包玻璃垫层，内容控件恒显
+          （Search 终轮 C-2 同款）。授权引导态不渲染（子头批审查 I-2：原无条件渲染浮在引导页上，
+          搜索框/chips 成死交互，与 L「未授权首态隐藏搜索框/chips」意图相悖） */}
+                {!showAuthGuide && (
+                  <View
+                    style={{ ...styles.subHeader, top: headerTotal, overflow: 'hidden' }}
+                    onLayout={(e) => { const h = e.nativeEvent.layout.height; setSubHeaderHeight(prev => Math.max(prev, h)) }}
+                  >
+                    <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
+                      <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+                    </Animated.View>
+                    <View style={styles.searchBar}>
+                      <SearchBar
+                        placeholder={t('local_music_search_placeholder')}
+                        value={keyword}
+                        onChangeText={setKeyword}
+                        onSubmit={() => {}}
+                        onClear={() => { setKeyword('') }}
+                        tone="plain"
+                      />
+                    </View>
+                    <View style={styles.chips}>
+                      <CategoryChips items={chips} activeId={view} onChange={id => { setView(id as ViewId); scrollY.stopAnimation(); scrollY.setValue(0) }} />
+                    </View>
+                  </View>
+                )}
+            <ScreenHeader componentId={componentId} title={t('local_music')} right={headerRight} progress={scrollY} />
       <LocalMusicMenu ref={menuRef} />
       <PlayerBarPlaceholder />
     </PageContent>
@@ -357,6 +397,11 @@ const EmptyList = ({ denied, scanning, scanningLabel, onOpenSettings }: {
 }
 
 const styles = createStyle({
+  subHeader: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
   searchBar: {
     marginHorizontal: SPACING.s16,
     marginTop: SPACING.s8,

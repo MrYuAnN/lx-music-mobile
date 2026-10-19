@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { TouchableOpacity, View } from 'react-native'
+
+import GlassSurface from '@/components/common/GlassSurface'
 import { MenuView } from '@react-native-menu/menu'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
@@ -143,13 +145,19 @@ export default () => {
   const size = Math.min(Math.max(winSize.width * 0.33 * 0.4, MIN_SIZE), MAX_SIZE, maxHeight)
 
   return (
-    <View style={containerStyle}>
+    // 玻璃胶囊（毛玻璃全体系阶段四，方案 §6）：主控制钮组整组胶囊，背景恒封面模糊/渐变不受影响；
+    // 回退=透明底（API<31 无玻璃即现状观感，fallbackColor 透明）
+    <GlassSurface
+      style={{ ...containerStyle, borderRadius: 24, overflow: 'hidden' }}
+      fallbackColor="rgba(0, 0, 0, 0)"
+      hairline="all"
+    >
       <PlayModeBtn />
       <PrevBtn size={size} />
       <TogglePlayBtn size={size}/>
       <NextBtn size={size} />
       <QueueBtn />
-    </View>
+    </GlassSurface>
   )
 }
 
@@ -170,7 +178,6 @@ const styles = createStyle({
     alignItems: 'center',
 
     // backgroundColor: '#ccc',
-    shadowOpacity: 1,
     textShadowRadius: 1,
   },
 })

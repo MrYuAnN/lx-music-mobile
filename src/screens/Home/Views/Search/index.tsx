@@ -1,5 +1,6 @@
-import { useRef, useEffect } from 'react'
-import { type LayoutChangeEvent, View } from 'react-native'
+import { useRef, useEffect, useState } from 'react'
+import { Animated, StyleSheet, type LayoutChangeEvent, View } from 'react-native'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 
 // import music from '@/utils/musicSdk'
 // import InsetShadow from 'react-native-inset-shadow'
@@ -12,6 +13,7 @@ import searchMusicState from '@/store/search/music/state'
 import searchSonglistState from '@/store/search/songlist/state'
 import { getSearchSetting, saveSearchSetting } from '@/utils/data'
 import { createStyle } from '@/utils/tools'
+import { useTheme } from '@/store/theme/hook'
 import TipList, { type TipListType } from './TipList'
 import List, { type ListType } from './List'
 import { addHistoryWord } from '@/core/search/search'
@@ -23,7 +25,20 @@ interface SearchInfo {
   searchType: 'music' | 'songlist'
 }
 
-export default () => {
+export interface SearchViewProps {
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：竖屏 screen 宿主传入启用穿行；缺省零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
+}
+
+export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
+  const theme = useTheme()
+  // 搜索框+类型 chips 固定子头实测高（钉 header 下方整组常驻，方案 §5 Search 单列方案）
+  const [subHeaderHeight, setSubHeaderHeight] = useState(0)
+  // 整组渐显插值（I-F：与顶栏同区间同 Value，GLASS_FADE_RANGE 单源）；接线态才有（横屏宿主 null 走流内分支）
+  const subHeaderFade = scrollYAnimated == null
+    ? undefined
+    : scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const headerBarRef = useRef<HeaderBarType>(null)
   const searchTipListRef = useRef<TipListType>(null)
   const listRef = useRef<ListType>(null)
@@ -98,8 +113,25 @@ export default () => {
     }, 500)
   }
 
-  return (
-    <View style={styles.container}>
+  // 悬浮子头（搜索框+chips 整组常驻）：接线态=absolute 钉位+玻璃垫层渐显（后声明压列表之上）；
+  // 未接线（横屏宿主）=流内且声明在列表前（原布局，终轮架构 I-2 沉底修复）
+  const subHeaderElement = (
+    <Animated.View
+      style={scrollYAnimated != null
+        ? { ...styles.subHeader, top: contentPaddingTop ?? 0, overflow: 'hidden' }
+        : styles.subHeaderFlow}
+      onLayout={(e) => { setSubHeaderHeight(e.nativeEvent.layout.height) }}
+    >
+      {/* 渐显只作用于玻璃垫层（终轮 C-2：内容控件恒显，对齐 ScreenHeader barBgWrap 模式） */}
+      {scrollYAnimated != null
+        ? (
+            <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
+              <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+            </Animated.View>
+          )
+        : (
+            <View style={[StyleSheet.absoluteFill, { backgroundColor: theme['c-app-background'] }]} />
+          )}
       <HeaderBar
         ref={headerBarRef}
         onSourceChange={handleSourceChange}
@@ -110,15 +142,36 @@ export default () => {
       />
       {/* 渲染顺序（问题 2）：搜索框 → 类型 chips → 列表（chips 经全局事件与 loadList 通信） */}
       <SearchTypeSelector />
+    </Animated.View>
+  )
+
+  return (
+    <View style={styles.container}>
+      {scrollYAnimated == null && subHeaderElement}
       <View style={styles.content} onLayout={handleLayout}>
         <TipList ref={searchTipListRef} onSearch={handleSearch} />
-        <List ref={listRef} onSearch={handleSearch} />
+        <List
+          ref={listRef}
+          onSearch={handleSearch}
+          scrollYAnimated={scrollYAnimated}
+          contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
+        />
       </View>
+      {/* 接线态：悬浮子头后声明（RN 后声明者在上，C-1 层级修复） */}
+      {scrollYAnimated != null && subHeaderElement}
     </View>
   )
 }
 
 const styles = createStyle({
+  subHeader: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+  },
+  subHeaderFlow: {
+    flexGrow: 0,
+  },
   container: {
     width: '100%',
     flex: 1,

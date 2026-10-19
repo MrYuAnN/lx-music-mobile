@@ -1,15 +1,32 @@
-import { memo } from 'react'
-import { FlatList, SectionList, TouchableOpacity, View } from 'react-native'
+import { memo, useMemo } from 'react'
+import { Animated, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+import { AnimatedFlatList, AnimatedSectionList } from '@/components/common/AnimatedLists'
+import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
+
+// 三视图共用：顶栏/子头玻璃渐显驱动（可选接线，未传零 diff——OnlineList.scrollYAnimated 契约同构）
+const useAnimatedScroll = (scrollYAnimated?: Animated.Value) => {
+  return useMemo(() => {
+    if (!scrollYAnimated) return undefined
+    return Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollYAnimated } } }],
+      { useNativeDriver: true },
+    )
+  }, [scrollYAnimated])
+}
+
+// 列表 paddingTop 契约（OnlineList.List.tsx 同构）：宿主传 contentPaddingTop（=顶栏+子头），
+// 列表延伸整屏、内容经 contentContainerStyle 内化——真穿行（子头批三席审查 I-1：
+// 原外层 View paddingTop 包裹使容器起点在子头之下，内容在子头底缘硬切非穿行）
 
 export interface MusicGroup {
   name: string
@@ -53,15 +70,23 @@ const SongRow = memo(({ item, index, list, actions }: {
 ))
 
 // 文件夹视图：按父目录分组 section（组头=目录名）
-export const FolderSectionList = ({ folders, actions }: {
+export const FolderSectionList = ({ folders, actions, scrollYAnimated, contentPaddingTop }: {
   folders: Array<{ key: string, name: string, data: LX.Music.MusicInfoLocal[] }>
   actions: GroupViewActions
+  /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传不挂 onScroll */
+  scrollYAnimated?: Animated.Value
+  /** 穿行 paddingTop（=顶栏+子头，子头批审查 I-1）：内化进 contentContainerStyle */
+  contentPaddingTop?: number
 }) => {
   const theme = useTheme()
   const t = useI18n()
+  const handleAnimatedScroll = useAnimatedScroll(scrollYAnimated)
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
   return (
-    <SectionList
+    <AnimatedSectionList
       style={styles.list}
+      contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
       sections={folders}
       keyExtractor={item => item.id}
       stickySectionHeadersEnabled={false}
@@ -74,20 +99,30 @@ export const FolderSectionList = ({ folders, actions }: {
       renderItem={({ item, index, section }) => (
         <SongRow item={item} index={index} list={section.data} actions={actions} />
       )}
+      onScroll={handleAnimatedScroll}
+      scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       showsVerticalScrollIndicator={false}
     />
   )
 }
 
 // 专辑视图：封面网格（numColumns=2，本地无封面→占位图标，本批预期形态）
-export const AlbumGrid = ({ albums, onGroupPress }: {
+export const AlbumGrid = ({ albums, onGroupPress, scrollYAnimated, contentPaddingTop }: {
   albums: MusicGroup[]
   onGroupPress: (group: MusicGroup) => void
+  /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传不挂 onScroll */
+  scrollYAnimated?: Animated.Value
+  /** 穿行 paddingTop（=顶栏+子头，子头批审查 I-1）：内化进 contentContainerStyle */
+  contentPaddingTop?: number
 }) => {
   const theme = useTheme()
+  const handleAnimatedScroll = useAnimatedScroll(scrollYAnimated)
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
   return (
-    <FlatList
+    <AnimatedFlatList
       style={styles.list}
+      contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
       data={albums}
       numColumns={2}
       keyExtractor={item => `album__${item.name}`}
@@ -101,23 +136,36 @@ export const AlbumGrid = ({ albums, onGroupPress }: {
           <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.singer}</Text>
         </TouchableOpacity>
       )}
+      onScroll={handleAnimatedScroll}
+      scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       showsVerticalScrollIndicator={false}
     />
   )
 }
 
 // 歌手视图：圆形字头聚合列表（原型 5），点入二级歌曲列表
-export const ArtistList = ({ artists, onGroupPress }: {
+export const ArtistList = ({ artists, onGroupPress, scrollYAnimated, contentPaddingTop }: {
   artists: MusicGroup[]
   onGroupPress: (group: MusicGroup) => void
+  /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传不挂 onScroll */
+  scrollYAnimated?: Animated.Value
+  /** 穿行 paddingTop（=顶栏+子头，子头批审查 I-1）：内化进 contentContainerStyle */
+  contentPaddingTop?: number
 }) => {
   const theme = useTheme()
   const t = useI18n()
+  const handleAnimatedScroll = useAnimatedScroll(scrollYAnimated)
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
   return (
-    <FlatList
+    <AnimatedFlatList
       style={styles.list}
+      contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
       data={artists}
       keyExtractor={item => `artist__${item.name}`}
+      // getItemLayout offset 不含 contentContainer padding（RN 已知口径，Mylist MusicList/List.tsx
+      // 同款先例注记）：本视图无 scrollToIndex 调用故无漂移路径；未来接「定位当前播放」类功能
+      // 须把 paddingTop 计入 offset
       getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
       renderItem={({ item }) => (
         <TouchableOpacity style={styles.artistRow} activeOpacity={0.7} onPress={() => { onGroupPress(item) }}>
@@ -131,6 +179,8 @@ export const ArtistList = ({ artists, onGroupPress }: {
           <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-300']} />
         </TouchableOpacity>
       )}
+      onScroll={handleAnimatedScroll}
+      scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       showsVerticalScrollIndicator={false}
     />
   )

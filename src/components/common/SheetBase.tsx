@@ -3,6 +3,8 @@ import { Animated, Dimensions, Keyboard, PanResponder, TouchableWithoutFeedback,
 
 import Modal, { type ModalType } from './Modal'
 import Text from './Text'
+import { GLASS_TINT } from './GlassSurface'
+import useDialogBlurBehind from './useDialogBlurBehind'
 import { useTheme } from '@/store/theme/hook'
 import { useWindowSize } from '@/utils/hooks'
 import { useBottomInset } from '@/utils/insetsTool'
@@ -87,6 +89,10 @@ const SheetBase = ({
   const theme = useTheme()
   const modalRef = useRef<ModalType>(null)
   const windowSize = useWindowSize()
+  // 弹层玻璃（毛玻璃全体系阶段二，方案 §2.2 C-1 拍板 A）：面板底色玻璃 tint/实色分流——
+  // blur-behind 开启时面板 GLASS_TINT 透出背景全域模糊底；false（API<31/省电模式/桥异常）
+  // 实色回退观感同旧版。状态机单源 useDialogBlurBehind（挂载探测+show 时 arm 刷新）
+  const { blurBehind, armAndRefresh } = useDialogBlurBehind()
   // 手势回调经 useRef 只创建一次、闭包捕获首帧值：窗口尺寸/关闭状态改走 ref 镜像，保证旋转/分屏后滑出目标仍正确
   const windowSizeRef = useRef(windowSize)
   windowSizeRef.current = windowSize
@@ -232,6 +238,8 @@ const SheetBase = ({
       if (visible) {
         closingRef.current = false
         visibleRef.current = true
+        // 弹层玻璃 arm（须在 Modal setVisible 之前：窗口创建即消费，原生 1s 新鲜度守卫滞留）
+        armAndRefresh()
         slideAnim.setValue(windowSizeRef.current.height)
         maskAnim.setValue(0)
         // 键盘未起时打开：清上次会话残留（弹窗在键盘弹着时被直接销毁，ime 事件流中断收不到归零帧）
@@ -288,7 +296,8 @@ const SheetBase = ({
             ...styles.sheet,
             maxHeight,
             paddingBottom: bottomInset,
-            backgroundColor: theme['c-content-background'],
+            // 玻璃 tint（blur-behind 透出模糊底）vs 实色回退——GLASS_TINT 单源复用（方案 §1）
+            backgroundColor: blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : theme['c-content-background'],
             transform: [{ translateY: slideCombined }],
           }}
           onStartShouldSetResponder={() => true}

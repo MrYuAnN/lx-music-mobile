@@ -1,15 +1,16 @@
-import { useCallback, useRef } from 'react'
-import { FlatList } from 'react-native'
+import { useCallback, useMemo, useRef } from 'react'
+import { Animated, FlatList } from 'react-native'
 
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { useStatusbarHeight } from '@/store/common/hook'
+import { LIST_IDS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 
 export interface LocalMusicGroupProps {
@@ -27,7 +28,19 @@ export interface LocalMusicGroupProps {
 export default ({ componentId, value, list }: LocalMusicGroupProps) => {
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
+  // 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）
+  const statusBarHeight = useStatusbarHeight()
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
+  const scrollY = useRef(new Animated.Value(0)).current
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
   const menuRef = useRef<LocalMusicMenuType>(null)
+
+  // native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
+  const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 
   const handlePlay = useCallback((item: LX.Music.MusicInfoLocal, playList_: LX.Music.MusicInfoLocal[]) => {
     // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
@@ -39,9 +52,11 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
 
   return (
     <PageContent>
-      <ScreenHeader componentId={componentId} title={value} />
-      <FlatList
+      <AnimatedFlatList
         style={styles.list}
+        contentContainerStyle={{ paddingTop: statusBarHeight + SCREEN_HEADER_HEIGHT, paddingBottom: bottomInset }}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={list}
         keyExtractor={item => item.id}
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
@@ -66,6 +81,8 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
         )}
         showsVerticalScrollIndicator={false}
       />
+      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
+            <ScreenHeader componentId={componentId} title={value} progress={scrollY} />
       <LocalMusicMenu ref={menuRef} />
       <PlayerBarPlaceholder />
     </PageContent>

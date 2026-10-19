@@ -1,8 +1,9 @@
 import { useRef, useState, useMemo, forwardRef, useImperativeHandle } from 'react'
-import { FlatList, View, RefreshControl, type FlatListProps } from 'react-native'
+import { Animated, FlatList, View, RefreshControl, type FlatListProps } from 'react-native'
 
 import ListItem from './ListItem'
 import { type ListInfoItem } from '@/store/songlist/state'
+import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { useLayout } from '@/utils/hooks'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
@@ -22,6 +23,9 @@ export interface ListProps {
   onRefresh: () => void
   onLoadMore: () => void
   onOpenDetail: (item: ListInfoItem, index: number) => void
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选接线，未传零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
 }
 export type Status = 'loading' | 'refreshing' | 'end' | 'error' | 'idle'
 
@@ -31,8 +35,21 @@ export interface ListType {
   setStatus: (val: Status) => void
 }
 
-export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenDetail }, ref) => {
+// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
+
+export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenDetail, scrollYAnimated, contentPaddingTop }, ref) => {
   const flatListRef = useRef<FlatList>(null)
+  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
+  // 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选穿行接线，未传零 diff
+  const handleAnimatedScroll = useMemo(() => {
+    if (!scrollYAnimated) return undefined
+    return Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollYAnimated } } }],
+      { useNativeDriver: true },
+    )
+  }, [scrollYAnimated])
   const [currentList, setList] = useState<ListInfoItem[]>([])
   const [showSource, setShowSource] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
@@ -128,10 +145,13 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
         width == 0
           ? null
           : (
-              <FlatList
+              <AnimatedFlatList
                 key={String(rowInfo.num)}
                 ref={flatListRef}
                 style={styles.list}
+                contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
+                onScroll={handleAnimatedScroll}
+                scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
                 columnWrapperStyle={{ gap: COLUMN_GAP }}
                 numColumns={rowInfo.num}
                 data={list}

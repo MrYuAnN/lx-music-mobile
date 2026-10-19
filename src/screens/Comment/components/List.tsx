@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
-import { FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
+import { Animated, FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
 
 // import { useMusicList } from '@/store/list/hook'
 import CommentFloor from './CommentFloor'
@@ -15,7 +15,13 @@ type FlatListType = FlatListProps<Comment>
 export interface ListProps {
   onRefresh: () => void
   onLoadMore: () => void
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选接线，未传零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
 }
+
+// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
+const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 export interface ListType {
   setList: (list: Comment[]) => void
   getList: () => Comment[]
@@ -26,10 +32,20 @@ export type Status = 'loading' | 'refreshing' | 'end' | 'error' | 'idle'
 const List = forwardRef<ListType, ListProps>(({
   onRefresh,
   onLoadMore,
+
+  scrollYAnimated,
+  contentPaddingTop,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
   const flatListRef = useRef<FlatList>(null)
+  const handleAnimatedScroll = useMemo(() => {
+    if (!scrollYAnimated) return undefined
+    return Animated.event(
+      [{ nativeEvent: { contentOffset: { y: scrollYAnimated } } }],
+      { useNativeDriver: true },
+    )
+  }, [scrollYAnimated])
   const [currentList, setList] = useState<Comment[]>([])
   const [status, setStatus] = useState<Status>('idle')
   // const currentListIdRef = useRef('')
@@ -84,9 +100,12 @@ const List = forwardRef<ListType, ListProps>(({
   }, [onLoadMore, status])
 
   return (
-    <FlatList
+    <AnimatedFlatList
       ref={flatListRef}
       style={styles.list}
+      contentContainerStyle={contentPaddingTop ? { paddingTop: contentPaddingTop } : undefined}
+      onScroll={handleAnimatedScroll}
+      scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       data={currentList}
       onEndReachedThreshold={0.5}
       // maxToRenderPerBatch={4}

@@ -8,6 +8,7 @@ import { getListPosition, getListPrevSelectId, saveListPosition } from '@/utils/
 // import { useMusicList } from '@/store/list/hook'
 import { getListMusics, setActiveList } from '@/core/list'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { createStyle, getRowInfo } from '@/utils/tools'
 import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
@@ -58,6 +59,8 @@ const usePlayIndex = () => {
 
 const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll, header, scrollYAnimated, onProgrammaticScroll, onFirstRealScroll }, ref) => {
   // const t = useI18n()
+  // 底部穿行契约（2026-10-20）：占位块改悬浮后列表延伸到屏底，让位保证末行可滚出迷你条
+  const bottomInset = usePlayerBarBottomInset()
   const flatListRef = useRef<FlatList>(null)
   const [currentList, setList] = useState<LX.List.ListMusics>([])
   const listFirstScrollRef = useRef(false)
@@ -360,6 +363,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       onLayout={(e) => { viewportHeightRef.current = e.nativeEvent.layout.height }}
       scrollEventThrottle={16}
       style={styles.list}
+      contentContainerStyle={{ paddingBottom: bottomInset }}
       data={currentList}
       maxToRenderPerBatch={4}
       numColumns={rowInfo.current.rowNum}

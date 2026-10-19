@@ -3,6 +3,8 @@ import { View, Animated, TouchableHighlight } from 'react-native'
 import { useWindowSize } from '@/utils/hooks'
 
 import Modal, { type ModalType } from './Modal'
+import { GLASS_TINT } from './GlassSurface'
+import useDialogBlurBehind from './useDialogBlurBehind'
 
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
@@ -62,6 +64,8 @@ interface Props<M extends Menus = Menus> {
   fontSize?: number
   center?: boolean
   activeId?: M[number]['action'] | null
+  /** 玻璃 tint（毛玻璃全体系阶段二）：外层 Modal wrapper 探测跨窗模糊后传入，null=实色回退 */
+  glassTint?: string | null
 }
 
 const Menu = ({
@@ -75,6 +79,7 @@ const Menu = ({
   activeId,
   fontSize = 15,
   center = false,
+  glassTint = null,
 }: Props) => {
   const theme = useTheme()
   const windowSize = useWindowSize()
@@ -129,7 +134,7 @@ const Menu = ({
   // console.log(menuStyle)
   // console.log(menuItemStyle)
   return (
-    <View style={{ ...styles.menu, ...menuStyle, backgroundColor: theme['c-content-background'] }} onStartShouldSetResponder={() => true}>
+    <View style={{ ...styles.menu, ...menuStyle, backgroundColor: glassTint ?? theme['c-content-background'] }} onStartShouldSetResponder={() => true}>
       <Animated.ScrollView keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
         {
           menus.map((menu, index) => (
@@ -187,9 +192,13 @@ export interface MenuType {
 
 const Component = <M extends Menus>({ menus, width, height, activeId, onHide, onPress, fontSize, center }: MenuProps<M>, ref: Ref<MenuType>) => {
   // console.log(visible)
+  const theme = useTheme()
   const modalRef = useRef<ModalType>(null)
   const [position, setPosition] = useState<Position>({ w: 0, h: 0, x: 0, y: 0 })
   const [menuSize, setMenuSize] = useState<MenuSize>({ })
+  // 弹层玻璃（毛玻璃全体系阶段二，方案 §2.2）：show 前 arm blur-behind（consume-once+新鲜度
+  // 守卫）+挂载预探测（冷启动首开前状态就绪，审查架构席 I-1），状态机单源 useDialogBlurBehind
+  const { blurBehind, armAndRefresh } = useDialogBlurBehind()
   const hide = () => {
     modalRef.current?.setVisible(false)
   }
@@ -197,6 +206,7 @@ const Component = <M extends Menus>({ menus, width, height, activeId, onHide, on
     show(newPosition, menuSize) {
       setPosition(newPosition)
       if (menuSize) setMenuSize(menuSize)
+      armAndRefresh()
       modalRef.current?.setVisible(true)
     },
     hide() {
@@ -206,7 +216,7 @@ const Component = <M extends Menus>({ menus, width, height, activeId, onHide, on
 
   return (
     <Modal onHide={onHide} ref={modalRef}>
-      <Menu menus={menus} width={width} height={height} activeId={activeId} buttonPosition={position} menuSize={menuSize} onPress={onPress} onHide={hide} fontSize={fontSize} center={center} />
+      <Menu menus={menus} width={width} height={height} activeId={activeId} buttonPosition={position} menuSize={menuSize} onPress={onPress} onHide={hide} fontSize={fontSize} center={center} glassTint={blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : null} />
     </Modal>
   )
 }

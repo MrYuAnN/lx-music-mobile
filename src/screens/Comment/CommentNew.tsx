@@ -1,12 +1,16 @@
 import { useEffect, useRef } from 'react'
+import type { Animated } from 'react-native'
 import { filterList, getNewComment } from './utils'
 import music from '@/utils/musicSdk'
 import List, { type ListType } from './components/List'
 const limit = 15
 
-export default ({ musicInfo, onUpdateTotal }: {
+export default ({ musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop }: {
   musicInfo: LX.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
+  /** 顶栏族穿行化（毛玻璃全体系阶段三）：可选接线，未传零 diff */
+  scrollYAnimated?: Animated.Value
+  contentPaddingTop?: number
 }) => {
   // const [isLoading, setIsLoading] = useState(false)
   const listRef = useRef<ListType>(null)
@@ -100,6 +104,8 @@ export default ({ musicInfo, onUpdateTotal }: {
       ref={listRef}
       onLoadMore={handleListLoadMore}
       onRefresh={handleListRefresh}
-    />
+        scrollYAnimated={scrollYAnimated}
+        contentPaddingTop={contentPaddingTop}
+      />
   )
 }
