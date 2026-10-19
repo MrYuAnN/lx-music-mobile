@@ -55,7 +55,8 @@ export interface SheetBaseProps {
   avoidKeyboard?: boolean
   /**
    * avoidKeyboard 弹层键盘收起（ime 归 0）时回调：ROM 在键盘弹着时消费外部第一击（touch 进不了
-   * RN，点外部只收键盘），由本回调接续关弹窗，实现一次点击全关。确认流程中勿关由调用方守卫
+   * 点按目标），由本回调接续关弹窗实现一次点击全关；是否关层由调用方按会话状态（有无草稿）
+   * 分流（2026-10-19 定案，替代 confirmingRef 时代口径）
    */
   onKeyboardDismissed?: () => void
 }
@@ -123,13 +124,19 @@ const SheetBase = ({
   useEffect(() => {
     if (!avoidKeyboard) return
     return onDialogImeChange(imePx => {
-      // 关闭中冻结 ime 消费：sheet 下滑动画接管（handleClose 已并行归零 imeAnim）；非本会话事件不消费
-      if (closingRef.current || !visibleRef.current) return
+      // 非本会话窗口的事件不消费；关闭中（visible=false && closing=true）仍消费以驱动 imeAnim
+      // 实帧跟随键盘真实位移（三席审查 I-1：原 !visibleRef 判断使跟随分支不可达），但不触发
+      // 接续回调（handleClose 已在关，closeSheet 幂等且接续分流无需再入）
+      if (!visibleRef.current && !closingRef.current) return
       const ime = imePx / Dimensions.get('window').scale
       if (ime > 0) {
         clearImeDismissTimer()
         lastImeRef.current = ime
         imeAnim.setValue(-Math.max(0, ime - navInsetRef.current))
+        if (closingRef.current) {
+          prevImeRef.current = ime
+          return
+        }
         // 连续下降计数：键盘收起动画逐帧递减；relayout 抖动单帧跳变后回弹，计不满
         imeDropCountRef.current = ime < prevImeRef.current * 0.95 ? imeDropCountRef.current + 1 : 0
         prevImeRef.current = ime
@@ -143,7 +150,7 @@ const SheetBase = ({
         imeDismissTimerRef.current = setTimeout(() => {
           imeDismissTimerRef.current = null
           lastImeRef.current = 0
-          onKeyboardDismissedRef.current?.()
+          if (!closingRef.current) onKeyboardDismissedRef.current?.()
         }, 150)
       }
     })
@@ -180,13 +187,9 @@ const SheetBase = ({
     // 键盘收起与 sheet 下滑并行（不等 Dialog 销毁才 blur）：触摸恢复提前一整个下滑动画时长，
     // 也避免「弹窗已关键盘才收」的错位观感；IME 收起动画本身挡触摸是系统行为不可根除
     Keyboard.dismiss()
-    // 抬升量同步动画归零（ime 事件已冻结）：sheet 边落边滑出，防停在屏内抬升位
-    Animated.timing(imeAnim, {
-      toValue: 0,
-      duration: AM_EASE_DURATION,
-      easing: amEase,
-      useNativeDriver: true,
-    }).start()
+    // 抬升量不另起归零动画：ime 事件在关闭中持续实帧驱动 imeAnim（跟随系统键盘真实位移，
+    // 与下滑叠加为一段连续运动，2026-10-19 衔接优化）；事件流中断时 slideAnim 已将 sheet
+    // 推出屏外（windowHeight > 任何抬升量），无滞留风险
     // Dialog 窗口触摸穿透：sheet 动画照常播放，触摸立即落到底层页面（主页可滑不必等 Dialog 销毁）
     if (avoidKeyboard) makeDialogTouchPassthrough()
     // sheet 下滑与遮罩淡出并行，时长对齐保证同步退场（iOS sheet 惯例）

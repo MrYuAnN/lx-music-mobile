@@ -430,6 +430,15 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
         InputMethodManager imm = (InputMethodManager) reactContext.getSystemService(Context.INPUT_METHOD_SERVICE);
         if (imm != null) imm.showSoftInput(focused, 0);
       });
+      // 键盘弹着首击放行实验（2026-10-19，doc/plans/modal-wrap-content-window.md）：包装窗口
+      // callback，ACTION_DOWN 焦点在输入框且点击在其外时自收键盘但不消费事件——收键盘与点击
+      // 一步完成；SheetInputProbe 日志同时验证首击是否到达窗口层级（无记录=系统层已吞，app 侧
+      // 无解，转小窗形态方案）
+      Window.Callback originalCallback = window.getCallback();
+      // 重入防御（三席审查 S-2）：onExtraWindowCreate 对同一 window 重复触发时不叠加包装链
+      if (originalCallback != null && !(originalCallback instanceof KeyboardPassThroughCallback)) {
+        window.setCallback(new KeyboardPassThroughCallback(originalCallback, decorView));
+      }
     }
 
     @Override

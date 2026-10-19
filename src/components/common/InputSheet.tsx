@@ -27,8 +27,6 @@ export interface InputSheetProps {
   confirmText?: string
   onConfirm?: (text: string) => void | Promise<void>
   onHide?: () => void
-  /** 可选扩展位（渲染于输入框上方）：新建歌单面板的封面选择位等（歌单封面机制批②） */
-  children?: React.ReactNode
 }
 
 export interface InputSheetType {
@@ -45,7 +43,6 @@ const InputSheet = ({
   confirmText,
   onConfirm,
   onHide,
-  children,
 }: InputSheetProps, ref: React.Ref<InputSheetType>) => {
   const theme = useTheme()
   const t = useI18n()
@@ -112,17 +109,25 @@ const InputSheet = ({
     },
   }))
 
-  // onConfirm 可能弹出确认框（重名确认）抢焦点收键盘——await 全程置 confirming 挡住
-  // onKeyboardDismissed 的自动关，防确认弹窗期间本弹层被误关
-  const confirmingRef = useRef(false)
+  // 分区语义+空表单即关（2026-10-19 终版）：本 ROM 键盘弹着时把输入框外所有第一击在窗口层
+  // 征用去收键盘（onPressIn 实验证伪「按钮位移取消按压」论——动作挂触点仍不执行，touch 确实
+  // 进不了 RN），app 只知「键盘收起」不知落点，接续关层按「有无草稿」分流：无草稿（确认键必
+  // 为禁用态，首击无论落在遮罩/空白/取消都只能是放弃意图）随 ime 收起立即同帧关层，遮罩一击
+  // 全关回归；有草稿一律不联动——被吃后取消与确认不可分辨，自动提交会令「点取消」变「建单」，
+  // 自动关层会丢草稿，二击按分区语义执行。创建主路径=输入法「完成」键直提（IME 内部按键
+  // 事件不经屏幕触摸）；确认/取消动作挂 onPressIn（键盘收起态第二击触点即执行）。
+  // 时点说明（三席审查 S-14）：UtilsModule 已挂 KeyboardPassThroughCallback——首击自收键盘
+  // +放行，正常 ROM 上全部操作一击完成；本处二击/分流语义为放行件缺失 ROM 的兜底
+  const handleImeDismiss = () => {
+    if (!text.trim().length) closeSheet()
+  }
   const handleConfirm = async() => {
     const name = text.trim()
     if (!name.length) return
-    confirmingRef.current = true
     try {
       await onConfirm?.(name)
-    } finally {
-      confirmingRef.current = false
+    } catch {
+      // 通用组件兜底（三席审查 S-5）：调用方应自行容错，此处防未捕获拒绝冒泡
     }
   }
 
@@ -135,27 +140,39 @@ const InputSheet = ({
       title={title}
       onHide={onHide}
       onShow={focusInput}
-      onKeyboardDismissed={imeAvoid ? () => { if (!confirmingRef.current) closeSheet() } : undefined}
+      onKeyboardDismissed={imeAvoid ? handleImeDismiss : undefined}
       navigationBarTranslucent={false}
       systemAvoidsInsets={Platform.OS === 'android' && !imeAvoid}
       avoidKeyboard={imeAvoid}
     >
       <View style={styles.container}>
-        {children}
         <Input
           ref={inputRef}
           style={styles.input}
           value={text}
           placeholder={placeholder}
           maxLength={maxLength}
+          returnKeyType="done"
           onChangeText={setText}
           onSubmitEditing={handleConfirm}
         />
         <View style={styles.btns}>
-          <Button style={{ ...styles.btn, backgroundColor: theme['c-button-background'] }} onPress={closeSheet}>
+          {/* 动作挂 onPressIn（触点即触发）而非 onPress（抬手触发）：本 ROM 键盘弹着时任意首触
+              会并发触发 IME 收起，imeAnim 随之逐帧下移弹层——抬手前按钮已滑出指下，Pressable 判定
+              触摸移出命中区取消按压，onPress 永不执行（真机「点确认只关键盘、要点两次」根因，
+              2026-10-19）。下触即执行后键盘收起与弹窗关闭同帧启动，一气呵成；代价=按住滑出按钮
+              不再视为取消（对话框双键场景可接受） */}
+          <Button
+            style={{ ...styles.btn, backgroundColor: theme['c-button-background'] }}
+            onPressIn={closeSheet}
+          >
             <Text size={14} color={theme['c-font']}>{t('cancel')}</Text>
           </Button>
-          <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={!text.trim().length} onPress={handleConfirm}>
+          <Button
+            style={{ ...styles.btn, backgroundColor: theme['c-primary'] }}
+            disabled={!text.trim().length}
+            onPressIn={handleConfirm}
+          >
             <Text size={14} color={theme['c-on-primary']}>{confirmText ?? t('confirm')}</Text>
           </Button>
         </View>
