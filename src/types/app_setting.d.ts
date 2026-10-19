@@ -302,6 +302,8 @@ declare global {
        * LOVE 无自动轨，非空即自定义；不随备份导出
        */
       'list.lovePic': string | null
+      'list.defaultPic': string | null
+      'list.defaultPicCustom': boolean
 
       /**
        * 文件命名方式（分享文案用，历史键归属分享场景）

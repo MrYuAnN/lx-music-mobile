@@ -27,29 +27,36 @@ export const guardWritableList = (listId: string) => {
 }
 
 // 克隆收藏歌单为自建歌单（拍板 #10：不带 source/sourceListId，pic 沿用，名「· 副本」）。
-// pic 为本地封面文件（自动轨/自定义轨，歌单封面机制批③）：复制为新 id 命名再继承——
-// 防源后续重生成/移除封面波及副本（方案 §2.3-1）；复制失败降级共享原路径（经自动轨自愈兜底）；
-// picCustom 随 pic 语义同步继承（副本=完全复制心智）
+// 预生成实体 id 且封面文件名对齐 `{id}_` 契约（三席代码审查 I2：独立时间戳文件名会让
+// cleanListCoverFiles 永远匹配不到克隆封面，磁盘累积泄漏）。pic 为本地封面文件时复制
+// 后继承（防源变更波及副本，方案 §2.3-1）；copyFile 失败降级分流（审查 I3）——
+// 自定义封面（picCustom=true）不带封面创建交自动轨（共享路径的自愈只对非冻结条目成立），
+// 仅自动轨路径保留共享降级
 export const handleCloneList = async(listInfo: LX.List.UserListInfo) => {
   const list = await getListMusics(listInfo.id)
-  let pic = listInfo.pic
+  const cloneId = `userlist_${Date.now()}`
+  let pic: string | undefined = listInfo.pic
+  let picCustom: boolean | undefined = listInfo.picCustom
   if (pic && pic.startsWith('/')) {
     try {
       const dir = pic.startsWith(customCoversDirPath) ? customCoversDirPath : coversDirPath
       const ext = pic.lastIndexOf('.') > 0 ? pic.substring(pic.lastIndexOf('.')) : '.png'
-      const fileName = `userlist_${Date.now()}${ext}`
-      const target = `${dir}/${fileName}`
+      const target = `${dir}/${cloneId}_${Date.now()}${ext}`
       await copyFile(pic.replace(/^file:\/\//, ''), target)
       pic = target
     } catch {
-      /* 降级共享原路径 */
+      if (picCustom === true) {
+        pic = undefined
+        picCustom = undefined
+      }
     }
   }
   await createList({
+    id: cloneId,
     name: global.i18n.t('list_clone_name', { name: listInfo.name }),
     list,
     pic,
-    picCustom: listInfo.picCustom,
+    picCustom,
   })
   toast(global.i18n.t('list_clone_success'))
 }

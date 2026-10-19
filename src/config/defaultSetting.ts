@@ -65,6 +65,10 @@ const defaultSetting: LX.AppSetting = {
   // 「我喜欢」自定义封面（歌单封面机制批②，方案 §2.2-1）：LOVE 无自动轨，非空即自定义；
   // 存本地文件路径，不随备份导出（ListSaveInfo 仅列表数据）——恢复回红心为预期行为
   'list.lovePic': null,
+  // 默认歌单封面（2026-10-18 拍板纳入封面机制）：DEFAULT 不在 userLists 存储，setting 双键
+  // 独立通道（指针+自定义冻结标记），loveCover 同款；存本地文件路径，不随备份导出
+  'list.defaultPic': null,
+  'list.defaultPicCustom': false,
 
   'download.fileName': '歌名 - 歌手',
   'download.quality': '320k',

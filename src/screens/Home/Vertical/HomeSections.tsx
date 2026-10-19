@@ -19,10 +19,11 @@ import CreateListDialog, { type CreateListDialogType } from '@/components/common
 import { SPACING } from '@/config/spacing'
 import { hapticImpactLight } from '@/utils/haptic'
 import { prefetchAmbientColor } from '@/utils/ambientColor'
-import { syncShelfCovers } from '@/utils/playlistCoverGen'
-import { existsFile } from '@/utils/fs'
-import { setLoveCover } from '@/core/loveCover'
 import { useSettingValue } from '@/store/setting/hook'
+import { existsFile } from '@/utils/fs'
+import { setDefaultCover } from '@/core/defaultCover'
+import { queueCoverGen, syncShelfCovers, isCurrentLayoutPic } from '@/utils/playlistCoverGen'
+import { setLoveCover } from '@/core/loveCover'
 
 // AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
 // 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
@@ -226,6 +227,27 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
   const dragIdRef = useRef<string | null>(null)
   const listsRef = useRef(lists)
   listsRef.current = lists
+  // 默认歌单封面（2026-10-18 拍板纳入封面机制）：pic 走 setting 单键（DEFAULT 不在 userLists），
+  // 文件缺失兜底清键回占位+重生成（lovePic 同款降级路径；自动轨文件在缓存目录可能被系统清理）；
+  // 旧布局产物（无 v2 标签）静默重生成，写回换新路径后旧文件走常规清理（自建歌单 syncShelfCovers 同款）
+  const defaultPic = useSettingValue('list.defaultPic')
+  useEffect(() => {
+    if (!defaultPic) return
+    if (!isCurrentLayoutPic(defaultPic)) {
+      queueCoverGen(LIST_IDS.DEFAULT, true)
+      return
+    }
+    let cancelled = false
+    void existsFile(defaultPic).then(ok => {
+      // stale 守卫（三席审查 I-2）：在途检查期间换图时旧回调放弃，防误清新落库的封面指针
+      if (cancelled) return
+      if (!ok) {
+        setDefaultCover(null, false)
+        queueCoverGen(LIST_IDS.DEFAULT, true)
+      }
+    })
+    return () => { cancelled = true }
+  }, [defaultPic])
   // 采样主色预热（hero v2 QQ 式）：shelf 渲染封面时按 URI 提取并记忆，点进歌单页取色即时命中，
   // 消首次进入的采样色闪变（真机反馈 2026-10-17）
   useEffect(() => {
@@ -365,6 +387,8 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
           lists.map((item, i) => {
             const dragging = dragOrigin === i
             const collect = isCollectList(item)
+            // 默认歌单封面（2026-10-18 拍板纳入）：pic 走 setting 单键，其余列表读条目
+            const shelfPic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as LX.List.UserListInfo).pic
             return (
               <Animated.View
                 key={item.id}
@@ -390,8 +414,8 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
                 >
                   <View style={styles.shelfCoverWrap}>
                     {
-                      (item as LX.List.UserListInfo).pic
-                        ? <Image url={(item as LX.List.UserListInfo).pic ?? null} style={{ ...styles.shelfCoverReal, backgroundColor: theme['c-border-background'] }} resizeMode="cover" />
+                      shelfPic
+                        ? <Image url={shelfPic ?? null} style={{ ...styles.shelfCoverReal, backgroundColor: theme['c-border-background'] }} resizeMode="cover" />
                         : <PlaylistCover id={item.id} size={84} />
                     }
                     {
@@ -430,15 +454,21 @@ const MyMusic = () => {
     }
   }, [])
 
-  // 冷启动预载 LOVE：allMusicList 惰性加载，不预载则播放键静默失败、曲数误显 0；
-  // 预载不自发事件，完成后本地 bump 刷新（否则非空 LOVE 被空态逻辑误禁）
+  // 冷启动预载 shelf 全部歌单（真机反馈 2026-10-18：杀 app 重进曲数全显 0）：allMusicList
+  // 惰性加载，不预载则曲数误显 0（LOVE 还有播放键静默失败）。预载不自发事件，完成后本地 bump
+  // 刷新；lists 异步就绪后本 effect 重跑，getListMusics 内存缓存幂等无重复读盘
   useEffect(() => {
     let stale = false
-    void getListMusics(LIST_IDS.LOVE).then(() => {
+    const ids = [LIST_IDS.LOVE, LIST_IDS.DEFAULT, ...lists.map(l => l.id)]
+    // 仅本次存在缓存未命中（冷启动首载/新增歌单）才预载+bump；全命中说明元数据无变化，
+    // store 变更自身已触发重渲染，跳过空转 bump（三席审查 S-7）
+    const misses = ids.filter(id => !allMusicList.has(id))
+    if (!misses.length) return
+    void Promise.all(misses.map(id => getListMusics(id).catch(() => {}))).then(() => {
       if (!stale) setMusicVersion(v => v + 1)
-    }).catch(() => {})
+    })
     return () => { stale = true }
-  }, [])
+  }, [lists])
 
   const getCount = useCallback((id: string) => allMusicList.get(id)?.length ?? 0, [])
 

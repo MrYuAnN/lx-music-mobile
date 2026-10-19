@@ -11,7 +11,9 @@ import { existsFile, mkdir, moveFile, readDir, temporaryDirectoryPath, unlink, t
 import { customCoversDirPath } from '@/utils/playlistCoverEdit'
 import { getListMusics } from '@/utils/listManage'
 import { updateUserList } from '@/core/list'
+import { setDefaultCover } from '@/core/defaultCover'
 import listState from '@/store/list/state'
+import settingState from '@/store/setting/state'
 import { LIST_IDS } from '@/config/constant'
 
 export const COVER_SIZE = 512
@@ -19,6 +21,13 @@ export const coversDirPath = `${temporaryDirectoryPath}/covers`
 // 防抖 3s——无业界对标，本产品自定（方案 §0 锁定设计）
 const DEBOUNCE_MS = 3000
 const HEAD_COVER_COUNT = 3
+// 斜叠布局版本标签（真机反馈 2026-10-18 调参批升 v2，规格见 PlaylistCoverGenHost.CollageCover）：
+// 拼入产物文件名——触发侧（syncShelfCovers/PlaylistShelf）据此识别旧布局产物静默重生成，
+// 文件名版本化联动旧文件常规清理
+const LAYOUT_TAG = 'v2'
+export const isCurrentLayoutPic = (pic: string): boolean => {
+  return pic.includes(`_${LAYOUT_TAG}_`)
+}
 
 type CaptureFn = (listId: string, picUrls: string[]) => Promise<string | null>
 
@@ -45,6 +54,22 @@ const isOwnedListId = (id: string): boolean => {
   return id != LIST_IDS.DEFAULT && id != LIST_IDS.LOVE && id != LIST_IDS.TEMP
 }
 
+// 自动轨范围（2026-10-18 拍板：默认歌单纳入封面机制）：自建+DEFAULT 开放，LOVE（setting
+// 单键自定义专属，无自动轨）/TEMP（临时队列）排除
+const isAutoCoverListId = (id: string): boolean => {
+  return id != LIST_IDS.LOVE && id != LIST_IDS.TEMP
+}
+
+const isDefaultListId = (id: string): boolean => {
+  return id == LIST_IDS.DEFAULT
+}
+
+// 自定义冻结判定（picCustom）：自建/收藏读条目，DEFAULT 读 setting 双键（不在 userLists）
+const isPicCustomFrozen = (listId: string): boolean => {
+  if (isDefaultListId(listId)) return settingState.setting['list.defaultPicCustom'] === true
+  return listState.userList.find(l => l.id === listId)?.picCustom === true
+}
+
 // FNV-1a：输出文件名用的 8 位 hex 签名
 const hash8 = (str: string): string => {
   let h = 0x811c9dc5
@@ -69,8 +94,14 @@ const buildSignature = async(listId: string): Promise<string> => {
   return urls.join('\n')
 }
 
-// 写回（三写点统一防护）：写前按 id 重读最新条目仅并 pic；picCustom 冻结或值未变即丢弃
+// 写回（三写点统一防护）：写前按 id 重读最新状态仅并 pic；picCustom 冻结或值未变即丢弃。
+// DEFAULT 不在 userLists（updateList 拦截），走 setting 双键通道（setDefaultCover 同步冻结标记复位）
 const writeBackPic = async(listId: string, pic: string) => {
+  if (isDefaultListId(listId)) {
+    if (settingState.setting['list.defaultPicCustom'] === true || settingState.setting['list.defaultPic'] === pic) return
+    setDefaultCover(pic, false)
+    return
+  }
   const fresh = listState.userList.find(l => l.id === listId)
   if (!fresh || fresh.picCustom === true || fresh.pic === pic) return
   await updateUserList([{ ...fresh, pic }])
@@ -87,14 +118,22 @@ const generateFor = async(listId: string): Promise<void> => {
     }
     const urls = signature.split('\n')
     if (urls.length === 1) {
-      // 降级链 =1 张：不落盘，pic 直用该曲封面 URL
-      await writeBackPic(listId, urls[0])
+      // 降级链 =1 张：不落盘，pic 直用该曲封面 URL。
+      // 写回失败与截图失败分道（三席代码审查 S2）：不进 failedCovers，清签名留待下次重试
+      try {
+        await writeBackPic(listId, urls[0])
+      } catch {
+        lastSignatures.delete(listId)
+      }
       return
     }
-    const fileName = `${listId}_${hash8(signature)}.png`
+    const fileName = `${listId}_${LAYOUT_TAG}_${hash8(signature)}.png`
     const targetPath = `${coversDirPath}/${fileName}`
-    const fresh = listState.userList.find(l => l.id === listId)
-    if (fresh?.pic === targetPath && await existsFile(targetPath).catch(() => false)) {
+    // 产物已存在短路：DEFAULT 不在 userLists，读 setting 指针比对（三席审查 S-4）
+    const currentPic = isDefaultListId(listId)
+      ? settingState.setting['list.defaultPic']
+      : listState.userList.find(l => l.id === listId)?.pic
+    if (currentPic === targetPath && await existsFile(targetPath).catch(() => false)) {
       confirmedCovers.add(targetPath)
       return
     }
@@ -104,7 +143,14 @@ const generateFor = async(listId: string): Promise<void> => {
     // 先写新后删旧（无双丢窗口）；move 同在 CacheDir 分区
     await moveFile(tmpUri, targetPath)
     confirmedCovers.add(targetPath)
-    await writeBackPic(listId, targetPath)
+    // 写回失败与截图失败分道（三席代码审查 S2）：产物已落盘不进 failedCovers，
+    // 清签名留待下次内容变更重试（重试将重截）
+    try {
+      await writeBackPic(listId, targetPath)
+    } catch {
+      lastSignatures.delete(listId)
+      return
+    }
     const entries = await readDir(coversDirPath).catch(() => [] as Array<string | FileType>)
     await Promise.all(entries
       .map(e => typeof e == 'string' ? (e.split('/').pop() ?? e) : e.name)
@@ -129,34 +175,62 @@ const processQueue = async() => {
   }
 }
 
-// force=true 跳过签名短路（补漏/内容变更重试）；failed/empty 退避由调用方按链路清理
+// force=true 跳过签名短路（补漏/内容变更/移除封面重生成重试），并清除失败/空退避标记——
+// force 由调用方显式表达重试意图，不得被既有退避静默吞掉（三席审查 I-3：移除封面回自动轨
+// 场景 defaultPic 已置 null 而重生成被退避拦截，封面停留占位直到下次内容变更）
 export const queueCoverGen = (listId: string, force = false) => {
-  if (!isOwnedListId(listId)) return
-  if (failedCovers.has(listId) || emptyCoverLists.has(listId)) return
+  if (!isAutoCoverListId(listId)) return
+  if (force) {
+    failedCovers.delete(listId)
+    emptyCoverLists.delete(listId)
+    lastSignatures.delete(listId)
+  } else if (failedCovers.has(listId) || emptyCoverLists.has(listId)) return
+  if (isPicCustomFrozen(listId)) return
   if (!captureFn) return
-  if (force) lastSignatures.delete(listId)
   if (queuedSet.has(listId)) return
   queuedSet.add(listId)
   queue.push(listId)
   void processQueue()
 }
 
-// shelf 存在性补漏（pic 三态分流，方案 §2.1-4）：首页我的音乐区渲染时调用
+// shelf 存在性补漏（pic 三态分流，方案 §2.1-4）：首页我的音乐区渲染时调用。
+// custom 轨（covers_custom，picCustom 条目）缺失时降级清 picCustom 回自动轨——
+// 备份恢复/换机悬空场景的自愈通道（三席代码审查 I1；写回走 writeBackPic 同款重读防护）
 export const syncShelfCovers = (lists: LX.List.MyListInfo[]): void => {
   for (const item of lists) {
     if (!isOwnedListInfo(item)) continue
     if (failedCovers.has(item.id) || emptyCoverLists.has(item.id)) continue
-    const pic = (item as LX.List.UserListInfo).pic
+    const userListInfo = item as LX.List.UserListInfo
+    const pic = userListInfo.pic
     if (!pic) {
+      // 异常态（picCustom=true 而 pic 空，正常写路径不产生）：跳过防反复空转（审查 S7）
+      if (userListInfo.picCustom === true) continue
       queueCoverGen(item.id, true)
       continue
     }
     if (/^https?:/i.test(pic)) continue
-    if (pic.startsWith(coversDirPath)) {
+    if (pic.startsWith(coversDirPath) || pic.startsWith(customCoversDirPath)) {
       if (confirmedCovers.has(pic)) continue
+      // 旧布局自动产物（无 v2 标签）静默重生成（2026-10-18 调参批迁移）；custom 轨是用户手选图
+      // 不参与布局版本，只查存在性
+      if (pic.startsWith(coversDirPath) && !isCurrentLayoutPic(pic)) {
+        queueCoverGen(item.id, true)
+        continue
+      }
       void existsFile(pic).then(ok => {
-        if (ok) confirmedCovers.add(pic)
-        else queueCoverGen(item.id, true)
+        if (ok) {
+          confirmedCovers.add(pic)
+          return
+        }
+        if (pic.startsWith(customCoversDirPath)) {
+          const fresh = listState.userList.find(l => l.id === item.id)
+          if (!fresh || fresh.picCustom !== true) return
+          void updateUserList([{ ...fresh, pic: '', picCustom: false }]).then(() => {
+            queueCoverGen(item.id, true)
+          }).catch(() => {})
+          return
+        }
+        queueCoverGen(item.id, true)
       }).catch(() => {})
     }
   }
@@ -168,6 +242,10 @@ export const cleanListCoverFiles = async(listId: string): Promise<void> => {
   lastSignatures.delete(listId)
   failedCovers.delete(listId)
   emptyCoverLists.delete(listId)
+  // 在途任务同步出队（三席代码审查 S4）：已删 id 空转处理 + 新截图成孤儿
+  const queueIndex = queue.indexOf(listId)
+  if (queueIndex >= 0) queue.splice(queueIndex, 1)
+  queuedSet.delete(listId)
   for (const dir of [coversDirPath, customCoversDirPath]) {
     const entries = await readDir(dir).catch(() => [] as Array<string | FileType>)
     await Promise.all(entries
@@ -177,19 +255,27 @@ export const cleanListCoverFiles = async(listId: string): Promise<void> => {
   }
 }
 
-// 内容变更防抖（3s 尾触发）：内容变化即清退避标记重试（含 0 封面歌单升格、失败单重试）
+// 内容变更防抖（3s 尾触发）：内容变化即清退避标记重试（含 0 封面歌单升格、失败单重试）。
+// 3s 窗口内多歌单变更累积合并，尾触发统一处理（三席代码审查 S1：尾触发只留最后一批会吞前批）
+const pendingChangeIds = new Set<string>()
 global.app_event.on('myListMusicUpdate', (ids: string[]) => {
-  const owned = ids.filter(id => {
-    if (!isOwnedListId(id)) return false
-    return !listState.userList.find(l => l.id === id)?.source
-  })
-  if (!owned.length) return
+  for (const id of ids) {
+    if (!isAutoCoverListId(id)) continue
+    if (listState.userList.find(l => l.id === id)?.source) continue
+    pendingChangeIds.add(id)
+  }
+  if (!pendingChangeIds.size) return
   if (debounceTimer) clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     debounceTimer = null
+    const owned = Array.from(pendingChangeIds)
+    pendingChangeIds.clear()
     for (const id of owned) {
       failedCovers.delete(id)
       emptyCoverLists.delete(id)
+      // 3s 窗口内歌单可能已被删除：不存在的自建 id 不入队（防 generateFor 空转与
+      // emptyCoverLists 永久残留，三席审查 S-6）
+      if (id !== LIST_IDS.DEFAULT && !listState.userList.some(l => l.id === id)) continue
       queueCoverGen(id, true)
     }
   }, DEBOUNCE_MS)

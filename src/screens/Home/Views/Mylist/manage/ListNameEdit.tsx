@@ -8,6 +8,8 @@ import Input, { type InputType } from '@/components/common/Input'
 import { useI18n } from '@/lang'
 import { updateUserList } from '@/core/list'
 import { setLoveCover } from '@/core/loveCover'
+import { setDefaultCover } from '@/core/defaultCover'
+import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { confirmDialog, createStyle, toast } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import settingState from '@/store/setting/state'
@@ -63,9 +65,11 @@ export interface ListNameEditType {
   show: (listInfo: LX.List.UserListInfo) => void
   // 我喜欢封面编辑
   showLove: () => void
+  // 默认歌单封面编辑（2026-10-18 拍板纳入封面机制）
+  showDefault: () => void
 }
 
-type Mode = 'user' | 'collect' | 'love'
+type Mode = 'user' | 'collect' | 'love' | 'default'
 
 export default forwardRef<ListNameEditType, {}>((props, ref) => {
   const t = useI18n()
@@ -87,7 +91,8 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
     tempCoverRef.current = ''
     setCoverRemoved(false)
     requestAnimationFrame(() => {
-      if (nextMode == 'love') return
+      // love/default 形态无名字输入（三席审查 S-11：default 随形态集合一并纳入特判）
+      if (nextMode == 'love' || nextMode == 'default') return
       nameInputRef.current?.setName(initialName)
       setTimeout(() => {
         nameInputRef.current?.focus()
@@ -112,6 +117,10 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
     showLove() {
       selectedListInfo.current = null
       handleShow('love', settingState.setting['list.lovePic'], '')
+    },
+    showDefault() {
+      selectedListInfo.current = null
+      handleShow('default', settingState.setting['list.defaultPic'], '')
     },
   }))
 
@@ -138,9 +147,29 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
         if (tempCoverRef.current) {
           const pic = await saveCustomCover(LIST_IDS.LOVE, tempCoverRef.current)
           setLoveCover(pic)
+          // 指针生效后清旧（三席代码审查 I4：先删旧后改指针非原子）
+          void cleanCustomCovers(LIST_IDS.LOVE, pic.split('/').pop())
         } else if (coverRemoved) {
-          void cleanCustomCovers(LIST_IDS.LOVE)
           setLoveCover(null)
+          void cleanCustomCovers(LIST_IDS.LOVE)
+        }
+      } catch {
+        toast(t('list_cover_fail'))
+      }
+      alertRef.current?.setVisible(false)
+      return
+    }
+    if (mode == 'default') {
+      // 默认歌单封面（2026-10-18 拍板纳入）：setting 双键通道；移除回自动轨立即重生成
+      try {
+        if (tempCoverRef.current) {
+          const pic = await saveCustomCover(LIST_IDS.DEFAULT, tempCoverRef.current)
+          setDefaultCover(pic, true)
+          void cleanCustomCovers(LIST_IDS.DEFAULT, pic.split('/').pop())
+        } else if (coverRemoved) {
+          setDefaultCover(null, false)
+          void cleanCustomCovers(LIST_IDS.DEFAULT)
+          queueCoverGen(LIST_IDS.DEFAULT, true)
         }
       } catch {
         toast(t('list_cover_fail'))
@@ -154,27 +183,49 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
     if (!name.length) return
     if (name.length > 100) name = name.substring(0, 100)
     const fresh = listState.userList.find(l => l.id === listInfo.id)
-    if (!fresh) return
+    if (!fresh) {
+      // 面板打开期间歌单被并发删除（如另一端同步）：提示并关面板，防卡死（三席代码审查 S10）
+      toast(global.i18n.t('load_failed_tip'))
+      alertRef.current?.setVisible(false)
+      return
+    }
     if (listState.userList.some(l => l.name == name && l.id != fresh.id) && !(await confirmDialog({
       message: global.i18n.t('list_duplicate_tip'),
     }))) return
+    // 封面落盘与元数据落库分层容错：封面失败 toast 封面文案；落库失败 toast 通用失败
+    let picPatch: { pic: string, picCustom: boolean } | null = null
+    if (tempCoverRef.current) {
+      try {
+        picPatch = { pic: await saveCustomCover(fresh.id, tempCoverRef.current), picCustom: true }
+      } catch {
+        toast(t('list_cover_fail'))
+        alertRef.current?.setVisible(false)
+        return
+      }
+    }
     try {
-      if (tempCoverRef.current) {
-        const pic = await saveCustomCover(fresh.id, tempCoverRef.current)
-        await updateUserList([{ ...fresh, name, pic, picCustom: true }])
+      if (picPatch) {
+        await updateUserList([{ ...fresh, name, ...picPatch }])
+        // 指针生效后清旧（三席代码审查 I4）
+        void cleanCustomCovers(fresh.id, picPatch.pic.split('/').pop())
       } else if (coverRemoved) {
-        void cleanCustomCovers(fresh.id)
         await updateUserList([{ ...fresh, name, pic: '', picCustom: false }])
+        void cleanCustomCovers(fresh.id)
       } else {
         await updateUserList([{ ...fresh, name }])
       }
     } catch {
-      toast(t('list_cover_fail'))
+      toast(global.i18n.t('load_failed_tip'))
     }
     alertRef.current?.setVisible(false)
   }
 
-  const title = mode == 'user' ? t('list_edit_list') : mode == 'love' ? t('list_love_edit_cover') : t('list_rename_title')
+  const title = mode == 'user'
+    ? t('list_edit_list')
+    : mode == 'collect'
+      ? t('list_rename_title')
+      // love 专属键与 default 中性键分流（三席审查 S-8：防后续改 love 文案波及 DEFAULT）
+      : mode == 'love' ? t('list_love_edit_cover') : t('list_edit_cover')
 
   return (
     visible
@@ -215,7 +266,7 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
                   )
                 : null
             }
-            {mode != 'love' && <NameInput ref={nameInputRef} />}
+            {mode != 'love' && mode != 'default' && <NameInput ref={nameInputRef} />}
           </View>
         </ConfirmAlert>
       : null
