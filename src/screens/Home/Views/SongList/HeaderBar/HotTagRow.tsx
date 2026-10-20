@@ -62,7 +62,7 @@ const styles = createStyle({
   },
   content: {
     paddingHorizontal: SPACING.s16,
-    paddingBottom: SPACING.s10,
+    paddingBottom: SPACING.s8,
     gap: SPACING.s8,
     alignItems: 'center',
   },

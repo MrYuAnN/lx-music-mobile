@@ -43,7 +43,7 @@ const styles = StyleSheet.create({
   container: {
     flexGrow: 0,
     flexShrink: 0,
-    paddingTop: SPACING.s12,
-    paddingBottom: SPACING.s2,
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
   },
 })

@@ -58,13 +58,10 @@
 
 - **token 单源**：`src/config/spacing.ts`（SPACING，2dp 精度栅格 s2~s28）。新代码间距一律取 token，禁裸 magic number；奇数与非 2dp 倍数值非法（存量由清洗批次收敛）。
 - **对标声明**：业界主流为 4dp 基线栅格（Material）；本项目取 2dp 精度为自定选择——存量偶数值零迁移 + 8/12/16 纵向层级需要 6/10/14 中间档。
-- **纵向层级（ScreenHeader 页，接近性原则，非对称）**：
-  1. 卡片/胶囊型首组件（搜索框、chips 等浮起白底控件）直接跟 header：上间距 **8**（头部呼吸感）
-  2. 搜索框 → 过滤 chips（过滤器组间距）：**12**
-  3. chips → 列表：**2**（列表行自带内边距）
-  4. 内容型首组件（普通列表行/tab 行/分组列表）：贴 header **0**（iOS 大标题页惯例）
+- **纵向层级（ScreenHeader 页，钉位子头节奏，2026-10-20 拍板归一 8dp 栅格）**：子头首行上间距 / 多行行间距 / 末行到底距统一 **8**（对标 M3 chip 8dp 栅格与榜单字段触发器 8/8 对称呼吸；原 10-11 版「首组件 8 / 搜索框→chips 12 / chips→列表 2」非对称层级随本次拍板退役）。
+  - 无钉位子头的内容型首组件（普通列表行/分组列表）：贴 header **0**。
 - **水平页边距**：**16**——搜索框/chips/列表左边缘严格对齐（修正原型 14/16 错位）。
-- **9 页分类清单**：卡片型首组件 = Search（HeaderBar）、LocalMusic（searchBar）、Download（chips）；内容型贴 0 = Leaderboard（tab 行）、RecentPlay、GroupScreen（本地音乐分组子页，独立 ScreenHeader 场景）、Setting、Mylist、SongList。
+- **9 页分类清单（2026-10-20 修订）**：钉位筛选子头页（首行 8/行间 8/底距 8）= Search（搜索框+chips）、LocalMusic（搜索框+chips）、Download（chips 首行）、SongList（字段触发器+热门标签行）、Leaderboard（字段触发器单行，10-16 拍板 h38/r8/pt8/pb8 先行达标）；无子头贴 0 = RecentPlay、GroupScreen（本地音乐分组子页，独立 ScreenHeader 场景）、Setting、Mylist。
 - **存量豁免清单（不入 token 表，2026-10-11 审查定稿）**：播放页 ControlBtn `gap/paddingVertical: 22`（播放控制视觉耦合）· 微调值 1（ChoosePath Header paddingTop）/ 2.5（DotsVertical 竖点间距，与圆点尺寸耦合）/ 1（GroupViews marginBottom）· > s28 大间距：LocalMusic 空态 56/32/56、Home Header 92、Comment Header 40、Download 40、RecentPlay 32、PlayLine 30、MetadataEditModal gap 30×2、DuplicateMusic 35 —— 上述值保留裸值，改动需人工评估。
 - **表外偶数值处置**：> s28 的大间距（空态版面定位、装饰性偏移等，如 LocalMusic EmptyList marginTop 56）走豁免通道——保留裸值并逐处注释豁免理由，不强扩 token 表（防档位稀释）；清洗批次遇到此类值人工判断。
 - **radius 独立成族**：圆角收敛用既有圆角表（下条），不复用 SPACING；杂值（1.5/3/6.5/22/26/52）**逐处人工判断**归入既有圆角档（2/4/8/12/16/999），不机械映射；该收敛移出 Phase 2，随 AM 细打磨批执行（Phase 2 审查留痕）。
