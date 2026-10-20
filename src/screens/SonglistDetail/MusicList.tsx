@@ -5,6 +5,8 @@ import { clearListDetail, getListDetail, setListDetail, setListDetailInfo } from
 import songlistState from '@/store/songlist/state'
 import { handlePlay } from './listAction'
 import { createStyle } from '@/utils/tools'
+import { useStatusbarHeight } from '@/store/common/hook'
+import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import ListMusicSearch, { type ListMusicSearchType } from '@/screens/Home/Views/Mylist/MusicList/ListMusicSearch'
 import Header, { type HeaderType } from './Header'
 import { useListInfo } from './state'
@@ -30,9 +32,10 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
   const headerRef = useRef<HeaderType>(null)
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listHeightRef = useRef(0)
+  const statusbarHeight = useStatusbarHeight()
   const isUnmountedRef = useRef(false)
   const info = useListInfo()
-  // 搜索定位浮层高度来源：列表容器实测（OnlineList 与浮层同容器）
+  // 搜索定位浮层高度来源：列表容器实测减顶栏区（浮层宿主容器钉在顶栏下，真机反馈 2026-10-20）
   const handleListLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
     listHeightRef.current = e.nativeEvent.layout.height
   }, [])
@@ -44,7 +47,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
 
   useImperativeHandle(ref, () => ({
     search(keyword) {
-      listMusicSearchRef.current?.search(keyword, listHeightRef.current)
+      listMusicSearchRef.current?.search(keyword, Math.max(0, listHeightRef.current - statusbarHeight - SCREEN_HEADER_HEIGHT))
     },
     exitSearch() {
       listMusicSearchRef.current?.hide()
@@ -149,13 +152,16 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
         // progressViewOffset={}
       />
       {/* 列表内搜索定位浮层（方案 §B3 新增接线）：数据源=在线歌单快照；store 快照链路无全局变更事件，
-          subscribeListEvents=false（复审 N-4 勿硬造订阅） */}
-      <ListMusicSearch
-        ref={listMusicSearchRef}
-        getList={getListMusicSnapshot}
-        subscribeListEvents={false}
-        onScrollToInfo={handleScrollToInfo}
-      />
+          subscribeListEvents=false（复审 N-4 勿硬造订阅）。宿主容器钉在顶栏下缘（真机反馈 2026-10-20：
+          浮层原从屏顶铺开盖住搜索框） */}
+      <View style={{ ...styles.searchTipHost, top: statusbarHeight + SCREEN_HEADER_HEIGHT }}>
+        <ListMusicSearch
+          ref={listMusicSearchRef}
+          getList={getListMusicSnapshot}
+          subscribeListEvents={false}
+          onScrollToInfo={handleScrollToInfo}
+        />
+      </View>
     </View>
   )
 })
@@ -163,6 +169,12 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
 const styles = createStyle({
   container: {
     flex: 1,
+  },
+  searchTipHost: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 })
 

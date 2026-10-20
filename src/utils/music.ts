@@ -8,9 +8,10 @@ export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promi
   return /\/\d+$/.test(musicInfo.meta.filePath) ? musicInfo.meta.filePath : ''
 }
 
-/** online 行音质元数据提取（local 无 _qualitys 返回 undefined）；统一行/PlayListPanel/下载引擎共用 */
+/** online 行音质元数据提取（local 无 _qualitys 返回 undefined）；统一行/PlayListPanel/下载引擎共用。
+ * meta 可选链防御（2026-10-20 真机崩溃：外部源数据存在 meta 缺失条目，如聚合/异常解析结果） */
 export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQualityType | undefined => {
-  return item.source == 'local' ? undefined : (item.meta)._qualitys
+  return item.source == 'local' ? undefined : item.meta?._qualitys
 }
 
 // 音质档位归一单源（列表标签色/文案与设置页/选项文案共用，防双处维护漂移）：

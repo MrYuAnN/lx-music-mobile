@@ -86,7 +86,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   const chartColorKey = rankBadge && index < 3 ? CHART_COLOR_KEYS[index] : null
 
   let subline = item.singer || t('singer_unknown')
-  if (isShowAlbumName && item.meta.albumName) subline += ` · ${item.meta.albumName}`
+  if (isShowAlbumName && item.meta?.albumName) subline += ` · ${item.meta.albumName}`
   if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
   return (
@@ -119,7 +119,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
         {
           showCover
             ? (
-                item.meta.picUrl
+                item.meta?.picUrl
                   ? <Image url={item.meta.picUrl} style={styles.pic} />
                   : (
                       <View style={{ ...styles.pic, ...styles.picPlaceholder, backgroundColor: theme['c-border-background'] }}>

@@ -32,13 +32,17 @@ import { useSettingValue } from '@/store/setting/hook'
 import { useIsPlay, usePlayMusicInfo } from '@/store/player/hook'
 import PlaylistHeader from '@/components/common/PlaylistHeader'
 import PlaylistTopBar, { type PlaylistTopBarType } from '@/components/common/PlaylistTopBar'
-import { LIST_IDS } from '@/config/constant'
+import { useStatusbarHeight } from '@/store/common/hook'
+import { LIST_IDS, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
 
 export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: () => void, scrollY: Animated.Value }) => {
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listRef = useRef<ListType>(null)
+  const statusbarHeight = useStatusbarHeight()
+  // 定位浮层高度基准：列表容器高减去顶栏区（浮层宿主容器钉在顶栏下，2026-10-20 真机反馈修正）
+  const tipHeightRef = useRef(0)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
   const listMusicAddRef = useRef<ListMusicAddType>(null)
   const listMusicMultiAddRef = useRef<ListAddMultiType>(null)
@@ -167,7 +171,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
     }
-    listMusicSearchRef.current?.search(text, layoutHeightRef.current)
+    listMusicSearchRef.current?.search(text, tipHeightRef.current)
   }, [])
   const handleExitSearch = useCallback(() => {
     isShowSearchBarModeBar.current = false
@@ -190,7 +194,8 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   }, [])
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     layoutHeightRef.current = e.nativeEvent.layout.height
-  }, [])
+    tipHeightRef.current = Math.max(0, e.nativeEvent.layout.height - statusbarHeight - SCREEN_HEADER_HEIGHT)
+  }, [statusbarHeight])
 
   const handleAddMusic = useCallback((info: SelectInfo) => {
     if (info.selectedList.length) {
@@ -278,12 +283,15 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
           onMuiltSelectMode={hancelMultiSelect}
           onSelectAll={isAll => multipleModeBarRef.current?.setIsSelectAll(isAll)}
         />
-        <ListMusicSearch
-          ref={listMusicSearchRef}
-          // 原 ListMusicSearch 内部即走 core/list 版（非 listManage 包装版），注入保行为等价
-          getList={() => getCoreListMusics(listState.activeListId)}
-          onScrollToInfo={handleScrollToInfo}
-        />
+        {/* 定位浮层宿主容器钉在顶栏下缘（真机反馈 2026-10-20：浮层原从屏顶铺开盖住搜索框） */}
+        <View style={{ ...styles.searchTipHost, top: statusbarHeight + SCREEN_HEADER_HEIGHT }}>
+          <ListMusicSearch
+            ref={listMusicSearchRef}
+            // 原 ListMusicSearch 内部即走 core/list 版（非 listManage 包装版），注入保行为等价
+            getList={() => getCoreListMusics(listState.activeListId)}
+            onScrollToInfo={handleScrollToInfo}
+          />
+        </View>
       </View>
       <PlaylistTopBar
         ref={playlistTopBarRef}
@@ -361,5 +369,11 @@ const styles = createStyle({
   container: {
     flex: 1,
     flexDirection: 'column',
+  },
+  searchTipHost: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
   },
 })

@@ -5,6 +5,7 @@ import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
 import SearchBar from '@/components/common/SearchBar'
 import CategoryChips from '@/components/common/CategoryChips'
+import DorpDownMenu from '@/components/common/DorpDownMenu'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import MusicMultiAddList from '@/components/MusicMultiAddModal/List'
@@ -75,6 +76,9 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
 
   const [source, setSource] = useState<Source>('search')
   const [keyword, setKeyword] = useState('')
+  // 音源筛选（真机反馈 2026-10-20：对齐搜索页前缀筛选交互）：页内 state 不写全局
+  // searchMusicState（审查 I4 教训），初始取全局当前源（聚合回退 kw）
+  const [musicSource, setMusicSource] = useState<LX.OnlineSource>(() => (searchMusicState.source == 'all' ? 'kw' : searchMusicState.source))
   const [list, setList] = useState<LX.Music.MusicInfo[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
@@ -86,6 +90,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const searchPageRef = useRef(1)
   const searchKeywordRef = useRef('')
   const sourceRef = useRef<Source>('search')
+  const musicSourceRef = useRef<LX.OnlineSource>(musicSource)
   const pickSeqRef = useRef(0)
   const isUnmountedRef = useRef(false)
 
@@ -110,8 +115,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     if (page == 1) searchPageRef.current = 1
     const seq = searchSeqRef.current = searchSeqRef.current + 1
     setStatus('loading')
-    const source: LX.OnlineSource = searchMusicState.source == 'all' ? 'kw' : searchMusicState.source
-    void (musicSdk[source]?.musicSearch.search(text, page, SEARCH_LIMIT) as Promise<{ list: LX.Music.MusicInfoOnline[] }> ?? Promise.reject(new Error('source not found: ' + source)))
+    void (musicSdk[musicSourceRef.current]?.musicSearch.search(text, page, SEARCH_LIMIT) as Promise<{ list: LX.Music.MusicInfoOnline[] }> ?? Promise.reject(new Error('source not found: ' + musicSourceRef.current)))
       .then(result => {
         if (isUnmountedRef.current || seq != searchSeqRef.current) return
         const resultList = result.list ?? []
@@ -147,6 +151,21 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     searchPageRef.current = searchPageRef.current + 1
     runSearch(searchKeywordRef.current.trim(), searchPageRef.current)
   }, [source, status, runSearch])
+
+  const handleSourcePick = useCallback(({ action }: { action: string }) => {
+    if (action == musicSourceRef.current) return
+    const next = action as LX.OnlineSource
+    setMusicSource(next)
+    musicSourceRef.current = next
+    // 换源重搜：有词立即以新源重发第 1 页
+    if (searchKeywordRef.current.trim()) runSearch(searchKeywordRef.current.trim(), 1)
+  }, [runSearch])
+
+  // 音源菜单（真机反馈 2026-10-20 对齐搜索页前缀筛选）：源列表读全局 state（模块加载即从 musicSdk 填充）
+  const sourceMenus = useMemo(() => searchMusicState.sources.map(s => ({ label: t(`source_real_${s}`), action: s })), [t])
+  const handleMusicSourcePick = useCallback((info: { action: string }) => {
+    handleSourcePick(info)
+  }, [handleSourcePick])
 
   // 来源切换：清搜索态/选歌态，静态来源即时取数
   const handleSourceChange = useCallback((id: string) => {
@@ -280,6 +299,16 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
 
   const chips = useMemo(() => SOURCE_CHIPS.map(chip => ({ id: chip.id, label: t(chip.labelKey) })), [t])
 
+  // 音源前缀筛选钮（真机反馈对齐搜索页：搜索框内左侧 音源名+▾ 下拉）
+  const sourcePrefix = (
+    <DorpDownMenu menus={sourceMenus} onPress={handleMusicSourcePick} activeId={musicSource} fitMenuWidth btnStyle={styles.sourceBtn}>
+      <View style={styles.sourcePrefix}>
+        <Text size={13} color={theme['c-font']} numberOfLines={1}>{t(`source_real_${musicSource}`)}</Text>
+        <Text size={8} style={styles.caret} color={theme['c-font-label']}>▼</Text>
+      </View>
+    </DorpDownMenu>
+  )
+
   const listEmpty = useMemo(() => {
     type EmptyLabel = 'list_loading' | 'list_error' | 'no_item'
     let label: EmptyLabel | null = null
@@ -407,6 +436,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
                               onSubmit={() => { if (keyword.trim()) runSearch(keyword.trim(), 1) }}
                               onClear={() => { handleKeywordChange('') }}
                               tone="plain"
+                              prefix={sourcePrefix}
+                              style={styles.searchBarInput}
                             />
                           </View>
                         )
@@ -450,6 +481,21 @@ const styles = createStyle({
   searchBar: {
     marginHorizontal: SPACING.s16,
     marginTop: SPACING.s8,
+  },
+  searchBarInput: {
+    paddingHorizontal: SPACING.s10,
+  },
+  sourceBtn: {
+    paddingVertical: SPACING.s4,
+  },
+  sourcePrefix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s4,
+    height: '100%',
+  },
+  caret: {
+    transform: [{ scaleY: 0.9 }],
   },
   chips: {
     paddingTop: SPACING.s8,
