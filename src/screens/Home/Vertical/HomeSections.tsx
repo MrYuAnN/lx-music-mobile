@@ -18,6 +18,7 @@ import Image from '@/components/common/Image'
 import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR, LOVE_GRADIENT } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
+import ImportListDialog, { type ImportListDialogType } from '@/components/common/ImportListDialog'
 import { SPACING } from '@/config/spacing'
 import { hapticImpactLight } from '@/utils/haptic'
 import { prefetchAmbientColor } from '@/utils/ambientColor'
@@ -485,6 +486,7 @@ const MyMusic = () => {
   const t = useI18n()
   const lists = useMyList()
   const dialogRef = useRef<CreateListDialogType>(null)
+  const importDialogRef = useRef<ImportListDialogType>(null)
   // 曲数读 allMusicList 内存 Map，两个事件到达时重渲染刷新
   const [, setMusicVersion] = useState(0)
 
@@ -531,11 +533,19 @@ const MyMusic = () => {
     <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
       <View style={styles.cardHead}>
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('tab_my_lists')}</Text>
-        <TouchableOpacity style={styles.plusBtn} activeOpacity={0.6} onPress={() => { dialogRef.current?.show() }}>
-          <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
-        </TouchableOpacity>
+        <View style={styles.cardHeadActions}>
+          <TouchableOpacity style={styles.plusBtn} activeOpacity={0.6} onPress={() => { dialogRef.current?.show() }}>
+            <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
+          </TouchableOpacity>
+          {/* 导入图标（真机反馈 2026-10-20 拍板：弃文字形态换图标+调序 [+ 新建][导入]）——download-2
+              沿用原歌单菜单导入项字形（用户语义认知延续；与 QuickNav 下载 tile 同屏但色块场景差异大） */}
+          <TouchableOpacity style={styles.importBtn} activeOpacity={0.6} onPress={() => { importDialogRef.current?.show() }}>
+            <Icon name="download-2" size={ICON_SIZE.control} color={theme['c-primary']} />
+          </TouchableOpacity>
+        </View>
       </View>
       <CreateListDialog ref={dialogRef} />
+      <ImportListDialog ref={importDialogRef} />
       <PlaylistShelf lists={shelfLists} getCount={getCount} onOpen={openList} />
     </View>
   )
@@ -654,6 +664,17 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: -SPACING.s8,
+  },
+  cardHeadActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  importBtn: {
+    width: 44,
+    height: 44,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: -SPACING.s8,
