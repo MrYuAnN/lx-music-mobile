@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useState } from 'react'
 import { Animated } from 'react-native'
 import { useNavigation } from '@react-navigation/native'
 
@@ -31,6 +31,18 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
   const handleLocated = useCallback(() => {
     playlistTopBarRef.current?.exitSearch()
   }, [])
+  // 顶栏/氛围底回填（歌单链接导入批 R2）：props 优先（对齐 MusicList 既有回填方向）——
+  // 广场入口 props name/img 恒有值，全时段行为不变；导入入口 props 名锁空串（见
+  // ImportListDialog 硬约束），拉取前顶栏空白（预期），拉取后经 onInfoLoaded 渐显真实名图。
+  // 命令式回调通道（复审选型）：复用 MusicList headerRef.setInfo 同构先例，零 store 订阅基建，
+  // 分页 setListDetail 不经此通道不触发屏级重渲染
+  const [fetchedInfo, setFetchedInfo] = useState<{ name?: string, img?: string }>({})
+  // 哨兵契约（代码审查 S4）：name 的「空」是 ''（MusicList 回填链 info.name || 拉取名 决定，
+  // 恒字符串）；img 的「空」是 undefined——故去重用 ==（null/undefined 吸收）、合并时 name 走
+  // || 而 img 走 ??；若未来 img 也改锁 ''，下方 ?? 须同步改 ||
+  const handleInfoLoaded = useCallback((name?: string, img?: string) => {
+    setFetchedInfo(prev => (prev.name == name && prev.img == img ? prev : { name, img }))
+  }, [])
   // 搜索态返回键拦截（审查 I-7，M3「返回先关搜索」）：先退出搜索态消费返回，非搜索态放行 pop
   const navigation = useNavigation()
   useEffect(() => {
@@ -58,18 +70,18 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
 
 
   return (
-    <PageContent ambientPic={info.img ?? null} scrollY={scrollY}>
+    <PageContent ambientPic={info.img ?? fetchedInfo.img ?? null} scrollY={scrollY}>
       <StatusBar />
       <ListInfoContext.Provider value={info}>
-        <MusicList ref={musicListRef} componentId={componentId} scrollYAnimated={scrollY} onLocated={handleLocated} />
+        <MusicList ref={musicListRef} componentId={componentId} scrollYAnimated={scrollY} onLocated={handleLocated} onInfoLoaded={handleInfoLoaded} />
       </ListInfoContext.Provider>
       <PlayerBarPlaceholder />
       {/* 列表内搜索（方案 §B3）：传 onSearchText 即启用搜索钮（原无搜索入口） */}
       <PlaylistTopBar
         ref={playlistTopBarRef}
-        title={info.name}
+        title={info.name || fetchedInfo.name || ''}
         progress={scrollY}
-        onArtwork={!!info.img}
+        onArtwork={!!(info.img || fetchedInfo.img)}
         showBack
         onBack={() => { pop(componentId) }}
         onSearchText={handleSearchText}

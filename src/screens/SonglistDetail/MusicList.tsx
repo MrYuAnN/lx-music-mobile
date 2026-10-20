@@ -17,6 +17,9 @@ export interface MusicListProps {
   scrollYAnimated?: Animated.Value
   /** 列表内搜索定位完成回调（顶栏融合式，方案 §B3）：宿主据此命令顶栏退出搜索态 */
   onLocated?: () => void
+  /** 拉取信息上抛（歌单链接导入批 R2）：loadList 各回填时点把 store 侧拉取名/图上抛宿主，
+   * 供顶栏标题/氛围底回填（props 空的导入入口拉取后渐显真实名图；props 优先合并由宿主做） */
+  onInfoLoaded?: (name?: string, img?: string) => void
 }
 
 export interface MusicListType {
@@ -27,7 +30,7 @@ export interface MusicListType {
   exitSearch: () => void
 }
 
-export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollYAnimated, onLocated }, ref) => {
+export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollYAnimated, onLocated, onInfoLoaded }, ref) => {
   const listRef = useRef<OnlineListType>(null)
   const headerRef = useRef<HeaderType>(null)
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
@@ -56,6 +59,8 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
       clearListDetail()
       const listDetailInfo = songlistState.listDetailInfo
       listRef.current?.setList([])
+      // 注：本分支现状恒不可达——上方 clearListDetail() 已清 id/list（action 就地变异），
+      // 缓存命中判定永假（代码审查 S3 留档）；激活缓存快路径（clear 移到判定后）另批评估
       if (listDetailInfo.id == id && listDetailInfo.source == source && listDetailInfo.list.length) {
         requestAnimationFrame(() => {
           listRef.current?.setList(listDetailInfo.list, false, true)
@@ -65,6 +70,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
             desc: listDetailInfo.info.desc || info.desc || '',
             imgUrl: info.img ?? listDetailInfo.info.img,
           })
+          onInfoLoaded?.(listDetailInfo.info.name, listDetailInfo.info.img)
         })
       } else {
         listRef.current?.setStatus('loading')
@@ -76,6 +82,8 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
           desc: listDetailInfo.info.desc || info.desc || '',
           imgUrl: info.img ?? listDetailInfo.info.img,
         })
+        // 拉取前 info 已被 clearListDetail 清空：上抛空值让宿主顶栏回退 props（导入入口加载期空白为预期）
+        onInfoLoaded?.(listDetailInfo.info.name, listDetailInfo.info.img)
         return getListDetail(id, source, page).then((listDetail) => {
           const result = setListDetail(listDetail, id, page)
           if (isUnmountedRef.current) return
@@ -86,6 +94,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
               desc: listDetailInfo.info.desc || info.desc || '',
                 imgUrl: info.img ?? listDetailInfo.info.img,
             })
+            onInfoLoaded?.(listDetailInfo.info.name, listDetailInfo.info.img)
             listRef.current?.setList(result.list, false, true)
             listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
           })
@@ -110,6 +119,18 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
     // console.log(songlistState.listDetailInfo)
     void handlePlay(listDetailInfo.id, listDetailInfo.source, listDetailInfo.list, index)
   }
+  // 拉取成功即回填 hero/顶栏/氛围底（代码审查 I2）：error 重试（loadMore page==1）与下拉刷新
+  // 路径此前只 setList 不回填，导入入口 props 空名时该链路是头部信息的唯一回填时机
+  const syncDetailInfo = () => {
+    const listDetailInfo = songlistState.listDetailInfo
+    headerRef.current?.setInfo({
+      name: (info.name || listDetailInfo.info.name) ?? '',
+      // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
+      desc: listDetailInfo.info.desc || info.desc || '',
+      imgUrl: info.img ?? listDetailInfo.info.img,
+    })
+    onInfoLoaded?.(listDetailInfo.info.name, listDetailInfo.info.img)
+  }
   const handleRefresh: OnlineListProps['onRefresh'] = () => {
     const page = 1
     listRef.current?.setStatus('refreshing')
@@ -118,6 +139,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
       if (isUnmountedRef.current) return
       listRef.current?.setList(result.list, false, true)
       listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
+      syncDetailInfo()
     }).catch(() => {
       if (songlistState.listDetailInfo.list.length && page == 1) clearListDetail()
       listRef.current?.setStatus('error')
@@ -131,6 +153,8 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
       if (isUnmountedRef.current) return
       listRef.current?.setList(result.list, true, true)
       listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
+      // page==1 即 error 重试成功，store info 已填充，补头部回填；翻页（page>1）info 不变跳过
+      if (page == 1) syncDetailInfo()
     }).catch(() => {
       if (songlistState.listDetailInfo.list.length && page == 1) clearListDetail()
       listRef.current?.setStatus('error')
