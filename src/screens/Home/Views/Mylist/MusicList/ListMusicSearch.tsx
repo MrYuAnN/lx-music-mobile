@@ -3,7 +3,7 @@ import SearchTipList, { type SearchTipListProps as _SearchTipListProps, type Sea
 import { debounce } from '@/utils'
 import { searchListMusic } from './listAction'
 import Button from '@/components/common/Button'
-import { createStyle } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import Text from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n, type Message } from '@/lang'
@@ -57,7 +57,9 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
           if (seq != seqRef.current) return
           searchTipListRef.current?.setList(result)
         })
-      }).catch(() => {})
+      }).catch(() => {
+        toast(t('list_error'))
+      })
     } else {
       searchTipListRef.current?.setList([])
     }

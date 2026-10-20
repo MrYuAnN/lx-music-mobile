@@ -54,6 +54,8 @@ export interface PlaylistTopBarProps {
 export interface PlaylistTopBarType {
   /** 外部命令退出搜索态（定位完成等场景）；非搜索态 no-op */
   exitSearch: () => void
+  /** 查询当前是否搜索态（Android 返回键拦截判定用，审查 I-7） */
+  isSearchMode: () => boolean
 }
 
 export default forwardRef<PlaylistTopBarType, PlaylistTopBarProps>(({ title, progress, onArtwork = true, entranceLocked = false, showBack, onBack, onSearchText, onSearchExit, showManage, onManageMenu }, ref) => {
@@ -73,10 +75,12 @@ export default forwardRef<PlaylistTopBarType, PlaylistTopBarProps>(({ title, pro
   const handleEnterSearch = useCallback(() => {
     isSearchModeRef.current = true
     setIsSearchMode(true)
+    // 空串回调=进入信号（审查 I-3）：宿主据此联动（Mylist 藏多选栏），空串无搜索副作用
+    onSearchText?.('')
     requestAnimationFrame(() => {
       inputRef.current?.focus()
     })
-  }, [])
+  }, [onSearchText])
 
   const handleExitSearch = useCallback(() => {
     if (!isSearchModeRef.current) return
@@ -90,6 +94,9 @@ export default forwardRef<PlaylistTopBarType, PlaylistTopBarProps>(({ title, pro
   useImperativeHandle(ref, () => ({
     exitSearch() {
       handleExitSearch()
+    },
+    isSearchMode() {
+      return isSearchModeRef.current
     },
   }), [handleExitSearch])
 

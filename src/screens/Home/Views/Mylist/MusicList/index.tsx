@@ -24,6 +24,7 @@ import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { addDownloadTask } from '@/core/download'
 import { getListMusics as getCoreListMusics } from '@/core/list'
 import { navigations } from '@/navigation'
+import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import { playList, togglePlay } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
@@ -175,6 +176,14 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       multipleModeBarRef.current?.setVisibleBar(true)
     }
   }, [])
+  // 搜索态返回键拦截（审查 I-7，M3「返回先关搜索」）：仅 push 形态挂（showBack 区分，
+  // Home 内嵌实例不参与避免跨屏拦截）；返回键先退出搜索态消费事件，非搜索态放行
+  useBackHandler(useCallback(() => {
+    if (!showBack) return false
+    if (!playlistTopBarRef.current?.isSearchMode()) return false
+    playlistTopBarRef.current?.exitSearch()
+    return true
+  }, [showBack]))
   const handleScrollToInfo = useCallback((info: LX.Music.MusicInfo) => {
     listRef.current?.scrollToInfo(info)
     playlistTopBarRef.current?.exitSearch()

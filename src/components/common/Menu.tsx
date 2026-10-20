@@ -215,7 +215,9 @@ const Component = <M extends Menus>({ menus, width, height, activeId, onHide, on
   }))
 
   return (
-    <Modal onHide={onHide} ref={modalRef}>
+    // statusBarPadding 显式 false（2026-10-20 代码审查 C1 冻结）：buttonPosition 为窗口坐标（含状态栏区），
+    // Modal 避让激活后 absolute 锚点随 padding box 下移致菜单整体偏移一个状态栏高（与 DorpDownPanel 同机制）
+    <Modal statusBarPadding={false} onHide={onHide} ref={modalRef}>
       <Menu menus={menus} width={width} height={height} activeId={activeId} buttonPosition={position} menuSize={menuSize} onPress={onPress} onHide={hide} fontSize={fontSize} center={center} glassTint={blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : null} />
     </Modal>
   )

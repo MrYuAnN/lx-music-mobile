@@ -48,7 +48,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   qualityOverride?: LX.Music._MusicQualityType
   onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
   onPress: (item: LX.Music.MusicInfo, index: number) => void
-  onLongPress: (item: LX.Music.MusicInfo, index: number) => void
+  onLongPress?: (item: LX.Music.MusicInfo, index: number) => void
   /** 行菜单（⋮）。缺省且无 addAction 时不渲染尾部钮 */
   onShowMenu?: (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
   /** 尾部「+ 添加」动作（添加歌曲页专用，方案 playlist-search-add-music §A2）：存在时替换 ⋮ 槽位；
@@ -91,7 +91,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
 
   return (
     <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : pressed ? PRESSED_BACKGROUND[theme.isDark ? 'dark' : 'light'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
-      <TouchableOpacity style={styles.main} activeOpacity={1} onPressIn={() => { setPressed(true) }} onPressOut={() => { setPressed(false) }} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress(item, index) }}>
+      <TouchableOpacity style={styles.main} activeOpacity={1} onPressIn={() => { setPressed(true) }} onPressOut={() => { setPressed(false) }} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress?.(item, index) }}>
         {
           showIndex
             ? (

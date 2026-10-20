@@ -20,30 +20,31 @@ import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { pop } from '@/navigation'
+import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import { addListMusics, setTempList, getListMusics } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useRecentPlayList } from '@/core/player/recentPlay'
 import { getDownloadListSnapshot, toDownloadedMusicInfo } from '@/core/download'
-import musicSdk from '@/utils/musicSdk'
 import searchMusicState from '@/store/search/music/state'
 import settingState from '@/store/setting/state'
+import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，四来源完整对标
 // QQ 音乐官方口径（搜索/最近播放/下载/其他歌单，y.qq.com 官方说明）。
 // 列表仅复用 ListItem 行组件自搭（Download 屏先例），不动 OnlineList 容器与泛型（审查 I-N2 定案）；
-// 尾部 + 钮=addAction（addedIds ✓ 态），行尾无 ⋮/红心（onShowMenu/onLikePress 不传）。
-// 预览播放 meta id 按条目分流（在线 ONLINE_TEMP/local TEMP_LIST_LOCAL，复审 N-5/S-N2）；
-// list 来源二级子态=页内歌单列表→选歌态（点行勾选+底部加入，对标 QQ 音乐选歌交互·印象），
-// 逐级返回经 ScreenHeader onBack 覆盖；「歌单内选歌交互无业界先例核对，本产品自定」。
+// 尾部 + 钮=addAction（addedIds ✓ 态，含目标歌单现有内容初始化），行尾无 ⋮/红心。
+// 预览播放：临时队列只收与所点条目同类型条目（在线/local，混合队列 meta 错位消除——代码审查 I-11 拍板）；
+// list 来源二级子态=页内歌单列表→选歌态（点行勾选+底部加入，对标 QQ 音乐勾选选歌——2026-10-20 PM 席
+// 检索核实，替代方案原「长按多选」措辞并已回写修订记录），逐级返回经 ScreenHeader onBack 覆盖。
 
 type Source = 'search' | 'recent' | 'download' | 'list'
 
 const SEARCH_LIMIT = 30
 const SEARCH_DEBOUNCE = 200
 
-const SOURCE_CHIPS: Array<{ id: Source, labelKey: string }> = [
+const SOURCE_CHIPS: Array<{ id: Source, labelKey: 'add_music_source_search' | 'add_music_source_recent' | 'add_music_source_download' | 'add_music_source_list' }> = [
   { id: 'search', labelKey: 'add_music_source_search' },
   { id: 'recent', labelKey: 'add_music_source_recent' },
   { id: 'download', labelKey: 'add_music_source_download' },
@@ -84,18 +85,29 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const searchSeqRef = useRef(0)
   const searchPageRef = useRef(1)
   const searchKeywordRef = useRef('')
+  const sourceRef = useRef<Source>('search')
+  const pickSeqRef = useRef(0)
   const isUnmountedRef = useRef(false)
 
   useEffect(() => {
     isUnmountedRef.current = false
-    return () => {
-      isUnmountedRef.current = true
-    }
-  }, [])
+    // addedIds 以目标歌单现有内容初始化（代码审查 I-8：已有歌显示 ✓、防重复添加）
+    void getListMusics(listId).then(musics => {
+      setAddedIds(prev => {
+        const next = new Set(prev)
+        for (const musicInfo of musics) next.add(musicInfo.id)
+        return next
+      })
+    }).catch(() => {})
+  }, [listId])
 
-  // 搜索直连 musicSdk（审查 I4 教训：不污染全局 search core）；聚合源回退 kw（AddMusicSheet 口径）
+  // 搜索直连 musicSdk（审查 I4 教训：不污染全局 search core）；聚合源回退 kw（AddMusicSheet 口径）。
+  // 入口校验（代码审查 I-2）：非搜索来源/词已过期（清空或换词）即丢弃，防 debounce pending 回弹
+  // 污染非搜索来源列表；page==1 时同步页码 ref（审查 I-1：换词翻页不跳页）
   const runSearch = useCallback((text: string, page: number) => {
     if (!text) return
+    if (sourceRef.current != 'search' || text !== searchKeywordRef.current.trim()) return
+    if (page == 1) searchPageRef.current = 1
     const seq = searchSeqRef.current = searchSeqRef.current + 1
     setStatus('loading')
     const source: LX.OnlineSource = searchMusicState.source == 'all' ? 'kw' : searchMusicState.source
@@ -140,12 +152,14 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const handleSourceChange = useCallback((id: string) => {
     if (id == source) return
     setSource(id as Source)
+    sourceRef.current = id as Source
     setKeyword('')
     searchKeywordRef.current = ''
     searchSeqRef.current = searchSeqRef.current + 1
     searchPageRef.current = 1
     setPickList(null)
     setPickSelected([])
+    scrollY.setValue(0)
     if (id == 'recent') {
       setList(recentPlayList.map(item => item.musicInfo))
       setStatus('end')
@@ -156,30 +170,34 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       setList([])
       setStatus('idle')
     }
-  }, [source, recentPlayList])
+  }, [source, recentPlayList, scrollY])
 
-  // 添加到目标歌单（沿用 addMusicLocationType 设置与既有 toast 文案）
+  // 添加到目标歌单（沿用 addMusicLocationType 设置与既有 toast 文案）；
+  // 已存在于目标歌单的条目过滤（代码审查 I-8），全已存在时静默返回
   const handleAdd = useCallback((musicInfos: LX.Music.MusicInfo[]) => {
-    void addListMusics(listId, musicInfos, settingState.setting['list.addMusicLocationType']).then(() => {
+    const pending = musicInfos.filter(m => !addedIds.has(m.id))
+    if (!pending.length) return
+    void addListMusics(listId, pending, settingState.setting['list.addMusicLocationType']).then(() => {
       setAddedIds(prev => {
         const next = new Set(prev)
-        for (const musicInfo of musicInfos) next.add(musicInfo.id)
+        for (const musicInfo of pending) next.add(musicInfo.id)
         return next
       })
       toast(t('list_edit_action_tip_add_success'))
     }).catch(() => {
       toast(t('list_edit_action_tip_add_failed'))
     })
-  }, [listId, t])
+  }, [listId, addedIds, t])
 
   const handleAddAction = useCallback((musicInfo: LX.Music.MusicInfo) => {
+    if (addedIds.has(musicInfo.id)) return
     handleAdd([musicInfo])
-  }, [handleAdd])
+  }, [addedIds, handleAdd])
 
-  // 预览播放：以当前来源列表为临时队列，meta id 按条目内容分流（在线/local，复审 N-5/S-N2）
+  // 预览播放：临时队列只收与所点条目同类型（在线/local）的条目（审查 I-11 拍板：过滤同类消除 meta 错位）
   const handlePress = useCallback((musicInfo: LX.Music.MusicInfo, index: number) => {
     if (pickList) {
-      // 选歌态：点行勾选/取消（对标 QQ 音乐选歌交互·印象）
+      // 选歌态：点行勾选/取消（对标 QQ 音乐勾选选歌，2026-10-20 PM 席检索核实）
       setPickSelected(prev => {
         const next = prev.some(m => m.id == musicInfo.id)
           ? prev.filter(m => m.id != musicInfo.id)
@@ -188,13 +206,14 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       })
       return
     }
-    const tempListId = musicInfo.source == 'local' ? storageDataPrefix.TEMP_LIST_LOCAL : storageDataPrefix.TEMP_LIST_ONLINE
-    void setTempList(tempListId, [...list]).then(() => {
-      void playList(LIST_IDS.TEMP, index)
+    const isLocal = musicInfo.source == 'local'
+    const queue = list.filter(m => (m.source == 'local') == isLocal)
+    const queueIndex = queue.findIndex(m => m.id == musicInfo.id)
+    const tempListId = isLocal ? storageDataPrefix.TEMP_LIST_LOCAL : storageDataPrefix.TEMP_LIST_ONLINE
+    void setTempList(tempListId, queue).then(() => {
+      if (queueIndex > -1) void playList(LIST_IDS.TEMP, queueIndex)
     })
   }, [pickList, list])
-
-  const handleLongPress = useCallback((_musicInfo: LX.Music.MusicInfo, _index: number) => {}, [])
 
   // list 来源：歌单列表 → 进入选歌态（歌单列表由 MusicMultiAddList 内部过滤，排除目标歌单自身）
   const enterPick = useCallback((id: string, name: string) => {
@@ -202,30 +221,39 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     setPickSelected([])
     setStatus('loading')
     setList([])
+    scrollY.setValue(0)
+    // seq + 卸载双守卫（代码审查 I-4）：快进快出时旧歌单响应作废，防勾选到非当前歌单内容
+    const seq = pickSeqRef.current = pickSeqRef.current + 1
     void getListMusics(id).then(musics => {
+      if (isUnmountedRef.current || seq != pickSeqRef.current) return
       setList(musics)
       setStatus('end')
     }).catch(() => {
+      if (isUnmountedRef.current || seq != pickSeqRef.current) return
       setStatus('error')
     })
-  }, [])
+  }, [scrollY])
 
   const exitPick = useCallback(() => {
+    pickSeqRef.current = pickSeqRef.current + 1
     setPickList(null)
     setPickSelected([])
     setList([])
     setStatus('idle')
-  }, [])
+    scrollY.setValue(0)
+  }, [scrollY])
 
   // 选歌态加入：勾选集批量写入目标歌单后回歌单列表
   const handleJoinPicked = useCallback(() => {
     if (!pickList || !pickSelected.length) return
     handleAdd(pickSelected)
+    pickSeqRef.current = pickSeqRef.current + 1
     setPickList(null)
     setPickSelected([])
     setList([])
     setStatus('idle')
-  }, [pickList, pickSelected, handleAdd])
+    scrollY.setValue(0)
+  }, [pickList, pickSelected, handleAdd, scrollY])
 
   const handleBack = useCallback(() => {
     if (pickList) {
@@ -234,11 +262,27 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     }
     pop(componentId)
   }, [pickList, exitPick, componentId])
+  // 选歌态返回键拦截：先回歌单列表（逐级返回），非选歌态放行 pop
+  useBackHandler(useCallback(() => {
+    if (!pickList) return false
+    exitPick()
+    return true
+  }, [pickList, exitPick]))
 
-  const chips = useMemo(() => SOURCE_CHIPS.map(chip => ({ id: chip.id, label: t(chip.labelKey as never) })), [t])
+  // error 态重试（代码审查 S 级采纳）：搜索=原词重发第 1 页；选歌态=重拉当前歌单
+  const handleRetry = useCallback(() => {
+    if (pickList) {
+      enterPick(pickList.id, pickList.name)
+      return
+    }
+    if (keyword.trim()) runSearch(keyword.trim(), 1)
+  }, [pickList, keyword, enterPick, runSearch])
+
+  const chips = useMemo(() => SOURCE_CHIPS.map(chip => ({ id: chip.id, label: t(chip.labelKey) })), [t])
 
   const listEmpty = useMemo(() => {
-    let label: string | null = null
+    type EmptyLabel = 'list_loading' | 'list_error' | 'no_item'
+    let label: EmptyLabel | null = null
     switch (status) {
       case 'loading': label = 'list_loading'; break
       case 'error': label = 'list_error'; break
@@ -246,9 +290,9 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       case 'idle': label = source == 'search' && !keyword.trim() ? null : 'no_item'; break
     }
     return label
-      ? <Text style={styles.tip} size={13} color={theme['c-font-label']}>{t(label as never)}</Text>
+      ? <Text style={styles.tip} size={13} color={theme['c-font-label']} onPress={status == 'error' ? handleRetry : undefined}>{t(label)}</Text>
       : null
-  }, [status, source, keyword, theme, t])
+  }, [status, source, keyword, theme, t, handleRetry])
 
   const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
     <ListItem
@@ -257,22 +301,24 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       rowInfo={rowInfo}
       selectedList={pickSelected}
       showIndex={false}
-      showCover={false}
+      showCover
       showSource={source != 'search'}
       showInterval={isShowInterval}
       isShowAlbumName={isShowAlbumName}
       onPress={handlePress}
-      onLongPress={handleLongPress}
       addAction={handleAddAction}
       added={addedIds.has(item.id)}
     />
-  ), [rowInfo, pickSelected, source, isShowInterval, isShowAlbumName, handlePress, handleLongPress, handleAddAction, addedIds])
+  ), [rowInfo, pickSelected, source, isShowInterval, isShowAlbumName, handlePress, handleAddAction, addedIds])
 
   const keyExtractor = useCallback((item: LX.Music.MusicInfo) => item.id, [])
   const getItemLayout = useCallback((_data: ArrayLike<LX.Music.MusicInfo> | null | undefined, index: number) => (
     // offset 不含 contentContainer padding（RN 已知口径，LocalMusic 先例注记）：无 scrollToIndex 调用无漂移路径
     { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
   ), [])
+
+  // 选歌态子头整体不渲染（歌单列表/搜索/静态来源有 chips 子头），顶部补偿相应区分（代码审查 I-6）
+  const contentPaddingTop = pickList ? headerTotal : headerTotal + subHeaderHeight
 
   return (
     <PageContent>
@@ -283,9 +329,10 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
             ? (
                 <AnimatedFlatList
                   style={styles.list}
-                  contentContainerStyle={{ paddingTop: headerTotal + subHeaderHeight, paddingBottom: bottomInset + (pickSelected.length ? PICK_BAR_HEIGHT : 0) }}
+                  contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset + (pickSelected.length ? PICK_BAR_HEIGHT : 0) }}
                   onScroll={handleScroll}
                   scrollEventThrottle={16}
+                  keyboardShouldPersistTaps="handled"
                   data={list}
                   keyExtractor={keyExtractor}
                   getItemLayout={getItemLayout}
@@ -298,7 +345,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
             : source == 'list'
               ? (
                   // 歌单列表态（读语义放宽：收藏歌单可选；隐藏新建项，复核 S-a）
-                  <View style={{ ...styles.listPickWrap, paddingTop: headerTotal + subHeaderHeight }}>
+                  <View style={{ ...styles.listPickWrap, paddingTop: contentPaddingTop }}>
                     <MusicMultiAddList
                       listId={listId}
                       readonlySelectable
@@ -310,9 +357,10 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
               : (
                   <AnimatedFlatList
                     style={styles.list}
-                    contentContainerStyle={{ paddingTop: headerTotal + subHeaderHeight, paddingBottom: bottomInset }}
+                    contentContainerStyle={{ paddingTop: contentPaddingTop, paddingBottom: bottomInset }}
                     onScroll={handleScroll}
                     scrollEventThrottle={16}
+                    keyboardShouldPersistTaps="handled"
                     onEndReached={handleLoadMore}
                     onEndReachedThreshold={0.5}
                     data={list}
@@ -336,13 +384,14 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
             : null
         }
         {/* 钉位子头（LocalMusic 同构，8dp 栅格）：搜索框（仅搜索来源）+来源 chips；玻璃垫层渐显。
-            选歌态子头隐藏 chips（列表全为选中歌单内容），仅留玻璃垫层空间节奏 */}
+            选歌态子头整体不渲染（列表全为选中歌单内容，顶部补偿降为 headerTotal）；子头高度直写
+            允许随来源切换回缩（审查 I-6：Math.max 冻结会在非搜索来源残留搜索框高度空隙） */}
         {
           !pickList
             ? (
                 <View
                   style={{ ...styles.subHeader, top: headerTotal, overflow: 'hidden' }}
-                  onLayout={(e) => { const h = e.nativeEvent.layout.height; setSubHeaderHeight(prev => Math.max(prev, h)) }}
+                  onLayout={(e) => { setSubHeaderHeight(e.nativeEvent.layout.height) }}
                 >
                   <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
                     <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />

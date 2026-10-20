@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react'
 import { Animated } from 'react-native'
+import { useNavigation } from '@react-navigation/native'
 
 import MusicList, { type MusicListType } from './MusicList'
 import PageContent from '@/components/PageContent'
@@ -30,6 +31,16 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
   const handleLocated = useCallback(() => {
     playlistTopBarRef.current?.exitSearch()
   }, [])
+  // 搜索态返回键拦截（审查 I-7，M3「返回先关搜索」）：先退出搜索态消费返回，非搜索态放行 pop
+  const navigation = useNavigation()
+  useEffect(() => {
+    const unsub = navigation.addListener('beforeRemove', e => {
+      if (!playlistTopBarRef.current?.isSearchMode()) return
+      e.preventDefault()
+      playlistTopBarRef.current?.exitSearch()
+    })
+    return unsub
+  }, [navigation])
 
   useEffect(() => {
     setComponentId(COMPONENT_IDS.songlistDetail, componentId)
