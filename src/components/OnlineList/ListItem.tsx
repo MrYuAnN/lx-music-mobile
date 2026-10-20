@@ -1,5 +1,7 @@
-import { memo, useRef, useState, type ComponentRef } from 'react'
+import { memo, useMemo, useRef, useState, type ComponentRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
+import { GestureDetector, Gesture } from 'react-native-gesture-handler'
+import { useSharedValue } from 'react-native-reanimated'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
@@ -12,8 +14,12 @@ import { LIST_ITEM_HEIGHT, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
 import { createStyle, type RowInfo } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
+import { hapticImpactLight } from '@/utils/haptic'
 
 export const ITEM_HEIGHT = scaleSizeH(LIST_ITEM_HEIGHT)
+
+// 长按待命拾起位移阈值平方（12dp 初值，真机校准；≈iOS allowableMovement 10pt 同量级，方案 §二 留档）
+const DRAG_ACTIVATE_OFFSET_SQ = 12 * 12
 
 // 排行榜前三序号 token（c-chart-1/2/3 金银铜，见 theme/themes/index.ts）；
 // 封闭三元组 + 模板下标取值，避免 `c-chart-${n}` 动态键破坏 ActiveTheme 字面量类型
@@ -29,7 +35,7 @@ const PRESSED_BACKGROUND = {
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -55,6 +61,14 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
    * added=true 显示已添加 ✓ 态。调用方以 useCallback 保持引用稳定（comparator 引用比较） */
   addAction?: (item: LX.Music.MusicInfo) => void
   added?: boolean
+  /** 拖拽排序手势开关（歌单链接导入同批方案 playlist-drag-reorder §三.1）：默认 false，既有消费方零变化。
+   * true 时行级长按改分阶段判定（方案拍板 #1/R2）：长按到点即震+待命（反馈时点与现状一致），
+   * 松手走 onLongPress（宿主多选，现状不变）；位移超阈值且宿主 allowDrag → onDragStart 拾起拖拽 */
+  dragEnabled?: boolean
+  onDragStart?: (item: LX.Music.MusicInfo, index: number, absoluteY: number) => void
+  onDragMove?: (absoluteY: number) => void
+  onDragRelease?: () => void
+  onDragCancel?: () => void
 }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -81,6 +95,80 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
 
   const [pressed, setPressed] = useState(false)
 
+  // 拖拽排序分阶段手势（方案 playlist-drag-reorder §三.1，仅 dragEnabled 挂载，默认路径零变化）：
+  // LongPress 到点（平台默认时长）→ 震动+待命（R2：反馈时点与现状一致）；待命态松手 → onLongPress
+  // （宿主多选，现状不变）；待命态位移超阈值（12dp²，≈iOS allowableMovement 10pt 同量级）→ Pan
+  // 激活转拖拽。onFinalize 统一收尾：success=松手落位 / false=系统打断 touch cancel（审查 I5 分支）。
+  //
+  // 线程模型（代码审查 A-C1/优化 S-1 修正）：显式 .runOnJS(true) 把 JS 回调钉死 JS 线程——防后续
+  // 改链式写法被 worklets 插件自动 workletize 后在 UI 线程直调 JS 闭包抛错；onTouches* 恒 UI 线程
+  // （worklet），shared value 判定与 sm.activate() 留在 UI 侧。
+  //
+  // gesture 恒稳定化（代码审查 PM-C1）：构建依赖剥离 item/index/回调——跨行重排会改被拖行 index，
+  // gesture 若随之重建将取消进行中手势（拖拽一动即断）；实时参数经 dragCallbacksRef 拨正。
+  // LongPress maxDist 维持默认：仅激活前检查（激活前超距 fail=让位滚动，预期行为；激活后不查），
+  // 不与 12dp 激活阈值冲突（审查 A-C3 不采纳，PM 席 RNGH 官方文档证伪）。
+  const dragPending = useSharedValue(false)
+  const dragActive = useSharedValue(false)
+  // 拾起判定已决标志（activate 工作线程同步置位；onStart 的 dragActive 置位在 JS 线程有帧差，
+  // LongPress.onEnd 防御读它防「落位后误进多选」收尾顺序竞态——审查 A-I5）
+  const dragDecided = useSharedValue(false)
+  const dragOrigin = useSharedValue({ x: 0, y: 0 })
+  const dragCallbacksRef = useRef({ item, index, onLongPress, onDragStart, onDragMove, onDragRelease, onDragCancel })
+  dragCallbacksRef.current = { item, index, onLongPress, onDragStart, onDragMove, onDragRelease, onDragCancel }
+  const dragGestures = useMemo(() => {
+    const longPress = Gesture.LongPress()
+      .runOnJS(true)
+      .onStart(() => {
+        dragPending.value = true
+        hapticImpactLight()
+      })
+      .onEnd((_e, success) => {
+        const wasPending = dragPending.value
+        dragPending.value = false
+        const { item: dragItem, index: dragIndex, onLongPress: onLongPressLatest } = dragCallbacksRef.current
+        if (wasPending && !dragActive.value && !dragDecided.value && success) onLongPressLatest?.(dragItem, dragIndex)
+      })
+    const pan = Gesture.Pan()
+      .manualActivation(true)
+      .runOnJS(true)
+      .onTouchesDown((e) => {
+        // 多指第二指不重置判定基准（审查 A-S2）：已激活/已决时忽略后续触点
+        if (dragActive.value || dragDecided.value) return
+        const touch = e.allTouches[0]
+        if (touch) dragOrigin.value = { x: touch.absoluteX, y: touch.absoluteY }
+        dragDecided.value = false
+      })
+      .onTouchesMove((e, sm) => {
+        if (!dragPending.value || dragDecided.value) return
+        const touch = e.allTouches[0]
+        if (!touch) return
+        const dx = touch.absoluteX - dragOrigin.value.x
+        const dy = touch.absoluteY - dragOrigin.value.y
+        if (dx * dx + dy * dy >= DRAG_ACTIVATE_OFFSET_SQ) {
+          dragDecided.value = true
+          sm.activate()
+        }
+      })
+      .onStart((e) => {
+        dragActive.value = true
+        const cb = dragCallbacksRef.current
+        cb.onDragStart?.(cb.item, cb.index, e.absoluteY)
+      })
+      .onUpdate((e) => {
+        dragCallbacksRef.current.onDragMove?.(e.absoluteY)
+      })
+      .onFinalize((_e, success) => {
+        if (!dragActive.value) return
+        dragActive.value = false
+        dragDecided.value = false
+        const cb = dragCallbacksRef.current
+        if (success) cb.onDragRelease?.()
+        else cb.onDragCancel?.()
+      })
+    return Gesture.Simultaneous(longPress, pan)
+  }, [dragPending, dragActive, dragDecided, dragOrigin])
+
   // 排行榜前三徽章 token（拍板#7）：rankBadge 显式开启（当前唯一来源=Leaderboard/MusicList）；
   // index<3 时取金银铜色键，4+ 名/未开启为 null 走普通灰数字
   const chartColorKey = rankBadge && index < 3 ? CHART_COLOR_KEYS[index] : null
@@ -89,9 +177,9 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   if (isShowAlbumName && item.meta?.albumName) subline += ` · ${item.meta.albumName}`
   if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
-  return (
+  const rowElement = (
     <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : pressed ? PRESSED_BACKGROUND[theme.isDark ? 'dark' : 'light'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
-      <TouchableOpacity style={styles.main} activeOpacity={1} onPressIn={() => { setPressed(true) }} onPressOut={() => { setPressed(false) }} onPress={() => { onPress(item, index) }} onLongPress={() => { onLongPress?.(item, index) }}>
+      <TouchableOpacity style={styles.main} activeOpacity={1} onPressIn={() => { setPressed(true) }} onPressOut={() => { setPressed(false) }} onPress={() => { onPress(item, index) }} onLongPress={dragEnabled ? undefined : () => { onLongPress?.(item, index) }}>
         {
           showIndex
             ? (
@@ -169,6 +257,9 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
       }
     </View>
   )
+  if (!dragEnabled) return rowElement
+  // 拖拽路径：手势层接管长按（TouchableOpacity onLongPress 已卸载防双触发），松手/位移分流见 dragGestures
+  return <GestureDetector gesture={dragGestures}>{rowElement}</GestureDetector>
 }, (prevProps, nextProps) => {
   return !!(prevProps.item === nextProps.item &&
     prevProps.index === nextProps.index &&
@@ -185,6 +276,11 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
     nextProps.activeIndex != nextProps.index &&
     prevProps.addAction === nextProps.addAction &&
     prevProps.added === nextProps.added &&
+    prevProps.dragEnabled === nextProps.dragEnabled &&
+    prevProps.onDragStart === nextProps.onDragStart &&
+    prevProps.onDragMove === nextProps.onDragMove &&
+    prevProps.onDragRelease === nextProps.onDragRelease &&
+    prevProps.onDragCancel === nextProps.onDragCancel &&
     nextProps.selectedList.includes(nextProps.item) == prevProps.selectedList.includes(nextProps.item)
   )
 })

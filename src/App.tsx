@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { StatusBar, View } from 'react-native'
 import { NavigationContainer } from '@react-navigation/native'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { GestureHandlerRootView } from 'react-native-gesture-handler'
 
 import { init as initLog } from '@/utils/log'
 import '@/config/globalData'
@@ -110,9 +111,13 @@ const AppRoot = () => {
 
 const App = () => (
   <Provider>
-    <SafeAreaProvider>
-      <AppRoot />
-    </SafeAreaProvider>
+    {/* RNGH 根容器（歌单页拖拽排序批，审查 A-C2）：GestureDetector 依赖根手势容器，
+     缺失则手势静默失效；根级包装为 RNGH 官方要求的标准配置 */}
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AppRoot />
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   </Provider>
 )
 

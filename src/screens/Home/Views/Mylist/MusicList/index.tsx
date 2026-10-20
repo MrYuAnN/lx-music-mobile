@@ -3,7 +3,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import listState from '@/store/list/state'
 import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
-import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleUpdateMusicInfo, handleUpdateMusicPosition } from './listAction'
+import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleUpdateMusicInfo, isReadonlyList } from './listAction'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
@@ -18,7 +18,6 @@ import { createStyle, toast } from '@/utils/tools'
 import { Animated, type LayoutChangeEvent, View } from 'react-native'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
-import MusicPositionModal, { type MusicPositionModalType } from './MusicPositionModal'
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { addDownloadTask } from '@/core/download'
@@ -46,7 +45,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
   const listMusicAddRef = useRef<ListMusicAddType>(null)
   const listMusicMultiAddRef = useRef<ListAddMultiType>(null)
-  const musicPositionModalRef = useRef<MusicPositionModalType>(null)
   const metadataEditTypeRef = useRef<MetadataEditType>(null)
   const listMenuRef = useRef<ListMenuType>(null)
   const musicToggleModalRef = useRef<MusicToggleModalType>(null)
@@ -98,6 +96,11 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
 
   const isTempList = activeListId == LIST_IDS.TEMP
   const isCollectList = !isTempList && !!(activeListInfo as LX.List.UserListInfo | undefined)?.source
+  // 拖拽排序基础开关（方案 playlist-drag-reorder §三.3）：可写列表（guardWritableList 同口径，
+  // TEMP/默认/我喜欢/自建开放、收藏只读禁拖）+ 非多选态 + 非搜索态；单列约束在 List 内叠加（R1）
+  const [searchActive, setSearchActive] = useState(false)
+  const [multiSelectActive, setMultiSelectActive] = useState(false)
+  const canDragList = !isReadonlyList(activeListId) && !searchActive && !multiSelectActive
 
   const currentListName = useMemo(() => {
     switch (activeListId) {
@@ -135,6 +138,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       multipleModeBarRef.current?.setVisibleBar(false)
     }
     isShowMultipleModeBar.current = true
+    setMultiSelectActive(true)
     multipleModeBarRef.current?.show()
     listRef.current?.setIsMultiSelectMode(true)
   }, [])
@@ -146,6 +150,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
     multipleModeBarRef.current?.exitSelectMode()
     listRef.current?.setIsMultiSelectMode(false)
     isShowMultipleModeBar.current = false
+    setMultiSelectActive(false)
   }, [])
   const hancelSwitchSelectMode = useCallback((mode: SelectMode) => {
     multipleModeBarRef.current?.setSwitchMode(mode)
@@ -168,6 +173,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   // 退出（✕/空提交/定位完成 exitSearch）统一走 onSearchExit → hide 浮层 + 恢复多选栏
   const handleSearchText = useCallback((text: string) => {
     isShowSearchBarModeBar.current = true
+    setSearchActive(true)
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
     }
@@ -175,6 +181,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   }, [])
   const handleExitSearch = useCallback(() => {
     isShowSearchBarModeBar.current = false
+    setSearchActive(false)
     listMusicSearchRef.current?.hide()
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(true)
@@ -282,6 +289,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
           onShowMenu={showMenu}
           onMuiltSelectMode={hancelMultiSelect}
           onSelectAll={isAll => multipleModeBarRef.current?.setIsSelectAll(isAll)}
+          canDrag={canDragList}
         />
         {/* 定位浮层宿主容器钉在顶栏下缘（真机反馈 2026-10-20：浮层原从屏顶铺开盖住搜索框） */}
         <View style={{ ...styles.searchTipHost, top: statusbarHeight + SCREEN_HEADER_HEIGHT }}>
@@ -309,8 +317,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       />
       <ListMusicAdd ref={listMusicAddRef} onAdded={hancelExitSelect} />
       <ListMusicMultiAdd ref={listMusicMultiAddRef} onAdded={hancelExitSelect} />
-      <MusicPositionModal ref={musicPositionModalRef}
-        onUpdatePosition={(info, postion) => { if (!guardWritableList(info.listId)) return; handleUpdateMusicPosition(postion, info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }} />
       <ListMenu
         ref={listMenuRef}
         onPlay={info => { handlePlayMusic(info.listId, info.index) }}
@@ -320,7 +326,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onAdd={handleAddMusic}
         onMove={handleMoveMusic}
         onEditMetadata={handleEditMetadata}
-        onChangePosition={info => { if (!guardWritableList(info.listId)) return; musicPositionModalRef.current?.show(info) }}
         onToggleSource={info => { if (!guardWritableList(info.listId)) return; musicToggleModalRef.current?.show(info) }}
         onDownload={info => {
           if (info.musicInfo.source == 'local') return

@@ -86,15 +86,8 @@ export const handleRemove = (listId: SelectInfo['listId'], musicInfo: SelectInfo
   }
 }
 
-export const handleUpdateMusicPosition = (position: number, listId: SelectInfo['listId'], musicInfo: SelectInfo['musicInfo'], selectedList: SelectInfo['selectedList'], onCancelSelect: () => void) => {
-  if (selectedList.length) {
-    void updateListMusicPosition(listId, position, selectedList.map(s => s.id))
-    onCancelSelect()
-  } else {
-    // console.log(listId, position, [musicInfo.id])
-    void updateListMusicPosition(listId, position, [musicInfo.id])
-  }
-}
+// 「调整位置」handler 移除（歌单页拖拽排序批）：排序改行长按拖拽，落位直调 core
+// updateListMusicPosition（List.tsx onSettle），本文件不再承担（方案 playlist-drag-reorder §三.4）
 
 export const handleUpdateMusicInfo = (listId: SelectInfo['listId'], musicInfo: LX.Music.MusicInfoLocal, newInfo: Metadata) => {
   void updateListMusics([
