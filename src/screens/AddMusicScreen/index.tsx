@@ -73,6 +73,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const localMusicList = useLocalMusicList()
   const windowSize = useWindowSize()
   const lists = useMyList()
+  // 默认歌单封面走 setting 单键（DEFAULT 不在 userLists 条目上，2026-10-18 拍板口径，shelf 同款）
+  const defaultPic = useSettingValue('list.defaultPic')
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
 
@@ -317,7 +319,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   // （不依赖外层 overflow 裁切，规避 Android 平台差异）
   const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => {
     const collect = 'source' in item ? !!item.source : false
-    const pic = (item as LX.List.UserListInfo).pic
+    const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as LX.List.UserListInfo).pic
     const isLove = item.id == LIST_IDS.LOVE
     return (
       <TouchableOpacity style={{ width: gridWidth }} activeOpacity={0.7} onPress={() => { enterPick(item.id, item.name) }}>
@@ -340,7 +342,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
         <Text style={styles.gridName} size={13} color={theme['c-font']} numberOfLines={2}>{item.name}</Text>
       </TouchableOpacity>
     )
-  }, [gridWidth, theme, t, enterPick])
+  }, [gridWidth, theme, t, enterPick, defaultPic])
   // 选歌态返回键拦截：先回歌单列表（逐级返回），非选歌态放行 pop
   useBackHandler(useCallback(() => {
     if (!pickList) return false
