@@ -4,6 +4,7 @@ import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { Icon } from '@/components/common/Icon'
 import StatusBar from '@/components/common/StatusBar'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import commonState from '@/store/common/state'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { navigations } from '@/navigation'
@@ -12,7 +13,12 @@ import { setSpText } from '@/utils/pixelRatio'
 import { SPACING } from '@/config/spacing'
 
 // AM-6 首页头部（同行式，AM 形态）：大标题与右上双圆钮同行垂直居中，
-// 滚动后大标题淡出、固定栏小标题淡入（AM-2 [S-9] 收缩拍板保留）
+// 滚动后大标题淡出、固定栏小标题淡入（AM-2 [S-9] 收缩拍板保留）。
+// 首页改版期2（2026-10-20）：固定栏实色渐显 → GlassSurface 穿行玻璃（ScreenHeader 接线契约
+// 同构：外包 opacity + GLASS_FADE_RANGE 单源 + GLASS_BAR_FALLBACK 回退 + hairline bottom；
+// iOS UIVisualEffectView alpha<1 硬切为全 app 既有备案）。三区间协调（方案 v3 拍板）：
+// 玻璃渐显 [20,120]（单源）、大标题淡出 [20,70] 对齐玻璃前段、小标题 [70,120] 尾段进场——
+// 大标题消失先于玻璃满格，消灭「半透玻璃叠半可见内容」穿模（校准轮二同款形态）。
 
 const APP_NAME = '拾音'
 
@@ -24,11 +30,14 @@ const Header = ({ children }: { children: React.ReactNode }) => {
     scrollY.value = e.contentOffset.y
   })
 
-  const barOpacity = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [40, 90], [0, 1], Extrapolation.CLAMP),
+  const glassOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, GLASS_FADE_RANGE, [0, 1], Extrapolation.CLAMP),
   }))
   const largeTitleOpacity = useAnimatedStyle(() => ({
-    opacity: interpolate(scrollY.value, [40, 90], [1, 0], Extrapolation.CLAMP),
+    opacity: interpolate(scrollY.value, [20, 70], [1, 0], Extrapolation.CLAMP),
+  }))
+  const miniTitleOpacity = useAnimatedStyle(() => ({
+    opacity: interpolate(scrollY.value, [70, 120], [0, 1], Extrapolation.CLAMP),
   }))
 
   const openSearch = () => {
@@ -57,7 +66,7 @@ const Header = ({ children }: { children: React.ReactNode }) => {
         </View>
         {children}
       </Animated.ScrollView>
-      {/* 固定栏：滚动收缩后背景与小标题淡入（未滚动时透明，露出内容区大标题）；双圆钮常驻此栏 */}
+      {/* 固定栏：滚动收缩后玻璃与小标题渐显（未滚动时透明，露出内容区大标题）；双圆钮常驻此栏 */}
       <Animated.View
         style={{
           ...styles.fixedBar,
@@ -65,9 +74,11 @@ const Header = ({ children }: { children: React.ReactNode }) => {
         }}
         pointerEvents="box-none"
       >
-        <Animated.View style={[StyleSheet.absoluteFill, { backgroundColor: theme['c-app-background'] }, barOpacity]} pointerEvents="none" />
+        <Animated.View style={[StyleSheet.absoluteFill, glassOpacity]} pointerEvents="none">
+          <GlassSurface style={styles.barGlass} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+        </Animated.View>
         <View style={styles.fixedBarInner} pointerEvents="box-none">
-          <Animated.Text style={[{ ...styles.miniTitle, color: theme['c-font'], fontSize: setSpText(17) }, barOpacity]}>{APP_NAME}</Animated.Text>
+          <Animated.Text style={[{ ...styles.miniTitle, color: theme['c-font'], fontSize: setSpText(17) }, miniTitleOpacity]}>{APP_NAME}</Animated.Text>
           <View style={styles.btns} pointerEvents="auto">
             <TouchableOpacity style={styles.btn} activeOpacity={0.6} onPress={openSearch}>
               <Icon color={theme['c-font']} name="search-2" size={ICON_SIZE.nav} />
@@ -92,6 +103,9 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 10,
+  },
+  barGlass: {
+    ...StyleSheet.absoluteFill,
   },
   fixedBarInner: {
     height: 56,
