@@ -16,7 +16,7 @@ export const ICON_SIZE = {
   control: 24, // 播放控制键（迷你条/播放页次级键）
   nav: 26, // 页头导航图标（首页搜索/设置圆钮、二级页返回键）
   emphasis: 26, // 行内强调图标（我喜欢的音乐、页标题标识）
-  tile: 30, // 快捷卡大图标
+  tile: 26, // 首页快捷格小图标（1×4，2026-10-20 首页改版）
 } as const
 export const LIST_SCROLL_POSITION_KEY = '__LIST_SCROLL_POSITION_KEY__'
 

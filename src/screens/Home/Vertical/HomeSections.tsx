@@ -1,5 +1,6 @@
 import { FlatList, PanResponder, TouchableOpacity, View, StyleSheet, ScrollView, Animated } from 'react-native'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import LinearGradient from 'react-native-linear-gradient'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n, type Message } from '@/lang'
 import { useMyList } from '@/store/list/hook'
@@ -8,12 +9,13 @@ import { useRecentPlayList } from '@/core/player/recentPlay'
 import { setTempList, setActiveList, updateUserListPosition, updateUserList } from '@/core/list'
 import { getListDetail } from '@/core/songlist'
 import { playList } from '@/core/player/player'
+import { updateSetting } from '@/core/common'
 import commonState from '@/store/common/state'
 import listState from '@/store/list/state'
 import { navigations } from '@/navigation'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
-import { LIST_IDS, storageDataPrefix, ICON_SIZE } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
 import { SPACING } from '@/config/spacing'
@@ -25,13 +27,21 @@ import { setDefaultCover } from '@/core/defaultCover'
 import { queueCoverGen, syncShelfCovers, isCurrentLayoutPic } from '@/utils/playlistCoverGen'
 import { setLoveCover } from '@/core/loveCover'
 
-// AM-6 首页内容（紧凑版）：规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
-// 尺寸脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接使用原型 dp 值
-// （原型基准 390dp，现代设备 dp 宽 360~430，偏差 ±7% 内，天然动态适配）。
-// 图标尺寸走 ICON_SIZE 语义 token（裸 dp，见 constant.ts）；文字沿用 Text 组件（setSpText，保留用户字号设置）。
+// AM-6 首页内容：原规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
+// 2026-10-20 首页改版（快捷格 1×4 +「我喜欢」hero 卡）起，形态与字号以 doc/design-principles.md §7
+// 拍板为准；尺寸仍脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接用 dp 值
+// （间距走 SPACING 单源；图标走 ICON_SIZE 语义 token；文字沿用 Text 组件 setSpText 保留用户字号设置）。
 
 const isCollectList = (info: LX.List.MyListInfo): boolean => {
   return 'source' in info ? !!info.source : false
+}
+
+// 打开歌单页（模块级单源）：LoveSection 与 PlaylistShelf 共用（LoveCard 从 MyMusic 拆出后两侧各持调用）
+const openList = (id: string) => {
+  const componentId = commonState.componentIds.home
+  if (!componentId) return
+  setActiveList(id)
+  navigations.pushMylistScreen(componentId)
 }
 
 // 存量收藏歌单封面补齐（2026-10-16）：收藏动作落库 pic 之前的旧数据缺封面。对「有源缺图」条目
@@ -77,7 +87,7 @@ const QuickNav = () => {
         items.map(({ id, icon, action }) => (
           <TouchableOpacity key={id} style={{ ...styles.tile, backgroundColor: theme['c-content-background'] }} activeOpacity={0.6} onPress={action}>
             <Icon name={icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
-            <Text style={styles.tileLabel} size={14} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
+            <Text style={styles.tileLabel} size={13} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
           </TouchableOpacity>
         ))
       }
@@ -158,41 +168,90 @@ const RecentPlayCard = () => {
   )
 }
 
-// 「我喜欢的音乐」独立卡（C 案，doc/plans/home-music-section-c.md）：与其他卡片同底色，红心图标即辨识（真机反馈 2026-10-16 拍板）。
-// 播放键语义=固定第一首开始，顺序完全跟随播放页播放模式设置（2026-10-16 用户拍板，无隐藏随机）
-// 自定义封面（歌单封面机制批②）：有 lovePic 时红心让渡为 84dp 方图；文件缺失兜底清键回红心
-// （lovePic 指向 DocumentDir 文件，清数据/换机后丢失——方案审查 I-a/N2 降级路径）
-const LoveCard = ({ count, onOpen, onPlay }: { count: number, onOpen: () => void, onPlay: () => void }) => {
-  const theme = useTheme()
+// 「我喜欢的音乐」hero 卡（2026-10-20 首页改版拍板）：封面直出+底部深色遮罩（对标 AM Top Picks poster 式
+// 封面直出卡，v1 取色渐变方案经审查证伪作废）；无 lovePic 回退 LOVE_COLOR 红系渐变（LOVE 语义色单源）。
+// 叠层契约：红渐变恒铺底层、封面 Image 作叠加层——解码空窗/existsFile 异步清键窗口透出渐变，两态无闪变。
+// 播放键=显式切全局随机后起播（2026-10-20 拍板，推翻 2026-10-16「固定第一首、无隐藏随机」，
+// doc/plans/home-music-section-c.md 已归档标注）；曲数=0 禁用沿用。
+// existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——方案审查 I-a/N2 降级路径）
+const HERO_GRADIENT_TO = '#C21136'
+const LoveSection = () => {
   const t = useI18n()
   const lovePic = useSettingValue('list.lovePic')
+  // 曲数读 allMusicList 内存 Map；预载完成不自发事件，事件到达与预载完成后本地 bump 刷新
+  const [, setMusicVersion] = useState(0)
+
+  useEffect(() => {
+    const bump = () => { setMusicVersion(v => v + 1) }
+    global.state_event.on('mylistUpdated', bump)
+    global.app_event.on('myListMusicUpdate', bump)
+    return () => {
+      global.state_event.off('mylistUpdated', bump)
+      global.app_event.off('myListMusicUpdate', bump)
+    }
+  }, [])
+
+  // 冷启动预载 LOVE（真机反馈 2026-10-18：不预载曲数误显 0 且播放键静默失败）。
+  // 预载按组件域拆分：本组件只管 LOVE（shelf 侧归 MyMusic），getListMusics 内存缓存幂等
+  useEffect(() => {
+    if (allMusicList.has(LIST_IDS.LOVE)) return
+    let stale = false
+    void getListMusics(LIST_IDS.LOVE).catch(() => {}).then(() => {
+      if (!stale) setMusicVersion(v => v + 1)
+    })
+    return () => { stale = true }
+  }, [])
+
   useEffect(() => {
     if (!lovePic) return
+    let cancelled = false
     void existsFile(lovePic).then(ok => {
-      if (!ok) void setLoveCover(null)
+      if (!cancelled && !ok) void setLoveCover(null)
     }).catch(() => {})
+    return () => { cancelled = true }
   }, [lovePic])
+
+  const count = allMusicList.get(LIST_IDS.LOVE)?.length ?? 0
   const canPlay = count > 0
+
+  const handlePlay = () => {
+    if (!canPlay) return
+    // 顺序契约：先切全局随机、后起播——首曲需以随机语义入 playedList（player.ts handlePlay 按
+    // 播放那一刻的模式值入队），反序则随机选曲被 playedList 短路回退「回放历史」；
+    // updateSetting 内存同步生效（throttleSave 仅管持久化），随后 playList 即读新值
+    updateSetting({ 'player.togglePlayMethod': 'random' })
+    void playList(LIST_IDS.LOVE, 0)
+  }
+
   return (
-    <TouchableOpacity style={{ ...styles.loveCard, backgroundColor: theme['c-content-background'] }} activeOpacity={0.7} onPress={onOpen}>
+    <TouchableOpacity style={styles.heroCard} activeOpacity={0.8} onPress={() => { openList(LIST_IDS.LOVE) }}>
+      <LinearGradient colors={[LOVE_COLOR, HERO_GRADIENT_TO]} style={StyleSheet.absoluteFill} />
       {
         lovePic
-          ? <Image url={lovePic} style={styles.loveCover} />
-          : <Icon name="love-fill" size={30} color={theme['c-primary']} />
+          ? <>
+              <Image url={lovePic} style={StyleSheet.absoluteFill} resizeMode="cover" />
+              <LinearGradient colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.55)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
+            </>
+          : null
       }
-      <View style={styles.loveInfo}>
-        <Text style={styles.loveName} size={15} color={theme['c-font']} numberOfLines={1}>{t('list_name_love')}</Text>
-        <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{t('music_count', { count })}</Text>
+      <View style={styles.heroContent}>
+        <View style={styles.heroInfo}>
+          <Icon name="love-fill" size={ICON_SIZE.emphasis} color="#FFFFFF" />
+          <View style={styles.heroTexts}>
+            <Text style={styles.heroName} size={17} color="#FFFFFF" numberOfLines={1}>{t('list_name_love')}</Text>
+            <Text size={13} color="rgba(255, 255, 255, 0.78)" numberOfLines={1}>{t('music_count', { count })}</Text>
+          </View>
+        </View>
+        <TouchableOpacity
+          style={{ ...styles.heroPlayBtn, opacity: canPlay ? 1 : 0.35 }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          disabled={!canPlay}
+          activeOpacity={0.7}
+          onPress={handlePlay}
+        >
+          <Icon name="play" size={20} color={LOVE_COLOR} />
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        style={{ ...styles.playBtn, backgroundColor: theme['c-font'], opacity: canPlay ? 1 : 0.35 }}
-        hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-        disabled={!canPlay}
-        activeOpacity={0.7}
-        onPress={onPlay}
-      >
-        <Icon name="play" size={16} color={theme['c-content-background']} />
-      </TouchableOpacity>
     </TouchableOpacity>
   )
 }
@@ -455,11 +514,12 @@ const MyMusic = () => {
   }, [])
 
   // 冷启动预载 shelf 全部歌单（真机反馈 2026-10-18：杀 app 重进曲数全显 0）：allMusicList
-  // 惰性加载，不预载则曲数误显 0（LOVE 还有播放键静默失败）。预载不自发事件，完成后本地 bump
-  // 刷新；lists 异步就绪后本 effect 重跑，getListMusics 内存缓存幂等无重复读盘
+  // 惰性加载，不预载则曲数误显 0。预载按组件域拆分：此处只管 shelf 侧（LOVE 归 LoveSection，
+  // 2026-10-20 拆分拍板），getListMusics 内存缓存幂等无重复读盘；预载不自发事件，完成后本地
+  // bump 刷新；lists 异步就绪后本 effect 重跑，仅缓存未命中才预载+bump（三席审查 S-7）
   useEffect(() => {
     let stale = false
-    const ids = [LIST_IDS.LOVE, LIST_IDS.DEFAULT, ...lists.map(l => l.id)]
+    const ids = [LIST_IDS.DEFAULT, ...lists.map(l => l.id)]
     // 仅本次存在缓存未命中（冷启动首载/新增歌单）才预载+bump；全命中说明元数据无变化，
     // store 变更自身已触发重渲染，跳过空转 bump（三席审查 S-7）
     const misses = ids.filter(id => !allMusicList.has(id))
@@ -472,14 +532,6 @@ const MyMusic = () => {
 
   const getCount = useCallback((id: string) => allMusicList.get(id)?.length ?? 0, [])
 
-  const openList = (id: string) => {
-    const componentId = commonState.componentIds.home
-    if (!componentId) return
-    setActiveList(id)
-    navigations.pushMylistScreen(componentId)
-  }
-
-  const loveCount = getCount(LIST_IDS.LOVE)
   // shelf = 默认歌单（恒首位）+ userLists 原序混排（自有/收藏不区分，收藏带来源角标）
   const shelfLists = useMemo(() => [lists[0], ...lists.slice(2)], [lists])
 
@@ -489,29 +541,17 @@ const MyMusic = () => {
     syncShelfCovers(shelfLists)
   }, [shelfLists])
 
-  const handlePlayLove = () => {
-    if (!loveCount) return
-    void playList(LIST_IDS.LOVE, 0)
-  }
-
   return (
-    <>
-      <LoveCard
-        count={loveCount}
-        onOpen={() => { openList(LIST_IDS.LOVE) }}
-        onPlay={handlePlayLove}
-      />
-      <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
-        <View style={styles.cardHead}>
-          <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('tab_my_lists')}</Text>
-          <TouchableOpacity style={styles.plusBtn} activeOpacity={0.6} onPress={() => { dialogRef.current?.show() }}>
-            <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
-          </TouchableOpacity>
-        </View>
-        <CreateListDialog ref={dialogRef} />
-        <PlaylistShelf lists={shelfLists} getCount={getCount} onOpen={openList} />
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+      <View style={styles.cardHead}>
+        <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('tab_my_lists')}</Text>
+        <TouchableOpacity style={styles.plusBtn} activeOpacity={0.6} onPress={() => { dialogRef.current?.show() }}>
+          <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
+        </TouchableOpacity>
       </View>
-    </>
+      <CreateListDialog ref={dialogRef} />
+      <PlaylistShelf lists={shelfLists} getCount={getCount} onOpen={openList} />
+    </View>
   )
 }
 
@@ -519,6 +559,7 @@ export default () => {
   return (
     <>
       <QuickNav />
+      <LoveSection />
       <RecentPlayCard />
       <MyMusic />
     </>
@@ -529,20 +570,17 @@ export default () => {
 const styles = StyleSheet.create({
   quick: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: SPACING.s12,
     paddingHorizontal: SPACING.s16,
     marginBottom: SPACING.s14,
   },
   tile: {
-    width: '48%',
-    flexGrow: 1,
-    height: 68,
+    flex: 1,
+    height: 80,
     borderRadius: 14,
-    flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.s12,
-    paddingLeft: SPACING.s16,
+    justifyContent: 'center',
+    gap: SPACING.s6,
   },
   tileLabel: {
     fontFamily: FontFamilies.semibold,
@@ -589,36 +627,39 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.s2,
     fontFamily: FontFamilies.semibold,
   },
-  loveCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.s12,
+  // 「我喜欢」hero 卡（2026-10-20 拍板）：红渐变恒铺底层，封面/遮罩叠加层见组件内
+  heroCard: {
+    height: 128,
     marginHorizontal: SPACING.s16,
     marginBottom: SPACING.s14,
-    paddingVertical: SPACING.s12,
-    paddingLeft: SPACING.s16,
-    paddingRight: SPACING.s12,
     borderRadius: 14,
     overflow: 'hidden',
   },
-  // 「我喜欢」自定义封面（歌单封面机制批②）：横条卡内嵌 84dp 方图，红心位让渡
-  loveCover: {
-    width: 84,
-    height: 84,
-    borderRadius: 10,
-  },
-  loveInfo: {
+  heroContent: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    padding: SPACING.s16,
+  },
+  heroInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s12,
+    flexShrink: 1,
+  },
+  heroTexts: {
     flexShrink: 1,
     gap: SPACING.s2,
   },
-  loveName: {
-    fontFamily: FontFamilies.semibold,
+  heroName: {
+    fontFamily: FontFamilies.bold,
   },
-  playBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+  heroPlayBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
     justifyContent: 'center',
     alignItems: 'center',
   },
