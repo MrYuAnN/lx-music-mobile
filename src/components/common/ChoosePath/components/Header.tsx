@@ -7,7 +7,6 @@ import { ICON_SIZE } from '@/config/constant'
 import { getExternalStoragePaths, stat } from '@/utils/fs'
 import { useTheme } from '@/store/theme/hook'
 import { scaleSizeH } from '@/utils/pixelRatio'
-import { useStatusbarHeight } from '@/store/common/hook'
 import NewFolderModal, { type NewFolderType } from './NewFolderModal'
 import OpenStorageModal, { type OpenDirModalType } from './OpenStorageModal'
 import type { PathItem } from './ListItem'
@@ -28,7 +27,6 @@ export default memo(({
   const newFolderTypeRef = useRef<NewFolderType>(null)
   const openDirModalTypeRef = useRef<OpenDirModalType>(null)
   const storagePathsRef = useRef<string[]>([])
-  const statusBarHeight = useStatusbarHeight()
 
   const checkExternalStoragePath = useCallback(() => {
     storagePathsRef.current = []
@@ -60,12 +58,7 @@ export default memo(({
 
   return (
     <>
-      <View style={{
-        ...styles.header,
-        height: scaleSizeH(50) + statusBarHeight,
-        paddingTop: statusBarHeight,
-        backgroundColor: theme['c-content-background'],
-      }} onStartShouldSetResponder={() => true}>
+      <View style={styles.header} onStartShouldSetResponder={() => true}>
         <View style={styles.titleContent}>
           <Text color={theme['c-primary-font']} numberOfLines={1}>{title}</Text>
           <Text style={styles.subTitle} color={theme['c-primary-font']} size={13} numberOfLines={1}>{path}</Text>
@@ -92,10 +85,12 @@ const styles = createStyle({
   header: {
     flexGrow: 0,
     flexShrink: 0,
+    height: scaleSizeH(50),
     flexDirection: 'row',
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
     alignItems: 'center',
+    // sheet 化（弹窗体系统一方案批2#9）：状态栏避让移除（弹层内无需要）、底色移除（透出 SheetBase 玻璃/回退实色底）
     elevation: 2,
     zIndex: 2,
     // borderBottomWidth: BorderWidths.normal,

@@ -3,13 +3,12 @@ import { View } from 'react-native'
 import { externalStorageDirectoryPath, readDir } from '@/utils/fs'
 import { createStyle, toast } from '@/utils/tools'
 // import { useTranslation } from '@/plugins/i18n'
-import Modal, { type ModalType } from '@/components/common/Modal'
+import SheetBase, { type SheetBaseType } from '@/components/common/SheetBase'
 
 import Header from './components/Header'
 import Main from './components/Main'
 import Footer from './components/Footer'
 import { sizeFormate } from '@/utils'
-import { useTheme } from '@/store/theme/hook'
 import { type PathItem } from './components/ListItem'
 // import { getSelectedManagedFolder } from '@/utils/data'
 // let prevPath = externalStorageDirectoryPath
@@ -92,8 +91,7 @@ export default forwardRef<ListType, ListProps>(({
   const isUnmountedRef = useRef(true)
   const readOptions = useRef<ReadOptions>(initReadOptions as ReadOptions)
   const [isReading, setIsReading] = useState(false)
-  const modalRef = useRef<ModalType>(null)
-  const theme = useTheme()
+  const modalRef = useRef<SheetBaseType>(null)
 
   useImperativeHandle(ref, () => ({
     show(title, dir = '', dirOnly = false, filter) {
@@ -166,15 +164,18 @@ export default forwardRef<ListType, ListProps>(({
   }
 
   const handleHide = () => {
+    // 外部 onHide 统一走 SheetBase 的 onHide 通道（setVisible(false)→handleClose 触发），
+    // 覆盖 Footer 取消/把手下滑/返回键全部关闭路径，此处不重复调防双调
     modalRef.current?.setVisible(false)
-    onHide()
   }
 
   // const dirList = useMemo(() => [parentDir, ...list], [list, parentDir])
 
   return (
-    <Modal ref={modalRef} bgHide={false} statusBarPadding={false}>
-      <View style={{ ...styles.container, backgroundColor: theme['c-content-background'] }}>
+    // 近全屏底部弹层（弹窗体系统一方案批2#9，iOS 文件 App document browser 同构）：
+    // 把手+下滑关闭，bgHide=false 维持原全屏页防误触语义（列表误触不关层）；标题由 Header 承载
+    <SheetBase ref={modalRef} onHide={onHide} bgHide={false} maxHeight="90%">
+      <View style={styles.container}>
         <Header
           onRefreshDir={async(path) => readDir(path, readOptions.current.dirOnly, readOptions.current.filter, true)}
           onOpenDir={async(path) => readDir(path, readOptions.current.dirOnly, readOptions.current.filter, false, true)}
@@ -183,14 +184,14 @@ export default forwardRef<ListType, ListProps>(({
         <Main list={list} toParentDir={toParentDir} onSetPath={onSetPath} loading={isReading} />
         <Footer onConfirm={handleConfirm} onHide={handleHide} dirOnly={readOptions.current.dirOnly} />
       </View>
-    </Modal>
+    </SheetBase>
   )
 })
 
-
 const styles = createStyle({
   container: {
-    flex: 1,
+    flexGrow: 0,
+    flexShrink: 1,
   },
 })
 

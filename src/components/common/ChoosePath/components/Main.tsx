@@ -62,12 +62,13 @@ export default ({ list, loading, onSetPath, toParentDir }: {
 
 const styles = createStyle({
   main: {
-    flexGrow: 1,
+    // sheet 内自适应（弹窗体系统一方案批2#9）：高度=内容、超 SheetBase maxHeight 收缩滚动（CheckSheet 同款）
+    flexGrow: 0,
     flexShrink: 1,
     overflow: 'hidden',
   },
   list: {
-    flexGrow: 1,
+    flexGrow: 0,
     flexShrink: 1,
   },
 })

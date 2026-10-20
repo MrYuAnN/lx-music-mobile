@@ -14,6 +14,11 @@ import { onDialogImeChange } from '@/utils/nativeModules/utils'
 // 底部输入弹层（弹窗体系方案 §问题8，参考图1）：标题+输入框+取消/确认，打开即聚焦、键盘协同顶起。
 // 新建歌单等单一输入任务的标准容器。
 //
+// 扩展 props（弹窗体系统一方案批2#6，审查轮 I-3 拍板清单，均 optional 零影响既有消费方）：
+// description=输入框上方状态副文案位；extra=输入框下方内容 slot（复选框类）；cancelText=动态
+// 取消文案（空串回退默认「取消」）；onCancel=取消钮业务回调（与关闭分流：closeSheet 先行，
+// 回调随后——对齐原生关窗后跑 onPress 时序）
+//
 // 键盘避让双轨（2026-10-16 真机定案）：Android 15+（targetSdk 36）e2e 被系统强制，RN Modal 恒
 // edge-to-edge——navigationBarTranslucent={false} 被 RN getter 无视、ADJUST_RESIZE 被忽略，
 // 改走原生 dialog-ime 事件逐帧抬升（SheetBase avoidKeyboard），sheet 同时垫导航栏 inset；
@@ -25,6 +30,10 @@ export interface InputSheetProps {
   placeholder?: string
   maxLength?: number
   confirmText?: string
+  cancelText?: string
+  description?: React.ReactNode
+  extra?: React.ReactNode
+  onCancel?: () => void
   onConfirm?: (text: string) => void | Promise<void>
   onHide?: () => void
 }
@@ -41,6 +50,10 @@ const InputSheet = ({
   placeholder,
   maxLength,
   confirmText,
+  cancelText,
+  description,
+  extra,
+  onCancel,
   onConfirm,
   onHide,
 }: InputSheetProps, ref: React.Ref<InputSheetType>) => {
@@ -146,6 +159,7 @@ const InputSheet = ({
       avoidKeyboard={imeAvoid}
     >
       <View style={styles.container}>
+        {description ? <View style={styles.description}>{description}</View> : null}
         <Input
           ref={inputRef}
           style={styles.input}
@@ -156,6 +170,7 @@ const InputSheet = ({
           onChangeText={setText}
           onSubmitEditing={handleConfirm}
         />
+        {extra ? <View style={styles.extra}>{extra}</View> : null}
         <View style={styles.btns}>
           {/* 动作挂 onPressIn（触点即触发）而非 onPress（抬手触发）：本 ROM 键盘弹着时任意首触
               会并发触发 IME 收起，imeAnim 随之逐帧下移弹层——抬手前按钮已滑出指下，Pressable 判定
@@ -164,9 +179,12 @@ const InputSheet = ({
               不再视为取消（对话框双键场景可接受） */}
           <Button
             style={{ ...styles.btn, backgroundColor: theme['c-button-background'] }}
-            onPressIn={closeSheet}
+            onPressIn={() => {
+              closeSheet()
+              onCancel?.()
+            }}
           >
-            <Text size={14} color={theme['c-font']}>{t('cancel')}</Text>
+            <Text size={14} color={theme['c-font']}>{cancelText || t('cancel')}</Text>
           </Button>
           <Button
             style={{ ...styles.btn, backgroundColor: theme['c-primary'] }}
@@ -187,6 +205,13 @@ const styles = createStyle({
     paddingTop: scaleSizeH(6),
     paddingBottom: scaleSizeH(16),
     gap: scaleSizeH(16),
+  },
+  // slot 与标题/输入框的贴靠由容器单源补偿（审查优 S-1：消费方零 margin 联动）
+  description: {
+    marginTop: scaleSizeH(-6),
+  },
+  extra: {
+    marginTop: scaleSizeH(-6),
   },
   input: {
     fontSize: 15,

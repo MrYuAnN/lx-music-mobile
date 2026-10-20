@@ -15,7 +15,8 @@ export default memo(({ onConfirm, onHide, dirOnly }: {
   const theme = useTheme()
 
   return (
-    <View style={{ ...styles.footer, backgroundColor: theme['c-content-background'] }}>
+    // 底色移除（弹窗体系统一方案批2#9）：透出 SheetBase 玻璃/回退实色底
+    <View style={styles.footer}>
       <Button style={{ ...styles.footerBtn, width: dirOnly ? '50%' : '100%' }} onPress={onHide}>
         <Text color={theme['c-button-font']}>{t('cancel')}</Text>
       </Button>
