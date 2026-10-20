@@ -3,6 +3,7 @@ import { StyleSheet, View, Animated } from 'react-native'
 // import PropTypes from 'prop-types'
 // import { AppColors } from '@/theme'
 import { useTheme } from '@/store/theme/hook'
+import GlassSurface, { GLASS_BAR_FALLBACK } from '@/components/common/GlassSurface'
 import List, { type ItemT, type ListProps, type ListType } from './List'
 // import InsetShadow from 'react-native-inset-shadow'
 
@@ -109,7 +110,10 @@ const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTip
           { scaleY },
         ],
       }}>
-      <View style={{ ...styles.container, backgroundColor: theme['c-content-background'] }}>
+      {/* 玻璃垫层（2026-10-20 真机反馈：白底+硬阴影与毛玻璃顶栏体系割裂，换 GlassSurface 同材质；
+          两调用方=列表内搜索定位浮层/搜索页联想，均贴玻璃顶栏使用） */}
+      <View style={styles.container}>
+        <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
         <List ref={listRef} {...props} />
       </View>
       <View style={styles.blank} onTouchStart={onPressBg}></View>
@@ -135,7 +139,7 @@ const styles = StyleSheet.create({
     flex: 0,
     // flexGrow: 0,
     // borderBottomWidth: BorderWidths.normal,
-    elevation: 2,
+    // elevation 硬阴影随玻璃化移除（分界语义交 hairline，对齐顶栏玻璃）
     maxHeight: '80%',
   },
   blank: {
