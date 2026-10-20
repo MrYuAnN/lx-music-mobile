@@ -7,6 +7,7 @@ import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled
 import musicSdk from '@/utils/musicSdk'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import BackgroundTimer from 'react-native-background-timer'
+import confirmAction from '@/store/confirm/action'
 import { toOldMusicInfo } from './index'
 import { stringMd5 } from 'react-native-quick-md5'
 import { windowSizeTools } from '@/utils/windowSizeTools'
@@ -182,6 +183,8 @@ export const handleReadFile = async<T = unknown>(path: string): Promise<T> => {
   return data
 }
 
+// 全局 ConfirmHost 自绘确认弹窗（弹窗体系统一方案批1 拍板#2）：签名不变内部改路由，跟随主题+玻璃；
+// bgClose:false 对齐原生 cancelable:false（遮罩+返回键双禁）
 export const confirmDialog = async({
   title = '',
   message = '',
@@ -189,30 +192,38 @@ export const confirmDialog = async({
   confirmButtonText = global.i18n.t('dialog_confirm'),
   bgClose = true,
 }) => {
-  return new Promise<boolean>(resolve => {
-    Alert.alert(title, message, [
-      {
-        text: cancelButtonText,
-        onPress() {
-          resolve(false)
-        },
-      },
-      {
-        text: confirmButtonText,
-        onPress() {
-          resolve(true)
-        },
-      },
-    ], {
-      cancelable: bgClose,
-      onDismiss() {
-        resolve(false)
-      },
-    })
+  return confirmAction.show({
+    title,
+    message,
+    cancelButtonText,
+    confirmButtonText,
+    showConfirm: true,
+    bgHide: bgClose,
+    keyHide: bgClose,
   })
 }
 
 export const tipDialog = async({
+  title = '',
+  message = '',
+  btnText = global.i18n.t('dialog_confirm'),
+  bgClose = true,
+}) => {
+  // 单钮落 cancel 位（ConfirmAlert cancel 钮恒渲染），resolve 随 onCancel（复-S-2 按钮位映射）
+  return confirmAction.show({
+    title,
+    message,
+    cancelButtonText: btnText,
+    confirmButtonText: '',
+    showConfirm: false,
+    bgHide: bgClose,
+    keyHide: bgClose,
+  }).then(() => {})
+}
+
+// 原生 Alert 兜底变体（审查 V-1 防御性保留）：App.tsx init 失败 catch 与 errorHandle.ts 同属
+// 「应用核心未就绪」类最后防线（自绘链路技术上可达但依赖 React 树健康度），不走 ConfirmHost
+export const tipDialogNative = async({
   title = '',
   message = '',
   btnText = global.i18n.t('dialog_confirm'),
@@ -245,40 +256,36 @@ export const checkNotificationPermission = async() => {
   if (isHide != null) return
   const enabled = await isNotificationsEnabled()
   if (enabled) return
-  return new Promise<void>((resolve) => {
-    Alert.alert(
-      global.i18n.t('notifications_check_title'),
-      global.i18n.t('notifications_check_tip'),
-      [
-        {
-          text: global.i18n.t('never_show'),
-          onPress: () => {
-            void saveData(storageDataPrefix.notificationTipEnable, '1')
-            toast(global.i18n.t('disagree_tip'))
-            resolve()
-          },
-        },
-        {
-          text: global.i18n.t('disagree'),
-          onPress: () => {
-            toast(global.i18n.t('disagree_tip'))
-            resolve()
-          },
-        },
-        {
-          text: global.i18n.t('agree_go'),
-          onPress: () => {
-            requestAnimationFrame(() => {
-              void requestNotificationPermission().then((result) => {
-                if (!result) toast(global.i18n.t('disagree_tip'))
-                resolve()
-              })
-            })
-          },
-        },
-      ],
-    )
-  })
+  // 三钮竖排（HIG 三按钮 alert，审查 I-1）路由 ConfirmHost：不再提示/拒绝/同意并前往，
+  // 按钮副作用保持原语义
+  return confirmAction.show({
+    title: global.i18n.t('notifications_check_title'),
+    message: global.i18n.t('notifications_check_tip'),
+    cancelButtonText: global.i18n.t('never_show'),
+    confirmButtonText: global.i18n.t('agree_go'),
+    neutral: {
+      text: global.i18n.t('disagree'),
+      onPress: () => {
+        toast(global.i18n.t('disagree_tip'))
+      },
+    },
+    showConfirm: true,
+    // 强制三选一（审查 S-3 拍板对齐原版）：原版 Alert 未传第四参=Android 默认 cancelable:false，
+    // 遮罩/返回键均不可关，防「误关不落『不再提示』下次启动再弹」
+    bgHide: false,
+    keyHide: false,
+    onCancel: () => {
+      void saveData(storageDataPrefix.notificationTipEnable, '1')
+      toast(global.i18n.t('disagree_tip'))
+    },
+    onConfirm: () => {
+      requestAnimationFrame(() => {
+        void requestNotificationPermission().then((result) => {
+          if (!result) toast(global.i18n.t('disagree_tip'))
+        })
+      })
+    },
+  }).then(() => {})
 }
 
 
@@ -287,40 +294,33 @@ export const checkIgnoringBatteryOptimization = async() => {
   if (isHide != null) return
   const enabled = await isIgnoringBatteryOptimization()
   if (enabled) return
-  return new Promise<void>((resolve) => {
-    Alert.alert(
-      global.i18n.t('ignoring_battery_optimization_check_title'),
-      global.i18n.t('ignoring_battery_optimization_check_tip'),
-      [
-        {
-          text: global.i18n.t('never_show'),
-          onPress: () => {
-            void saveData(storageDataPrefix.ignoringBatteryOptimizationTipEnable, '1')
-            toast(global.i18n.t('disagree_tip'))
-            resolve()
-          },
-        },
-        {
-          text: global.i18n.t('disagree'),
-          onPress: () => {
-            toast(global.i18n.t('disagree_tip'))
-            resolve()
-          },
-        },
-        {
-          text: global.i18n.t('agree_to'),
-          onPress: () => {
-            requestAnimationFrame(() => {
-              void requestIgnoreBatteryOptimization().then((result) => {
-                if (!result) toast(global.i18n.t('disagree_tip'))
-                resolve()
-              })
-            })
-          },
-        },
-      ],
-    )
-  })
+  return confirmAction.show({
+    title: global.i18n.t('ignoring_battery_optimization_check_title'),
+    message: global.i18n.t('ignoring_battery_optimization_check_tip'),
+    cancelButtonText: global.i18n.t('never_show'),
+    confirmButtonText: global.i18n.t('agree_to'),
+    neutral: {
+      text: global.i18n.t('disagree'),
+      onPress: () => {
+        toast(global.i18n.t('disagree_tip'))
+      },
+    },
+    showConfirm: true,
+    // 强制三选一（审查 S-3 拍板对齐原版）：同 checkNotificationPermission
+    bgHide: false,
+    keyHide: false,
+    onCancel: () => {
+      void saveData(storageDataPrefix.ignoringBatteryOptimizationTipEnable, '1')
+      toast(global.i18n.t('disagree_tip'))
+    },
+    onConfirm: () => {
+      requestAnimationFrame(() => {
+        void requestIgnoreBatteryOptimization().then((result) => {
+          if (!result) toast(global.i18n.t('disagree_tip'))
+        })
+      })
+    },
+  }).then(() => {})
 }
 export const resetNotificationPermissionCheck = async() => {
   return removeData(storageDataPrefix.notificationTipEnable)

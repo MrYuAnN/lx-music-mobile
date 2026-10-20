@@ -117,6 +117,11 @@ export class StateEvent extends Event {
     this.emit('syncModeModalUpdated', visible)
   }
 
+  // 全局确认弹窗（弹窗体系统一方案批1）：无参广播，hook 读 store/confirm 快照
+  confirmModalUpdated() {
+    this.emit('confirmModalUpdated')
+  }
+
   componentIdsUpdated(ids: CommonState['componentIds']) {
     this.emit('componentIdsUpdated', ids)
   }

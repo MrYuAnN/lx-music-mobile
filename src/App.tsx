@@ -9,7 +9,7 @@ import '@/config/globalData'
 import { getFontSize } from '@/utils/data'
 import { exitApp } from '@/utils/nativeModules/utils'
 import { windowSizeTools } from '@/utils/windowSizeTools'
-import { tipDialog } from '@/utils/tools'
+import { tipDialogNative } from '@/utils/tools'
 import { initInsets } from '@/utils/insetsTool'
 import { bootLog, getBootLog } from '@/utils/bootLog'
 import { useTheme } from '@/store/theme/hook'
@@ -19,6 +19,7 @@ import { navigationRef, handleNavigationStateChange } from '@/navigation'
 import { CoverFlyHost } from '@/navigation/transitions/coverFly'
 import { VersionModalHost, SyncModeModalHost } from '@/navigation/ModalHosts'
 import PlaylistCoverGenHost from '@/components/common/PlaylistCoverGenHost'
+import ConfirmHost from '@/components/common/ConfirmHost'
 import PlayerBar from '@/components/player/PlayerBar'
 
 // 单根组件（N1：RNN NavigationActivity/setRoot 体系 → AppRegistry 常驻根）：
@@ -55,7 +56,9 @@ const AppRoot = () => {
       pushedHomeHandlerRef.current = handlePushedHomeScreen
       setInited(true)
     })().catch((err: any) => {
-      void tipDialog({
+      // init 失败防御性走原生 Alert（审查 V-1 拍板）：核心未就绪最后防线，与 errorHandle 同类，
+      // 不走 ConfirmHost 自绘链路
+      void tipDialogNative({
         title: '初始化失败 (Init Failed)',
         message: `Boot Log:\n${tryGetBootLog()}\n\n${(err.stack ?? err.message) as string}`,
         btnText: 'Exit',
@@ -98,6 +101,8 @@ const AppRoot = () => {
       }
       <CoverFlyHost />
       <PlaylistCoverGenHost />
+      {/* 全局确认弹窗宿主：挂 inited 条件块外（审查 I-2）——init 链路弹窗（deeplink/userApi）可达 */}
+      <ConfirmHost />
       <StatusBar translucent backgroundColor="transparent" barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
     </View>
   )
