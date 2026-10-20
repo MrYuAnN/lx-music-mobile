@@ -34,9 +34,9 @@ const styles = createStyle({
     position: 'absolute',
     borderRadius: 8,
     backgroundColor: 'white',
-    // 低档 elevation 阴影贴边发硬形似描边（真机反馈 2026-10-20「不要边框感」，borderColor 残留已清）：
-    // 提档加大柔化投影；背景色由渲染层主题色/glassTint 覆盖，此处值仅为 outline 兜底
-    elevation: 6,
+    // 无阴影（真机反馈 2026-10-20 两轮：「外框+白块」两层分离感根源=elevation 阴影轮廓——
+    // 用户拍板毛玻璃与页面融合一体）：层次由跨窗模糊+半透明 tint 承担；背景色由渲染层
+    // 主题色/glassTint 覆盖，此处值仅为 outline 兜底
   },
   menuItem: {
     paddingLeft: SPACING.s10,
