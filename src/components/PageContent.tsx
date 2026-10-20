@@ -48,8 +48,11 @@ const STATIC_BLUR_RADIUS = 0
 // white 11.5/3.2、teal 6.8/5.3）；首屏不压图，滚动停止后行可停驻顶部弱纱段，极端对角封面不保
 // WCAG 4.5（业界同样不保，验收口径=可辨认），真机不可接受时预案=调 C 组（veil.40/top.45/onset.40）
 const STATIC_SCRIM_ONSET = 0.45
-const STATIC_TOP_ALPHA = 0.4
-const STATIC_VEIL_OPACITY = 0.35
+// 2026-10-20 真机反馈轮 6（用户：封面蒙纱感重）：两纱减薄——中性纱 0.35→0.10、顶段色纱 0.4→0.22，
+// 底段过渡坡（0.45 起坡→bg 全实）不动；结构不变只提封面清晰度。滚动行压可读性由残纱+瞬态兜底，
+// 真机走查若行压不可辨认再回调（预案=veil .20/top .30）
+const STATIC_TOP_ALPHA = 0.22
+const STATIC_VEIL_OPACITY = 0.1
 
 // 主色亮度钳制：暗色模式压亮度上限防刺眼，亮色模式抬下限防发灰（AM 氛围层观感）
 const TINT_LIGHTNESS_RANGE = {
