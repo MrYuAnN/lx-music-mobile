@@ -5,6 +5,9 @@ export const LIST_ITEM_HEIGHT = 64
 
 // LOVE 红心固定红色系（问题 1 拍板：不随主题 token，love 未选/love-fill 选中同色）
 export const LOVE_COLOR = '#FA2C4C'
+// 「我喜欢的」hero 卡红系渐变端点族（首页改版 2026-10-20：LOVE 语义色族与 LOVE_COLOR 同源单点，
+// 代码审查 S2 归位；端点值无业界统一规格，本产品自定，真机校准定稿）
+export const LOVE_GRADIENT = [LOVE_COLOR, '#C21136']
 
 // 图标尺寸语义 token（AM-6 拍板口径，全局唯一单源；裸 dp 不随用户字号缩放——对标 AM Android/Material，
 // 文字走 Text 组件的 setSpText 保留字号设置）。图标一律从此取值，禁止散落字面量；

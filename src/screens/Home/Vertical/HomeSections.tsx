@@ -15,7 +15,7 @@ import listState from '@/store/list/state'
 import { navigations } from '@/navigation'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
-import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR, LOVE_GRADIENT } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
 import { SPACING } from '@/config/spacing'
@@ -169,38 +169,42 @@ const RecentPlayCard = () => {
 }
 
 // 「我喜欢的音乐」hero 卡（2026-10-20 首页改版拍板）：封面直出+底部深色遮罩（对标 AM Top Picks poster 式
-// 封面直出卡，v1 取色渐变方案经审查证伪作废）；无 lovePic 回退 LOVE_COLOR 红系渐变（LOVE 语义色单源）。
+// 封面直出卡，v1 取色渐变方案经审查证伪作废）；无 lovePic 回退 LOVE_GRADIENT 红系渐变（LOVE 语义色族
+// 单源 constant.ts）。红系渐变端点/卡高/播放键/遮罩浓度等细目无业界统一规格，本产品自定，真机校准定稿。
 // 叠层契约：红渐变恒铺底层、封面 Image 作叠加层——解码空窗/existsFile 异步清键窗口透出渐变，两态无闪变。
 // 播放键=显式切全局随机后起播（2026-10-20 拍板，推翻 2026-10-16「固定第一首、无隐藏随机」，
 // doc/plans/home-music-section-c.md 已归档标注）；曲数=0 禁用沿用。
 // existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——方案审查 I-a/N2 降级路径）
-const HERO_GRADIENT_TO = '#C21136'
 const LoveSection = () => {
   const t = useI18n()
   const lovePic = useSettingValue('list.lovePic')
   // 曲数读 allMusicList 内存 Map；预载完成不自发事件，事件到达与预载完成后本地 bump 刷新
   const [, setMusicVersion] = useState(0)
 
+  // 冷启动预载 LOVE（真机反馈 2026-10-18：不预载曲数误显 0 且播放键静默失败）。
+  // 预载按组件域拆分：本组件只管 LOVE（shelf 侧归 MyMusic，代码审查 I1：useMyList 恒含 LOVE，
+  // 不得经 map 隐式带回），getListMusics 内存缓存幂等；预载失败被吞后 effect 不重跑，故借事件
+  // bump 补载自持重试路径（拆分后 MyMusic 侧不再隐式兜底 LOVE）
+  const preloadLove = useCallback(() => {
+    if (allMusicList.has(LIST_IDS.LOVE)) return
+    void getListMusics(LIST_IDS.LOVE).catch(() => {}).then(() => {
+      setMusicVersion(v => v + 1)
+    })
+  }, [])
+
   useEffect(() => {
-    const bump = () => { setMusicVersion(v => v + 1) }
+    const bump = () => {
+      preloadLove()
+      setMusicVersion(v => v + 1)
+    }
+    preloadLove()
     global.state_event.on('mylistUpdated', bump)
     global.app_event.on('myListMusicUpdate', bump)
     return () => {
       global.state_event.off('mylistUpdated', bump)
       global.app_event.off('myListMusicUpdate', bump)
     }
-  }, [])
-
-  // 冷启动预载 LOVE（真机反馈 2026-10-18：不预载曲数误显 0 且播放键静默失败）。
-  // 预载按组件域拆分：本组件只管 LOVE（shelf 侧归 MyMusic），getListMusics 内存缓存幂等
-  useEffect(() => {
-    if (allMusicList.has(LIST_IDS.LOVE)) return
-    let stale = false
-    void getListMusics(LIST_IDS.LOVE).catch(() => {}).then(() => {
-      if (!stale) setMusicVersion(v => v + 1)
-    })
-    return () => { stale = true }
-  }, [])
+  }, [preloadLove])
 
   useEffect(() => {
     if (!lovePic) return
@@ -225,7 +229,7 @@ const LoveSection = () => {
 
   return (
     <TouchableOpacity style={styles.heroCard} activeOpacity={0.8} onPress={() => { openList(LIST_IDS.LOVE) }}>
-      <LinearGradient colors={[LOVE_COLOR, HERO_GRADIENT_TO]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={LOVE_GRADIENT} style={StyleSheet.absoluteFill} />
       {
         lovePic
           ? <>
@@ -239,7 +243,7 @@ const LoveSection = () => {
           <Icon name="love-fill" size={ICON_SIZE.emphasis} color="#FFFFFF" />
           <View style={styles.heroTexts}>
             <Text style={styles.heroName} size={17} color="#FFFFFF" numberOfLines={1}>{t('list_name_love')}</Text>
-            <Text size={13} color="rgba(255, 255, 255, 0.78)" numberOfLines={1}>{t('music_count', { count })}</Text>
+            <Text size={13} color="rgba(255, 255, 255, 0.88)" numberOfLines={1}>{t('music_count', { count })}</Text>
           </View>
         </View>
         <TouchableOpacity
@@ -514,12 +518,13 @@ const MyMusic = () => {
   }, [])
 
   // 冷启动预载 shelf 全部歌单（真机反馈 2026-10-18：杀 app 重进曲数全显 0）：allMusicList
-  // 惰性加载，不预载则曲数误显 0。预载按组件域拆分：此处只管 shelf 侧（LOVE 归 LoveSection，
-  // 2026-10-20 拆分拍板），getListMusics 内存缓存幂等无重复读盘；预载不自发事件，完成后本地
+  // 惰性加载，不预载则曲数误显 0。预载按组件域拆分：此处只管 shelf 侧——slice(2) 与 shelfLists
+  // 同口径（useMyList 的 allList 恒含 LOVE 于 index 1，不得经 map 隐式带回，代码审查 I1），
+  // LOVE 归 LoveSection；getListMusics 内存缓存幂等无重复读盘；预载不自发事件，完成后本地
   // bump 刷新；lists 异步就绪后本 effect 重跑，仅缓存未命中才预载+bump（三席审查 S-7）
   useEffect(() => {
     let stale = false
-    const ids = [LIST_IDS.DEFAULT, ...lists.map(l => l.id)]
+    const ids = [LIST_IDS.DEFAULT, ...lists.slice(2).map(l => l.id)]
     // 仅本次存在缓存未命中（冷启动首载/新增歌单）才预载+bump；全命中说明元数据无变化，
     // store 变更自身已触发重渲染，跳过空转 bump（三席审查 S-7）
     const misses = ids.filter(id => !allMusicList.has(id))
