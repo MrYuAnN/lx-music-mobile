@@ -32,11 +32,11 @@ const styles = createStyle({
   },
   menu: {
     position: 'absolute',
-    // borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'lightgray',
-    borderRadius: 2,
+    borderRadius: 8,
     backgroundColor: 'white',
-    elevation: 3,
+    // 低档 elevation 阴影贴边发硬形似描边（真机反馈 2026-10-20「不要边框感」，borderColor 残留已清）：
+    // 提档加大柔化投影；背景色由渲染层主题色/glassTint 覆盖，此处值仅为 outline 兜底
+    elevation: 6,
   },
   menuItem: {
     paddingLeft: SPACING.s10,
