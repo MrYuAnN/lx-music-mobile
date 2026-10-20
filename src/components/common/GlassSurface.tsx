@@ -8,7 +8,8 @@ import { BorderWidths } from '@/theme'
 // 玻璃材质单源（毛玻璃全体系方案 §2.1，2026-10-19 三席审查定稿）：blur 引擎=@sbaiahmed1/react-native-blur
 // （Android 12+ RenderEffect 硬件实时模糊/iOS UIVisualEffectView），主题双态 tint+发丝描边同源。
 // API<31 或降级开关关闭时回退 fallbackColor（消费方现状底色），无玻璃不残缺（方案 §7.1）。
-// 圆角裁切由外层容器 overflow hidden 承担（对照 PlayerBar floatCard 用法），本组件不重复裁切。
+// 圆角走 radius prop 由本组件自持（borderRadius+overflow hidden 同视图）：发丝描边与 blur 裁切
+// 跟随弧段——描边画在方形根 View 再靠外层容器裁切的旧用法四角必断线（批三修正，PlayerBar 实例）。
 // 校准期整体降级开关（方案 §1）：玻璃参数真机定稿后随定稿移除。
 // 2026-10-19 晚 hero 空白疑云二分第一轮「关玻璃」后未拨回，已确认系排查残留（结论=bundle 陈旧），恢复实施值 true
 const GLASS_ENABLED = true
@@ -60,6 +61,11 @@ interface Props {
   style?: StyleProp<ViewStyle>
   /** 模糊强度 0-100（方案 §1 初值 24，校准点） */
   blurAmount?: number
+  /** 圆角半径：传入即本组件自持圆角+内部裁切（玻璃/回退两分支同享），圆角玻璃一律走此 prop。
+   *  存量 PlayDetail Btn/ControlBtn 暂留 style 自带圆角（幸免断线）随圆角取值体系治理批次迁移；
+   *  style 内 borderRadius 会覆盖本 prop（style 居数组末位），勿同传；
+   *  与 hairline='bottom' 组合现无消费方——RN Android 单边边框×圆角有历史绘制 quirk，启用前先真机核验 */
+  radius?: number
   /** 发丝描边形态（方案 §1）：all=四周边框（悬浮卡），bottom=底缘（顶栏），none=无 */
   hairline?: 'all' | 'bottom' | 'none'
   /** 玻璃不可用回退底色（必填：回退态不模糊，消费方须按自身场景给足遮蔽，架构席 S-2） */
@@ -67,7 +73,7 @@ interface Props {
   children?: React.ReactNode
 }
 
-export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', fallbackColor, children }: Props) => {
+export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', radius, fallbackColor, children }: Props) => {
   const theme = useTheme()
   const mode = theme.isDark ? 'dark' : 'light'
   const hairlineColor = { borderColor: HAIRLINE_COLOR[mode] }
@@ -76,20 +82,21 @@ export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', fall
     hairline == 'bottom' && styles.hairlineBottom,
     hairline != 'none' && hairlineColor,
   ]
+  const radiusStyle: ViewStyle | null = radius == null ? null : { borderRadius: radius, overflow: 'hidden' }
 
   if (!GLASS_ENABLED || !isGlassSupported()) {
     // 透明回退底（播放页钮类「回退=现状无底色」）连发丝线一起跳过——透明底+描边=悬空框，
     // 违反「回退=现状」（终轮架构 I-5/优化师 I-1）；实色回退（顶栏/迷你条）保留描边
     const isTransparentFallback = fallbackColor == 'rgba(0, 0, 0, 0)' || fallbackColor == 'transparent'
     return (
-      <View style={[styles.surface, { backgroundColor: fallbackColor }, ...(isTransparentFallback ? [] : hairlineStyles), style]}>
+      <View style={[styles.surface, { backgroundColor: fallbackColor }, radiusStyle, ...(isTransparentFallback ? [] : hairlineStyles), style]}>
         {children}
       </View>
     )
   }
 
   return (
-    <View style={[styles.surface, ...hairlineStyles, style]}>
+    <View style={[styles.surface, radiusStyle, ...hairlineStyles, style]}>
       <BlurView style={styles.backdrop} blurType={BLUR_TYPE[mode]} blurAmount={blurAmount} />
       {/* overlay tint 层：顶栏族 BAR_TINT 单源精准承担（弹层族走 GLASS_TINT 跨窗路径，不共用） */}
       <View style={[styles.backdrop, { backgroundColor: BAR_TINT[mode] }]} pointerEvents="none" />

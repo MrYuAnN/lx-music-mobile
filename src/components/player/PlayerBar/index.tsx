@@ -15,15 +15,16 @@ import { useCurrentScreen, usePendingBlacklistHide } from '@/navigation/currentS
 import { PLAY_DETAIL_SCREEN, COMMENT_SCREEN, HOME_SCREEN } from '@/navigation/screenNames'
 import { NAV_WIDTH } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
+import { BAR_HEIGHT, BAR_BOTTOM, BAR_SIDE, BAR_RADIUS } from './constants'
 
 // 迷你播放条全局 overlay（新批问题4 v3 定稿）：一份实例悬浮于全部 screen 之上，转场原地不动。
 // 显隐=isHome 屏推导（封面长按跳列表位置仅 Home 生效）与黑名单（播放页/评论页不显示）同源于当前屏单值；
 // 垫导航栏 inset（横屏手势条在侧缘时垫 right，批4审查 I-3）。
 // 2026-10-16 真机反馈整体加大：BAR_HEIGHT 54→60、封面 46→52、控制钮 44→48（满足 ≥44-48dp
 // 触控最小尺寸通行惯例，Material/Apple HIG 同口径；2026-10-17 三席审查 S-H 补记来源）
-export const BAR_HEIGHT = 60
-export const BAR_BOTTOM = 14
-export const BAR_SIDE = 12
+// 尺寸常量单源 './constants'（批三审查 I-1：ProgressLine 共引防双源漂移）；re-export 保持既有消费方
+// import 路径不变
+export { BAR_HEIGHT, BAR_BOTTOM, BAR_SIDE } from './constants'
 
 // 页面黑名单（单源）：这些屏不显示迷你条（方案 §1 新4 修法3）
 const HIDDEN_SCREENS = new Set<string>([PLAY_DETAIL_SCREEN, COMMENT_SCREEN])
@@ -58,14 +59,6 @@ const PlayerBar = () => {
 
   const playerComponent = useMemo(() => (
     <View style={styles.overlay} pointerEvents="box-none">
-      {/* 底部玻璃条（2026-10-20 真机反馈：胶囊下方露缝区裸内容硬切屏底不优雅）——全宽玻璃垫补齐
-          透过效果；顶缘与胶囊底缘齐平、pointerEvents none 不拦底部滚动；随胶囊同显隐 */}
-      <View
-        pointerEvents="none"
-        style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: BAR_BOTTOM + navBarBottom, overflow: 'hidden' }}
-      >
-        <GlassSurface style={StyleSheet.absoluteFill} hairline="none" fallbackColor={theme['c-content-background']} />
-      </View>
       <View
         style={{
           ...styles.floatCard,
@@ -75,10 +68,10 @@ const PlayerBar = () => {
         }}
         pointerEvents="auto"
       >
-        {/* 玻璃胶囊（毛玻璃全体系阶段一，方案 §3）：实色卡→GlassSurface，圆角裁切由 floatCard
-            overflow hidden 承担；回退=现状实色底（c-content-background）。Android 阴影依赖
-            outline（背景派生），透明底卡片可能失阴影——真机验收⑤观察项，缺失则以发丝线定界 */}
-        <GlassSurface style={styles.cardGlass} hairline="all" fallbackColor={theme['c-content-background']}>
+        {/* 玻璃胶囊（毛玻璃全体系阶段一，方案 §3）：实色卡→GlassSurface；圆角经 radius 自持
+            （描边/blur 跟弧，批三修正四角断线）。回退=现状实色底（c-content-background）。
+            阴影=新架构 CSS boxShadow（RN 0.76+），独立于背景绘制 */}
+        <GlassSurface style={styles.cardGlass} hairline="all" radius={BAR_RADIUS} fallbackColor={theme['c-content-background']}>
           <Pic isHome={isHomeScreen} />
           <View style={styles.center}>
             <Title />
@@ -107,11 +100,11 @@ const styles = StyleSheet.create({
   floatCard: {
     position: 'absolute',
     height: BAR_HEIGHT,
-    borderRadius: 14,
-    // 圆角裁切层（GlassSurface 不自裁切，对照其组件注释）：内容行布局/内边距移至 cardGlass。
+    borderRadius: BAR_RADIUS,
+    // 裁切已由 GlassSurface radius 自持（描边/blur 跟弧），此处不再 overflow 重复裁；
+    // borderRadius 保留=boxShadow 阴影形状来源（批三审查 S-2 注记），勿删。
     // 新架构 CSS boxShadow（RN 0.76+）：透明底卡片 outline 派生阴影（elevation/shadow*）必然丢失
     // （审查优化师 I-2，确定性非「可能」），boxShadow 独立于背景绘制；真机验收⑤核验
-    overflow: 'hidden',
     boxShadow: '0 4px 9px rgba(0,0,0,0.10)',
   },
   cardGlass: {
