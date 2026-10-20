@@ -8,6 +8,7 @@ import playerState from '@/store/player/state'
 import { getListPosition, getListPrevSelectId, saveListPosition } from '@/utils/data'
 // import { useMusicList } from '@/store/list/hook'
 import { getListMusics, setActiveList, updateListMusicPosition } from '@/core/list'
+import { applySortView, useListSortState } from '@/core/listSort'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { createStyle, getRowInfo, toast } from '@/utils/tools'
@@ -80,6 +81,19 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     currentListRef.current = list
     setListState(list)
   }, [])
+  // 排序视图层（弹窗体系统一批2#8，真 AM 模型）：物理序不动，FlatList 渲染视图序。
+  // 视图↔物理经 id Map 换算：播放/菜单 index 外抛物理序（playList 按物理序取歌，下游零改动）、
+  // 高亮/多选区间/定位走视图序（用户所见即所选）
+  const sortState = useListSortState(listState.activeListId)
+  // 排序态切换清多选区间基准（审查架 S-1）：prevSelectIndex 为视图序，排序视图变化后基准失效
+  useEffect(() => {
+    prevSelectIndexRef.current = -1
+  }, [sortState])
+  const viewList = useMemo(() => applySortView(currentList, sortState), [currentList, sortState])
+  const viewListRef = useRef<LX.List.ListMusics>([])
+  viewListRef.current = viewList
+  const physicalIndexById = useMemo(() => new Map(currentList.map((m, i) => [m.id, i])), [currentList])
+  const viewIndexById = useMemo(() => new Map(viewList.map((m, i) => [m.id, i])), [viewList])
   // 拖拽换算源（useDragReorder）：onScroll listener 逐帧记录，程序化落位/自动滚动同步自增
   const scrollOffsetRef = useRef(0)
   // 头部（歌单页头部随列表滚动，批②）：高度计入 getItemLayout offset，否则 scrollToIndex 定位漂移
@@ -121,7 +135,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     selectAll(isAll) {
       let list: LX.List.ListMusics
       if (isAll) {
-        list = [...currentList]
+        // 视图序（批2#8 审查 I-2）：与区间多选同口径「所见即所选」，稍后播放/导出入队序=所见序
+        list = [...viewList]
       } else {
         list = []
       }
@@ -132,9 +147,10 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       return selectedListRef.current
     },
     scrollToInfo(info) {
+      // 视图序定位（批2#8）：FlatList data=视图序，index 经视图列表换算
       void getListMusics(listState.activeListId).then((list) => {
-        const index = list.findIndex(m => m.id == info.id)
-        if (index < 0) {
+        const index = viewListRef.current.findIndex(m => m.id == info.id)
+        if (index < 0 || !list.some(m => m.id == info.id)) {
           toast(t('list_search_not_found'))
           return
         }
@@ -178,7 +194,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
               waitJumpListPositionRef.current = false
               if (playerState.playMusicInfo.listId == id && playerState.playInfo.playIndex > -1) {
                 try {
-                  const index = Math.floor(playerState.playInfo.playIndex / (rowInfo.current.rowNum ?? 1))
+                  // playIndex 为物理序（播放核心契约），FlatList data=视图序——跳转行号经 id 换算（批2#8）
+                  const playingId = list[playerState.playInfo.playIndex]?.id
+                  const viewIndex = playingId ? viewListRef.current.findIndex(m => m.id == playingId) : -1
+                  if (viewIndex < 0) throw new Error('playing item not in view')
+                  const index = Math.floor(viewIndex / (rowInfo.current.rowNum ?? 1))
                   flatListRef.current?.scrollToIndex({ index, viewPosition: 0.3, animated: false })
                   // viewPosition 0.3 落点估算（背板对齐容差 ±百 dp 不可感；headerHeight/viewportHeight
                   // 走 ref 取实测实时值——视口高实测防 winHeight 含 footer/多选条占用的恒定偏差，审查 I-2b）
@@ -219,7 +239,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
           if (isUpdateingList) waitJumpListPositionRef.current = true
           else {
             try {
-              flatListRef.current?.scrollToIndex({ index: Math.floor(playerState.playInfo.playIndex / (rowInfo.current.rowNum ?? 1)), viewPosition: 0.3, animated: true })
+              // playIndex 物理序→视图序换算（批2#8，同 updateList 落位跳转）
+              const playingId = currentListRef.current[playerState.playInfo.playIndex]?.id
+              const viewIndex = playingId ? viewListRef.current.findIndex(m => m.id == playingId) : -1
+              if (viewIndex < 0) throw new Error('playing item not in view')
+              flatListRef.current?.scrollToIndex({ index: Math.floor(viewIndex / (rowInfo.current.rowNum ?? 1)), viewPosition: 0.3, animated: true })
             } catch {}
           }
         }
@@ -247,10 +271,22 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   }, [])
 
   const activeIndex = usePlayIndex()
+  // 播放行高亮（批2#8）：activeIndex 为物理序（播放核心契约），渲染行比较走视图序
+  const activeViewIndex = useMemo(() => {
+    if (activeIndex < 0) return -1
+    const id = currentList[activeIndex]?.id
+    if (!id) return -1
+    return viewIndexById.get(id) ?? -1
+  }, [activeIndex, currentList, viewIndexById])
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
   const handlePlay = (index: number) => {
-    void playList(listState.activeListId, index)
+    // renderItem index 为视图序（批2#8）：playList 按物理序取歌，经 id Map 换算外抛
+    const id = viewList[index]?.id
+    if (!id) return
+    const physicalIndex = physicalIndexById.get(id)
+    if (physicalIndex == null) return
+    void playList(listState.activeListId, physicalIndex)
   }
 
   const handleUpdateSelectedList = (newList: LX.List.ListMusics) => {
@@ -277,9 +313,10 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         if (prevIndex == currentIndex) {
           newList = []
         } else if (currentIndex > prevIndex) {
-          newList = currentList.slice(prevIndex, currentIndex + 1)
+          // 区间多选按视图序（批2#8）：所见即所选，选中集合与显示顺序一致
+          newList = viewList.slice(prevIndex, currentIndex + 1)
         } else {
-          newList = currentList.slice(currentIndex, prevIndex + 1)
+          newList = viewList.slice(currentIndex, prevIndex + 1)
           newList.reverse()
         }
       } else {
@@ -321,8 +358,10 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
 
   // ===== 拖拽排序（方案 playlist-drag-reorder，2026-10-20）=====
   // 单列约束（R1）：横屏双列 rowNum>1 禁拖（无业界先例，明示自定禁用；行号折算先例 List.tsx 既有）
+  // 排序视图约束（批2#8，AM「非 Playlist Order 不可拖」同款）：sortState 激活时禁拖——拖拽只编辑
+  // 物理自定义序，视图序下落位写物理会与渲染序错位；切「自定义顺序」恢复后可拖
   const singleColumn = (rowInfo.current.rowNum ?? 1) == 1
-  const dragEnabled = canDrag && singleColumn
+  const dragEnabled = canDrag && singleColumn && sortState == null
   const handleDragSettle = useCallback((from: number, to: number, finalList: LX.List.ListMusics) => {
     setList(finalList)
     // 原位放回不落库（审查 PM-S1/优化 S-3：未移动不触发持久化+事件回环，iOS UITableView 同惯例）
@@ -431,6 +470,14 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     )
   }, [scrollYAnimated])
 
+  // 菜单出口 index 换算（批2#8）：renderItem index 为视图序，菜单内「播放」走物理序 playList——
+  // 出口统一转物理序，宿主（index.tsx/ListMenu）零改动
+  const handleShowMenu = useCallback((musicInfo: LX.Music.MusicInfo, index: number, position: Position) => {
+    const id = viewList[index]?.id
+    const physicalIndex = (id != null ? physicalIndexById.get(id) : undefined) ?? index
+    onShowMenu(musicInfo, physicalIndex, position)
+  }, [onShowMenu, viewList, physicalIndexById])
+
   const renderItem: FlatListType['renderItem'] = ({ item, index }) => (
     // 占位行（被拖项原位降透明，浮层跟随指针渲染其内容）——外包 View 不入 ListItem comparator；
     // 拖拽中全列表行触点禁用（方案 S7：防另一指播放/开菜单/切红心与拖拽状态串扰）
@@ -446,12 +493,12 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         showSource
         showInterval={isShowInterval}
         isShowAlbumName={isShowAlbumName}
-        activeIndex={activeIndex}
+        activeIndex={activeViewIndex}
         isLiked={likedSet.has(item.id)}
         onLikePress={toggleLike}
         onPress={handlePress}
         onLongPress={dragEnabled ? handleLongPressQuiet : handleLongPress}
-        onShowMenu={onShowMenu}
+        onShowMenu={handleShowMenu}
         dragEnabled={dragEnabled}
         onDragStart={handleDragStart}
         onDragMove={handleDragMove}
@@ -482,7 +529,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         scrollEventThrottle={16}
         style={styles.list}
         contentContainerStyle={{ paddingBottom: bottomInset }}
-        data={drag.dragging ? drag.sessionList : currentList}
+        data={drag.dragging ? drag.sessionList : viewList}
         maxToRenderPerBatch={4}
         numColumns={rowInfo.current.rowNum}
         horizontal={false}
@@ -492,7 +539,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         initialNumToRender={12}
         renderItem={renderItem}
         keyExtractor={getkey}
-        extraData={activeIndex}
+        extraData={activeViewIndex}
         ListHeaderComponent={headerElement}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}

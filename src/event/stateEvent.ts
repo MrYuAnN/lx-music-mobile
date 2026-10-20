@@ -122,6 +122,11 @@ export class StateEvent extends Event {
     this.emit('confirmModalUpdated')
   }
 
+  // 歌单排序视图态（弹窗体系统一方案批2#8）：带 listId，渲染层按 id 过滤订阅
+  listSortStateUpdated(listId: string) {
+    this.emit('listSortStateUpdated', listId)
+  }
+
   componentIdsUpdated(ids: CommonState['componentIds']) {
     this.emit('componentIdsUpdated', ids)
   }

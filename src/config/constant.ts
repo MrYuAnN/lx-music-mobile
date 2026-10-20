@@ -69,6 +69,9 @@ export const storageDataPrefix = {
   list: '@list__',
   listScrollPosition: '@list_scroll_position',
   listPrevSelectId: '@list_prev_select_id',
+  // 排序视图态（弹窗体系统一批2#8）：动态后缀=listId；sortState=排序视图、customOrder=切排序前物理序快照
+  listSortState: '@list_sort_state_',
+  listCustomOrder: '@list_custom_order_',
 
   lyric: '@lyric__',
   musicUrl: '@music_url__',
