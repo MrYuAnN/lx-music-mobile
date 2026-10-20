@@ -14,11 +14,18 @@ import { SPACING } from '@/config/spacing'
 
 // 顶栏族穿行玻璃（毛玻璃全体系阶段三，方案 §5）：悬浮模式唯一形态（流内形态已删，复审 S-d：
 // 9 屏接线完成后无真实调用方）——absolute 脱离滚动流，页顶=透明底+主题字色图标（iOS 大标题页
-// 同构：这些屏页顶是页面底色非封面，无白图标阶段），列表上滑 [140,320]dp 玻璃底+发丝线+标题
-// 淡入（PlaylistTopBar 同规格）；玻璃底 opacity 插值（native driver 不支持 backgroundColor，
+// 同构：这些屏页顶是页面底色非封面，无白图标阶段），列表上滑玻璃渐显（区间=GLASS_FADE_RANGE
+// 单源，真机校准轮二 [20,120]）；玻璃底 opacity 插值（native driver 不支持 backgroundColor，
 // 审查 S-6 先例）；容器 pointerEvents="box-none"（审查 S-3）：非按钮区透传。
 // 消费方接线契约：列表延伸整屏 + contentContainerStyle.paddingTop=statusBar+本组件高(+固定子头)，
 // onScroll Animated.event 直驱 progress——内容从玻璃底下穿过实现真穿行。
+// 标题体系判据（2026-10-20 终版，三席方案审查闭环）：页顶有钉位功能子头→顶栏小标题常显
+// （alwaysShowTitle，透明底+滚动玻璃渐显，与图标同为恒显层）；无钉位子头→小标题滚动淡入
+// （本组件默认，TITLE_FADE 区间）。全 app 无页内大标题（钉位大标题拆除：RN Android 手写
+// 测量+塌缩动画缺陷温床，无业界先例）。适用边界=二级页 ScreenHeader 族——首页「我的」
+// AM 同行式大标题（AM-2 拍板）、评论独立头（歌名恒显）、搜索页（搜索框即身份，10-19 拍板，
+// 不恒显标题）不适用。判据按页面设计态静态适用；临时态（如本地音乐授权引导）无子头时
+// 传 false 回退淡入（无滚动=标题恒隐）。
 
 interface Props {
   componentId: string
@@ -27,12 +34,14 @@ interface Props {
   right?: React.ReactNode
   /** 滚动进度（页面级 Animated.Value）：穿行渐显驱动，由各屏列表 onScroll Animated.event 直驱 */
   progress: Animated.Value
+  /** 恒显标题：页顶有钉位功能子头的页置 true（判据见组件头注释），标题静止态即显不做滚动淡入 */
+  alwaysShowTitle?: boolean
 }
 
 // 玻璃底渐显区间=GLASS_FADE_RANGE（GlassSurface 单源，子头批 S-A 收敛）；标题淡入区间独立
 const TITLE_FADE_RANGE = [180, 320]
 
-export default ({ componentId, title, right, progress }: Props) => {
+export default ({ componentId, title, right, progress, alwaysShowTitle }: Props) => {
   const theme = useTheme()
   const statusBarHeight = useStatusbarHeight()
 
@@ -41,7 +50,9 @@ export default ({ componentId, title, right, progress }: Props) => {
   }
 
   const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
-  const titleOpacity = progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
+  const titleOpacity = alwaysShowTitle
+    ? 1
+    : progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
 
   return (
     <Animated.View style={{ ...styles.container, height: SCREEN_HEADER_HEIGHT + statusBarHeight, paddingTop: statusBarHeight }} pointerEvents="box-none">

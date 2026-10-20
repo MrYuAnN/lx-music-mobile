@@ -167,8 +167,10 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // 悬浮子头（源选择+热门标签）：接线态 absolute 钉位+玻璃垫层渐显（后声明压列表之上，C-1 层级）；
-  // 未接线（横屏宿主）流内且声明在列表前（终轮架构 I-2 沉底修复）
+  // 悬浮子头（源选择+热门标签，两行恒显=多音源聚合特有自定形态，无业界同构——网易云歌单广场
+  // 为单行标签栏；2026-10-20 审查 PM I-2 明示）：接线态 absolute 钉位+玻璃垫层渐显（后声明压
+  // 列表之上，C-1 层级）；未接线（横屏 Home tab 宿主 Home/Horizontal/Main 真实调用方，大标题批
+  // I-4 定裁核实）流内且声明在列表前（终轮架构 I-2 沉底修复）
   const subHeaderElement = (
     <View
       style={scrollYAnimated != null

@@ -19,8 +19,8 @@ export default ({ componentId }: { componentId: string }) => {
     <PageContent>
       <View style={{ flex: 1 }}>
         <Leaderboard scrollYAnimated={scrollY} contentPaddingTop={statusBarHeight + SCREEN_HEADER_HEIGHT} />
-        {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
-        <ScreenHeader componentId={componentId} title={t('nav_top')} progress={scrollY} />
+        {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复）；恒显标题（有钉位子头判据 2026-10-20） */}
+        <ScreenHeader componentId={componentId} title={t('nav_top')} progress={scrollY} alwaysShowTitle />
       </View>
       <PlayerBarPlaceholder />
     </PageContent>

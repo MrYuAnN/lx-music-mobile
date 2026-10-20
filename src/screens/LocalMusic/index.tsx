@@ -313,7 +313,9 @@ export default ({ componentId }: { componentId: string }) => {
                     </View>
                   </View>
                 )}
-            <ScreenHeader componentId={componentId} title={t('local_music')} right={headerRight} progress={scrollY} />
+            {/* 恒显标题（有钉位子头判据）；授权引导态传 false 回退淡入——引导态无子头无滚动
+                （scrollY 恒 0=标题恒隐），恢复引导页纯引导视觉（批二审查优化师 I-1） */}
+            <ScreenHeader componentId={componentId} title={t('local_music')} right={headerRight} progress={scrollY} alwaysShowTitle={!showAuthGuide} />
       <LocalMusicMenu ref={menuRef} />
       <PlayerBarPlaceholder />
     </PageContent>
@@ -406,9 +408,10 @@ const styles = createStyle({
     marginHorizontal: SPACING.s16,
     marginTop: SPACING.s8,
   },
+  // 子头节奏 8dp 栅格（2026-10-20 拍板：钉位子头首行/行间/底距统一 8，原 12/2 非对称层级退役）
   chips: {
-    paddingTop: SPACING.s12,
-    paddingBottom: SPACING.s2,
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
   },
   list: {
     flex: 1,

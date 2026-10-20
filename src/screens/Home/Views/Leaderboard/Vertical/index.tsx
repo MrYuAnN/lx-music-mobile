@@ -16,20 +16,20 @@ import boardState from '@/store/leaderboard/state'
 // 并发口径（代码审查 I-A/I-B 收口）：切源的数据获取单链在 sheet（seq 守卫在彼处），
 // 本组件 sourceChangeSeqRef 仅用于使冷启动 init 的迟到响应失效；onSourceChange 以完整
 // (source, board) 同步应用，boundInfo 不再有 source/id 分步写入的混合窗口。
+// 恒接线契约（批二审查架构师 I-1 收紧）：竖屏唯一宿主 screens/Leaderboard 恒传两参
+// （未接线流内分支已删，见下方注释）——props 必选，漏传 tsc 阶段拦截
 export interface LeaderboardVerticalProps {
-  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：竖屏 screen 宿主传入启用穿行；缺省零 diff */
-  scrollYAnimated?: Animated.Value
-  contentPaddingTop?: number
+  /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：竖屏 screen 宿主必传启用穿行 */
+  scrollYAnimated: Animated.Value
+  contentPaddingTop: number
 }
 
 export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps) => {
   const theme = useTheme()
   // 榜单胶囊固定子头实测高（钉 header 下方，玻璃垫层渐显穿行——Search 终轮 C-2 同款）
   const [headerBarHeight, setHeaderBarHeight] = useState(0)
-  // 子头玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源；接线态才有）
-  const subHeaderFade = scrollYAnimated == null
-    ? undefined
-    : scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
+  // 子头玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源）
+  const subHeaderFade = scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const musicListRef = useRef<MusicListType>(null)
   const headerBarRef = useRef<HeaderBarType>(null)
   const boundInfo = useRef<{ source: LX.OnlineSource, id: string | null }>({ source: 'kw', id: null })
@@ -90,41 +90,38 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
   }, [])
 
 
-  // 榜单胶囊子头：接线态 absolute 钉位+玻璃垫层渐显（后声明压列表之上，C-1 层级）；未接线
-  // （防御分支，现无真实调用方）流内且声明在列表前（终轮架构 I-2 同款）。子头定位与列表
-  // paddingTop 均消费宿主 contentPaddingTop（子头批审查 S-B：原弃用自算 headerTotal 双源并存）
+  // 榜单胶囊子头：absolute 钉位+玻璃垫层渐显（后声明压列表之上，C-1 层级）。子头定位与列表
+  // paddingTop 均消费宿主 contentPaddingTop（子头批审查 S-B：原弃用自算 headerTotal 双源并存）。
+  // 未接线流内分支已删（2026-10-20 大标题批 I-4 定裁：唯一宿主 screens/Leaderboard 恒接线，
+  // 横屏走 Horizontal 变体不经本组件——「无真实调用方即删」S-d 同例；对照 SongList/Content
+  // 未接线分支有横屏 Home tab 真实调用方故保留）
   const headerBarElement = (
-      <View
-        style={scrollYAnimated != null
-          ? { ...styles.headerBar, top: contentPaddingTop ?? 0, overflow: 'hidden' }
-          : styles.headerBarFlow}
-        onLayout={(e) => { const h = e.nativeEvent.layout.height; setHeaderBarHeight(prev => Math.max(prev, h)) }}
-      >
-        {/* 渐显只作用于玻璃垫层，内容控件恒显（Search 终轮 C-2 同款） */}
-        {scrollYAnimated != null && (
-          <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
-            <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
-          </Animated.View>
-        )}
-        <HeaderBar
-          ref={headerBarRef}
-          onBoundSelect={onBoundSelect}
-          onSourceChange={onSourceChange}
-          onPlay={onPlay}
-          onCollect={onCollect}
-        />
-      </View>
+    <View
+      style={{ ...styles.headerBar, top: contentPaddingTop, overflow: 'hidden' }}
+      onLayout={(e) => { const h = e.nativeEvent.layout.height; setHeaderBarHeight(prev => Math.max(prev, h)) }}
+    >
+      {/* 渐显只作用于玻璃垫层，内容控件恒显（Search 终轮 C-2 同款） */}
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
+        <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+      </Animated.View>
+      <HeaderBar
+        ref={headerBarRef}
+        onBoundSelect={onBoundSelect}
+        onSourceChange={onSourceChange}
+        onPlay={onPlay}
+        onCollect={onCollect}
+      />
+    </View>
   )
 
   return (
     <View style={styles.container}>
-      {scrollYAnimated == null && headerBarElement}
       <MusicList
         ref={musicListRef}
         scrollYAnimated={scrollYAnimated}
-        contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + headerBarHeight : undefined}
+        contentPaddingTop={contentPaddingTop + headerBarHeight}
       />
-      {scrollYAnimated != null && headerBarElement}
+      {headerBarElement}
     </View>
   )
 }
@@ -134,9 +131,6 @@ const styles = createStyle({
     position: 'absolute',
     left: 0,
     right: 0,
-  },
-  headerBarFlow: {
-    flexGrow: 0,
   },
   container: {
     width: '100%',

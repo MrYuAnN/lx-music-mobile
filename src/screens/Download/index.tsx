@@ -271,7 +271,7 @@ export default ({ componentId }: { componentId: string }) => {
         </Animated.View>
         <CategoryChips items={tabs} activeId={tab} onChange={id => { setTab(id as TabId); scrollY.stopAnimation(); scrollY.setValue(0) }} />
       </View>
-      <ScreenHeader componentId={componentId} title={t('nav_download')} progress={scrollY} />
+      <ScreenHeader componentId={componentId} title={t('nav_download')} progress={scrollY} alwaysShowTitle />
       {
         menuVisible
           ? <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} onHide={() => { setMenuVisible(false) }} />
@@ -376,7 +376,7 @@ const styles = createStyle({
     left: 0,
     right: 0,
     paddingTop: SPACING.s8,
-    paddingBottom: SPACING.s2,
+    paddingBottom: SPACING.s8,
   },
   list: {
     flex: 1,
