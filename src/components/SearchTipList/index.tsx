@@ -5,6 +5,7 @@ import { StyleSheet, View, Animated } from 'react-native'
 import { useTheme } from '@/store/theme/hook'
 import GlassSurface, { GLASS_BAR_FALLBACK } from '@/components/common/GlassSurface'
 import List, { type ItemT, type ListProps, type ListType } from './List'
+import { SPACING } from '@/config/spacing'
 // import InsetShadow from 'react-native-inset-shadow'
 
 export interface SearchTipListProps<T> extends ListProps<T> {
@@ -140,6 +141,9 @@ const styles = StyleSheet.create({
     // flexGrow: 0,
     // borderBottomWidth: BorderWidths.normal,
     // elevation 硬阴影随玻璃化移除（分界语义交 hairline，对齐顶栏玻璃）
+    // 上下留白（2026-10-20 真机反馈：行贴玻璃边无呼吸）
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
     maxHeight: '80%',
   },
   blank: {

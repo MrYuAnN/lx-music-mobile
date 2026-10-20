@@ -1,16 +1,12 @@
-import { useRef, useImperativeHandle, forwardRef, useState, useEffect } from 'react'
+import { useRef, useImperativeHandle, forwardRef, useState, useEffect, useCallback } from 'react'
 import SearchTipList, { type SearchTipListProps as _SearchTipListProps, type SearchTipListType } from '@/components/SearchTipList'
 import { debounce } from '@/utils'
 import { searchListMusic } from './listAction'
-import Button from '@/components/common/Button'
-import { createStyle, toast } from '@/utils/tools'
-import Text from '@/components/common/Text'
-import { useTheme } from '@/store/theme/hook'
-import { useI18n, type Message } from '@/lang'
-import { View } from 'react-native'
-import { scaleSizeH } from '@/utils/pixelRatio'
+import { toast, getRowInfo } from '@/utils/tools'
+import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+import { useSettingValue } from '@/store/setting/hook'
+import { useI18n } from '@/lang'
 import listState from '@/store/list/state'
-import { SPACING } from '@/config/spacing'
 
 type SearchTipListProps = _SearchTipListProps<LX.Music.MusicInfo>
 interface ListMusicSearchProps {
@@ -22,8 +18,6 @@ interface ListMusicSearchProps {
    * store 快照链路（在线歌单）传 false——无对应全局事件，勿硬造订阅 */
   subscribeListEvents?: boolean
 }
-export const ITEM_HEIGHT = scaleSizeH(46)
-
 export interface ListMusicSearchType {
   search: (keyword: string, height: number) => void
   hide: () => void
@@ -43,7 +37,9 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
   const currentKeywordRef = useRef('')
   const getListRef = useRef(getList)
   getListRef.current = getList
-  const theme = useTheme()
+  const rowInfoRef = useRef(getRowInfo())
+  const isShowAlbumName = useSettingValue('list.isShowAlbumName')
+  const isShowInterval = useSettingValue('list.isShowInterval')
   const t = useI18n()
 
   const handleShowList = (keyword: string, height: number) => {
@@ -109,17 +105,21 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
     }
   }, [subscribeListEvents])
 
-  const renderItem = ({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
-    return (
-      <Button style={styles.item} onPress={() => { onScrollToInfo(item) }} key={index}>
-        <View style={styles.itemName}>
-          <Text numberOfLines={1}>{item.name}</Text>
-          <Text style={styles.subName} numberOfLines={1} size={12} color={theme['c-font-label']}>{item.singer} ({item.meta.albumName})</Text>
-        </View>
-        <Text style={styles.itemSource} size={12} color={theme['c-font-label']}>{t(`source_short_${item.source}` as keyof Message) || item.source}</Text>
-      </Button>
-    )
-  }
+  // 定位结果行与歌单列表行同款（真机反馈 2026-10-20：统一行样式，替换原简行）
+  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
+    <ListItem
+      item={item}
+      index={index}
+      rowInfo={rowInfoRef.current}
+      selectedList={[]}
+      showIndex={false}
+      showCover={false}
+      showSource={false}
+      showInterval={isShowInterval}
+      isShowAlbumName={isShowAlbumName}
+      onPress={info => { onScrollToInfo(info) }}
+    />
+  ), [onScrollToInfo, isShowInterval, isShowAlbumName])
   const getkey: SearchTipListProps['keyExtractor'] = item => item.id
   const getItemLayout: SearchTipListProps['getItemLayout'] = (data, index) => {
     return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
@@ -138,26 +138,4 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
   )
 })
 
-
-const styles = createStyle({
-  item: {
-    height: ITEM_HEIGHT,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingLeft: SPACING.s16,
-    paddingRight: SPACING.s16,
-    // backgroundColor: 'rgba(0, 0, 0, 0.2)',
-  },
-  itemName: {
-    flexGrow: 1,
-    flexShrink: 1,
-  },
-  subName: {
-    marginTop: SPACING.s2,
-  },
-  itemSource: {
-    flexGrow: 0,
-    flexShrink: 0,
-  },
-})
 
