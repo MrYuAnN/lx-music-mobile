@@ -22,6 +22,10 @@ const styles = createStyle({
     paddingLeft: SPACING.s10,
     paddingRight: SPACING.s10,
   },
+  // 纯文本正文居中（拍板#3 iOS Alert 式）；children 表单场景左对齐（编辑歌单 AM 同构）
+  message: {
+    textAlign: 'center',
+  },
   // iOS Alert 式按钮区：顶部发丝线分隔、文本按钮等宽并排（弹窗体系方案 §问题8）
   btns: {
     flexDirection: 'row',
@@ -29,6 +33,12 @@ const styles = createStyle({
   },
   btnsReversedDirection: {
     flexDirection: 'row-reverse',
+  },
+  // 三按钮竖排（HIG Alerts stack 规格，弹窗体系统一方案批1 审查 I-1；顺序审查 I-3 拍板 iOS
+  // 惯例）：column-reverse 使 JSX 首位的 cancel 渲染在底部（iOS cancel 恒底）、confirm 置顶——
+  // 视觉序=confirm/neutral/cancel，与双钮 row 的 cancel 左 confirm 右共存不冲突
+  btnsStacked: {
+    flexDirection: 'column-reverse',
   },
   btn: {
     flex: 1,
@@ -38,8 +48,17 @@ const styles = createStyle({
     justifyContent: 'center',
     borderRadius: 0,
   },
+  // 竖排下按钮高度=内容高（不纵向均分）
+  btnStacked: {
+    flex: 0,
+    paddingHorizontal: SPACING.s10,
+  },
   separator: {
     width: StyleSheet.hairlineWidth,
+  },
+  stackedSeparator: {
+    width: '100%',
+    height: StyleSheet.hairlineWidth,
   },
   btnTextBold: {
     fontFamily: FontFamilies.bold,
@@ -48,6 +67,7 @@ const styles = createStyle({
 
 export interface ConfirmAlertProps {
   onCancel?: () => void
+  onNeutral?: () => void
   onHide?: () => void
   onConfirm?: () => void
   keyHide?: boolean
@@ -56,6 +76,7 @@ export interface ConfirmAlertProps {
   title?: string
   text?: string
   cancelText?: string
+  neutralText?: string
   confirmText?: string
   showConfirm?: boolean
   disabledConfirm?: boolean
@@ -70,6 +91,7 @@ export interface ConfirmAlertType {
 export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(({
   onHide,
   onCancel,
+  onNeutral,
   onConfirm = () => {},
   keyHide,
   bgHide,
@@ -77,6 +99,7 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(({
   title = '',
   text = '',
   cancelText = '',
+  neutralText,
   confirmText = '',
   showConfirm = true,
   disabledConfirm = false,
@@ -99,22 +122,38 @@ export default forwardRef<ConfirmAlertType, ConfirmAlertProps>(({
     dialogRef.current?.setVisible(false)
   }
 
+  // 三钮形态（HIG 竖排）：neutralText+onNeutral 同时传入才生效，默认双钮路径零影响
+  const stacked = neutralText != null && onNeutral != null
+  const btnStyle = stacked ? { ...styles.btn, ...styles.btnStacked } : styles.btn
+  const stackedSeparatorStyle = { ...styles.stackedSeparator, backgroundColor: theme['c-border-background'] }
+
   return (
     <Dialog onHide={onHide} keyHide={keyHide} bgHide={bgHide} closeBtn={closeBtn} title={title} ref={dialogRef}>
       <View style={styles.main}>
         <ScrollView style={styles.content} keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
-          {children ?? <Text>{text}</Text>}
+          {children ?? <Text style={styles.message}>{text}</Text>}
         </ScrollView>
       </View>
-      <View style={{ ...styles.btns, borderTopColor: theme['c-border-background'], ...(reverseBtn ? styles.btnsReversedDirection : null) }}>
-        <Button style={styles.btn} onPress={handleCancel}>
+      <View style={{ ...styles.btns, borderTopColor: theme['c-border-background'], ...(stacked ? styles.btnsStacked : (reverseBtn ? styles.btnsReversedDirection : null)) }}>
+        {/* stacked 与 reverseBtn 互斥（审查 S-4）：竖排序语义由 column-reverse 单源承担，同传时 stacked 优先 */}
+        <Button style={btnStyle} onPress={handleCancel}>
           <Text size={15} color={theme['c-font']}>{cancelText || t('cancel')}</Text>
         </Button>
+        {stacked
+          ? (
+              <>
+                <View style={stackedSeparatorStyle} />
+                <Button style={btnStyle} onPress={onNeutral}>
+                  <Text size={15} color={theme['c-font']}>{neutralText}</Text>
+                </Button>
+              </>
+            )
+          : null}
         {showConfirm
           ? (
               <>
-                <View style={{ ...styles.separator, backgroundColor: theme['c-border-background'] }} />
-                <Button style={styles.btn} onPress={onConfirm} disabled={disabledConfirm}>
+                <View style={stacked ? stackedSeparatorStyle : { ...styles.separator, backgroundColor: theme['c-border-background'] }} />
+                <Button style={btnStyle} onPress={onConfirm} disabled={disabledConfirm}>
                   <Text size={15} color={theme['c-primary']} style={styles.btnTextBold}>{confirmText || t('confirm')}</Text>
                 </Button>
               </>

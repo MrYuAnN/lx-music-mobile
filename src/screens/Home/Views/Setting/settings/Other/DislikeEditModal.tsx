@@ -104,7 +104,7 @@ export default forwardRef<DislikeEditModalType, DislikeEditModalProps>(({ onSave
   return (
     visible
       ? (
-          <Dialog height='80%' ref={dialogRef} bgHide={false}>
+          <Dialog height='80%' ref={dialogRef} bgHide={false} closeBtn>
             <View style={styles.content}>
               <RuleInput ref={inputRef} />
               <Text style={styles.inputTipText} size={13} color={theme['c-600']}>{t('setting_dislike_list_tips')}</Text>

@@ -73,6 +73,7 @@ export default memo(() => {
       </SubTitle>
       <ConfirmAlert
         ref={alertRef}
+        closeBtn
         cancelText={t('setting_other_log_btn_hide')}
         confirmText={t('setting_other_log_btn_clean')}
         onConfirm={handleCleanLog}

@@ -352,7 +352,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
   }, [])
 
   return (
-    <Dialog ref={dialogRef}>
+    <Dialog ref={dialogRef} closeBtn>
       <View style={styles.container}>
         {
           sourceInfo.sourceInfo.length

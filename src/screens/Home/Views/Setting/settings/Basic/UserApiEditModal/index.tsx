@@ -103,7 +103,7 @@ export default forwardRef<UserApiEditModalType, {}>((props, ref) => {
   return (
     visible
       ? (
-          <Dialog ref={dialogRef} bgHide={false}>
+          <Dialog ref={dialogRef} bgHide={false} closeBtn>
             <View style={styles.content}>
               {/* <UrlInput ref={inputRef} /> */}
               <Text size={16} style={styles.title}>{t('user_api_title')}</Text>

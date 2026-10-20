@@ -230,7 +230,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
   }
 
   return (
-    <Dialog ref={dialogRef} onHide={handleHide}>
+    <Dialog ref={dialogRef} onHide={handleHide} closeBtn>
       {
         info.name
           ? (<>

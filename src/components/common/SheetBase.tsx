@@ -71,7 +71,8 @@ export interface SheetBaseType {
 // vy 单位 pt/ms，0.8 ≈ 800pt/s，落在社区常见 500-1000pt/s 区间（@gorhom/bottom-sheet 未暴露常量，无从对标）
 const DRAG_CLOSE_DISTANCE = scaleSizeH(80)
 const DRAG_CLOSE_VELOCITY = 0.8
-const MASK_COLOR = 'rgba(50,50,50,.2)'
+// 弹层遮罩单源（弹窗体系统一方案批1）：居中 Dialog 家族遮罩统一对齐此色，防两族深浅漂移
+export const MASK_COLOR = 'rgba(50,50,50,.2)'
 
 const SheetBase = ({
   onHide,
