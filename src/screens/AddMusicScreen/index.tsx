@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, StyleSheet, View } from 'react-native'
+import { Animated, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
@@ -8,18 +8,21 @@ import CategoryChips from '@/components/common/CategoryChips'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
-import MusicMultiAddList from '@/components/MusicMultiAddModal/List'
+import PlaylistCover from '@/components/common/PlaylistCover'
+import Image from '@/components/common/Image'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import Button from '@/components/common/Button'
 import PageContent from '@/components/PageContent'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { getRowInfo, createStyle, toast } from '@/utils/tools'
-import { debounce } from '@/utils'
-import { useI18n } from '@/lang'
+import { debounce, toNewMusicInfo } from '@/utils'
+import { useI18n, type Message } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
+import { useMyList } from '@/store/list/hook'
+import { useWindowSize } from '@/utils/hooks'
 import { pop } from '@/navigation'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import { addListMusics, setTempList, getListMusics } from '@/core/list'
@@ -66,6 +69,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
   const recentPlayList = useRecentPlayList()
   const localMusicList = useLocalMusicList()
+  const windowSize = useWindowSize()
+  const lists = useMyList()
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
 
@@ -90,6 +95,13 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   // list 来源二级子态：null=歌单列表态；非空=选歌态（点行勾选，底部加入）
   const [pickList, setPickList] = useState<{ id: string, name: string } | null>(null)
   const [pickSelected, setPickSelected] = useState<LX.Music.MusicInfo[]>([])
+
+  // 歌单网格数据（读语义：排除目标歌单自身，收藏歌单可选——复核 S-a 口径）
+  const pickLists = useMemo(() => lists.filter(l => l.id != listId), [lists, listId])
+  const gridWidth = useMemo(
+    () => Math.floor((windowSize.width - SPACING.s16 * 2 - SPACING.s12) / 2),
+    [windowSize.width],
+  )
 
   const searchSeqRef = useRef(0)
   const searchPageRef = useRef(1)
@@ -123,7 +135,9 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     void (musicSdk[musicSourceRef.current]?.musicSearch.search(text, page, SEARCH_LIMIT) as Promise<{ list: LX.Music.MusicInfoOnline[] }> ?? Promise.reject(new Error('source not found: ' + musicSourceRef.current)))
       .then(result => {
         if (isUnmountedRef.current || seq != searchSeqRef.current) return
-        const resultList = result.list ?? []
+        // musicSdk 原始对象无顶层 id（上游设计：入歌单前必须过 toNewMusicInfo 派生 id 与 meta.qualitys）——
+        // 直接入库曾致 addedIds 判定全亮（真机反馈 2026-10-20：点一首 + 全行变 ✓）且音质标签缺失，此处统一规范化
+        const resultList = (result.list ?? []).map(m => toNewMusicInfo(m as never))
         setList(prev => page == 1 ? resultList : [...prev, ...resultList])
         const isEnd = resultList.length < SEARCH_LIMIT
         setStatus(isEnd ? 'end' : 'idle')
@@ -294,6 +308,34 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     }
     pop(componentId)
   }, [pickList, exitPick, componentId])
+
+  // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题；真机反馈 2026-10-20 拍板，
+  // 替换原行式列表）。收藏歌单带来源角标（shelf 同款文案键）
+  const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => {
+    const collect = 'source' in item ? !!item.source : false
+    const pic = (item as LX.List.UserListInfo).pic
+    return (
+      <TouchableOpacity style={{ width: gridWidth }} activeOpacity={0.7} onPress={() => { enterPick(item.id, item.name) }}>
+        <View style={styles.gridCoverWrap}>
+          {
+            pic
+              ? <Image url={pic} style={{ width: gridWidth, height: gridWidth }} resizeMode="cover" />
+              : <PlaylistCover id={item.id} size={gridWidth} />
+          }
+          {
+            collect
+              ? (
+                  <View style={styles.gridSourceBadge}>
+                    <Text size={9} color="#FFFFFF">{t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message)}</Text>
+                  </View>
+                )
+              : null
+          }
+        </View>
+        <Text style={styles.gridName} size={13} color={theme['c-font']} numberOfLines={2}>{item.name}</Text>
+      </TouchableOpacity>
+    )
+  }, [gridWidth, theme, t, enterPick])
   // 选歌态返回键拦截：先回歌单列表（逐级返回），非选歌态放行 pop
   useBackHandler(useCallback(() => {
     if (!pickList) return false
@@ -386,15 +428,17 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
               )
             : source == 'list'
               ? (
-                  // 歌单列表态（读语义放宽：收藏歌单可选；隐藏新建项，复核 S-a）
-                  <View style={{ ...styles.listPickWrap, paddingTop: contentPaddingTop }}>
-                    <MusicMultiAddList
-                      listId={listId}
-                      readonlySelectable
-                      showCreate={false}
-                      onPress={info => { enterPick(info.id, info.name) }}
-                    />
-                  </View>
+                  // 歌单网格态：两列封面卡（读语义：排除目标歌单自身，收藏歌单可选带源角标）
+                  <FlatList
+                    style={styles.list}
+                    contentContainerStyle={{ paddingTop: contentPaddingTop, paddingHorizontal: SPACING.s16, paddingBottom: bottomInset }}
+                    numColumns={2}
+                    columnWrapperStyle={styles.gridRow}
+                    data={pickLists}
+                    keyExtractor={item => item.id}
+                    renderItem={renderPickList}
+                    showsVerticalScrollIndicator={false}
+                  />
                 )
               : (
                   <AnimatedFlatList
@@ -483,8 +527,27 @@ const styles = createStyle({
   list: {
     flex: 1,
   },
-  listPickWrap: {
-    flex: 1,
+  gridRow: {
+    justifyContent: 'space-between',
+    marginBottom: SPACING.s14,
+  },
+  gridCoverWrap: {
+    borderRadius: 8,
+    overflow: 'hidden',
+  },
+  gridSourceBadge: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    borderBottomRightRadius: 3,
+    paddingHorizontal: SPACING.s4,
+    paddingBottom: SPACING.s2,
+    overflow: 'hidden',
+  },
+  gridName: {
+    lineHeight: 18,
+    marginTop: SPACING.s6,
   },
   subHeader: {
     position: 'absolute',

@@ -58,7 +58,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
       listRef.current?.setList([])
       if (listDetailInfo.id == id && listDetailInfo.source == source && listDetailInfo.list.length) {
         requestAnimationFrame(() => {
-          listRef.current?.setList(listDetailInfo.list)
+          listRef.current?.setList(listDetailInfo.list, false, true)
           headerRef.current?.setInfo({
             name: (info.name || listDetailInfo.info.name) ?? '',
             // eslint-disable-next-line @typescript-eslint/prefer-nullish-coalescing
@@ -86,7 +86,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
               desc: listDetailInfo.info.desc || info.desc || '',
                 imgUrl: info.img ?? listDetailInfo.info.img,
             })
-            listRef.current?.setList(result.list)
+            listRef.current?.setList(result.list, false, true)
             listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
           })
         }).catch(() => {
@@ -116,7 +116,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
     getListDetail(songlistState.listDetailInfo.id, songlistState.listDetailInfo.source, page, true).then((listDetail) => {
       const result = setListDetail(listDetail, songlistState.listDetailInfo.id, page)
       if (isUnmountedRef.current) return
-      listRef.current?.setList(result.list)
+      listRef.current?.setList(result.list, false, true)
       listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
     }).catch(() => {
       if (songlistState.listDetailInfo.list.length && page == 1) clearListDetail()
@@ -129,7 +129,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
     getListDetail(songlistState.listDetailInfo.id, songlistState.listDetailInfo.source, page).then((listDetail) => {
       const result = setListDetail(listDetail, songlistState.listDetailInfo.id, page)
       if (isUnmountedRef.current) return
-      listRef.current?.setList(result.list, true)
+      listRef.current?.setList(result.list, true, true)
       listRef.current?.setStatus(songlistState.listDetailInfo.maxPage <= page ? 'end' : 'idle')
     }).catch(() => {
       if (songlistState.listDetailInfo.list.length && page == 1) clearListDetail()

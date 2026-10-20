@@ -331,7 +331,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       selectedList={selectedList}
       showIndex={false}
       showCover={false}
-      showSource={false}
+      // 歌单内混多源歌曲（kw/wy/...+local），行显来源角标（真机反馈 2026-10-20）
+      showSource
       showInterval={isShowInterval}
       isShowAlbumName={isShowAlbumName}
       activeIndex={activeIndex}
