@@ -341,8 +341,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onEditDefaultCover={() => listNameEditRef.current?.showDefault()}
         onSort={info => listMusicSortRef.current?.show(info)}
         onDuplicateMusic={info => duplicateMusicRef.current?.show(info)}
-        onImportFile={(info, index) => listImportExportRef.current?.import(info, index)}
-        onImportLocalFile={(info, index) => listImportExportRef.current?.selectFile(info, index)}
         onExport={(info, index) => listImportExportRef.current?.export(info, index)}
         onSync={info => handleSync(info)}
         // 收藏克隆 ⋮ 取消收藏与红心同款确认+toast（二轮审查 I-2 分流）；自建走删除；删当前列表 pop 回来路

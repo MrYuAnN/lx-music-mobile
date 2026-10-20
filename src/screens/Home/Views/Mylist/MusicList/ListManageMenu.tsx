@@ -6,10 +6,12 @@ import musicSdk from '@/utils/musicSdk'
 import listState from '@/store/list/state'
 
 // 歌单级管理菜单（歌单页重构批①，拍板 §4.2 四套矩阵；hero 改版批扩展+号三义分流）：
-// 自建=添加歌曲(新)/重命名/排序歌曲/重复歌曲/导入/添加本地歌曲/导出/移除；
-// 收藏=克隆为本地歌单(新)/更新/重命名/导出/移除（只读歌单管理项）；
-// 默认·我喜欢=添加歌曲(新)/导出（原 + 号入口迁移，审查 I-A 堵功能回退）；
-// 临时列表不出 ⋮（调用方隐藏入口；加歌入口明示放弃——临时队列非曲库容器）
+// 自建=添加歌曲(新)/编辑歌单/排序歌曲/重复歌曲/导出/移除；收藏=克隆为本地歌单(新)/更新/重命名/导出/移除
+// （只读歌单管理项）；默认·我喜欢=添加歌曲(新)/导出（原 + 号入口迁移，审查 I-A 堵功能回退）；
+// 临时列表不出 ⋮（调用方隐藏入口；加歌入口明示放弃——临时队列非曲库容器）。
+// 2026-10-20 迭代拍板删「导入」「添加本地歌曲」：添加歌曲页新增本地音乐来源承接选歌（自定义目录
+// 扫描职责归本地曲库 backlog）；「导入」与所在歌单无关（handleImport 不消费 listInfo）且设置→备份
+// 与恢复已有同款入口，属重复错位项。
 export interface ListManageMenuType {
   show: (listInfo: LX.List.MyListInfo) => void
 }
@@ -22,8 +24,6 @@ interface Props {
   onEditDefaultCover: () => void
   onSort: (listInfo: LX.List.MyListInfo) => void
   onDuplicateMusic: (listInfo: LX.List.MyListInfo) => void
-  onImportFile: (listInfo: LX.List.MyListInfo, index: number) => void
-  onImportLocalFile: (listInfo: LX.List.MyListInfo, index: number) => void
   onExport: (listInfo: LX.List.MyListInfo, index: number) => void
   onSync: (listInfo: LX.List.UserListInfo) => void
   onRemove: (listInfo: LX.List.UserListInfo) => void
@@ -88,8 +88,6 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
       { action: 'rename', label: t('list_edit_list'), icon: 'edit-metadata' },
       { action: 'sort', label: t('list_sort'), icon: 'change-position' },
       { action: 'duplicateMusic', label: t('lists__duplicate'), icon: 'copy-name' },
-      { action: 'import', label: t('list_import'), icon: 'download-2' },
-      { action: 'local_file', disabled: !notFetching, label: t('list_select_local_file'), icon: 'move-to' },
       { action: 'export', label: t('list_export'), icon: 'share' },
       { action: 'remove', label: t('list_remove'), icon: 'trash', destructive: true },
     ])
@@ -119,12 +117,6 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
         break
       case 'duplicateMusic':
         props.onDuplicateMusic(listInfo)
-        break
-      case 'import':
-        props.onImportFile(listInfo, MENU_POSITION)
-        break
-      case 'local_file':
-        props.onImportLocalFile(listInfo, MENU_POSITION)
         break
       case 'export':
         props.onExport(listInfo, MENU_POSITION)

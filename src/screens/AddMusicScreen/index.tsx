@@ -26,30 +26,34 @@ import { addListMusics, setTempList, getListMusics } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useRecentPlayList } from '@/core/player/recentPlay'
 import { getDownloadListSnapshot, toDownloadedMusicInfo } from '@/core/download'
+import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
 import settingState from '@/store/setting/state'
 import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 
-// 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，四来源完整对标
-// QQ 音乐官方口径（搜索/最近播放/下载/其他歌单，y.qq.com 官方说明）。
+// 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
+// （搜索/最近播放/下载/其他歌单，y.qq.com 官方说明）+ 本地音乐（2026-10-20 迭代拍板：本项目无独立本地
+// tab，业界「本地歌进歌单」走曲库收藏路径链路过长，内嵌为来源 chip 是合理适配——对标声明见方案文档补记）。
 // 列表仅复用 ListItem 行组件自搭（Download 屏先例），不动 OnlineList 容器与泛型（审查 I-N2 定案）；
 // 尾部 + 钮=addAction（addedIds ✓ 态，含目标歌单现有内容初始化），行尾无 ⋮/红心。
 // 预览播放：临时队列只收与所点条目同类型条目（在线/local，混合队列 meta 错位消除——代码审查 I-11 拍板）；
 // list 来源二级子态=页内歌单列表→选歌态（点行勾选+底部加入，对标 QQ 音乐勾选选歌——2026-10-20 PM 席
-// 检索核实，替代方案原「长按多选」措辞并已回写修订记录），逐级返回经 ScreenHeader onBack 覆盖。
+// 检索核实，替代方案原「长按多选」措辞并已回写修订记录），逐级返回经 ScreenHeader onBack 覆盖；
+// local 来源整源勾选态（点行勾选+底部加入，选完留列表续选），无二级子态。
 
-type Source = 'search' | 'recent' | 'download' | 'list'
+type Source = 'search' | 'recent' | 'download' | 'list' | 'local'
 
 const SEARCH_LIMIT = 30
 const SEARCH_DEBOUNCE = 200
 
-const SOURCE_CHIPS: Array<{ id: Source, labelKey: 'add_music_source_search' | 'add_music_source_recent' | 'add_music_source_download' | 'add_music_source_list' }> = [
+const SOURCE_CHIPS: Array<{ id: Source, labelKey: 'add_music_source_search' | 'add_music_source_recent' | 'add_music_source_download' | 'add_music_source_list' | 'add_music_source_local' }> = [
   { id: 'search', labelKey: 'add_music_source_search' },
   { id: 'recent', labelKey: 'add_music_source_recent' },
   { id: 'download', labelKey: 'add_music_source_download' },
   { id: 'list', labelKey: 'add_music_source_list' },
+  { id: 'local', labelKey: 'add_music_source_local' },
 ]
 
 type Status = 'idle' | 'loading' | 'end' | 'error'
@@ -61,6 +65,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const bottomInset = usePlayerBarBottomInset()
   const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
   const recentPlayList = useRecentPlayList()
+  const localMusicList = useLocalMusicList()
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
 
@@ -185,11 +190,15 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     } else if (id == 'download') {
       setList(getDownloadListSnapshot().filter(task => task.isComplate).map(task => toDownloadedMusicInfo(task)))
       setStatus('end')
+    } else if (id == 'local') {
+      // 本地曲库快照（LocalMusic 屏同源 hook）：LocalMusicItem 转标准 MusicInfoLocal
+      setList(localMusicList.map(toMusicInfoLocal))
+      setStatus('end')
     } else {
       setList([])
       setStatus('idle')
     }
-  }, [source, recentPlayList, scrollY])
+  }, [source, recentPlayList, localMusicList, scrollY])
 
   // 添加到目标歌单（沿用 addMusicLocationType 设置与既有 toast 文案）；
   // 已存在于目标歌单的条目过滤（代码审查 I-8），全已存在时静默返回
@@ -213,10 +222,11 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     handleAdd([musicInfo])
   }, [addedIds, handleAdd])
 
-  // 预览播放：临时队列只收与所点条目同类型（在线/local）的条目（审查 I-11 拍板：过滤同类消除 meta 错位）
+  // 预览播放：临时队列只收与所点条目同类型（在线/local）的条目（审查 I-11 拍板：过滤同类消除 meta 错位）；
+  // local 来源整源勾选态（点行=勾选，无预览播放）
   const handlePress = useCallback((musicInfo: LX.Music.MusicInfo, index: number) => {
-    if (pickList) {
-      // 选歌态：点行勾选/取消（对标 QQ 音乐勾选选歌，2026-10-20 PM 席检索核实）
+    if (pickList || source == 'local') {
+      // 选歌态/local 勾选态：点行勾选/取消（对标 QQ 音乐勾选选歌，2026-10-20 PM 席检索核实）
       setPickSelected(prev => {
         const next = prev.some(m => m.id == musicInfo.id)
           ? prev.filter(m => m.id != musicInfo.id)
@@ -232,7 +242,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     void setTempList(tempListId, queue).then(() => {
       if (queueIndex > -1) void playList(LIST_IDS.TEMP, queueIndex)
     })
-  }, [pickList, list])
+  }, [pickList, source, list])
 
   // list 来源：歌单列表 → 进入选歌态（歌单列表由 MusicMultiAddList 内部过滤，排除目标歌单自身）
   const enterPick = useCallback((id: string, name: string) => {
@@ -262,17 +272,20 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     scrollY.setValue(0)
   }, [scrollY])
 
-  // 选歌态加入：勾选集批量写入目标歌单后回歌单列表
+  // 选歌态加入：勾选集批量写入目标歌单——list 来源回歌单列表（子态语义）；local 来源留列表续选
   const handleJoinPicked = useCallback(() => {
-    if (!pickList || !pickSelected.length) return
+    if (!pickSelected.length) return
+    if (!pickList && source != 'local') return
     handleAdd(pickSelected)
-    pickSeqRef.current = pickSeqRef.current + 1
-    setPickList(null)
+    if (pickList) {
+      pickSeqRef.current = pickSeqRef.current + 1
+      setPickList(null)
+      setList([])
+      setStatus('idle')
+      scrollY.setValue(0)
+    }
     setPickSelected([])
-    setList([])
-    setStatus('idle')
-    scrollY.setValue(0)
-  }, [pickList, pickSelected, handleAdd, scrollY])
+  }, [pickList, source, pickSelected, handleAdd, scrollY])
 
   const handleBack = useCallback(() => {
     if (pickList) {
@@ -331,7 +344,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       selectedList={pickSelected}
       showIndex={false}
       showCover
-      showSource={source != 'search'}
+      showSource={source != 'search' && source != 'local'}
       showInterval={isShowInterval}
       isShowAlbumName={isShowAlbumName}
       onPress={handlePress}
@@ -402,7 +415,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
                 )
         }
         {
-          pickList && pickSelected.length
+          (pickList || source == 'local') && pickSelected.length
             ? (
                 <View style={{ ...styles.pickBar, bottom: bottomInset, backgroundColor: theme['c-content-background'] }}>
                   <Button style={{ ...styles.pickBtn, backgroundColor: theme['c-primary'] }} onPress={handleJoinPicked}>

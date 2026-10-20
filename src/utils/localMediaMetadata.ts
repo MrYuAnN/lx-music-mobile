@@ -1,4 +1,4 @@
-import { temporaryDirectoryPath, readDir, unlink, extname } from '@/utils/fs'
+import { temporaryDirectoryPath, unlink } from '@/utils/fs'
 import { readPic as _readPic } from 'react-native-local-media-metadata'
 export {
   type MusicMetadata,
@@ -12,15 +12,6 @@ export {
 
 let cleared = false
 const picCachePath = temporaryDirectoryPath + '/local-media-metadata'
-
-export const scanAudioFiles = async(dirPath: string) => {
-  const files = await readDir(dirPath)
-  return files.filter(file => {
-    if (file.mimeType?.startsWith('audio/')) return true
-    if (extname(file?.name ?? '') === 'ogg') return true
-    return false
-  }).map(file => file)
-}
 
 const clearPicCache = async() => {
   await unlink(picCachePath)

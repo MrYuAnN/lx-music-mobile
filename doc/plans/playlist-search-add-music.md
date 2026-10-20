@@ -110,3 +110,49 @@
 - **I-R2（PM，iOS 26 官方文档外呼）**：拍板#6 对标例证改写（历史形态+现行系统方向底部+本项目有意偏离，本产品自定）。
 - S 落字 8 条：搜索态字色口径（N-2）、OnlineList 存量回归（N-3）、事件订阅「不订阅」形态（N-4）、SonglistDetail 测高来源（S-N1）、排除自身歌单（S-R1）、联合类型表述（S-R3）、退出条件表述（S-9 沿用）、测试清单补全（存量回归/list 边界/平台覆盖）。
 - 定稿判断：本轮修订均为采纳席位自身拟修订方向或其明确给出的备选路径（自搭路径对架构师 N-1 拟修订有部分偏离，已派其单点定向复核后定稿），不再全席重派。
+
+
+---
+
+# §7 实施与代码审查记录（2026-10-20）
+
+## 实施批次
+
+- `a14cfc78` 8dp 栅格归一批（前置，方案外）
+- `32adb25c` 批一 = §C Modal 修复 + §B 列表内搜索顶栏融合（两页接线、ListMusicSearch 参数化、OnlineList scrollToInfo、删 ListSearchBar）
+- `dc5f5580` 批二 = §A 添加歌曲页（push 新屏四来源 + 入口改造删旧弹窗 + 屏注册 5 处 + i18n）
+- `f0f670c6` 审查处置批 = 三席代码审查修复（下表）
+
+## 代码审查（三席，0C→1C）与处置
+
+首轮三席：架构 6I+4S / PM 5I+5S / 优化师 1C+4I+5S，合并后 Critical 1 + Important 12 + S 10，被证伪留档 15 条。方向项四项经用户拍板：加封面（I-10）、队列过滤同类（I-11）、全部修复、走查清单合并留档。处置批 f0f670c6 落地：
+
+| 项 | 处置 |
+|---|---|
+| C1 Menu 漏冻结 | `common/Menu.tsx` 补 `statusBarPadding={{false}}`（首轮 grep 漏相对路径 `./Modal` 导入的教训：调用方排查须含相对路径） |
+| I-1~I-6 | 换词页码重置 / runSearch 入口校验防回弹 / handleEnterSearch 空串进搜索信号 / enterPick seq+卸载双守卫 / keyboardShouldPersistTaps / 子头高度直写+选歌态补偿降 headerTotal |
+| I-7 返回键 | SonglistDetail beforeRemove、Mylist useBackHandler（**仅 push 形态挂**，showBack 区分，规避 Home 内嵌实例跨屏拦截）、AddMusicScreen 选歌态逐级返回 |
+| I-8 | addedIds 以目标歌单现有内容初始化 + 已存在早退 |
+| I-9 留痕 | 点行勾选对标口径更正（QQ 音乐勾选选歌 PM 席检索核实）|
+| S 级 | scrollY 重置 / onLongPress 可选化 / catch toast / 键类型收窄 / error 可点重试 / 选歌态注释对齐 / 清单标题去数字化 |
+
+## 真机走查清单（合并版，装机后逐项勾）
+
+**添加歌曲页**：⋮ 入口转场/返回手势；四来源切换；搜索即输即出+滚动分页+换词翻页不跳页；清空/切来源 200ms 内无回弹；+ 添加 ✓+toast（**歌单已有歌显示 ✓ 且不可重复添加**）；点行预览播放（**混合列表队列标识按条目类型、行带封面**）；其他歌单（歌单列表含收藏歌单、无新建项→选歌勾选→加入→逐级返回，**返回键逐级**）；状态栏无遮挡；键盘弹收+键盘弹起点行/点 + 单击生效；暗色两态；进出屏迷你条正常。
+
+**列表内搜索（两页）**：进搜索态（标题变框、focus、**progress=0 玻璃底+主题字色**）；输入定位滚动；定位后自动退出；✕/空提交退出；**多选×搜索四象限**（搜索进多选先退搜索/多选进搜索藏栏）；**Android 返回键先关搜索**（SonglistDetail 不整屏退、Mylist 不退 Home）；未命中 toast（两页）；玻璃滚动字色不受影响。
+
+**基建回归**：**DorpDownMenu 四入口下拉锚定**（音源/搜索页头部/导入/本地音乐头部——C1 修复验证）；ChoosePath 无变化；**Dialog 居中弹窗/Popup top 态位移观感**（避让激活后的预期行为，异常再冻结）；OnlineList 存量使用方（搜索结果/排行榜/歌单广场/在线歌单详情）滚动分页定位；**getItemLayout 首定位聚焦**（header 测高前 frames 缓存，S1）；**搜索态进出过渡为硬切**（S-5，随 AM 细打磨批评估）；Android 15+ 与 iOS 双态。
+
+**已知边界（留档不修）**：Home tab 搜索态开着时 push 二级屏，其返回键无拦截（内嵌形态不挂 handler，概率低后果轻）；分页 append 后旧行预览队列取旧快照（comparator 不比较回调的固有口径）；混合队列 meta 以入口条目类型定（过滤同类后队列内同型）。
+
+## 7. 后续迭代记录
+
+### 迭代①：本地音乐来源融入 + 歌单菜单导入类入口收敛（2026-10-20，用户拍板）
+
+- **背景**：真机走查发现歌单 ⋮ 菜单「添加歌曲/导入/添加本地歌曲」三入口语义混淆。
+- **对标核实**：「本地歌进歌单」业界走曲库收藏路径（网易云「本地音乐→扫描→收藏到歌单」），QQ 音乐添加歌曲页纯在线源（y.qq.com 官方说明）；歌单文件导入两家均为歌单管理域独立入口。
+- **拍板**：
+  1. 添加歌曲页四来源 → **五来源**（+「本地音乐」chip，内嵌本地曲库勾选+加入栏，与「其他歌单」选歌态同构；本地来源选完留列表续选）——本项目无独立本地 tab，内嵌来源为合理适配（对标偏离声明：QQ 添加歌曲页无本地源，本产品因本地一等公民自定扩展）。
+  2. 歌单 ⋮ 菜单删「导入」「添加本地歌曲」两入口（自建菜单 8→6 项）：「导入」与所在歌单无关（handleImport 不消费 listInfo）且设置→备份与恢复已有同款 .lxm 导入入口（零能力损失）；「添加本地歌曲」的自定义目录扫描职责归本地曲库 backlog（曲库已有白名单扫描，「自定义目录留待后续拍板」）。
+- **实施**：`AddMusicScreen` Source 加 'local'（useLocalMusicList+toMusicInfoLocal 快照取数、整源勾选态、pickBar 复用）；`ListManageMenu`/`Mylist/MusicList/index.tsx`/`ListImportExport.tsx`（收窄 export-only）/`listAction.ts`（删 handleImport/readListData/handleImportMediaFile 全链，buildLocalMusicInfo* 为 deeplink 依赖保留）/`localMediaMetadata.ts`（删 scanAudioFiles）；i18n 三语言 +add_music_source_local、-7 孤儿键（setting_backup_part_import_* 设置侧在用保留）。

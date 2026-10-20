@@ -84,7 +84,6 @@
   "list_readonly_tip": "收藏歌单不可编辑",
   "list_export": "导出",
   "list_export_part_desc": "选择列表文件保存位置",
-  "list_import": "导入",
   "list_desc_expand": "展开",
   "list_desc_collapse": "收起",
   "list_collected_sub": "{source} · 收藏于 {date}",
@@ -120,12 +119,6 @@
   "list_rename_title": "重命名列表",
   "list_select_all": "全选",
   "list_select_cancel": "取消",
-  "list_select_local_file": "添加本地歌曲",
-  "list_select_local_file_desc": "选择本地歌曲文件夹",
-  "list_select_local_file_empty_tip": "没有在当前文件夹中发现歌曲",
-  "list_select_local_file_result_failed_tip": "共发现 {total} 首歌曲，成功添加 {success} 首，失败 {failed} 首，可到错误日志查看添加失败的歌曲",
-  "list_select_local_file_result_tip": "共发现 {total} 首歌曲，已全部添加！",
-  "list_select_local_file_temp_add_tip": "共找到 {total} 个符合要求的文件，已快速添加到当前列表，现在将进入文件标签读取流程，请勿退出应用！",
   "list_select_range": "区间",
   "list_select_single": "单选",
   "list_select_unall": "反选",
@@ -588,5 +581,6 @@
   "add_music_source_recent": "最近播放",
   "add_music_source_download": "下载",
   "add_music_source_list": "其他歌单",
-  "add_music_pick_join": "加入"
+  "add_music_pick_join": "加入",
+  "add_music_source_local": "本地音乐"
 }

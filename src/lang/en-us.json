@@ -84,7 +84,6 @@
   "list_readonly_tip": "Collected playlists are read-only",
   "list_export": "Export",
   "list_export_part_desc": "Choose where to save the list file",
-  "list_import": "Import",
   "list_desc_expand": "More",
   "list_desc_collapse": "Less",
   "list_collected_sub": "{source} · collected {date}",
@@ -120,12 +119,6 @@
   "list_rename_title": "Rename List",
   "list_select_all": "Select All",
   "list_select_cancel": "Cancel",
-  "list_select_local_file": "Add Local Songs",
-  "list_select_local_file_desc": "Choose local song folder",
-  "list_select_local_file_empty_tip": "No songs found in current folder",
-  "list_select_local_file_result_failed_tip": "Found {total} song(s), successfully added {success} song(s), failed to add {failed} song(s). View the error log for details.",
-  "list_select_local_file_result_tip": "Found {Total} song(s), all added!",
-  "list_select_local_file_temp_add_tip": "Found {total} matching files, quickly added to the current list, will now start the file metadata reading process. Please do not exit the app!",
   "list_select_range": "Range",
   "list_select_single": "Single",
   "list_select_unall": "Select none",
@@ -588,5 +581,6 @@
   "add_music_source_recent": "Recently Played",
   "add_music_source_download": "Downloads",
   "add_music_source_list": "Other Playlists",
-  "add_music_pick_join": "Add"
+  "add_music_pick_join": "Add",
+  "add_music_source_local": "Local"
 }
