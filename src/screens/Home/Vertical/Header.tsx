@@ -58,7 +58,7 @@ const Header = ({ children }: { children: React.ReactNode }) => {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 92 }}
       >
-        <View style={{ paddingTop: statusBarHeight }}>
+        <View style={{ paddingTop: statusBarHeight, paddingBottom: SPACING.s12 }}>
           {/* 同行式：大标题与固定栏双圆钮同区垂直居中；滚动收缩时大标题淡出、固定栏小标题淡入（钮常驻固定栏，单份实例） */}
           <Animated.View style={[styles.titleRow, largeTitleOpacity]}>
             <Text size={34} style={{ ...styles.largeTitle, color: theme['c-font'] }}>{APP_NAME}</Text>

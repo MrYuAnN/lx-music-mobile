@@ -643,7 +643,7 @@ const styles = StyleSheet.create({
   heroContent: {
     flex: 1,
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     justifyContent: 'space-between',
     padding: SPACING.s16,
   },
