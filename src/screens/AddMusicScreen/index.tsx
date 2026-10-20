@@ -17,6 +17,7 @@ import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/play
 import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { getRowInfo, createStyle, toast } from '@/utils/tools'
 import { debounce, toNewMusicInfo } from '@/utils'
+import LinearGradient from 'react-native-linear-gradient'
 import { useI18n, type Message } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
@@ -33,7 +34,8 @@ import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
 import settingState from '@/store/setting/state'
 import musicSdk from '@/utils/musicSdk'
-import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
+import { Icon } from '@/components/common/Icon'
+import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix, LOVE_GRADIENT } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
@@ -310,27 +312,30 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   }, [pickList, exitPick, componentId])
 
   // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题；真机反馈 2026-10-20 拍板，
-  // 替换原行式列表）。收藏歌单带来源角标（shelf 同款文案键）
+  // 替换原行式列表）。角标恒显：收藏带来源标、自建（含本地歌单）标「本地」（真机反馈同日）；
+  // 「我喜欢的」用首页 hero 同款视觉（LOVE_GRADIENT 红渐变底+白心）；封面 Image 自带圆角
+  // （不依赖外层 overflow 裁切，规避 Android 平台差异）
   const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => {
     const collect = 'source' in item ? !!item.source : false
     const pic = (item as LX.List.UserListInfo).pic
+    const isLove = item.id == LIST_IDS.LOVE
     return (
       <TouchableOpacity style={{ width: gridWidth }} activeOpacity={0.7} onPress={() => { enterPick(item.id, item.name) }}>
         <View style={styles.gridCoverWrap}>
           {
-            pic
-              ? <Image url={pic} style={{ width: gridWidth, height: gridWidth }} resizeMode="cover" />
-              : <PlaylistCover id={item.id} size={gridWidth} />
-          }
-          {
-            collect
+            isLove
               ? (
-                  <View style={styles.gridSourceBadge}>
-                    <Text size={9} color="#FFFFFF">{t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message)}</Text>
-                  </View>
+                  <LinearGradient colors={LOVE_GRADIENT} style={{ width: gridWidth, height: gridWidth, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
+                    <Icon name="love-fill" size={gridWidth * 0.3} color="#FFFFFF" />
+                  </LinearGradient>
                 )
-              : null
+              : pic
+                ? <Image url={pic} style={{ width: gridWidth, height: gridWidth, borderRadius: 8 }} resizeMode="cover" />
+                : <PlaylistCover id={item.id} size={gridWidth} />
           }
+          <View style={styles.gridSourceBadge}>
+            <Text size={9} color="#FFFFFF">{collect ? t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message) : t('source_short_local')}</Text>
+          </View>
         </View>
         <Text style={styles.gridName} size={13} color={theme['c-font']} numberOfLines={2}>{item.name}</Text>
       </TouchableOpacity>
