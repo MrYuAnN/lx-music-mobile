@@ -28,6 +28,8 @@ export interface OnlineListProps {
 export interface OnlineListType {
   setList: (list: LX.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
   setStatus: (val: Status) => void
+  /** 列表内搜索定位（转发内层 List，方案 §B3） */
+  scrollToInfo: (info: LX.Music.MusicInfo) => void
 }
 
 export default forwardRef<OnlineListType, OnlineListProps>(({
@@ -57,6 +59,9 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
     },
     setStatus(val) {
       listRef.current?.setStatus(val)
+    },
+    scrollToInfo(info) {
+      listRef.current?.scrollToInfo(info)
     },
   }))
 

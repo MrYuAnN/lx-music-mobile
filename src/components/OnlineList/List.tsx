@@ -1,11 +1,11 @@
-import { useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react'
+import { useMemo, useRef, useState, forwardRef, useImperativeHandle, useCallback, createElement, isValidElement } from 'react'
 import { Animated, type FlatList, type FlatListProps, RefreshControl, View } from 'react-native'
 
 // import { useMusicList } from '@/store/list/hook'
 import ListItem, { ITEM_HEIGHT } from './ListItem'
 import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
-import { createStyle, getRowInfo, type RowInfoType } from '@/utils/tools'
+import { createStyle, getRowInfo, toast, type RowInfoType } from '@/utils/tools'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useTheme } from '@/store/theme/hook'
@@ -51,6 +51,9 @@ export interface ListType {
   getSelectedList: () => LX.Music.MusicInfoOnline[]
   getList: () => LX.Music.MusicInfoOnline[]
   setStatus: (val: Status) => void
+  /** 列表内搜索定位（方案 playlist-search-add-music §B3，2026-10-20）：按 id 匹配滚动定位，
+   * 对齐 Mylist/List 先例（scrollToIndex + viewPosition 0.3 + rowNum 换算）；未命中 toast（两页统一口径） */
+  scrollToInfo: (info: LX.Music.MusicInfo) => void
 }
 export type Status = 'loading' | 'refreshing' | 'end' | 'error' | 'idle'
 
@@ -71,7 +74,8 @@ const List = forwardRef<ListType, ListProps>(({
   scrollYAnimated,
   contentPaddingTop,
 }, ref) => {
-  // const t = useI18n()
+  // 列表内搜索定位 toast 文案（scrollToInfo 未命中）
+  const t = useI18n()
   const theme = useTheme()
   const bottomInset = usePlayerBarBottomInset()
   const flatListRef = useRef<FlatList<LX.Music.MusicInfoOnline>>(null)
@@ -127,6 +131,14 @@ const List = forwardRef<ListType, ListProps>(({
     },
     setStatus(val) {
       setStatus(val)
+    },
+    scrollToInfo(info) {
+      const index = currentList.findIndex(m => m.id == info.id)
+      if (index < 0) {
+        toast(t('list_search_not_found'))
+        return
+      }
+      flatListRef.current?.scrollToIndex({ index: Math.floor(index / (rowInfo.current.rowNum ?? 1)), viewPosition: 0.3, animated: true })
     },
   }))
 
@@ -219,8 +231,22 @@ const List = forwardRef<ListType, ListProps>(({
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id
+  // header 高度计入 offset（方案 §B3，审查 I-3）：ListHeaderComponent（歌单封面等大块头）不计入则
+  // scrollToIndex 定位系统性漂移；ref 读值（layout 回调后生效），首帧前 headerHeight 恒 0（未定位无影响）
+  const headerHeightRef = useRef(0)
+  const handleHeaderLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    headerHeightRef.current = e.nativeEvent.layout.height
+  }, [])
+  const listHeader = useMemo(() => {
+    if (!ListHeaderComponent) return null
+    // 兼容元素/组件两种形态（FlatListProps 类型口径），包 onLayout 测高（方案 §B3，审查 I-3）
+    return createElement(View, { onLayout: handleHeaderLayout },
+      isValidElement(ListHeaderComponent)
+        ? ListHeaderComponent
+        : createElement(ListHeaderComponent as React.ComponentType))
+  }, [ListHeaderComponent, handleHeaderLayout])
   const getItemLayout: FlatListType['getItemLayout'] = (data, index) => {
-    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
+    return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index + headerHeightRef.current, index }
   }
   const refreshControl = useMemo(() => (
     <RefreshControl
@@ -286,7 +312,7 @@ const List = forwardRef<ListType, ListProps>(({
       onEndReachedThreshold={0.5}
       onEndReached={handleLoadMore}
       progressViewOffset={progressViewOffset}
-      ListHeaderComponent={ListHeaderComponent}
+      ListHeaderComponent={listHeader}
       refreshControl={refreshControl}
       ListFooterComponent={footerComponent}
       showsVerticalScrollIndicator={false}

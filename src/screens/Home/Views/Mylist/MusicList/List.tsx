@@ -9,7 +9,8 @@ import { getListPosition, getListPrevSelectId, saveListPosition } from '@/utils/
 import { getListMusics, setActiveList } from '@/core/list'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
-import { createStyle, getRowInfo } from '@/utils/tools'
+import { createStyle, getRowInfo, toast } from '@/utils/tools'
+import { useI18n } from '@/lang'
 import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
@@ -58,7 +59,8 @@ const usePlayIndex = () => {
 
 
 const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, onSelectAll, header, scrollYAnimated, onProgrammaticScroll, onFirstRealScroll }, ref) => {
-  // const t = useI18n()
+  // 搜索定位未命中 toast（2026-10-20 两页统一口径，原静默 return）
+  const t = useI18n()
   // 底部穿行契约（2026-10-20）：占位块改悬浮后列表延伸到屏底，让位保证末行可滚出迷你条
   const bottomInset = usePlayerBarBottomInset()
   const flatListRef = useRef<FlatList>(null)
@@ -107,7 +109,10 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     scrollToInfo(info) {
       void getListMusics(listState.activeListId).then((list) => {
         const index = list.findIndex(m => m.id == info.id)
-        if (index < 0) return
+        if (index < 0) {
+          toast(t('list_search_not_found'))
+          return
+        }
         flatListRef.current?.scrollToIndex({ index: Math.floor(index / (rowInfo.current.rowNum ?? 1)), viewPosition: 0.3, animated: true })
       })
     },

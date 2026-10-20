@@ -1,9 +1,11 @@
-import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
-import { Animated } from 'react-native'
+import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useCallback } from 'react'
+import { Animated, View } from 'react-native'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
 import { clearListDetail, getListDetail, setListDetail, setListDetailInfo } from '@/core/songlist'
 import songlistState from '@/store/songlist/state'
 import { handlePlay } from './listAction'
+import { createStyle } from '@/utils/tools'
+import ListMusicSearch, { type ListMusicSearchType } from '@/screens/Home/Views/Mylist/MusicList/ListMusicSearch'
 import Header, { type HeaderType } from './Header'
 import { useListInfo } from './state'
 
@@ -11,19 +13,42 @@ export interface MusicListProps {
   componentId: string
   /** 顶栏滚动进度（QQ 式渐显 D2）：透传 OnlineList，页面级创建（审查 S-1 同层） */
   scrollYAnimated?: Animated.Value
+  /** 列表内搜索定位完成回调（顶栏融合式，方案 §B3）：宿主据此命令顶栏退出搜索态 */
+  onLocated?: () => void
 }
 
 export interface MusicListType {
   loadList: (source: LX.OnlineSource, listId: string) => void
+  /** 列表内搜索输入（顶栏融合式接线）：高度由本组件容器 onLayout 实测（复审 S-N1） */
+  search: (keyword: string) => void
+  /** 退出搜索（顶栏退出回调链）：隐藏定位浮层 */
+  exitSearch: () => void
 }
 
-export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollYAnimated }, ref) => {
+export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollYAnimated, onLocated }, ref) => {
   const listRef = useRef<OnlineListType>(null)
   const headerRef = useRef<HeaderType>(null)
+  const listMusicSearchRef = useRef<ListMusicSearchType>(null)
+  const listHeightRef = useRef(0)
   const isUnmountedRef = useRef(false)
   const info = useListInfo()
+  // 搜索定位浮层高度来源：列表容器实测（OnlineList 与浮层同容器）
+  const handleListLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
+    listHeightRef.current = e.nativeEvent.layout.height
+  }, [])
+  const handleScrollToInfo = useCallback((musicInfo: LX.Music.MusicInfo) => {
+    listRef.current?.scrollToInfo(musicInfo)
+    onLocated?.()
+  }, [onLocated])
+  const getListMusicSnapshot = useCallback(async() => songlistState.listDetailInfo.list, [])
 
   useImperativeHandle(ref, () => ({
+    search(keyword) {
+      listMusicSearchRef.current?.search(keyword, listHeightRef.current)
+    },
+    exitSearch() {
+      listMusicSearchRef.current?.hide()
+    },
     async loadList(source, id) {
       clearListDetail()
       const listDetailInfo = songlistState.listDetailInfo
@@ -112,14 +137,32 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const header = useMemo(() => <Header ref={headerRef} componentId={componentId} />, [])
 
-  return <OnlineList
-    ref={listRef}
-    onPlayList={handlePlayList}
-    onRefresh={handleRefresh}
-    onLoadMore={handleLoadMore}
-    ListHeaderComponent={header}
-    scrollYAnimated={scrollYAnimated}
-    // progressViewOffset={}
-   />
+  return (
+    <View style={styles.container} onLayout={handleListLayout}>
+      <OnlineList
+        ref={listRef}
+        onPlayList={handlePlayList}
+        onRefresh={handleRefresh}
+        onLoadMore={handleLoadMore}
+        ListHeaderComponent={header}
+        scrollYAnimated={scrollYAnimated}
+        // progressViewOffset={}
+      />
+      {/* 列表内搜索定位浮层（方案 §B3 新增接线）：数据源=在线歌单快照；store 快照链路无全局变更事件，
+          subscribeListEvents=false（复审 N-4 勿硬造订阅） */}
+      <ListMusicSearch
+        ref={listMusicSearchRef}
+        getList={getListMusicSnapshot}
+        subscribeListEvents={false}
+        onScrollToInfo={handleScrollToInfo}
+      />
+    </View>
+  )
+})
+
+const styles = createStyle({
+  container: {
+    flex: 1,
+  },
 })
 

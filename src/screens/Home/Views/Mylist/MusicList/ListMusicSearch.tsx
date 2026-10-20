@@ -9,13 +9,18 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n, type Message } from '@/lang'
 import { View } from 'react-native'
 import { scaleSizeH } from '@/utils/pixelRatio'
-import { getListMusics } from '@/core/list'
 import listState from '@/store/list/state'
 import { SPACING } from '@/config/spacing'
 
 type SearchTipListProps = _SearchTipListProps<LX.Music.MusicInfo>
 interface ListMusicSearchProps {
   onScrollToInfo: (info: LX.Music.MusicInfo) => void
+  /** 匹配数据源取数（2026-10-20 参数化，方案 playlist-search-add-music §B3）：
+   * Mylist 传本地歌单链路 getListMusics(activeListId)；SonglistDetail 传 songlistState.listDetailInfo.list 快照 */
+  getList: () => Promise<LX.List.ListMusics>
+  /** 数据变更事件订阅（mylistToggled/myListMusicUpdate）：本地歌单链路 true（缺省）；
+   * store 快照链路（在线歌单）传 false——无对应全局事件，勿硬造订阅 */
+  subscribeListEvents?: boolean
 }
 export const ITEM_HEIGHT = scaleSizeH(46)
 
@@ -30,25 +35,29 @@ export const debounceSearchList = debounce((text: string, list: LX.List.ListMusi
 }, 200)
 
 
-export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScrollToInfo }, ref) => {
+export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScrollToInfo, getList, subscribeListEvents = true }, ref) => {
   const searchTipListRef = useRef<SearchTipListType<LX.Music.MusicInfo>>(null)
   const [visible, setVisible] = useState(false)
-  const currentListIdRef = useRef('')
+  // 调用序守卫：响应落地时序号不符即丢弃（切列表/重查后旧响应作废；替代原 activeListId 守卫，两链路通用）
+  const seqRef = useRef(0)
   const currentKeywordRef = useRef('')
+  const getListRef = useRef(getList)
+  getListRef.current = getList
   const theme = useTheme()
   const t = useI18n()
 
   const handleShowList = (keyword: string, height: number) => {
     searchTipListRef.current?.setHeight(height)
     currentKeywordRef.current = keyword
-    const id = currentListIdRef.current = listState.activeListId
+    const seq = seqRef.current = seqRef.current + 1
     if (keyword) {
-      void getListMusics(id).then(list => {
-        debounceSearchList(keyword, list, (list) => {
-          if (currentListIdRef.current != id) return
-          searchTipListRef.current?.setList(list)
+      void getListRef.current().then(list => {
+        if (seq != seqRef.current) return
+        debounceSearchList(keyword, list, (result) => {
+          if (seq != seqRef.current) return
+          searchTipListRef.current?.setList(result)
         })
-      })
+      }).catch(() => {})
     } else {
       searchTipListRef.current?.setList([])
     }
@@ -66,25 +75,27 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
     },
     hide() {
       currentKeywordRef.current = ''
-      currentListIdRef.current = ''
+      seqRef.current = seqRef.current + 1
       searchTipListRef.current?.setList([])
     },
   }))
 
   useEffect(() => {
-    const updateList = (id: string) => {
-      currentListIdRef.current = id
+    if (!subscribeListEvents) return
+    const updateList = () => {
       if (!currentKeywordRef.current) return
-      void getListMusics(listState.activeListId).then(list => {
-        debounceSearchList(currentKeywordRef.current, list, (list) => {
-          if (currentListIdRef.current != id) return
-          searchTipListRef.current?.setList(list)
+      const seq = seqRef.current = seqRef.current + 1
+      void getListRef.current().then(list => {
+        if (seq != seqRef.current) return
+        debounceSearchList(currentKeywordRef.current, list, (result) => {
+          if (seq != seqRef.current) return
+          searchTipListRef.current?.setList(result)
         })
-      })
+      }).catch(() => {})
     }
     const handleChange = (ids: string[]) => {
       if (!ids.includes(listState.activeListId)) return
-      updateList(listState.activeListId)
+      updateList()
     }
 
     global.state_event.on('mylistToggled', updateList)
@@ -94,7 +105,7 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
       global.state_event.off('mylistToggled', updateList)
       global.app_event.off('myListMusicUpdate', handleChange)
     }
-  }, [])
+  }, [subscribeListEvents])
 
   const renderItem = ({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
     return (

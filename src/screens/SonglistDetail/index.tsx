@@ -1,10 +1,10 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import { Animated } from 'react-native'
 
 import MusicList, { type MusicListType } from './MusicList'
 import PageContent from '@/components/PageContent'
 import StatusBar from '@/components/common/StatusBar'
-import PlaylistTopBar from '@/components/common/PlaylistTopBar'
+import PlaylistTopBar, { type PlaylistTopBarType } from '@/components/common/PlaylistTopBar'
 import { setComponentId } from '@/core/common'
 import { COMPONENT_IDS } from '@/config/constant'
 import { type ListInfoItem } from '@/store/songlist/state'
@@ -15,10 +15,21 @@ import { pop } from '@/navigation'
 
 export default ({ componentId, info }: { componentId: string, info: ListInfoItem }) => {
   const musicListRef = useRef<MusicListType>(null)
+  const playlistTopBarRef = useRef<PlaylistTopBarType>(null)
   const isUnmountedRef = useRef(false)
   // 顶栏滚动进度（QQ 式渐显 D2）：页面级创建，经 MusicList→OnlineList 透传给 FlatList
   // （审查 S-1：TopBar 与 Value 同层，消解父子数据流断点）
   const scrollY = useRef(new Animated.Value(0)).current
+  // 列表内搜索接线（顶栏融合式，方案 §B3）：输入下行 MusicList（含实测高度）、定位完成上行退出搜索
+  const handleSearchText = useCallback((text: string) => {
+    musicListRef.current?.search(text)
+  }, [])
+  const handleSearchExit = useCallback(() => {
+    musicListRef.current?.exitSearch()
+  }, [])
+  const handleLocated = useCallback(() => {
+    playlistTopBarRef.current?.exitSearch()
+  }, [])
 
   useEffect(() => {
     setComponentId(COMPONENT_IDS.songlistDetail, componentId)
@@ -39,10 +50,20 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
     <PageContent ambientPic={info.img ?? null} scrollY={scrollY}>
       <StatusBar />
       <ListInfoContext.Provider value={info}>
-        <MusicList ref={musicListRef} componentId={componentId} scrollYAnimated={scrollY} />
+        <MusicList ref={musicListRef} componentId={componentId} scrollYAnimated={scrollY} onLocated={handleLocated} />
       </ListInfoContext.Provider>
       <PlayerBarPlaceholder />
-      <PlaylistTopBar title={info.name} progress={scrollY} onArtwork={!!info.img} showBack onBack={() => { pop(componentId) }} />
+      {/* 列表内搜索（方案 §B3）：传 onSearchText 即启用搜索钮（原无搜索入口） */}
+      <PlaylistTopBar
+        ref={playlistTopBarRef}
+        title={info.name}
+        progress={scrollY}
+        onArtwork={!!info.img}
+        showBack
+        onBack={() => { pop(componentId) }}
+        onSearchText={handleSearchText}
+        onSearchExit={handleSearchExit}
+      />
     </PageContent>
   )
 }

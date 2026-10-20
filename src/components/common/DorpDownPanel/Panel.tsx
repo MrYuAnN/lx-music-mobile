@@ -116,8 +116,10 @@ export default forwardRef<PanelType, PanelProps>(({ onHide, keyHide, bgHide, chi
   }))
 
   // console.log(visible)
+  // statusBarPadding 显式 false（2026-10-20 冻结，方案 playlist-search-add-music §C2）：
+  // buttonPosition 为窗口坐标（含状态栏区），Modal 内容区一旦下移 statusBarHeight，absolute 锚点随之偏移致下拉定位失准
   return (
-    <Modal ref={modalRef} onHide={onHide} onStartShouldSetResponder={() => true} keyHide={keyHide} bgHide={bgHide}>
+    <Modal ref={modalRef} statusBarPadding={false} onHide={onHide} onStartShouldSetResponder={() => true} keyHide={keyHide} bgHide={bgHide}>
       <Panel buttonPosition={position} onHide={() => modalRef.current?.setVisible(false)}>
         {children}
       </Panel>

@@ -546,6 +546,8 @@
   "local_music_go_settings": "去授权",
   "recent_play_remove_record": "删除记录",
   "local_music_search_placeholder": "搜索本地歌曲",
+  "list_search_placeholder": "搜索本歌单",
+  "list_search_not_found": "未找到相关歌曲",
   "local_music_view_all": "全部",
   "local_music_view_folder": "文件夹",
   "local_music_view_album": "专辑",

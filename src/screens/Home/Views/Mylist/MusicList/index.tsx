@@ -18,19 +18,19 @@ import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } fr
 import { createStyle, toast } from '@/utils/tools'
 import { Animated, type LayoutChangeEvent, View } from 'react-native'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
-import ListSearchBar, { type ListSearchBarType } from './ListSearchBar'
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
 import MusicPositionModal, { type MusicPositionModalType } from './MusicPositionModal'
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { addDownloadTask } from '@/core/download'
+import { getListMusics as getCoreListMusics } from '@/core/list'
 import { playList, togglePlay } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { useIsPlay, usePlayMusicInfo } from '@/store/player/hook'
 import PlaylistHeader from '@/components/common/PlaylistHeader'
-import PlaylistTopBar from '@/components/common/PlaylistTopBar'
+import PlaylistTopBar, { type PlaylistTopBarType } from '@/components/common/PlaylistTopBar'
 import { LIST_IDS } from '@/config/constant'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
@@ -39,7 +39,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const listMusicSearchRef = useRef<ListMusicSearchType>(null)
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
-  const listSearchBarRef = useRef<ListSearchBarType>(null)
   const listMusicAddRef = useRef<ListMusicAddType>(null)
   const listMusicMultiAddRef = useRef<ListAddMultiType>(null)
   const musicPositionModalRef = useRef<MusicPositionModalType>(null)
@@ -48,6 +47,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const musicToggleModalRef = useRef<MusicToggleModalType>(null)
   const manageMenuRef = useRef<ListManageMenuType>(null)
   const addMusicSheetRef = useRef<AddMusicSheetType>(null)
+  const playlistTopBarRef = useRef<PlaylistTopBarType>(null)
   const listNameEditRef = useRef<ListNameEditType>(null)
   const listMusicSortRef = useRef<ListMusicSortType>(null)
   const duplicateMusicRef = useRef<DuplicateMusicType>(null)
@@ -125,6 +125,8 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   }, [isCollectList, activeListInfo, musicCount])
 
   const hancelMultiSelect = useCallback(() => {
+    // 搜索态中进多选 → 先自动退出搜索态（顶栏融合式，方案 §B2 互斥规则）；exitSearch 非搜索态 no-op
+    playlistTopBarRef.current?.exitSearch()
     if (isShowSearchBarModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
     }
@@ -158,26 +160,26 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       selectedList: listRef.current!.getSelectedList(),
     }, position)
   }, [])
-  const handleShowSearch = useCallback(() => {
+  // 列表内搜索接线（顶栏融合式，方案 §B2）：输入回调（进搜索时藏多选栏，幂等）；
+  // 退出（✕/空提交/定位完成 exitSearch）统一走 onSearchExit → hide 浮层 + 恢复多选栏
+  const handleSearchText = useCallback((text: string) => {
     isShowSearchBarModeBar.current = true
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(false)
     }
-    listSearchBarRef.current?.show()
+    listMusicSearchRef.current?.search(text, layoutHeightRef.current)
   }, [])
   const handleExitSearch = useCallback(() => {
     isShowSearchBarModeBar.current = false
     listMusicSearchRef.current?.hide()
-    listSearchBarRef.current?.hide()
-    // console.log('handleExitSearch', isShowSearchBarModeBar.current)
     if (isShowMultipleModeBar.current) {
       multipleModeBarRef.current?.setVisibleBar(true)
     }
   }, [])
   const handleScrollToInfo = useCallback((info: LX.Music.MusicInfo) => {
     listRef.current?.scrollToInfo(info)
-    handleExitSearch()
-  }, [handleExitSearch])
+    playlistTopBarRef.current?.exitSearch()
+  }, [])
   const onLayout = useCallback((e: LayoutChangeEvent) => {
     layoutHeightRef.current = e.nativeEvent.layout.height
   }, [])
@@ -256,11 +258,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
           onSelectAll={isAll => listRef.current?.selectAll(isAll)}
           onExitSelectMode={hancelExitSelect}
         />
-        <ListSearchBar
-          ref={listSearchBarRef}
-          onSearch={keyword => listMusicSearchRef.current?.search(keyword, layoutHeightRef.current)}
-          onExitSearch={handleExitSearch}
-        />
       </View>
       <View style={{ flex: 1 }} onLayout={onLayout}>
         <List
@@ -275,10 +272,13 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         />
         <ListMusicSearch
           ref={listMusicSearchRef}
+          // 原 ListMusicSearch 内部即走 core/list 版（非 listManage 包装版），注入保行为等价
+          getList={() => getCoreListMusics(listState.activeListId)}
           onScrollToInfo={handleScrollToInfo}
         />
       </View>
       <PlaylistTopBar
+        ref={playlistTopBarRef}
         title={currentListName}
         progress={scrollY}
         // 封面三态与 MylistView ambientPic 同源（代码审查 S-B/S-1）：LOVE/DEFAULT 自定义封面也回白图标
@@ -286,8 +286,8 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         entranceLocked={entranceLocked}
         showBack={showBack}
         onBack={onBack}
-        showSearch
-        onSearch={handleShowSearch}
+        onSearchText={handleSearchText}
+        onSearchExit={handleExitSearch}
         showManage={!isTempList}
         onManageMenu={() => { if (activeListInfo) manageMenuRef.current?.show(activeListInfo) }}
       />

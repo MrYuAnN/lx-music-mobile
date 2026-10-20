@@ -1,11 +1,13 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, forwardRef, useImperativeHandle, useCallback } from 'react'
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import DotsVertical from '@/components/common/DotsVertical'
 import Text, { FontFamilies } from '@/components/common/Text'
+import Input, { type InputType } from '@/components/common/Input'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useTheme } from '@/store/theme/hook'
+import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import { setSpText } from '@/utils/pixelRatio'
 import { SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
@@ -40,17 +42,56 @@ export interface PlaylistTopBarProps {
   entranceLocked?: boolean
   showBack?: boolean
   onBack?: () => void
-  showSearch?: boolean
-  onSearch?: () => void
+  /** 列表内搜索接线（顶栏融合式，方案 playlist-search-add-music §B1）：传即启用搜索钮。
+   * 搜索态组件内部自管（标题区原地变搜索框、强制玻璃底+主题字色）；输入回调 onSearchText，
+   * 退出（✕/空提交/外部 exitSearch）统一回调 onSearchText('') + onSearchExit */
+  onSearchText?: (text: string) => void
+  onSearchExit?: () => void
   showManage?: boolean
   onManageMenu?: () => void
 }
 
-export default ({ title, progress, onArtwork = true, entranceLocked = false, showBack, onBack, showSearch, onSearch, showManage, onManageMenu }: PlaylistTopBarProps) => {
+export interface PlaylistTopBarType {
+  /** 外部命令退出搜索态（定位完成等场景）；非搜索态 no-op */
+  exitSearch: () => void
+}
+
+export default forwardRef<PlaylistTopBarType, PlaylistTopBarProps>(({ title, progress, onArtwork = true, entranceLocked = false, showBack, onBack, onSearchText, onSearchExit, showManage, onManageMenu }, ref) => {
   const theme = useTheme()
+  const t = useI18n()
   const statusbarHeight = useStatusbarHeight()
   const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const titleOpacity = progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
+
+  // 列表内搜索态（顶栏融合式）：进入=点搜索钮（标题区原地变搜索框+focus）；退出=✕/空提交/外部 exitSearch，
+  // 统一清笔回调（onSearchText('')+onSearchExit）。强制玻璃底+主题字色：progress=0 时顶栏无玻璃垫，
+  // 白字压封面不可读（审查 I-12）；强制玻璃底后字色若仍白则压亮磨砂不可读（复审 N-2），两处同步切主题
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  const isSearchModeRef = useRef(false)
+  const inputRef = useRef<InputType>(null)
+
+  const handleEnterSearch = useCallback(() => {
+    isSearchModeRef.current = true
+    setIsSearchMode(true)
+    requestAnimationFrame(() => {
+      inputRef.current?.focus()
+    })
+  }, [])
+
+  const handleExitSearch = useCallback(() => {
+    if (!isSearchModeRef.current) return
+    isSearchModeRef.current = false
+    setIsSearchMode(false)
+    inputRef.current?.clear()
+    onSearchText?.('')
+    onSearchExit?.()
+  }, [onSearchText, onSearchExit])
+
+  useImperativeHandle(ref, () => ({
+    exitSearch() {
+      handleExitSearch()
+    },
+  }), [handleExitSearch])
 
   // 字色离散切换（审查 I-D/S-R3）：listener 每帧回调但仅在跨越 230 时 setState 一次；
   // 注册时先以 progress 当前值对齐一次初值（架构席 I-1）：页面级 scrollY 在顶栏重挂载时保留
@@ -76,11 +117,12 @@ export default ({ title, progress, onArtwork = true, entranceLocked = false, sho
 
   // 锁定态图标回退主题字色（审查复审 I-3）：锁定时玻璃底被压 0，白图标压亮 tint/列表行对比无保障；
   // 解锁后玻璃底渐显有垫，回白。过中点后字色交主题（亮=黑压白磨砂/暗=白压深玻璃）
-  const iconColor = onArtwork && !entranceLocked && !pastMid ? '#FFFFFF' : theme['c-font']
+  // 搜索态恒主题字色（强制玻璃底有垫，白字压亮磨砂不可读，复审 N-2）
+  const iconColor = isSearchMode || !onArtwork || entranceLocked || pastMid ? theme['c-font'] : '#FFFFFF'
 
   return (
     <Animated.View style={{ ...styles.container, height: SCREEN_HEADER_HEIGHT + statusbarHeight, paddingTop: statusbarHeight }} pointerEvents="box-none">
-      <Animated.View style={[styles.barBgWrap, { opacity: entranceLocked ? 0 : bgOpacity }]} pointerEvents="none">
+      <Animated.View style={[styles.barBgWrap, { opacity: isSearchMode ? 1 : (entranceLocked ? 0 : bgOpacity) }]} pointerEvents="none">
         {/* fallback 透明度（0.72/0.78）高于玻璃 tint（0.55/0.62）：无模糊时需更高遮蔽保可读性（审查 PM S-6）。
             iOS 已知限制（审查优化师 I-1，Apple UIVisualEffectView 官方口径）：effect view 及其父级
             alpha<1 行为未定义，本处 opacity 淡入在 iOS 可能退化为硬切——本批 iOS 仅核对不炸，
@@ -97,17 +139,43 @@ export default ({ title, progress, onArtwork = true, entranceLocked = false, sho
               )
             : null
         }
-        <Animated.View style={[styles.titleWrap, { opacity: entranceLocked ? 0 : titleOpacity }]} pointerEvents="none">
-          <Text style={styles.title} numberOfLines={1} color={iconColor}>{title}</Text>
-        </Animated.View>
         {
-          showSearch
+          isSearchMode
             ? (
-                <TouchableOpacity style={styles.sideBtn} onPress={onSearch} activeOpacity={0.7}>
-                  <Icon name="search-2" color={iconColor} size={ICON_SIZE.nav} />
-                </TouchableOpacity>
+                // 搜索态：Input 占标题位（原地变身），✕ 退出
+                <>
+                  <View style={styles.searchWrap}>
+                    <Input
+                      ref={inputRef}
+                      onChangeText={onSearchText}
+                      placeholder={t('list_search_placeholder')}
+                      clearBtn
+                      style={styles.searchInput}
+                      returnKeyType="search"
+                      onSubmitEditing={({ nativeEvent: { text } }) => { if (!text.trim()) handleExitSearch() }}
+                    />
+                  </View>
+                  <TouchableOpacity style={styles.sideBtn} onPress={handleExitSearch} activeOpacity={0.7}>
+                    <Icon name="close" color={iconColor} size={ICON_SIZE.nav} />
+                  </TouchableOpacity>
+                </>
               )
-            : null
+            : (
+                <>
+                  <Animated.View style={[styles.titleWrap, { opacity: entranceLocked ? 0 : titleOpacity }]} pointerEvents="none">
+                    <Text style={styles.title} numberOfLines={1} color={iconColor}>{title}</Text>
+                  </Animated.View>
+                  {
+                    onSearchText != null
+                      ? (
+                          <TouchableOpacity style={styles.sideBtn} onPress={handleEnterSearch} activeOpacity={0.7}>
+                            <Icon name="search-2" color={iconColor} size={ICON_SIZE.nav} />
+                          </TouchableOpacity>
+                        )
+                      : null
+                  }
+                </>
+              )
         }
         {
           showManage
@@ -123,7 +191,7 @@ export default ({ title, progress, onArtwork = true, entranceLocked = false, sho
       </View>
     </Animated.View>
   )
-}
+})
 
 const styles = createStyle({
   container: {
@@ -158,6 +226,16 @@ const styles = createStyle({
     height: '100%',
     justifyContent: 'center',
     marginRight: SPACING.s12,
+  },
+  searchWrap: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    marginRight: SPACING.s12,
+  },
+  searchInput: {
+    height: 38,
+    paddingHorizontal: SPACING.s10,
   },
   title: {
     fontFamily: FontFamilies.semibold,

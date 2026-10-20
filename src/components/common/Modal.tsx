@@ -97,13 +97,13 @@ export default forwardRef<ModalType, ModalProps>(({
       {...props}
     >
       {/* <StatusBar /> */}
-      {/* <View style={{ flex: 1, paddingTop: statusBarPadding ? StatusBar.currentHeight : 0 }}> */}
-      <TouchableWithoutFeedback style={{ flex: 1, paddingTop: statusBarPadding ? statusBarHeight : 0 }} onPress={handleBgClose}>
-        <View style={{ flex: 1, backgroundColor: bgColor }}>
+      {/* 状态栏避让须落在真实 View 上——TWOF 不渲染视图、其 style 属性无效（历史坑：避让写在此处从未生效，
+          2026-10-20 修复，方案 playlist-search-add-music §C1） */}
+      <TouchableWithoutFeedback onPress={handleBgClose}>
+        <View style={{ flex: 1, backgroundColor: bgColor, paddingTop: statusBarPadding ? statusBarHeight : 0 }}>
           {children}
         </View>
       </TouchableWithoutFeedback>
-      {/* </View> */}
     </Modal>
   )
 })

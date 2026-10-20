@@ -546,6 +546,8 @@
   "local_music_go_settings": "Grant Permission",
   "recent_play_remove_record": "Remove Record",
   "local_music_search_placeholder": "Search local songs",
+  "list_search_placeholder": "Search this playlist",
+  "list_search_not_found": "No matching songs found",
   "local_music_view_all": "All",
   "local_music_view_folder": "Folders",
   "local_music_view_album": "Albums",
