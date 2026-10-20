@@ -36,16 +36,23 @@ interface Props {
   progress: Animated.Value
   /** 恒显标题：页顶有钉位功能子头的页置 true（判据见组件头注释），标题静止态即显不做滚动淡入 */
   alwaysShowTitle?: boolean
+  /** 返回覆盖（缺省内置 pop(componentId)）：页内逐级返回场景（如添加歌曲页选歌态回歌单列表）
+   * 传入后点击返回执行自定义动作而不退出屏 */
+  onBack?: () => void
 }
 
 // 玻璃底渐显区间=GLASS_FADE_RANGE（GlassSurface 单源，子头批 S-A 收敛）；标题淡入区间独立
 const TITLE_FADE_RANGE = [180, 320]
 
-export default ({ componentId, title, right, progress, alwaysShowTitle }: Props) => {
+export default ({ componentId, title, right, progress, alwaysShowTitle, onBack }: Props) => {
   const theme = useTheme()
   const statusBarHeight = useStatusbarHeight()
 
   const back = () => {
+    if (onBack) {
+      onBack()
+      return
+    }
     pop(componentId)
   }
 

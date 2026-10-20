@@ -457,7 +457,6 @@
   "sync__mode_overwrite_btn_remote_local": "「远程列表」覆盖「本机列表」",
   "sync__mode_overwrite_label": "覆盖",
   "sync__mode_overwrite_tip": "覆盖：",
-  "sync_status_disabled": "未连接",
   "timeout_exit_btn_cancel": "取消定时",
   "timeout_exit_btn_update": "更新定时",
   "timeout_exit_btn_wait_cancel": "取消退出",
@@ -583,5 +582,11 @@
   "download_empty_error": "没有失败的下载任务",
   "download_empty_completed": "暂无已完成的下载",
   "download_added": "已加入下载队列",
-  "download_exists": "任务已在下载队列中"
+  "download_exists": "任务已在下载队列中",
+  "add_music_to_list": "添加到 {name}",
+  "add_music_source_search": "搜索",
+  "add_music_source_recent": "最近播放",
+  "add_music_source_download": "下载",
+  "add_music_source_list": "其他歌单",
+  "add_music_pick_join": "加入"
 }

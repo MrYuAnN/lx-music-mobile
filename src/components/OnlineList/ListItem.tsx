@@ -29,7 +29,7 @@ const PRESSED_BACKGROUND = {
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -49,7 +49,12 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
   onPress: (item: LX.Music.MusicInfo, index: number) => void
   onLongPress: (item: LX.Music.MusicInfo, index: number) => void
-  onShowMenu: (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
+  /** 行菜单（⋮）。缺省且无 addAction 时不渲染尾部钮 */
+  onShowMenu?: (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
+  /** 尾部「+ 添加」动作（添加歌曲页专用，方案 playlist-search-add-music §A2）：存在时替换 ⋮ 槽位；
+   * added=true 显示已添加 ✓ 态。调用方以 useCallback 保持引用稳定（comparator 引用比较） */
+  addAction?: (item: LX.Music.MusicInfo) => void
+  added?: boolean
 }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -60,6 +65,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
 
   const moreButtonRef = useRef<ComponentRef<typeof TouchableOpacity>>(null)
   const handleShowMenu = () => {
+    if (!onShowMenu) return
     if (moreButtonRef.current?.measure) {
       moreButtonRef.current.measure((fx, fy, width, height, px, py) => {
         onShowMenu(item, index, { x: Math.ceil(px), y: Math.ceil(py), w: Math.ceil(width), h: Math.ceil(height) })
@@ -145,9 +151,22 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
             )
           : null
       }
-      <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
-        <DotsVertical color={theme['c-250']} />
-      </TouchableOpacity>
+      {
+        addAction
+          ? (
+              // 「+ 添加/已添加 ✓」（添加歌曲页）：存在时替换 ⋮ 槽位（方案 §A2，审查 I-4）
+              <TouchableOpacity style={styles.moreButton} activeOpacity={0.6} onPress={() => { addAction(item) }}>
+                <Icon name={added ? 'checkbox-marked' : 'plus'} size={ICON_SIZE.list} color={added ? theme['c-primary'] : theme['c-250']} />
+              </TouchableOpacity>
+            )
+          : onShowMenu
+            ? (
+                <TouchableOpacity onPress={handleShowMenu} ref={moreButtonRef} style={styles.moreButton}>
+                  <DotsVertical color={theme['c-250']} />
+                </TouchableOpacity>
+              )
+            : null
+      }
     </View>
   )
 }, (prevProps, nextProps) => {
@@ -164,6 +183,8 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
     prevProps.qualityOverride === nextProps.qualityOverride &&
     prevProps.activeIndex != nextProps.index &&
     nextProps.activeIndex != nextProps.index &&
+    prevProps.addAction === nextProps.addAction &&
+    prevProps.added === nextProps.added &&
     nextProps.selectedList.includes(nextProps.item) == prevProps.selectedList.includes(nextProps.item)
   )
 })

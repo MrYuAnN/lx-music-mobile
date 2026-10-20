@@ -5,7 +5,6 @@ import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
 import { clearMusicUrl, guardWritableList, handleCloneList, handleDislikeMusic, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleShowMusicSourceDetail, handleUpdateMusicInfo, handleUpdateMusicPosition } from './listAction'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
-import AddMusicSheet, { type AddMusicSheetType } from './AddMusicSheet'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
 import DuplicateMusic, { type DuplicateMusicType } from '../manage/DuplicateMusic'
@@ -24,6 +23,7 @@ import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { addDownloadTask } from '@/core/download'
 import { getListMusics as getCoreListMusics } from '@/core/list'
+import { navigations } from '@/navigation'
 import { playList, togglePlay } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
 import { useActiveListId, useListFetching, useMyList } from '@/store/list/hook'
@@ -46,7 +46,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const listMenuRef = useRef<ListMenuType>(null)
   const musicToggleModalRef = useRef<MusicToggleModalType>(null)
   const manageMenuRef = useRef<ListManageMenuType>(null)
-  const addMusicSheetRef = useRef<AddMusicSheetType>(null)
   const playlistTopBarRef = useRef<PlaylistTopBarType>(null)
   const listNameEditRef = useRef<ListNameEditType>(null)
   const listMusicSortRef = useRef<ListMusicSortType>(null)
@@ -318,7 +317,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       />
       <ListManageMenu
         ref={manageMenuRef}
-        onAddMusic={info => { addMusicSheetRef.current?.show(info.id) }}
+        onAddMusic={info => { navigations.pushAddMusicScreen('', info.id, info.name) }}
         onCloneLocal={info => { handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) }) }}
         onRename={info => listNameEditRef.current?.show(info)}
         onEditLoveCover={() => listNameEditRef.current?.showLove()}
@@ -339,7 +338,6 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       <ListMusicSort ref={listMusicSortRef} />
       <DuplicateMusic ref={duplicateMusicRef} />
       <ListImportExport ref={listImportExportRef} />
-      <AddMusicSheet ref={addMusicSheetRef} />
       <MetadataEditModal
         ref={metadataEditTypeRef}
         onUpdate={handleUpdateMetadata}

@@ -16,6 +16,7 @@ import {
   RECENT_PLAY_SCREEN,
   LOCAL_MUSIC_SCREEN,
   LOCAL_MUSIC_GROUP_SCREEN,
+  ADD_MUSIC_SCREEN,
 } from './screenNames'
 
 export interface CurrentScreen {
@@ -23,7 +24,7 @@ export interface CurrentScreen {
   componentName: string
 }
 
-// 全部 stack screen（13 屏）；弹窗/迷你条不入名单，其出现不污染当前屏记录（新批问题4 v3 方案）
+// 全部 stack screen（14 屏）；弹窗/迷你条不入名单，其出现不污染当前屏记录（新批问题4 v3 方案）
 const SCREEN_NAMES_SET = new Set<string>([
   HOME_SCREEN,
   PLAY_DETAIL_SCREEN,
@@ -38,6 +39,7 @@ const SCREEN_NAMES_SET = new Set<string>([
   RECENT_PLAY_SCREEN,
   LOCAL_MUSIC_SCREEN,
   LOCAL_MUSIC_GROUP_SCREEN,
+  ADD_MUSIC_SCREEN,
 ])
 
 let currentScreen: CurrentScreen | null = null

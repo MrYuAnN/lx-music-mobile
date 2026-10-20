@@ -457,7 +457,6 @@
   "sync__mode_overwrite_btn_remote_local": "\"Remote List\" Overwrite \"Local List\"",
   "sync__mode_overwrite_label": "Overwrite",
   "sync__mode_overwrite_tip": "Overwrite: ",
-  "sync_status_disabled": "not connected",
   "timeout_exit_btn_cancel": "Cancel timing",
   "timeout_exit_btn_update": "Update timing",
   "timeout_exit_btn_wait_cancel": "Cancel exit",
@@ -583,5 +582,11 @@
   "download_empty_error": "No failed downloads",
   "download_empty_completed": "Nothing downloaded yet",
   "download_added": "Added to download queue",
-  "download_exists": "Task already in download queue"
+  "download_exists": "Task already in download queue",
+  "add_music_to_list": "Add to {name}",
+  "add_music_source_search": "Search",
+  "add_music_source_recent": "Recently Played",
+  "add_music_source_download": "Downloads",
+  "add_music_source_list": "Other Playlists",
+  "add_music_pick_join": "Add"
 }

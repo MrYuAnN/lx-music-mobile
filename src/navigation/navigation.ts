@@ -13,6 +13,7 @@ import {
   LEADERBOARD_SCREEN,
   MYLIST_SCREEN,
   DOWNLOAD_SCREEN,
+  ADD_MUSIC_SCREEN,
 } from './screenNames'
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
@@ -48,6 +49,12 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
   void componentId
   // 封面飞入已随 hero v2（QQ 式全页融合）停用（D3）：页面无封面落点，普通 push 转场
   pushRoute(SONGLIST_DETAIL_SCREEN, { info })
+}
+
+// 添加歌曲页（方案 playlist-search-add-music §A1）：普通 push（非迷你条黑名单，页内可继续控制播放）
+export function pushAddMusicScreen(componentId: string, listId: string, listName: string) {
+  void componentId
+  pushRoute(ADD_MUSIC_SCREEN, { listId, listName })
 }
 
 export function pop(componentId?: string) {
