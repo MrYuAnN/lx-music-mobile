@@ -3,7 +3,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import listState from '@/store/list/state'
 import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
-import { clearMusicUrl, guardWritableList, handleCloneList, handleDislikeMusic, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleShowMusicSourceDetail, handleUpdateMusicInfo, handleUpdateMusicPosition } from './listAction'
+import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleUpdateMusicInfo, handleUpdateMusicPosition } from './listAction'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
@@ -316,15 +316,12 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onPlay={info => { handlePlayMusic(info.listId, info.index) }}
         onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
         onRemove={info => { if (!guardWritableList(info.listId)) return; hancelExitSelect(); handleRemoveMusic(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
-        onDislikeMusic={info => { void handleDislikeMusic(info.musicInfo) }}
         onCopyName={info => { handleShare(info.musicInfo) }}
-        onMusicSourceDetail={info => { void handleShowMusicSourceDetail(info.musicInfo) }}
         onAdd={handleAddMusic}
         onMove={handleMoveMusic}
         onEditMetadata={handleEditMetadata}
         onChangePosition={info => { if (!guardWritableList(info.listId)) return; musicPositionModalRef.current?.show(info) }}
         onToggleSource={info => { if (!guardWritableList(info.listId)) return; musicToggleModalRef.current?.show(info) }}
-        onRemoveCache={info => { void clearMusicUrl(info.musicInfo) }}
         onDownload={info => {
           if (info.musicInfo.source == 'local') return
           void addDownloadTask(info.musicInfo).then(added => {

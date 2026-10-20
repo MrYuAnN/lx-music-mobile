@@ -1,9 +1,7 @@
 import { useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
 import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
-import { hasDislike } from '@/core/dislikeList'
 import { existsFile } from '@/utils/fs'
-import { hasMusicUrlByMusic } from '@/utils/data'
 import { isReadonlyList } from './listAction'
 
 export interface SelectInfo {
@@ -24,9 +22,6 @@ export interface ListMenuProps {
   onCopyName: (selectInfo: SelectInfo) => void
   onChangePosition: (selectInfo: SelectInfo) => void
   onToggleSource: (selectInfo: SelectInfo) => void
-  onMusicSourceDetail: (selectInfo: SelectInfo) => void
-  onRemoveCache: (selectInfo: SelectInfo) => void
-  onDislikeMusic: (selectInfo: SelectInfo) => void
   onRemove: (selectInfo: SelectInfo) => void
   onDownload: (selectInfo: SelectInfo) => void
 }
@@ -41,9 +36,6 @@ export type {
 const hasEditMetadata = async(musicInfo: LX.Music.MusicInfo) => {
   if (musicInfo.source != 'local') return false
   return existsFile(musicInfo.meta.filePath)
-}
-const hasUrlCache = async(musicInfo: LX.Music.MusicInfo) => {
-  return hasMusicUrlByMusic(musicInfo)
 }
 export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
   const t = useI18n()
@@ -68,7 +60,6 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
 
   const handleSetMenu = (musicInfo: LX.Music.MusicInfo, listId: string) => {
     let edit_metadata = false
-    let has_url_cache = false
     const isLocal = musicInfo.source == 'local'
     // 收藏歌单只读（拍板 #2，审查 A5）：隐藏一切写当前歌单的入口（移动/移位/换源/删除/
     // 元数据编辑）；「添加到」写目标歌单合法保留；handler 层另有守卫防多选旁路
@@ -85,31 +76,21 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
         { action: 'toggleSource', label: t('toggle_source'), icon: 'toggle-source' },
       ]),
       { action: 'copyName', label: t('copy_name'), icon: 'copy-name' },
-      { action: 'musicSourceDetail', disabled: isLocal, label: t('music_source_detail'), icon: 'source-detail' },
-      { action: 'removeCache', disabled: !has_url_cache, label: t('list_remove_cache'), icon: 'remove-cache' },
+      // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」「清除缓存」「不喜欢」（同在线侧 OnlineList/ListMenu 注释）
       // { action: 'musicSearch', label: t('music_search') },
-      { action: 'dislike', disabled: hasDislike(musicInfo), label: t('dislike'), icon: 'dislike-add' },
       ...(readonly ? [] : [{ action: 'remove', label: t('delete'), icon: 'trash', destructive: true }]),
     ]
     setMenus(menu)
-    void Promise.all([isLocal && !readonly ? hasEditMetadata(musicInfo) : Promise.resolve(false), hasUrlCache(musicInfo)]).then(([_edit_metadata, _has_url_cache]) => {
-      // console.log(_edit_metadata)
-      let isUpdated = false
-      const editIdx = menu.findIndex(m => m.action == 'editMetadata')
-      if (editIdx > -1 && edit_metadata != _edit_metadata) {
-        edit_metadata = _edit_metadata
-        menu[editIdx].disabled = !edit_metadata
-        isUpdated ||= true
-      }
-      const cacheIdx = menu.findIndex(m => m.action == 'removeCache')
-      if (cacheIdx > -1 && has_url_cache != _has_url_cache) {
-        has_url_cache = _has_url_cache
-        menu[cacheIdx].disabled = !has_url_cache
-        isUpdated ||= true
-      }
-
-      if (isUpdated) setMenus([...menu])
-    })
+    if (isLocal && !readonly) {
+      void hasEditMetadata(musicInfo).then((_edit_metadata) => {
+        const editIdx = menu.findIndex(m => m.action == 'editMetadata')
+        if (editIdx > -1 && edit_metadata != _edit_metadata) {
+          edit_metadata = _edit_metadata
+          menu[editIdx].disabled = !edit_metadata
+          setMenus([...menu])
+        }
+      })
+    }
   }
 
   const handleMenuPress = ({ action }: typeof menus[number]) => {
@@ -152,16 +133,6 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       case 'toggleSource':
         props.onToggleSource(selectInfo)
         // setVIsibleMusicPosition(true)
-        break
-      case 'musicSourceDetail':
-        props.onMusicSourceDetail(selectInfo)
-        // setVIsibleMusicPosition(true)
-        break
-      case 'removeCache':
-        props.onRemoveCache(selectInfo)
-        break
-      case 'dislike':
-        props.onDislikeMusic(selectInfo)
         break
       case 'remove':
         props.onRemove(selectInfo)
