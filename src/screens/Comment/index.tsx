@@ -24,11 +24,6 @@ type ActiveId = 'hot' | 'new'
 
 const BAR_HEIGHT = scaleSizeH(34)
 
-const CommentBottomInset = () => {
-  const { bottom: navBarBottom } = useNavBarInsets()
-  return <View style={{ height: navBarBottom }} />
-}
-
 const HeaderItem = ({ id, label, isActive, onPress }: {
   id: ActiveId
   label: string
@@ -46,15 +41,16 @@ const HeaderItem = ({ id, label, isActive, onPress }: {
   return components
 }
 
-const HotCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop }: {
+const HotCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom }: {
   activeId: ActiveId
   musicInfo: LX.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
+  contentPaddingBottom?: number
 }) => {
   const initedRef = useRef(false)
-  const comment = useMemo(() => <CommentHot musicInfo={musicInfo} onUpdateTotal={onUpdateTotal} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />, [musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop])
+  const comment = useMemo(() => <CommentHot musicInfo={musicInfo} onUpdateTotal={onUpdateTotal} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} contentPaddingBottom={contentPaddingBottom} />, [musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom])
   switch (activeId) {
     case 'hot':
       if (!initedRef.current) initedRef.current = true
@@ -64,15 +60,16 @@ const HotCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimat
   }
 })
 
-const NewCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop }: {
+const NewCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom }: {
   activeId: ActiveId
   musicInfo: LX.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
+  contentPaddingBottom?: number
 }) => {
   const initedRef = useRef(false)
-  const comment = useMemo(() => <CommentNew musicInfo={musicInfo} onUpdateTotal={onUpdateTotal} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />, [musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop])
+  const comment = useMemo(() => <CommentNew musicInfo={musicInfo} onUpdateTotal={onUpdateTotal} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} contentPaddingBottom={contentPaddingBottom} />, [musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom])
   switch (activeId) {
     case 'new':
       if (!initedRef.current) initedRef.current = true
@@ -103,6 +100,9 @@ export default memo(({ componentId }: {
   // 穿行，Search 终轮 C-2 同款），两页评论列表延伸整屏 paddingTop 补偿（PagerView 双页共用同一
   // scrollY——活动页驱动）
   const statusBarHeight = useStatusbarHeight()
+  // 手势条区穿行（2026-10-20 真机反馈，对齐歌单详情页）：原「文档流底部垫 navBarBottom 占位」
+  // 会把列表压缩在手势条上方（inset 区空白）——改列表 contentPaddingBottom，内容可滚过手势条区
+  const { bottom: navBarBottom } = useNavBarInsets()
   // 头高口径=Comment 独立头 42（Q8 拍板保留，审查架构 I-1/PM I-2 修正：接线误用 54 恒错 12dp）
   const listPaddingTop = statusBarHeight + HEADER_TOTAL_OFFSET_BASE + BAR_HEIGHT
   const scrollY = useRef(new Animated.Value(0)).current
@@ -188,10 +188,10 @@ export default memo(({ componentId }: {
           style={styles.pagerView}
         >
           <View collapsable={false} style={styles.pageStyle}>
-            <HotCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setHotTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} />
+            <HotCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setHotTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
           </View>
           <View collapsable={false} style={styles.pageStyle}>
-            <NewCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setNewTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} />
+            <NewCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setNewTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
           </View>
         </PagerView>
         {/* 钉位子头后声明（RN 后声明者在上，终轮 C-1：tabHeader 漏移补齐）；渐显只包玻璃垫层，
@@ -211,7 +211,7 @@ export default memo(({ componentId }: {
         </View>
       </View>
     )
-  }, [activeId, musicInfo, onPageSelected, refreshComment, setHotTotal, setNewTotal, tabs, theme, toggleTab, statusBarHeight, listPaddingTop, scrollY, tabFade])
+  }, [activeId, musicInfo, onPageSelected, refreshComment, setHotTotal, setNewTotal, tabs, theme, toggleTab, statusBarHeight, listPaddingTop, navBarBottom, scrollY, tabFade])
 
   return (
     <PageContent>
@@ -232,8 +232,6 @@ export default memo(({ componentId }: {
             <Header musicInfo={musicInfo} progress={scrollY} />
         </>
       }
-      {/* 评论页为迷你条黑名单屏（新批问题4）：仅垫导航栏 inset，不占迷你条高度 */}
-      <CommentBottomInset />
     </PageContent>
   )
 })

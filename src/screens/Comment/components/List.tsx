@@ -18,6 +18,8 @@ export interface ListProps {
   /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：可选接线，未传零 diff */
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
+  /** 列表内容底部补偿（2026-10-20 真机反馈：手势条区域可滚过，对齐歌单详情页——导航栏 inset 由调用方传入） */
+  contentPaddingBottom?: number
 }
 
 // native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
@@ -35,6 +37,7 @@ const List = forwardRef<ListType, ListProps>(({
 
   scrollYAnimated,
   contentPaddingTop,
+  contentPaddingBottom,
 }, ref) => {
   // const t = useI18n()
   const theme = useTheme()
@@ -103,7 +106,7 @@ const List = forwardRef<ListType, ListProps>(({
     <AnimatedFlatList
       ref={flatListRef}
       style={styles.list}
-      contentContainerStyle={contentPaddingTop ? { paddingTop: contentPaddingTop } : undefined}
+      contentContainerStyle={contentPaddingTop || contentPaddingBottom ? { paddingTop: contentPaddingTop, paddingBottom: contentPaddingBottom } : undefined}
       onScroll={handleAnimatedScroll}
       scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       data={currentList}
