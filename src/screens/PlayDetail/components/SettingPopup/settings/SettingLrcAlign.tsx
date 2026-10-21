@@ -16,7 +16,8 @@ const ALIGN_LIST = [
   'right',
 ] as const
 
-// 歌词对齐行卡（2026-10-20 更多弹层重构：三胶囊单选——与倍速统一胶囊选择语言，复用 CategoryChips）
+// 歌词对齐行卡（2026-10-20 更多弹层重构：三胶囊单选——与倍速统一胶囊选择语言，复用 CategoryChips；
+// 2026-10-21 布局治理拍板：block 布局 + glass 玻璃填充 + wrap 整行 + flush 贴 16dp 网格，同倍速行）
 export default () => {
   const t = useI18n()
   const align = useSettingValue('playDetail.style.align')
@@ -30,9 +31,9 @@ export default () => {
   }
 
   return (
-    <Card>
+    <Card layout="block">
       <Text>{t('play_detail_setting_lrc_align')}</Text>
-      <CategoryChips items={list} activeId={align} onChange={setPosition} style={styles.chips} />
+      <CategoryChips items={list} activeId={align} onChange={setPosition} style={styles.chips} fill="glass" wrap flush expandTouch />
     </Card>
   )
 }

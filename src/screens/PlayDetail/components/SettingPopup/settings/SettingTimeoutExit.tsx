@@ -8,7 +8,6 @@ import { useI18n } from '@/lang'
 import { useTimeoutExitTimeInfo } from '@/core/player/timeoutExit'
 import { createStyle } from '@/utils/tools'
 import Card from './Card'
-import { scaleSizeH } from '@/utils/pixelRatio'
 
 // 「定时关闭」入口行（2026-10-20 播放页打磨批：原顶栏定时钮迁入更多弹层）。
 // 右侧状态值：关闭 / 播完停止（计时结束等待播完）/ 剩余倒计时（激活红字，每秒刷新）
@@ -57,7 +56,9 @@ const styles = createStyle({
   container: {
     flexGrow: 1,
     flexShrink: 1,
-    height: scaleSizeH(40),
+    // 触控目标拍板 44dp（design-principles）：本行为定时关闭唯一入口（顶栏钮已删），
+    // 热区自持 minHeight 不依赖父层 padding
+    minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',

@@ -273,6 +273,7 @@ declare global {
       'c-button-font': string
       'c-on-primary': string
       'c-input-background': string
+      'c-glass-fill': string
       'c-quality-24bit': string
       'c-quality-sq': string
       'c-quality-hq': string

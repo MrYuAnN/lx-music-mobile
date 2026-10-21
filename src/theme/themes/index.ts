@@ -47,6 +47,9 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     'c-primary-input-background': theme.config.themeColors['c-primary-light-400-alpha-700'],
     'c-on-primary': '#FFFFFF', // 主色实底上的前景（恒白）；c-button-font 保留给淡主色文字场景
     'c-input-background': theme.isDark ? '#2C2C2E' : '#FFFFFF', // 灰底页上的输入控件/chips 底（iOS systemGray5/elevated 惯例）
+    // 玻璃面中性半透明填充（弹层内 chips 未选中底等；iOS systemFill 半透明惯例：浅色黑基、
+    // dark≈light×2 先验）。blur 降级实色回退下黑基仍可辨，故不用白基。初值 2026-10-21 单点上车，真机标定可调
+    'c-glass-fill': theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.07)',
     'c-quality-24bit': theme.isDark ? '#E3B341' : '#B8860B',
     'c-quality-sq': theme.isDark ? '#7CC98A' : '#3D9A50',
     'c-quality-hq': theme.isDark ? '#93B1D8' : '#5E81AC',
