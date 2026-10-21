@@ -193,16 +193,6 @@ declare global {
       'desktopLyric.isLock': boolean
 
       /**
-       * 桌面歌词窗口宽度
-       */
-      'desktopLyric.width': number
-
-      /**
-       * 桌面歌词最大行数
-       */
-      'desktopLyric.maxLineNum': number
-
-      /**
        * 桌面歌词是否使用单行显示
        */
       'desktopLyric.isSingleLine': boolean
@@ -221,16 +211,6 @@ declare global {
        * 桌面歌词窗口y坐标
        */
       'desktopLyric.position.y': number
-
-      /**
-       * 歌词水平对齐方式
-       */
-      'desktopLyric.textPosition.x': 'left' | 'center' | 'right'
-
-      /**
-       * 歌词垂直对齐方式
-       */
-      'desktopLyric.textPosition.y': 'top' | 'center' | 'bottom'
 
       /**
        * 桌面歌词字体大小

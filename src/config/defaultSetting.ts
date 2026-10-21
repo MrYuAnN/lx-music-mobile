@@ -39,18 +39,15 @@ const defaultSetting: LX.AppSetting = {
 
   'desktopLyric.enable': false,
   'desktopLyric.isLock': false,
-  'desktopLyric.width': 100,
-  'desktopLyric.maxLineNum': 5,
   'desktopLyric.isSingleLine': false,
   'desktopLyric.showToggleAnima': true,
   'desktopLyric.position.x': 0,
   'desktopLyric.position.y': 0,
-  'desktopLyric.textPosition.x': 'left',
-  'desktopLyric.textPosition.y': 'top',
   'desktopLyric.style.fontSize': 180,
   'desktopLyric.style.opacity': 100,
-  'desktopLyric.style.lyricUnplayColor': 'rgba(255, 255, 255, 1)',
-  'desktopLyric.style.lyricPlayedColor': 'rgba(250, 35, 59, 1)',
+  // 无底板重设计默认形态（D1/D3）：白字黑边双层次——当前行白、下一句半透明
+  'desktopLyric.style.lyricUnplayColor': 'rgba(255, 255, 255, 0.5)',
+  'desktopLyric.style.lyricPlayedColor': 'rgba(255, 255, 255, 1)',
   'desktopLyric.style.lyricShadowColor': 'rgba(0, 0, 0, 0.6)',
 
   'search.isShowHotSearch': false,

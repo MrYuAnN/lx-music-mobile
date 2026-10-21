@@ -1,7 +1,7 @@
 import { storageDataPrefix, storageDataPrefixOld } from '@/config/constant'
 import defaultSetting from '@/config/defaultSetting'
 import { getData, removeData, saveData } from '@/plugins/storage'
-import migrateSetting from './migrateSetting'
+import migrateSetting, { migrateDesktopLyricStyle } from './migrateSetting'
 import settingState from '@/store/setting/state'
 import { migrateMetaData, migrateListData } from './migrate'
 import { exitApp, tipDialog } from '@/utils/tools'
@@ -105,6 +105,8 @@ export const initSetting = async() => {
 
   // console.log(setting)
   const updatedSetting = updateSetting(setting, true)
+  // 悬浮歌词颜色重置（存量 v2 用户，见 migrateSetting 注释）须在合并默认值后、落盘前执行
+  migrateDesktopLyricStyle(updatedSetting.setting)
   void saveData(storageDataPrefix.setting, updatedSetting.setting)
 
   return updatedSetting

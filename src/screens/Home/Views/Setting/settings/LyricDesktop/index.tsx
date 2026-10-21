@@ -6,14 +6,9 @@ import IsLockLyric from './IsLockLyric'
 import IsShowToggleAnima from './IsShowToggleAnima'
 import IsSingleLine from './IsSingleLine'
 import TextSize from './TextSize'
-import ViewWidth from './ViewWidth'
-import MaxLineNum from './MaxLineNum'
 import TextOpacity from './TextOpacity'
-import TextPositionX from './TextPositionX'
-import TextPositionY from './TextPositionY'
 import { useI18n } from '@/lang'
 import Theme from './Theme'
-// import { useTranslation } from '@/plugins/i18n'
 
 export default memo(() => {
   const t = useI18n()
@@ -26,11 +21,7 @@ export default memo(() => {
       <IsSingleLine />
       <Theme />
       <TextSize />
-      <ViewWidth />
-      <MaxLineNum />
       <TextOpacity />
-      <TextPositionX />
-      <TextPositionY />
     </Section>
   )
 })

@@ -20,6 +20,14 @@ const themes = [
 ] as const
 type Theme = typeof themes[number]
 
+// 未播色由已播色派生（审查 I8：色板三元组联动）：同色系透明度降至一半，保证当前行/下一句亮暗层次
+const deriveUnplayColor = (hex: string) => {
+  const match = /^#([0-9a-f]{6})$/i.exec(hex)
+  if (!match) return hex
+  const value = parseInt(match[1], 16)
+  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, 0.5)`
+}
+
 const ThemeItem = ({ color, change }: {
   color: Theme
   change: (color: Theme) => void
@@ -37,9 +45,13 @@ export default memo(() => {
   const t = useI18n()
 
   const setThemeDesktopLyric = (color: Theme) => {
-    // const shadowColor = 'rgba(0,0,0,0.6)'
-    void setDesktopLyricColor(null, color[0], color[1]).then(() => {
-      updateSetting({ 'desktopLyric.style.lyricPlayedColor': color[0], 'desktopLyric.style.lyricShadowColor': color[1] })
+    const unplayColor = deriveUnplayColor(color[0])
+    void setDesktopLyricColor(unplayColor, color[0], color[1]).then(() => {
+      updateSetting({
+        'desktopLyric.style.lyricPlayedColor': color[0],
+        'desktopLyric.style.lyricUnplayColor': unplayColor,
+        'desktopLyric.style.lyricShadowColor': color[1],
+      })
     })
   }
 
