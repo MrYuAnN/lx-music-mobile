@@ -7,8 +7,11 @@ import listState from '@/store/list/state'
 
 // 歌单级管理菜单（歌单页重构批①，拍板 §4.2 四套矩阵；hero 改版批扩展+号三义分流）：
 // 自建=添加歌曲(新)/编辑歌单/排序歌曲/重复歌曲/导出/移除；收藏=克隆为本地歌单(新)/更新/重命名/导出/移除
-// （只读歌单管理项）；默认·我喜欢=添加歌曲(新)/导出（原 + 号入口迁移，审查 I-A 堵功能回退）；
-// 临时列表不出 ⋮（调用方隐藏入口；加歌入口明示放弃——临时队列非曲库容器）。
+// （只读歌单管理项）；默认·我喜欢=添加歌曲(新)/编辑封面/排序歌曲/重复歌曲/导出（原 + 号入口迁移，
+// 审查 I-A 堵功能回退；2026-10-20 用户拍板「自建有的默认都该有，除删除」补齐排序+重复歌曲——
+// 排序视图态不落物理序、重复歌曲列表类型无关，原收窄前提消失；「编辑歌单」不补：内置列表名字
+// 固定不可改，编辑封面即等价能力）。临时列表不出 ⋮（调用方隐藏入口；加歌入口明示放弃——临时
+// 队列非曲库容器）。
 // 2026-10-20 迭代拍板删「导入」「添加本地歌曲」：添加歌曲页新增本地音乐来源承接选歌（自定义目录
 // 扫描职责归本地曲库 backlog）；「导入」与所在歌单无关（handleImport 不消费 listInfo）且设置→备份
 // 与恢复已有同款入口，属重复错位项。
@@ -65,6 +68,11 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
       if (listInfo.id == LIST_IDS.DEFAULT) {
         menus.push({ action: 'edit_default_cover', label: t('list_edit_cover'), icon: 'edit-metadata' })
       }
+      // 排序视图+重复歌曲（2026-10-20 补齐，用户拍板「自建有的默认都该有，除删除」）：
+      // 排序=视图态不落物理序、重复歌曲=列表类型无关（删除走可写守卫，内置列表可写）——
+      // 内置列表与自建同权；「编辑歌单」不补（默认/我喜欢名字固定不可改，编辑封面即等价能力）
+      menus.push({ action: 'sort', label: t('list_sort'), icon: 'change-position' })
+      menus.push({ action: 'duplicateMusic', label: t('lists__duplicate'), icon: 'copy-name' })
       menus.push({ action: 'export', label: t('list_export'), icon: 'share' })
       setMenus(menus)
       return
