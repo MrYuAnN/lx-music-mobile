@@ -1,49 +1,12 @@
-import { View } from 'react-native'
-import Button from '@/components/common/Button'
-import Text from '@/components/common/Text'
-import { BorderWidths } from '@/theme'
-import { createStyle } from '@/utils/tools'
-import { useTheme } from '@/store/theme/hook'
-import { SPACING } from '@/config/spacing'
+import PlaylistGridCard from '@/components/common/PlaylistGridCard'
 
 export default ({ listInfo, onPress, width }: {
   listInfo: LX.List.MyListInfo
   onPress: (listInfo: LX.List.MyListInfo) => void
   width: number
 }) => {
-  const theme = useTheme()
-
-  const handlePress = () => {
-    onPress(listInfo)
-  }
-
+  // 两列封面网格卡（2026-10-21 拍板，与添加歌曲页「其他歌单」同构）
   return (
-    <View style={{ ...styles.listItem, width }}>
-      <Button
-        style={{ ...styles.button, backgroundColor: theme['c-button-background'], borderColor: theme['c-primary-light-200-alpha-700'] }}
-        onPress={handlePress}
-      >
-        <Text numberOfLines={1} size={14} color={theme['c-button-font']}>{listInfo.name}</Text>
-      </Button>
-    </View>
+    <PlaylistGridCard item={listInfo} width={width} onPress={onPress} />
   )
 }
-
-export const styles = createStyle({
-  listItem: {
-    // width: '50%',
-    paddingRight: SPACING.s14,
-  },
-  button: {
-    height: 36,
-    paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s10,
-    marginRight: SPACING.s10,
-    marginBottom: SPACING.s10,
-    borderRadius: 4,
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: BorderWidths.normal1,
-  },
-})

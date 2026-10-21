@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, FlatList, StyleSheet, TouchableOpacity, View } from 'react-native'
+import { Animated, FlatList, StyleSheet, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import StatusBar from '@/components/common/StatusBar'
@@ -8,8 +8,7 @@ import CategoryChips from '@/components/common/CategoryChips'
 import DorpDownMenu from '@/components/common/DorpDownMenu'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
-import PlaylistCover from '@/components/common/PlaylistCover'
-import Image from '@/components/common/Image'
+import PlaylistGridCard, { playlistGridWidthOf } from '@/components/common/PlaylistGridCard'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import Button from '@/components/common/Button'
 import PageContent from '@/components/PageContent'
@@ -17,8 +16,7 @@ import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/play
 import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { getRowInfo, createStyle, toast } from '@/utils/tools'
 import { debounce, toNewMusicInfo } from '@/utils'
-import LinearGradient from 'react-native-linear-gradient'
-import { useI18n, type Message } from '@/lang'
+import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -34,8 +32,7 @@ import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
 import settingState from '@/store/setting/state'
 import musicSdk from '@/utils/musicSdk'
-import { Icon } from '@/components/common/Icon'
-import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix, LOVE_GRADIENT } from '@/config/constant'
+import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
@@ -73,8 +70,6 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const localMusicList = useLocalMusicList()
   const windowSize = useWindowSize()
   const lists = useMyList()
-  // 默认歌单封面走 setting 单键（DEFAULT 不在 userLists 条目上，2026-10-18 拍板口径，shelf 同款）
-  const defaultPic = useSettingValue('list.defaultPic')
   const isShowAlbumName = useSettingValue('list.isShowAlbumName')
   const isShowInterval = useSettingValue('list.isShowInterval')
 
@@ -102,10 +97,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
 
   // 歌单网格数据（读语义：排除目标歌单自身，收藏歌单可选——复核 S-a 口径）
   const pickLists = useMemo(() => lists.filter(l => l.id != listId), [lists, listId])
-  const gridWidth = useMemo(
-    () => Math.floor((windowSize.width - SPACING.s16 * 2 - SPACING.s12) / 2),
-    [windowSize.width],
-  )
+  // 列宽公式单源共享（审查 S-1 收编：与弹窗家族同源 playlistGridWidthOf，防三处漂移）
+  const gridWidth = useMemo(() => playlistGridWidthOf(windowSize.width), [windowSize])
 
   const searchSeqRef = useRef(0)
   const searchPageRef = useRef(1)
@@ -313,36 +306,17 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     pop(componentId)
   }, [pickList, exitPick, componentId])
 
-  // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题；真机反馈 2026-10-20 拍板，
-  // 替换原行式列表）。角标恒显：收藏带来源标、自建（含本地歌单）标「本地」（真机反馈同日）；
-  // 「我喜欢的」用首页 hero 同款视觉（LOVE_GRADIENT 红渐变底+白心）；封面 Image 自带圆角
-  // （不依赖外层 overflow 裁切，规避 Android 平台差异）
-  const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => {
-    const collect = 'source' in item ? !!item.source : false
-    const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as LX.List.UserListInfo).pic
-    const isLove = item.id == LIST_IDS.LOVE
-    return (
-      <TouchableOpacity style={{ width: gridWidth }} activeOpacity={0.7} onPress={() => { enterPick(item.id, item.name) }}>
-        <View style={styles.gridCoverWrap}>
-          {
-            isLove
-              ? (
-                  <LinearGradient colors={LOVE_GRADIENT} style={{ width: gridWidth, height: gridWidth, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
-                    <Icon name="love-fill" size={gridWidth * 0.3} color="#FFFFFF" />
-                  </LinearGradient>
-                )
-              : pic
-                ? <Image url={pic} style={{ width: gridWidth, height: gridWidth, borderRadius: 8 }} resizeMode="cover" />
-                : <PlaylistCover id={item.id} size={gridWidth} />
-          }
-          <View style={styles.gridSourceBadge}>
-            <Text size={9} color="#FFFFFF">{collect ? t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message) : t('source_short_local')}</Text>
-          </View>
-        </View>
-        <Text style={styles.gridName} size={13} color={theme['c-font']} numberOfLines={2}>{item.name}</Text>
-      </TouchableOpacity>
-    )
-  }, [gridWidth, theme, t, enterPick, defaultPic])
+  // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题+来源角标；真机反馈 2026-10-20 拍板，
+  // 替换原行式列表）——视觉单源共享组件 PlaylistGridCard（2026-10-21 起 MusicAddModal /
+  // MusicMultiAddModal 弹窗同构延用，防两处漂移）
+  const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => (
+    <PlaylistGridCard
+      item={item}
+      width={gridWidth}
+      showSourceBadge
+      onPress={listInfo => { enterPick(listInfo.id, listInfo.name) }}
+    />
+  ), [gridWidth, enterPick])
   // 选歌态返回键拦截：先回歌单列表（逐级返回），非选歌态放行 pop
   useBackHandler(useCallback(() => {
     if (!pickList) return false
@@ -534,27 +508,10 @@ const styles = createStyle({
   list: {
     flex: 1,
   },
+  // 行距由行容器提供（审查 S-3：卡组件不内嵌 marginBottom，与弹窗 rowGap 口径一致）
   gridRow: {
     justifyContent: 'space-between',
     marginBottom: SPACING.s14,
-  },
-  gridCoverWrap: {
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  gridSourceBadge: {
-    position: 'absolute',
-    left: 0,
-    top: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderBottomRightRadius: 3,
-    paddingHorizontal: SPACING.s4,
-    paddingBottom: SPACING.s2,
-    overflow: 'hidden',
-  },
-  gridName: {
-    lineHeight: 18,
-    marginTop: SPACING.s6,
   },
   subHeader: {
     position: 'absolute',
