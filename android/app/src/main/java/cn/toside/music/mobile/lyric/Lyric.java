@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
 
@@ -23,12 +24,13 @@ public class Lyric extends LyricPlayer {
   ReactApplicationContext reactAppContext;
 
   boolean isRunPlayer = false;
-  // String lastText = "拾音 ^-^";
   int lastLine = 0;
   List lines = new ArrayList();
   boolean isShowTranslation;
+  // roma 不再进悬浮窗（D10，三行结构无位置；全局开关保留，内嵌歌词页照常消费），字段仅为桥兼容保留
   boolean isShowRoma;
   boolean isShowLyricView = false;
+  boolean isViewPaused = false;
   boolean isSendLyricTextEvent = false;
   boolean isScreenOff = false;
   String lyricText = "";
@@ -41,7 +43,7 @@ public class Lyric extends LyricPlayer {
     this.isShowRoma = isShowRoma;
     this.playbackRate = playbackRate;
     registerScreenBroadcastReceiver();
-    // checkA2DPConnection(reactContext);
+    registerUnlockReceiver();
   }
 
   private void registerScreenBroadcastReceiver() {
@@ -71,37 +73,26 @@ public class Lyric extends LyricPlayer {
     reactAppContext.registerReceiver(screenOnOffReceiver, theFilter);
   }
 
-  // private void checkA2DPConnection(Context context) {
-  //   BluetoothAdapter bluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-
-  //   if (bluetoothAdapter != null && bluetoothAdapter.isEnabled()) {
-  //     bluetoothAdapter.getProfileProxy(context, new BluetoothProfile.ServiceListener() {
-  //       @Override
-  //       public void onServiceConnected(int profile, BluetoothProfile proxy) {
-  //         if (profile == BluetoothProfile.A2DP) {
-  //           List<BluetoothDevice> connectedDevices = proxy.getConnectedDevices();
-  //           if (!connectedDevices.isEmpty()) {
-  //             System.out.println("已连接的 A2DP 媒体设备：");
-  //             for (BluetoothDevice device : connectedDevices) {
-  //               System.out.println("设备名称: " + "地址: " + device.getAddress());
-  //             }
-  //           } else {
-  //             System.out.println("没有连接的 A2DP 媒体设备");
-  //           }
-  //         }
-  //         bluetoothAdapter.closeProfileProxy(profile, proxy);
-  //       }
-
-  //       @Override
-  //       public void onServiceDisconnected(int profile) {
-  //         // 服务断开时的处理
-  //         System.out.println("蓝牙服务断开时的处理");
-  //       }
-  //     }, BluetoothProfile.A2DP);
-  //   } else {
-  //     System.out.println("蓝牙未开启或设备不支持蓝牙");
-  //   }
-  // }
+  /** 通知栏「解锁」动作（targetSdk 34+ 动态 receiver 必须显式 NOT_EXPORTED，审查 I5） */
+  private void registerUnlockReceiver() {
+    IntentFilter filter = new IntentFilter(DesktopLyricNotification.ACTION_UNLOCK_DESKTOP_LYRIC);
+    BroadcastReceiver unlockReceiver = new BroadcastReceiver() {
+      @Override
+      public void onReceive(Context context, Intent intent) {
+        unlockLyric();
+        if (lyricEvent != null) {
+          WritableMap params = Arguments.createMap();
+          params.putBoolean("isLock", false);
+          lyricEvent.sendEvent(LyricEvent.LYRIC_LOCK_CHANGED, params);
+        }
+      }
+    };
+    if (Build.VERSION.SDK_INT >= 33) {
+      reactAppContext.registerReceiver(unlockReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+    } else {
+      reactAppContext.registerReceiver(unlockReceiver, filter);
+    }
+  }
 
   private boolean isDisableAutoPause() {
     return !isRunPlayer || isSendLyricTextEvent;
@@ -128,9 +119,9 @@ public class Lyric extends LyricPlayer {
     this.pause();
   }
 
-  private void setCurrentLyric(String lyric, ArrayList<String> extendedLyrics) {
+  private void setCurrentLyric(String lyric, ArrayList<String> extendedLyrics, String nextLyric) {
     if (isShowLyricView && !isScreenOff && lyricView != null) {
-      lyricView.setLyric(lyric, extendedLyrics);
+      lyricView.setLyric(lyric, extendedLyrics, nextLyric);
     }
     if (isSendLyricTextEvent) {
       WritableMap params = Arguments.createMap();
@@ -144,11 +135,19 @@ public class Lyric extends LyricPlayer {
     if (lineNum >= 0 && lineNum < lines.size()) {
       HashMap line = (HashMap) lines.get(lineNum);
       if (line != null) {
-        setCurrentLyric((String) line.get("text"), (ArrayList<String>) line.get("extendedLyrics"));
+        // 下一句行（D2 双行结构）；末行越界防护：置空由视图层隐藏（审查 S11）
+        String nextLyric = "";
+        if (lineNum + 1 < lines.size()) {
+          HashMap nextLine = (HashMap) lines.get(lineNum + 1);
+          if (nextLine != null && nextLine.get("text") != null) {
+            nextLyric = (String) nextLine.get("text");
+          }
+        }
+        setCurrentLyric((String) line.get("text"), (ArrayList<String>) line.get("extendedLyrics"), nextLyric);
         return;
       }
     }
-    setCurrentLyric("", new ArrayList<>(0));
+    setCurrentLyric("", new ArrayList<>(0), "");
   }
 
   public void setSendLyricTextEvent(boolean isSend) {
@@ -166,6 +165,7 @@ public class Lyric extends LyricPlayer {
     if (isShowLyricView) return;
     if (lyricEvent == null) lyricEvent = new LyricEvent(reactAppContext);
     isShowLyricView = true;
+    isViewPaused = false;
     if (lyricView == null) lyricView = new LyricView(reactAppContext, lyricEvent);
     try {
       lyricView.showLyricView(options);
@@ -181,6 +181,9 @@ public class Lyric extends LyricPlayer {
   public void hideDesktopLyric() {
     if (!isShowLyricView) return;
     isShowLyricView = false;
+    isViewPaused = false;
+    // 锁定态关闭时撤常驻解锁通知，防残留（审查 I2）
+    DesktopLyricNotification.cancel(reactAppContext);
     pausePlayer();
     if (lyricView != null) {
       lyricView.destroy();
@@ -188,11 +191,24 @@ public class Lyric extends LyricPlayer {
     }
   }
 
+  /** 前台隐身（D7）：摘窗保实例，播放器推进不停，恢复即显示当前行 */
+  public void pauseDesktopLyricView() {
+    if (!isShowLyricView || isViewPaused) return;
+    isViewPaused = true;
+    if (lyricView != null) lyricView.pauseView();
+  }
+
+  public void resumeDesktopLyricView() {
+    if (!isShowLyricView || !isViewPaused) return;
+    isViewPaused = false;
+    if (lyricView == null) return;
+    lyricView.resumeView();
+  }
+
   private void refreshLyric() {
     if (!isRunPlayer) return;
     ArrayList<String> extendedLyrics = new ArrayList<>(2);
     if (isShowTranslation && !"".equals(translationText)) extendedLyrics.add(translationText);
-    if (isShowRoma && !"".equals(romaLyricText)) extendedLyrics.add(romaLyricText);
     super.setLyric(lyricText, extendedLyrics);
   }
 
@@ -207,16 +223,11 @@ public class Lyric extends LyricPlayer {
   public void onSetLyric(List lines) {
     this.lines = lines;
     handleGetCurrentLyric(-1);
-    // for (int i = 0; i < lines.size(); i++) {
-    //   HashMap line = (HashMap) lines.get(i);
-    //   Log.d("Lyric", "onSetLyric: " +(String) line.get("text") + " " + line.get("extendedLyrics"));
-    // }
   }
 
   @Override
   public void onPlay(int lineNum) {
     handleGetCurrentLyric(lineNum);
-    // Log.d("Lyric", lineNum + " " + text + " " + (String) line.get("translation"));
   }
 
   public void pauseLyric() {
@@ -228,21 +239,13 @@ public class Lyric extends LyricPlayer {
   public void lockLyric() {
     if (lyricView == null) return;
     lyricView.lockView();
+    DesktopLyricNotification.show(reactAppContext);
   }
 
   public void unlockLyric() {
+    DesktopLyricNotification.cancel(reactAppContext);
     if (lyricView == null) return;
     lyricView.unlockView();
-  }
-
-  public void setMaxLineNum(int maxLineNum) {
-    if (lyricView == null) return;
-    lyricView.setMaxLineNum(maxLineNum);
-  }
-
-  public void setWidth(int width) {
-    if (lyricView == null) return;
-    lyricView.setWidth(width);
   }
 
   public void setSingleLine(boolean singleLine) {
@@ -262,6 +265,7 @@ public class Lyric extends LyricPlayer {
 
   public void toggleRoma(boolean isShowRoma) {
     this.isShowRoma = isShowRoma;
+    // roma 对悬浮窗不再生效（D10），仅内嵌歌词页消费
     refreshLyric();
   }
 
@@ -280,8 +284,8 @@ public class Lyric extends LyricPlayer {
     lyricView.setTextSize(size);
   }
 
-  public void setLyricTextPosition(String positionX, String positionY) {
+  public void setPlayState(boolean isPlay) {
     if (lyricView == null) return;
-    lyricView.setLyricTextPosition(positionX, positionY);
+    lyricView.setToolbarPlayState(isPlay);
   }
 }

@@ -1,6 +1,5 @@
 package cn.toside.music.mobile.lyric;
 
-import android.app.Activity;
 import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -9,13 +8,14 @@ import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.util.DisplayMetrics;
-import android.util.Log;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.view.Display;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.OrientationEventListener;
 import android.view.View;
+import android.view.ViewConfiguration;
 import android.view.WindowManager;
 
 import com.facebook.react.bridge.Arguments;
@@ -26,16 +26,23 @@ import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import cn.toside.music.mobile.R;
-
-public class LyricView extends Activity implements View.OnTouchListener {
+// 悬浮歌词窗口层（无底板重设计）：纯文字描边悬浮窗（D1）、92% 定宽（D8）、tap 呼出工具条（D4）、
+// 拖边半隐（D6，位置存/状态不存）、锁定穿透（D5）。工具条生命周期与本窗口状态机绑定（审查 I6）。
+public class LyricView implements View.OnTouchListener {
   LyricSwitchView textView = null;
   WindowManager windowManager = null;
   WindowManager.LayoutParams layoutParams = null;
   final private ReactApplicationContext reactContext;
   final private LyricEvent lyricEvent;
 
-  // private int winWidth = 0;
+  private static final float NORMAL_WIDTH_PERCENT = 0.92f;
+  private static final float DOCKED_WIDTH_PERCENT = 0.12f;
+  private static final float DOCK_EDGE_THRESHOLD_DP = 24f;
+  private static final float DOCKED_ALPHA = 0.25f;
+  private static final long TAP_MAX_DURATION = 300L;
+
+  private LyricToolbar toolbar = null;
+  private boolean currentPlayState = false;
 
   private float lastX; //上一次位置的X.Y坐标
   private float lastY;
@@ -45,40 +52,52 @@ public class LyricView extends Activity implements View.OnTouchListener {
   private float tranY;
   private float prevViewPercentageX = 0;
   private float prevViewPercentageY = 0;
-  private float widthPercentage = 1f;
 
+  private float downX = 0;
+  private float downY = 0;
+  private long downTime = 0;
   private float preY = 0;
-  // private static boolean isVibrated = false;
 
   private boolean isLock = false;
   private boolean isSingleLine = false;
   private boolean isShowToggleAnima = false;
+  private boolean isDocked = false;
+  private boolean dockedLeft = false;
+  private boolean isViewAttached = false;
+  private boolean isViewPaused = false;
   private String unplayColor = "rgba(255, 255, 255, 1)";
   private String playedColor = "rgba(7, 197, 86, 1)";
   private String shadowColor = "rgba(0, 0, 0, 0.15)";
-  // private String lastText = "拾音 ^-^";
-  private String textX = "LEFT";
-  private String textY = "TOP";
   private float alpha = 1f;
   private float textSize = 18f;
   private int maxWidth = 0;
   private int maxHeight = 0;
+  private int touchSlop = 0;
+  private int dockEdgeThreshold = 0;
 
-  private int maxLineNum = 5;
-  // private float lineHeight = 1;
   private String currentLyric = "拾音 ^-^";
   private ArrayList<String> currentExtendedLyrics = new ArrayList<>();
+  private String currentNextLyric = "";
 
   private int mLastRotation;
   private OrientationEventListener orientationEventListener = null;
 
   final Handler fixViewPositionHandler;
+  final Handler mainHandler;
   final Runnable fixViewPositionRunnable = this::updateViewPosition;
 
   LyricView(ReactApplicationContext reactContext, LyricEvent lyricEvent) {
     this.reactContext = reactContext;
     this.lyricEvent = lyricEvent;
+    mainHandler = new Handler(Looper.getMainLooper());
     fixViewPositionHandler = new Handler();
+    touchSlop = ViewConfiguration.get(reactContext).getScaledTouchSlop();
+    dockEdgeThreshold = (int) (DOCK_EDGE_THRESHOLD_DP * reactContext.getResources().getDisplayMetrics().density + 0.5f);
+  }
+
+  /** 屏灭恢复时刷新当前行（原实现来自误继承的 Activity 基类，重写为主线程 post） */
+  public void runOnUiThread(Runnable runnable) {
+    mainHandler.post(runnable);
   }
 
   private void listenOrientationEvent() {
@@ -88,18 +107,15 @@ public class LyricView extends Activity implements View.OnTouchListener {
         public void onOrientationChanged(int orientation) {
           Display display = windowManager.getDefaultDisplay();
           int rotation = display.getRotation();
-          if(rotation != mLastRotation){
-            //rotation changed
-            // if (rotation == Surface.ROTATION_90){} // check rotations here
-            // if (rotation == Surface.ROTATION_270){} //
-            // Log.d("Lyric", "rotation: " + rotation);
+          if (rotation != mLastRotation) {
+            // 旋转重算：工具条自动收起，避免跟随错位（方案 §4.2.2）
+            dismissToolbar();
             fixViewPositionHandler.postDelayed(fixViewPositionRunnable, 300);
           }
           mLastRotation = rotation;
         }
       };
     }
-    // Log.d("Lyric", "orientationEventListener: " + orientationEventListener.canDetectOrientation());
     if (orientationEventListener.canDetectOrientation()) {
       orientationEventListener.enable();
     }
@@ -107,7 +123,6 @@ public class LyricView extends Activity implements View.OnTouchListener {
   private void removeOrientationEvent() {
     if (orientationEventListener == null) return;
     orientationEventListener.disable();
-    // orientationEventListener = null;
   }
 
   private int getLayoutParamsFlags() {
@@ -138,42 +153,43 @@ public class LyricView extends Activity implements View.OnTouchListener {
   }
 
   private void setLayoutParamsHeight() {
-    if (textView == null) return;
-    int height = textView.getPaint().getFontMetricsInt(null) * maxLineNum;
+    if (textView == null || layoutParams == null) return;
+    int height = textView.getTotalHeight();
     if (height > maxHeight - 100) height = maxHeight - 100;
+    // 窗口高度直接由 layoutParams.height 生效；容器自身 wrap 子行，无需 view 层重复同步
+    // （审查 C2：view 层强转 WindowManager.LayoutParams 会崩，已删）
     layoutParams.height = height;
-    textView.setHeight(height);
   }
 
   private void fixViewPosition() {
+    if (textView == null || layoutParams == null) return;
+    int width = (int) (maxWidth * (isDocked ? DOCKED_WIDTH_PERCENT : NORMAL_WIDTH_PERCENT));
+    if (layoutParams.width != width) {
+      layoutParams.width = width;
+      textView.setWidth(width);
+    }
+
     int maxX = maxWidth - layoutParams.width;
-    int x = (int)(maxWidth * prevViewPercentageX);
+    int x = (int) (maxWidth * prevViewPercentageX);
     if (x < 0) x = 0;
     else if (x > maxX) x = maxX;
+    if (isDocked) x = dockedLeft ? 0 : maxX;
     if (layoutParams.x != x) layoutParams.x = x;
 
     setLayoutParamsHeight();
 
     int maxY = maxHeight - layoutParams.height;
-    int y = (int)(maxHeight * prevViewPercentageY);
+    int y = (int) (maxHeight * prevViewPercentageY);
     if (y < 0) y = 0;
     else if (y > maxY) y = maxY;
     if (layoutParams.y != y) layoutParams.y = y;
   }
 
   private void updateViewPosition() {
+    if (textView == null || layoutParams == null || windowManager == null) return;
     if (!updateWH()) return;
 
-    int width = (int)(maxWidth * widthPercentage);
-    if (layoutParams.width != width) {
-      layoutParams.width = width;
-      if (textView != null) textView.setWidth(width);
-    }
-
     fixViewPosition();
-    // Log.d("Lyric", "widthPercentage: " + widthPercentage + "  prevViewPercentageX: " + prevViewPercentageX);
-    // Log.d("Lyric", "prevViewPercentageY: " + prevViewPercentageY + "  layoutParams.x: " + layoutParams.x);
-    // Log.d("Lyric", "layoutParams.y: " + layoutParams.y + "  layoutParams.width: " + layoutParams.width);
 
     windowManager.updateViewLayout(textView, layoutParams);
   }
@@ -185,26 +201,6 @@ public class LyricView extends Activity implements View.OnTouchListener {
     lyricEvent.sendEvent(lyricEvent.SET_VIEW_POSITION, params);
   }
 
-//  public void permission(){
-//    if (Build.VERSION.SDK_INT >= 23) {
-//      if(!Settings.canDrawOverlays(this)) {
-//        Intent intent = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION);
-//        startActivity(intent);
-//        return;
-//      } else {
-//        //Android6.0以上
-//        if (mFloatView!=null && mFloatView.isShow()==false) {
-//          mFloatView.show();
-//        }
-//      }
-//    } else {
-//      //Android6.0以下，不用动态声明权限
-//      if (mFloatView!=null && mFloatView.isShow()==false) {
-//        mFloatView.show();
-//      }
-//    }
-//  }
-// boolean isLock, String themeColor, float alpha, int lyricViewX, int lyricViewY, String textX, String textY
   public void showLyricView(Bundle options) {
     isLock = options.getBoolean("isLock", isLock);
     isSingleLine = options.getBoolean("isSingleLine", isSingleLine);
@@ -214,22 +210,9 @@ public class LyricView extends Activity implements View.OnTouchListener {
     shadowColor = options.getString("shadowColor", shadowColor);
     prevViewPercentageX = (float) options.getDouble("lyricViewX", 0f) / 100f;
     prevViewPercentageY = (float) options.getDouble("lyricViewY", 0f) / 100f;
-    textX = options.getString("textX", textX);
-    textY = options.getString("textY", textY);
     alpha = (float) options.getDouble("alpha", alpha);
     textSize = (float) options.getDouble("textSize", textSize);
-    widthPercentage = (float) options.getDouble("width", 100) / 100f;
-    maxLineNum = (int) options.getDouble("maxLineNum", maxLineNum);
     handleShowLyric();
-    listenOrientationEvent();
-  }
-  public void showLyricView() {
-    try {
-      handleShowLyric();
-    } catch (Exception e) {
-      Log.e("Lyric", e.getMessage());
-      return;
-    }
     listenOrientationEvent();
   }
   public static int parseColor(String input) {
@@ -249,255 +232,224 @@ public class LyricView extends Activity implements View.OnTouchListener {
 
   private void createTextView() {
     textView = new LyricSwitchView(reactContext, isSingleLine, isShowToggleAnima);
-    textView.setText("");
-    textView.setText(currentLyric);
+    textView.setLyric(currentLyric, currentExtendedLyrics, currentNextLyric);
 
     textView.setTextColor(parseColor(playedColor));
+    textView.setUnplayColor(parseColor(unplayColor));
     textView.setShadowColor(parseColor(shadowColor));
-    textView.setAlpha(alpha);
+    textView.setAlpha(isDocked ? DOCKED_ALPHA : alpha);
     textView.setTextSize(textSize);
-    // Log.d("Lyric", "alpha: " + alpha + " text size: " + textSize);
+    // 重建（切单行等）时同步外层 docked 态，防状态机分裂（审查 I3）
+    textView.setDocked(isDocked);
 
-    //监听 OnTouch 事件 为了实现"移动歌词"功能
+    //监听 OnTouch 事件：拖动 / tap 呼出工具条 / 拖边半隐
     textView.setOnTouchListener(this);
-
-    int textPositionX;
-    int textPositionY;
-    switch (textX) {
-      case "CENTER":
-        textPositionX = Gravity.CENTER;
-        break;
-      case "RIGHT":
-        textPositionX = Gravity.END;
-        break;
-      case "Left":
-      default:
-        textPositionX = Gravity.START;
-        break;
-    }
-    switch (textY) {
-      case "CENTER":
-        textPositionY = Gravity.CENTER;
-        break;
-      case "BOTTOM":
-        textPositionY = Gravity.BOTTOM;
-        break;
-      case "TOP":
-      default:
-        textPositionY = Gravity.TOP;
-        break;
-    }
-    textView.setGravity(textPositionX | textPositionY);
-
-    if (!isSingleLine) {
-      textView.setMaxLines(maxLineNum);
-    }
   }
   private void handleShowLyric() {
     if (windowManager == null) {
       windowManager = (WindowManager) reactContext.getSystemService(Context.WINDOW_SERVICE);
-      //设置TextView的属性
       layoutParams = new WindowManager.LayoutParams();
-
-      DisplayMetrics outMetrics = new DisplayMetrics();
-      windowManager.getDefaultDisplay().getMetrics(outMetrics);
-      // winWidth = (int)(outMetrics.widthPixels * 0.92);
     }
 
-    // 注意，悬浮窗只有一个，而当打开应用的时候才会产生悬浮窗，所以要判断悬浮窗是否已经存在，
-    if (textView != null) {
+    if (textView != null && isViewAttached) {
       windowManager.removeView(textView);
     }
+    dismissToolbar();
 
-    // 使用Application context
-    // 创建UI控件，避免Activity销毁导致上下文出现问题,因为现在的悬浮窗是系统级别的，不依赖与Activity存在
-    //创建自定义的TextView
+    //创建三行容器（无底板：全状态透明背景，可读性由文字描边+阴影保障，D1）
     createTextView();
 
-    // layoutParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_ALERT | WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
-    // layoutParams.type = WindowManager.LayoutParams.TYPE_SYSTEM_OVERLAY;
     layoutParams.type = Build.VERSION.SDK_INT < Build.VERSION_CODES.O ?
       WindowManager.LayoutParams.TYPE_SYSTEM_ALERT :
       WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
 
-    // layoutParams.flags = isLock
-    //  ? WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
-    //  : WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL;
     layoutParams.flags = getLayoutParamsFlags();
     if (isLock) {
-      textView.setBackgroundColor(Color.TRANSPARENT);
-
       // 修复 Android 12 的穿透点击问题
       if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
         layoutParams.alpha = 0.8f;
       }
-    } else {
-      textView.setBackgroundResource(R.drawable.rounded_corner);
-
-      if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
-        layoutParams.alpha = 1.0f;
-      }
+    } else if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
+      layoutParams.alpha = 1.0f;
     }
 
-    // TYPE_SYSTEM_ALERT  系统提示,它总是出现在应用程序窗口之上
-    // TYPE_SYSTEM_OVERLAY   系统顶层窗口。显示在其他一切内容之上。此窗口不能获得输入焦点，否则影响锁屏
-    // FLAG_NOT_FOCUSABLE 悬浮窗口较小时，后面的应用图标由不可长按变为可长按,不设置这个flag的话，home页的划屏会有问题
-    // FLAG_NOT_TOUCH_MODAL不阻塞事件传递到后面的窗口
-    layoutParams.gravity = Gravity.TOP | Gravity.START;  //显示在屏幕上中部
+    layoutParams.gravity = Gravity.TOP | Gravity.START;
 
     updateWH();
 
-    //悬浮窗的宽高
-    // layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
-    // layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
-    // layoutParams.width= DisplayUtil.dp2px(mContext,55);
-    // layoutParams.height= DisplayUtil.dp2px(mContext,55);
-    layoutParams.width = (int)(maxWidth * widthPercentage);
+    layoutParams.width = (int) (maxWidth * NORMAL_WIDTH_PERCENT);
     textView.setWidth(layoutParams.width);
     setLayoutParamsHeight();
 
-    //显示位置与指定位置的相对位置差
-    layoutParams.x = (int)(maxWidth * prevViewPercentageX);
-    layoutParams.y = (int)(maxHeight * prevViewPercentageY);
+    layoutParams.x = (int) (maxWidth * prevViewPercentageX);
+    layoutParams.y = (int) (maxHeight * prevViewPercentageY);
 
     fixViewPosition();
 
-    //设置透明
     layoutParams.format = PixelFormat.TRANSPARENT;
 
-    //添加到window中
     windowManager.addView(textView, layoutParams);
+    isViewAttached = true;
+    isViewPaused = false;
+    isDocked = false;
+
+    if (toolbar == null) toolbar = new LyricToolbar(reactContext, lyricEvent);
+    toolbar.setPlayState(currentPlayState);
+    toolbar.setTextSizeState(textSize);
   }
 
-  public void setLyric(String text, ArrayList<String> extendedLyrics) {
-    if (text.equals("") && text.equals(currentLyric) && extendedLyrics.size() == 0) return;
+  public void setLyric(String text, ArrayList<String> extendedLyrics, String nextText) {
+    // 三元组全等去重：next 行单独变化不得被跳过（审查 S14）
+    if (text.equals(currentLyric) && extendedLyrics.equals(currentExtendedLyrics) && nextText.equals(currentNextLyric)) return;
     currentLyric = text;
     currentExtendedLyrics = extendedLyrics;
+    currentNextLyric = nextText;
     if (textView == null) return;
-    if (extendedLyrics.size() > 0 && maxLineNum > 1 && !isSingleLine) {
-      int num = maxLineNum - 1;
-      StringBuilder textBuilder = new StringBuilder(text);
-      for (String lrc : extendedLyrics) {
-        textBuilder.append("\n").append(lrc);
-        if (--num < 1) break;
-      }
-      text = textBuilder.toString();
+    int oldHeight = textView.getTotalHeight();
+    textView.setLyric(text, extendedLyrics, nextText);
+    // 副行显隐变化 → 窗口高度重算（审查 C3：翻译/下一句行出现时防裁切）
+    if (textView.getTotalHeight() != oldHeight) {
+      setLayoutParamsHeight();
+      if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
     }
-    if (textView == null) return;
-    textView.setText(text);
-  }
-
-  public void setMaxLineNum(int maxLineNum) {
-    this.maxLineNum = maxLineNum;
-    if (textView == null) return;
-    if (!isSingleLine) textView.setMaxLines(maxLineNum);
-    setLayoutParamsHeight();
-
-    int maxY = maxHeight - layoutParams.height;
-    int y = layoutParams.y;
-    if (y < 0) y = 0;
-    else if (y > maxY) y = maxY;
-    if (layoutParams.y != y) layoutParams.y = y;
-
-    windowManager.updateViewLayout(textView, layoutParams);
-  }
-
-  public void setWidth(int width) {
-    if (textView == null) return;
-    widthPercentage = width / 100f;
-    layoutParams.width = (int)(maxWidth * widthPercentage);
-    textView.setWidth(layoutParams.width);
-
-    int maxX = maxWidth - layoutParams.width;
-    int x = layoutParams.x;
-    if (x < 0) x = 0;
-    else if (x > maxX) x = maxX;
-    if (layoutParams.x != x) layoutParams.x = x;
-
-    windowManager.updateViewLayout(textView, layoutParams);
   }
 
   @Override
   public boolean onTouch(View v, MotionEvent event) {
-    int maxX = maxWidth - layoutParams.width;
-    int maxY = maxHeight - layoutParams.height;
-
-    switch (event.getAction()){
+    switch (event.getAction()) {
       case MotionEvent.ACTION_DOWN:
-        // 获取按下时的X，Y坐标
         lastX = event.getRawX();
         lastY = event.getRawY();
-
+        downX = lastX;
+        downY = lastY;
+        downTime = SystemClock.uptimeMillis();
         preY = lastY;
         break;
       case MotionEvent.ACTION_MOVE:
-        // 获取移动时的X，Y坐标
+        // docked 细条直接拖走：恢复 normal 后继续跟随手指
+        if (isDocked) unDock();
         nowX = event.getRawX();
         nowY = event.getRawY();
-        if (preY == 0){
+        if (preY == 0) {
           preY = nowY;
         }
-        // 计算XY坐标偏移量
         tranX = nowX - lastX;
         tranY = nowY - lastY;
 
-        int x = layoutParams.x + (int)tranX;
+        int maxX = maxWidth - layoutParams.width;
+        int maxY = maxHeight - layoutParams.height;
+        int x = layoutParams.x + (int) tranX;
         if (x < 0) x = 0;
         else if (x > maxX) x = maxX;
-        int y = layoutParams.y + (int)tranY;
+        int y = layoutParams.y + (int) tranY;
         if (y < 0) y = 0;
         else if (y > maxY) y = maxY;
 
-        // 移动悬浮窗
         layoutParams.x = x;
         layoutParams.y = y;
-        //更新悬浮窗位置
         windowManager.updateViewLayout(textView, layoutParams);
-        //记录当前坐标作为下一次计算的上一次移动的位置坐标
         lastX = nowX;
         lastY = nowY;
         break;
       case MotionEvent.ACTION_UP:
-        // float dy = nowY - preY;
-        // Log.d("Lyric","dy: " + dy);
-        // if (isVibrated){
-        //   if (dy > 10){
-        //     //down
-        //     actions(AppHolder.actions[3]);
-        //   }else if (dy<-10){
-        //     //up
-        //     actions(AppHolder.actions[4]);
-        //   }else {
-        //     //longClick
-        //     actions(AppHolder.actions[2]);
-        //   }
-        //   isVibrated =false;
-        // }
-        //根据移动的位置来判断
-        // dy = 0;
+        boolean isTap = Math.abs(event.getRawX() - downX) < touchSlop
+          && Math.abs(event.getRawY() - downY) < touchSlop
+          && (SystemClock.uptimeMillis() - downTime) < TAP_MAX_DURATION;
+        if (isTap) {
+          if (isDocked) unDock();
+          else toggleToolbar();
+          break;
+        }
+        // 位置照常持久化（拍板：dock 位置存、半隐状态不存）
         tranY = 0;
-        float percentageX = (float)layoutParams.x / (float) maxWidth * 100f;
-        float percentageY = (float)layoutParams.y / (float) maxHeight * 100f;
-        if (percentageX != prevViewPercentageX || percentageY != prevViewPercentageY) {
+        float percentageX = (float) layoutParams.x / (float) maxWidth * 100f;
+        float percentageY = (float) layoutParams.y / (float) maxHeight * 100f;
+        if (percentageX != prevViewPercentageX * 100f || percentageY != prevViewPercentageY * 100f) {
           prevViewPercentageX = percentageX / 100f;
           prevViewPercentageY = percentageY / 100f;
           sendPositionEvent(percentageX, percentageY);
+        }
+        if (!isDocked && !isLock) checkDock();
+        if (toolbar != null && toolbar.isShowing()) {
+          // 拖动后工具条跟随重算（审查 S13）
+          showToolbar();
         }
         break;
     }
     return true;
   }
 
+  /** 拖动落点贴近左右屏缘 → 吸附半隐（D6） */
+  private void checkDock() {
+    int maxX = maxWidth - layoutParams.width;
+    if (layoutParams.x <= dockEdgeThreshold) dock(true);
+    else if (layoutParams.x >= maxX - dockEdgeThreshold) dock(false);
+  }
+
+  private void dock(boolean left) {
+    isDocked = true;
+    dockedLeft = left;
+    dismissToolbar();
+    layoutParams.width = (int) (maxWidth * DOCKED_WIDTH_PERCENT);
+    layoutParams.x = left ? 0 : maxWidth - layoutParams.width;
+    if (textView == null) return;
+    textView.setWidth(layoutParams.width);
+    textView.setDocked(true);
+    textView.setAlpha(DOCKED_ALPHA);
+    setLayoutParamsHeight();
+    if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
+    // 吸附落点照常持久化（拍板：位置存；审查 S5）
+    float percentageX = (float) layoutParams.x / (float) maxWidth * 100f;
+    prevViewPercentageX = percentageX / 100f;
+    sendPositionEvent(percentageX, prevViewPercentageY * 100f);
+  }
+
+  private void unDock() {
+    isDocked = false;
+    layoutParams.width = (int) (maxWidth * NORMAL_WIDTH_PERCENT);
+    int maxX = maxWidth - layoutParams.width;
+    if (layoutParams.x > maxX) layoutParams.x = maxX;
+    if (textView == null) return;
+    textView.setWidth(layoutParams.width);
+    textView.setDocked(false);
+    textView.setAlpha(alpha);
+    setLayoutParamsHeight();
+    if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
+    // 仅同步内部百分比，持久化统一由 ACTION_UP 按终位发送（审查 S8）
+    prevViewPercentageX = (float) layoutParams.x / (float) maxWidth;
+  }
+
+  private void toggleToolbar() {
+    if (toolbar == null) return;
+    if (toolbar.isShowing()) toolbar.dismiss();
+    else showToolbar();
+  }
+
+  private void showToolbar() {
+    if (toolbar == null) return;
+    toolbar.setPlayState(currentPlayState);
+    toolbar.setTextSizeState(textSize);
+    toolbar.show(layoutParams.x, layoutParams.y, layoutParams.width, layoutParams.height);
+  }
+
+  private void dismissToolbar() {
+    if (toolbar != null) toolbar.dismiss();
+  }
+
   public void lockView() {
     isLock = true;
     if (windowManager == null || textView == null) return;
+    // 锁定前先恢复 normal（锁定×dock 组合态规则，审查 I7）
+    if (isDocked) unDock();
+    // 穿透态不得残留可点工具条（状态机，审查 I6）
+    dismissToolbar();
     layoutParams.flags = getLayoutParamsFlags();
 
     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
       layoutParams.alpha = 0.8f;
     }
-    textView.setBackgroundColor(Color.TRANSPARENT);
-    windowManager.updateViewLayout(textView, layoutParams);
+    // 前台隐身（摘窗）期间仅更新参数，恢复时 resumeView 携新参数上屏
+    if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
   }
 
   public void unlockView() {
@@ -508,8 +460,7 @@ public class LyricView extends Activity implements View.OnTouchListener {
     if (Build.VERSION.SDK_INT > Build.VERSION_CODES.R) {
       layoutParams.alpha = 1.0f;
     }
-    textView.setBackgroundResource(R.drawable.rounded_corner);
-    windowManager.updateViewLayout(textView, layoutParams);
+    if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
   }
 
   public void setColor(String unplayColor, String playedColor, String shadowColor) {
@@ -518,64 +469,30 @@ public class LyricView extends Activity implements View.OnTouchListener {
     this.shadowColor = shadowColor;
     if (textView == null) return;
     textView.setTextColor(parseColor(playedColor));
+    textView.setUnplayColor(parseColor(unplayColor));
     textView.setShadowColor(parseColor(shadowColor));
-    // windowManager.updateViewLayout(textView, layoutParams);
-  }
-
-  public void setLyricTextPosition(String textX, String textY) {
-    this.textX = textX;
-    this.textY = textY;
-    if (windowManager == null || textView == null) return;
-    int textPositionX;
-    int textPositionY;
-    // Log.d("Lyric", "textX: " + textX + "  textY: " + textY);
-    switch (textX) {
-      case "CENTER":
-        textPositionX = Gravity.CENTER_HORIZONTAL;
-        break;
-      case "RIGHT":
-        textPositionX = Gravity.END;
-        break;
-      case "LEFT":
-      default:
-        textPositionX = Gravity.START;
-        break;
-    }
-    switch (textY) {
-      case "CENTER":
-        textPositionY = Gravity.CENTER_VERTICAL;
-        break;
-      case "BOTTOM":
-        textPositionY = Gravity.BOTTOM;
-        break;
-      case "TOP":
-      default:
-        textPositionY = Gravity.TOP;
-        break;
-    }
-    textView.setGravity(textPositionX | textPositionY);
-    windowManager.updateViewLayout(textView, layoutParams);
   }
 
   public void setAlpha(float alpha) {
     this.alpha = alpha;
-    if (textView == null) return;
+    if (textView == null || isDocked) return;
     textView.setAlpha(alpha);
   }
 
   public void setSingleLine(boolean isSingleLine) {
     this.isSingleLine = isSingleLine;
-    if (textView == null) return;
-    windowManager.removeView(textView);
+    if (textView == null || layoutParams == null) return;
+    if (isViewAttached) windowManager.removeView(textView);
+    isViewAttached = false;
     createTextView();
     textView.setWidth(layoutParams.width);
-    textView.setHeight(layoutParams.height);
-    windowManager.addView(textView, layoutParams);
-
-    if (isLock) lockView();
-    else unlockView();
-
-    setLyric(currentLyric, currentExtendedLyrics);
+    setLayoutParamsHeight();
+    if (!isViewPaused) {
+      // 前台隐身中仅重建实例不恢复显示，恢复时 resumeView 携新视图上屏
+      windowManager.addView(textView, layoutParams);
+      isViewAttached = true;
+    }
+    setLyric(currentLyric, currentExtendedLyrics, currentNextLyric);
   }
 
   public void setShowToggleAnima(boolean showToggleAnima) {
@@ -586,21 +503,63 @@ public class LyricView extends Activity implements View.OnTouchListener {
 
   public void setTextSize(float size) {
     this.textSize = size;
-    if (windowManager == null || textView == null) return;
+    if (textView == null || layoutParams == null) return;
     textView.setTextSize(size);
     setLayoutParamsHeight();
-    windowManager.updateViewLayout(textView, layoutParams);
+    if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
+    if (toolbar != null && toolbar.isShowing()) toolbar.setTextSizeState(size);
+  }
+
+  /** 前台隐身（D7）：仅摘除窗口保留实例，歌词播放器状态不动；与 hideDesktopLyric 的销毁不同 */
+  public void pauseView() {
+    if (!isViewAttached) return;
+    dismissToolbar();
+    try {
+      windowManager.removeView(textView);
+    } catch (Exception ignored) {
+      // 窗口已不在（重复 pause 等），保持状态一致
+    }
+    isViewAttached = false;
+    isViewPaused = true;
+  }
+
+  public void resumeView() {
+    if (isViewAttached || textView == null || layoutParams == null) return;
+    // 暂隐期间可能发生旋转：恢复前按当前屏幕重算宽度/位置/高度
+    updateWH();
+    fixViewPosition();
+    try {
+      windowManager.addView(textView, layoutParams);
+    } catch (Exception ignored) {
+      return;
+    }
+    isViewAttached = true;
+    isViewPaused = false;
+  }
+
+  public void setToolbarPlayState(boolean play) {
+    currentPlayState = play;
+    if (toolbar != null) toolbar.setPlayState(play);
   }
 
   public void destroyView() {
     if (textView == null || windowManager == null) return;
-    windowManager.removeView(textView);
+    dismissToolbar();
+    if (isViewAttached) {
+      try {
+        windowManager.removeView(textView);
+      } catch (Exception ignored) {
+      }
+    }
     textView = null;
+    isViewAttached = false;
+    isViewPaused = false;
     removeOrientationEvent();
   }
 
   public void destroy() {
     destroyView();
+    toolbar = null;
     windowManager = null;
     layoutParams = null;
   }

@@ -141,6 +141,24 @@ public class LyricModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
+  public void pauseDesktopLyricView(Promise promise) {
+    if (lyric != null) lyric.pauseDesktopLyricView();
+    promise.resolve(null);
+  }
+
+  @ReactMethod
+  public void resumeDesktopLyricView(Promise promise) {
+    if (lyric != null) lyric.resumeDesktopLyricView();
+    promise.resolve(null);
+  }
+
+  @ReactMethod
+  public void setDesktopLyricPlayState(boolean isPlay, Promise promise) {
+    if (lyric != null) lyric.setPlayState(isPlay);
+    promise.resolve(null);
+  }
+
+  @ReactMethod
   public void setColor(String unplayColor, String playedColor, String shadowColor, Promise promise) {
     if (lyric != null) lyric.setPlayedColor(unplayColor, playedColor, shadowColor);
     promise.resolve(null);
@@ -159,12 +177,6 @@ public class LyricModule extends ReactContextBaseJavaModule {
   }
 
   @ReactMethod
-  public void setMaxLineNum(int maxLineNum, Promise promise) {
-    if (lyric != null) lyric.setMaxLineNum(maxLineNum);
-    promise.resolve(null);
-  }
-
-  @ReactMethod
   public void setSingleLine(boolean singleLine, Promise promise) {
     if (lyric != null) lyric.setSingleLine(singleLine);
     promise.resolve(null);
@@ -173,18 +185,6 @@ public class LyricModule extends ReactContextBaseJavaModule {
   @ReactMethod
   public void setShowToggleAnima(boolean showToggleAnima, Promise promise) {
     if (lyric != null) lyric.setShowToggleAnima(showToggleAnima);
-    promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void setWidth(int width, Promise promise) {
-    if (lyric != null) lyric.setWidth(width);
-    promise.resolve(null);
-  }
-
-  @ReactMethod
-  public void setLyricTextPosition(String positionX, String positionY, Promise promise) {
-    if (lyric != null) lyric.setLyricTextPosition(positionX, positionY);
     promise.resolve(null);
   }
 

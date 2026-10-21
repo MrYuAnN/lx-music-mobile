@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">拾音</string>
+    <string name="desktop_lyric_channel_name">桌面歌词</string>
+    <string name="desktop_lyric_locked_title">歌词已锁定</string>
+    <string name="desktop_lyric_locked_text">点击「解锁」恢复歌词操作</string>
+    <string name="desktop_lyric_unlock">解锁</string>
 </resources>

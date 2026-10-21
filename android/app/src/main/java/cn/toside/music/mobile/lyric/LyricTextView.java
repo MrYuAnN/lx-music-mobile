@@ -3,11 +3,13 @@ package cn.toside.music.mobile.lyric;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
-import android.util.Log;
 import android.view.Gravity;
 import android.widget.TextView;
 
+// 主行歌词控件：双层自绘（底层描边 + 上层填充，无底板方案的可读性保障）+ 可开关的跑马灯滚动。
+// 跑马灯关闭（docked 细条态）时静态绘制，超出部分裁切。
 // https://github.com/Block-Network/StatusBarLyric/blob/main/app/src/main/java/statusbar/lyric/view/LyricTextView.kt
 @SuppressLint("AppCompatCustomView")
 public class LyricTextView extends TextView {
@@ -23,6 +25,8 @@ public class LyricTextView extends TextView {
   private float y = 0F;
   private String text = null;
   private final Paint mPaint;
+  private final Paint mStrokePaint;
+  private boolean marqueeEnabled = true;
   private final Runnable mStartScrollRunnable;
   private final Runnable invalidateRunnable;
   public static final int startScrollDelay = 1500;
@@ -33,13 +37,22 @@ public class LyricTextView extends TextView {
     mStartScrollRunnable = LyricTextView.this::startScroll;
     invalidateRunnable = LyricTextView.this::invalidate;
     mPaint = getPaint();
+    mStrokePaint = new Paint(mPaint);
+    mStrokePaint.setStyle(Paint.Style.STROKE);
+    mStrokePaint.setColor(Color.BLACK);
+    // 描边 pass 不带阴影，避免双影（阴影只在填充 pass）
+    mStrokePaint.setShadowLayer(0F, 0F, 0F, Color.TRANSPARENT);
     speed = SPEED_LIMIT * getTextSize();
+    updateStrokeWidth();
+  }
+
+  private void updateStrokeWidth() {
+    mStrokePaint.setStrokeWidth(Math.max(1F, getTextSize() * 0.08F));
   }
 
   private void init() {
     xx = 0.0F;
     textLength = getTextLength();
-    // viewWidth = (float) getWidth();
   }
 
   @Override
@@ -55,7 +68,7 @@ public class LyricTextView extends TextView {
     this.text = text.toString();
     init();
     postInvalidate();
-    postDelayed(mStartScrollRunnable, startScrollDelay);
+    if (marqueeEnabled) postDelayed(mStartScrollRunnable, startScrollDelay);
   }
 
   @Override
@@ -73,7 +86,9 @@ public class LyricTextView extends TextView {
   @Override
   public void setTextSize(float size) {
     super.setTextSize(size);
-    speed = SPEED_LIMIT * size;
+    mStrokePaint.setTextSize(getPaint().getTextSize());
+    updateStrokeWidth();
+    speed = SPEED_LIMIT * getTextSize();
     if (text == null) return;
     post(mStartScrollRunnable);
   }
@@ -108,24 +123,34 @@ public class LyricTextView extends TextView {
     gravityHorizontal = gravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK;
 
     y = getDrawY();
-    // Log.d("Lyric", "gravityVertical: " + gravityVertical + " gravityHorizontal: " + gravityHorizontal);
 
     if (text == null) return;
     post(mStartScrollRunnable);
   }
 
+  public void setMarqueeEnabled(boolean enabled) {
+    marqueeEnabled = enabled;
+    if (!enabled) {
+      stopScroll();
+    } else if (text != null) {
+      postDelayed(mStartScrollRunnable, startScrollDelay);
+    }
+  }
+
   @Override
   protected void onDraw(Canvas canvas) {
+    if (getHeight() > 0) viewHeight = getHeight();
     float mSpeed = speed;
     if (text != null) {
-      Log.d("Lyric", "getHeight: " + getHeight() + " y: " + y);
-      canvas.drawText(text, getDrawX(), y, mPaint);
+      float x = getDrawX();
+      canvas.drawText(text, x, y, mStrokePaint);
+      canvas.drawText(text, x, y, mPaint);
       if (getText().length() >= 20) {
         mSpeed += mSpeed;
       }
     }
 
-    if (!isStop) {
+    if (!isStop && marqueeEnabled) {
       if (viewWidth - xx + mSpeed >= textLength) {
         xx = viewWidth - textLength - 2;
         stopScroll();
@@ -164,11 +189,8 @@ public class LyricTextView extends TextView {
     float top = fontMetrics.top;
     float bottom = fontMetrics.bottom;
     float ascent = fontMetrics.ascent;
-    // float descent = fontMetrics.descent;
 
     float y;
-
-    // float y = Math.abs(mPaint.ascent() + mPaint.descent()) / 2;
     switch (gravityVertical) {
       case Gravity.CENTER_VERTICAL:
         y = viewHeight / 2F + (bottom - top) / 2 - bottom;
@@ -203,9 +225,5 @@ public class LyricTextView extends TextView {
     }
     return x;
   }
-
-  // public void setSpeed(float speed) {
-  //  this.speed = speed;
-  // }
 
 }
