@@ -67,7 +67,10 @@ const MAP = [
   { name: 'eraser', sf: 'eraser' },
   { name: 'home', sf: 'house' },
   { name: 'slider', sf: 'slider.horizontal.3' },
-  { name: 'lyric-on,lyric-off', sf: 'quote.opening' },
+  // 悬浮歌词开关对（2026-10-21 用户拍板换形 captions.bubble：桌面歌词=屏幕字幕语义；
+  // 原两名共形 quote.opening 无开关视觉差）——调用名不变，横屏 DesktopLyricBtn 同步生效
+  { name: 'lyric-on', sf: 'captions.bubble.fill' },
+  { name: 'lyric-off', sf: 'captions.bubble' },
   { name: 'comment', sf: 'bubble.right' },
   { name: 'playback-rate', keep: 'playback-rate' }, // SF gauge family unsuitable at 24pt
   { name: 'volume-higt', sf: 'speaker.wave.3' },
@@ -79,10 +82,11 @@ const MAP = [
   { name: 'list-loop', sf: 'repeat' },
   { name: 'single-loop', sf: 'repeat.1' },
   { name: 'list-random', sf: 'shuffle' },
-  { name: 'list-order,single', sf: 'arrow.right' },
+  { name: 'list-order', sf: 'list.number' }, // 顺序播放=有序列表 1.2.3（2026-10-21 用户拍板换形，原 arrow.right 无含义）
   { name: 'exit,exit2', sf: 'power' },
   { name: 'add_folder', sf: 'folder.badge.plus' },
-  { name: 'add-music,music', sf: 'music.note' },
+  // single（禁用歌曲切换）与 add-music 同形 music.note：只播这一首（2026-10-21 拍板；原与 list-order 共形 arrow.right 无辨识度）
+  { name: 'add-music,music,single', sf: 'music.note' },
   { name: 'download-2,download', sf: 'arrow.down.circle' },
   { name: 'leaderboard', sf: 'chart.bar.fill' },
   { name: 'album', sf: 'square.stack' },
@@ -110,6 +114,12 @@ const MAP = [
   { name: 'dislike-add', sf: 'hand.thumbsdown' },
   { name: 'trash', sf: 'trash' },
   { name: 'edit-metadata', sf: 'pencil' },
+  // 歌词页动作组换形（2026-10-21 用户拍板）：字号 aA 调节形（AM/Spotify 同款语义，原借铅笔
+  // edit-metadata 不贴切）；翻译 A 字气泡描边/填充开关对（「文A」翻译通识，原借 toggle-source）——
+  // edit-metadata / toggle-source 本名为菜单正牌图标，映射不动
+  { name: 'font-size', sf: 'textformat.size' },
+  { name: 'translate-on', sf: 'character.bubble.fill' },
+  { name: 'translate-off', sf: 'character.bubble' },
 ]
 
 const readSfSvg = (symbol) => {
@@ -126,7 +136,7 @@ const readSfSvg = (symbol) => {
   return { paths, width, height, transform }
 }
 
-const main = async () => {
+const main = async() => {
   const oldSelection = JSON.parse(fs.readFileSync(OLD_SELECTION, 'utf8'))
   const oldByFirstName = new Map(
     oldSelection.icons.map((g) => [g.properties.name.split(',')[0], g]),
