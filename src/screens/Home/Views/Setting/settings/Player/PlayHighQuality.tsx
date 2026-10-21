@@ -1,71 +1,57 @@
-import { memo, useMemo } from 'react'
+import { memo, useMemo, useRef, useState, useCallback } from 'react'
 
-import { StyleSheet, View } from 'react-native'
-
-import SubTitle from '../../components/SubTitle'
-import CheckBox from '@/components/common/CheckBox'
+import SelectRow from '../../components/SelectRow'
+import CheckSheet, { type CheckSheetType, type CheckSheetItem } from '@/components/common/CheckSheet'
 import { useSettingValue } from '@/store/setting/hook'
-import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
+import { updateSetting } from '@/core/common'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
+import { qualityLabel } from '@/utils/music'
 
-const useActive = (id: LX.Quality) => {
-  const q = useSettingValue('player.playQuality')
-  const isActive = useMemo(() => q == id, [q, id])
-  return isActive
-}
-
-const Item = ({ id, name }: {
-  id: LX.Quality
-  name: string
-}) => {
-  const isActive = useActive(id)
-  // const [toggleCheckBox, setToggleCheckBox] = useState(false)
-  return <CheckBox marginRight={8} check={isActive} label={name} onChange={() => { updateSetting({ 'player.playQuality': id }) }} need />
-}
-
+// 优先播放音质（2026-10-21 设置页重构：4 选项按判据归值行+CheckSheet 二级，替代
+// SubTitle+CheckBox 组；档位全集与播放页音质选择共用单源 core/music/utils）
 export default memo(() => {
   const t = useI18n()
-  // 档位全集与播放页音质选择共用单源（core/music/utils）
-  const playQualityList = PLAY_QUALITY_LIST
+  const quality = useSettingValue('player.playQuality')
+  const sheetRef = useRef<CheckSheetType>(null)
+  const [sheetVisible, setSheetVisible] = useState(false)
+
+  const options = useMemo<readonly CheckSheetItem[]>(() => {
+    return PLAY_QUALITY_LIST.map(q => ({ action: q, label: qualityLabel(q, t) }))
+  }, [t])
+
+  const showSheet = useCallback(() => {
+    setSheetVisible(true)
+    requestAnimationFrame(() => {
+      sheetRef.current?.show()
+    })
+  }, [])
+
+  const handleChange = useCallback((item: CheckSheetItem) => {
+    updateSetting({ 'player.playQuality': item.action as LX.Quality })
+  }, [])
 
   return (
-    <SubTitle title={t('setting_play_play_quality')}>
-      <View style={styles.list}>
-        {
-          playQualityList.map((q) => <Item name={q} id={q} key={q} />)
-        }
-      </View>
-    </SubTitle>
+    <>
+      <SelectRow
+        label={t('setting_play_play_quality')}
+        value={qualityLabel(quality, t)}
+        onPress={showSheet}
+      />
+      {
+        sheetVisible
+          ? (
+              <CheckSheet
+                ref={sheetRef}
+                title={t('setting_play_play_quality')}
+                options={options}
+                value={quality}
+                onPress={handleChange}
+                onHide={() => { setSheetVisible(false) }}
+              />
+            )
+          : null
+      }
+    </>
   )
 })
-
-const styles = StyleSheet.create({
-  list: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-})
-
-
-// export default memo(() => {
-//   const t = useI18n()
-//   const isPlayHighQuality = useSettingValue('player.isPlayHighQuality')
-//   const setPlayHighQuality = (isPlayHighQuality: boolean) => {
-//     updateSetting({ 'player.isPlayHighQuality': isPlayHighQuality })
-//   }
-
-//   return (
-//     <View style={styles.content}>
-//       <CheckBoxItem check={isPlayHighQuality} onChange={setPlayHighQuality} label={t('setting_play_quality')} />
-//     </View>
-//   )
-// })
-
-
-// const styles = createStyle({
-//   content: {
-//     marginTop: 5,
-//   },
-// })
-

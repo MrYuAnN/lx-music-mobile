@@ -1,17 +1,14 @@
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
-import { createStyle, remoteLyricTip } from '@/utils/tools'
+import { remoteLyricTip } from '@/utils/tools'
 import { memo } from 'react'
-import { View } from 'react-native'
 import { useSettingValue } from '@/store/setting/hook'
 
-
-import CheckBoxItem from '../../components/CheckBoxItem'
+import SwitchRow from '../../components/SwitchRow'
 import { showRemoteLyric } from '@/core/desktopLyric'
 import { setLastLyric } from '@/core/player/playInfo'
 import { updateNowPlayingTitles } from '@/plugins/player/utils'
 import playerState from '@/store/player/state'
-import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
@@ -33,16 +30,7 @@ export default memo(() => {
   }
 
   return (
-    <View style={styles.content}>
-      <CheckBoxItem check={isShowBluetoothLyric} onChange={setShowBluetoothLyric} label={t('setting_play_show_bluetooth_lyric')} />
-    </View>
+    <SwitchRow check={isShowBluetoothLyric} onChange={setShowBluetoothLyric} label={t('setting_play_show_bluetooth_lyric')} />
   )
-})
-
-
-const styles = createStyle({
-  content: {
-    marginTop: SPACING.s6,
-  },
 })
 

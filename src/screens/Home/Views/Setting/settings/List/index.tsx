@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import Section from '../../components/Section'
+import SettingSection from '../../components/SettingSection'
 import AddMusicLocationType from './AddMusicLocationType'
 import IsClickPlayList from './IsClickPlayList'
 import IsShowAlbumName from './IsShowAlbumName'
@@ -12,11 +12,11 @@ export default memo(() => {
   const t = useI18n()
 
   return (
-    <Section title={t('setting_list')}>
+    <SettingSection title={t('setting_list')}>
       <IsClickPlayList />
       <IsShowAlbumName />
       <IsShowInterval />
       <AddMusicLocationType />
-    </Section>
+    </SettingSection>
   )
 })

@@ -9,28 +9,39 @@ import Download from './settings/Download'
 import Sync from './settings/Sync'
 import Backup from './settings/Backup'
 import Other from './settings/Other'
-import Version from './settings/Version'
 import About from './settings/About'
 
+// 节清单单源（2026-10-21 设置页重构：标准重组十节，version 并入 about；伴生 COMPONENTS
+// Record 查表渲染——横竖两 Main 共用，缺键 tsc 即失败，修复「数组单源/switch 双源」的
+// 竖屏缺挂 download 类事故结构洞）
 export const SETTING_SCREENS = [
   'basic',
   'player',
-  'lyric_desktop',
-  'search',
-  'list',
   'download',
+  'list',
+  'search',
+  'lyric_desktop',
   'sync',
   'backup',
   'other',
-  'version',
   'about',
 ] as const
 
 export type SettingScreenIds = typeof SETTING_SCREENS[number]
 
-// interface MainProps {
-//   onUpdateActiveId: (id: string) => void
-// }
+export const SETTING_COMPONENTS: Record<SettingScreenIds, React.ComponentType> = {
+  basic: Basic,
+  player: Player,
+  download: Download,
+  list: List,
+  search: Search,
+  lyric_desktop: LyricDesktop,
+  sync: Sync,
+  backup: Backup,
+  other: Other,
+  about: About,
+}
+
 export interface MainType {
   setActiveId: (id: SettingScreenIds) => void
 }
@@ -49,20 +60,8 @@ const Main = forwardRef<MainType, {}>((props, ref) => {
   }))
 
   const component = useMemo(() => {
-    switch (id) {
-      case 'player': return <Player />
-      case 'lyric_desktop': return <LyricDesktop />
-      case 'search': return <Search />
-      case 'list': return <List />
-      case 'download': return <Download />
-      case 'sync': return <Sync />
-      case 'backup': return <Backup />
-      case 'other': return <Other />
-      case 'version': return <Version />
-      case 'about': return <About />
-      case 'basic':
-      default: return <Basic />
-    }
+    const Section = SETTING_COMPONENTS[id]
+    return <Section />
   }, [id])
 
   return component
@@ -70,4 +69,3 @@ const Main = forwardRef<MainType, {}>((props, ref) => {
 
 
 export default Main
-

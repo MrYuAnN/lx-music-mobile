@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import Section from '../../components/Section'
+import SettingSection from '../../components/SettingSection'
 import IsSavePlayTime from './IsSavePlayTime'
 import PlayHighQuality from './PlayHighQuality'
 // N2 换装 lovegaoshi fork：handleAudioFocus/audioOffload 选项不支持，设置项隐藏（数据键保留）；
@@ -12,6 +12,7 @@ import IsShowLyricTranslation from './IsShowLyricTranslation'
 import IsShowLyricRoma from './IsShowLyricRoma'
 import IsS2T from './IsS2T'
 import MaxCache from './MaxCache'
+import DislikeList from './DislikeList'
 import { useI18n } from '@/lang'
 
 
@@ -19,7 +20,7 @@ export default memo(() => {
   const t = useI18n()
 
   return (
-    <Section title={t('setting_player')}>
+    <SettingSection title={t('setting_player')}>
       <IsSavePlayTime />
       <IsAutoCleanPlayedList />
       <IsShowBluetoothLyric />
@@ -29,6 +30,7 @@ export default memo(() => {
       <IsS2T />
       <MaxCache />
       <PlayHighQuality />
-    </Section>
+      <DislikeList />
+    </SettingSection>
   )
 })

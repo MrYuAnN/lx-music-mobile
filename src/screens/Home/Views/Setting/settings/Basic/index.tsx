@@ -1,7 +1,7 @@
 import { memo } from 'react'
 
 import Theme from '../Theme'
-import Section from '../../components/Section'
+import SettingSection from '../../components/SettingSection'
 import Source from './Source'
 import Language from './Language'
 import ShareType from './ShareType'
@@ -20,7 +20,7 @@ export default memo(() => {
 
 
   return (
-    <Section title={t('setting_basic')}>
+    <SettingSection title={t('setting_basic')}>
       <IsStartupAutoPlay />
       <IsStartupPushPlayDetailScreen />
       <IsShowExitBtn />
@@ -33,6 +33,6 @@ export default memo(() => {
       <Language />
       <ShareType />
       <Source />
-    </Section>
+    </SettingSection>
   )
 })

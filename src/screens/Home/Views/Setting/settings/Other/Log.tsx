@@ -7,7 +7,7 @@ import SubTitle from '../../components/SubTitle'
 import Button from '../../components/Button'
 import { createStyle, toast } from '@/utils/tools'
 import ConfirmAlert, { type ConfirmAlertType } from '@/components/common/ConfirmAlert'
-import CheckBoxItem from '../../components/CheckBoxItem'
+import SwitchRow from '../../components/SwitchRow'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
@@ -63,9 +63,9 @@ export default memo(() => {
   return (
     <>
       <SubTitle title={t('setting_other_log')}>
-        <View style={styles.checkBox}>
-          <CheckBoxItem check={isEnableSyncErrorLog} label={t('setting_other_log_sync_log')} onChange={handleSetEnableSyncErrorLog} />
-          <CheckBoxItem check={isEnableUserApiLog} label={t('setting_other_log_user_api_log')} onChange={handleSetEnableUserApiLog} />
+        <View style={styles.logSwitches}>
+          <SwitchRow check={isEnableSyncErrorLog} label={t('setting_other_log_sync_log')} onChange={handleSetEnableSyncErrorLog} />
+          <SwitchRow check={isEnableUserApiLog} label={t('setting_other_log_user_api_log')} onChange={handleSetEnableUserApiLog} />
         </View>
         <View style={styles.btn}>
           <Button onPress={openLogModal}>{t('setting_other_log_btn_show')}</Button>
@@ -93,10 +93,8 @@ export default memo(() => {
 })
 
 const styles = createStyle({
-  checkBox: {
-    // paddingTop: 10,
-    paddingBottom: SPACING.s16,
-    marginLeft: -25,
+  logSwitches: {
+    paddingBottom: SPACING.s4,
   },
   btn: {
     flexDirection: 'row',

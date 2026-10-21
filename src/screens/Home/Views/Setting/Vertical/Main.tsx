@@ -1,18 +1,8 @@
 import { memo, useMemo } from 'react'
 import { Animated, FlatList, type FlatListProps } from 'react-native'
 
-import Basic from '../settings/Basic'
-import Player from '../settings/Player'
-import LyricDesktop from '../settings/LyricDesktop'
-import Search from '../settings/Search'
-import List from '../settings/List'
-import Sync from '../settings/Sync'
-import Backup from '../settings/Backup'
-import Other from '../settings/Other'
-import Version from '../settings/Version'
-import About from '../settings/About'
 import { createStyle } from '@/utils/tools'
-import { SETTING_SCREENS, type SettingScreenIds } from '../Main'
+import { SETTING_COMPONENTS, SETTING_SCREENS, type SettingScreenIds } from '../Main'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { SPACING } from '@/config/spacing'
 
@@ -29,21 +19,13 @@ const styles = createStyle({
   },
 })
 
+// 节渲染查表单源（SETTING_COMPONENTS Record，2026-10-21 设置页重构：删双源 switch，
+// 修复竖屏缺挂 download 类事故结构洞）
 const ListItem = memo(({
   id,
 }: { id: SettingScreenIds }) => {
-  switch (id) {
-    case 'player': return <Player />
-    case 'lyric_desktop': return <LyricDesktop />
-    case 'search': return <Search />
-    case 'list': return <List />
-    case 'sync': return <Sync />
-    case 'backup': return <Backup />
-    case 'other': return <Other />
-    case 'version': return <Version />
-    case 'about': return <About />
-    case 'basic': return <Basic />
-  }
+  const Section = SETTING_COMPONENTS[id]
+  return <Section />
 }, () => true)
 
 export interface SettingMainProps {

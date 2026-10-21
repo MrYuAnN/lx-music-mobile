@@ -1,13 +1,9 @@
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
-import { createStyle } from '@/utils/tools'
 import { memo } from 'react'
-import { View } from 'react-native'
 import { useSettingValue } from '@/store/setting/hook'
 
-
-import CheckBoxItem from '../../components/CheckBoxItem'
-import { SPACING } from '@/config/spacing'
+import SwitchRow from '../../components/SwitchRow'
 
 export default memo(() => {
   const t = useI18n()
@@ -17,20 +13,10 @@ export default memo(() => {
   }
 
   return (
-    <View style={styles.content}>
-      <CheckBoxItem
-        check={val}
-        label={t('setting_basic_always_keep_statusbar_height')}
-        helpDesc={t('setting_basic_always_keep_statusbar_height_tip')}
-        onChange={update} />
-    </View>
+    <SwitchRow
+    check={val}
+  label={t('setting_basic_always_keep_statusbar_height')}
+  helpDesc={t('setting_basic_always_keep_statusbar_height_tip')}
+  onChange={update} />
   )
-})
-
-
-const styles = createStyle({
-  content: {
-    marginTop: SPACING.s6,
-    marginBottom: SPACING.s16,
-  },
 })

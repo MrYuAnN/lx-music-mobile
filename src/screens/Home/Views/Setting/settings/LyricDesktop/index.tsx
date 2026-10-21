@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import Section from '../../components/Section'
+import SettingSection from '../../components/SettingSection'
 import IsShowLyric from './IsShowLyric'
 import IsLockLyric from './IsLockLyric'
 import IsShowToggleAnima from './IsShowToggleAnima'
@@ -14,7 +14,7 @@ export default memo(() => {
   const t = useI18n()
 
   return (
-    <Section title={t('setting_lyric_desktop')}>
+    <SettingSection title={t('setting_lyric_desktop')}>
       <IsShowLyric />
       <IsLockLyric />
       <IsShowToggleAnima />
@@ -22,6 +22,6 @@ export default memo(() => {
       <Theme />
       <TextSize />
       <TextOpacity />
-    </Section>
+    </SettingSection>
   )
 })

@@ -1,13 +1,9 @@
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
-import { createStyle } from '@/utils/tools'
 import { memo } from 'react'
-import { View } from 'react-native'
 import { useSettingValue } from '@/store/setting/hook'
 
-
-import CheckBoxItem from '../../components/CheckBoxItem'
-import { SPACING } from '@/config/spacing'
+import SwitchRow from '../../components/SwitchRow'
 
 export default memo(() => {
   const t = useI18n()
@@ -17,16 +13,7 @@ export default memo(() => {
   }
 
   return (
-    <View style={styles.content}>
-      <CheckBoxItem check={isS2t} onChange={setS2T} label={t('setting_play_s2t')} />
-    </View>
+    <SwitchRow check={isS2t} onChange={setS2T} label={t('setting_play_s2t')} />
   )
-})
-
-
-const styles = createStyle({
-  content: {
-    marginTop: SPACING.s6,
-  },
 })
 

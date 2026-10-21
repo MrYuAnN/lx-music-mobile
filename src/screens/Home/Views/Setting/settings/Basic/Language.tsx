@@ -1,46 +1,26 @@
 import { memo, useMemo } from 'react'
 
-import { StyleSheet, View } from 'react-native'
-
-import SubTitle from '../../components/SubTitle'
-import CheckBox from '@/components/common/CheckBox'
+import OptionsRow from '../../components/OptionsRow'
 import type { I18n } from '@/lang'
 import { useI18n, langList } from '@/lang'
 import { setLanguage } from '@/core/common'
 import { useSettingValue } from '@/store/setting/hook'
 
-const useActive = (id: I18n['locale']) => {
-  const activeLangId = useSettingValue('common.langId')
-  const isActive = useMemo(() => activeLangId == id, [activeLangId, id])
-  return isActive
-}
-
-const Item = ({ id, name }: {
-  id: I18n['locale']
-  name: string
-}) => {
-  const isActive = useActive(id)
-  // const [toggleCheckBox, setToggleCheckBox] = useState(false)
-  return <CheckBox marginRight={8} check={isActive} label={name} onChange={() => { setLanguage(id) }} need />
-}
-
+// 语言选择（2026-10-21 设置页重构：3 项短文案按判据归行内胶囊组，替代 SubTitle+CheckBox 组）
 export default memo(() => {
   const t = useI18n()
+  const activeLangId = useSettingValue('common.langId')
+
+  const items = useMemo(() => {
+    return langList.map(({ locale, name }) => ({ id: locale, label: name }))
+  }, [])
 
   return (
-    <SubTitle title={t('setting_basic_lang')}>
-      <View style={styles.list}>
-        {
-          langList.map(({ locale, name }) => <Item name={name} id={locale} key={locale} />)
-        }
-      </View>
-    </SubTitle>
+    <OptionsRow
+      label={t('setting_basic_lang')}
+      items={items}
+      activeId={activeLangId ?? ''}
+      onChange={id => { setLanguage(id as I18n['locale']) }}
+    />
   )
-})
-
-const styles = StyleSheet.create({
-  list: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
 })

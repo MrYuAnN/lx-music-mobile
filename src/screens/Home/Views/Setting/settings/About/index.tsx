@@ -1,60 +1,100 @@
-import { memo } from 'react'
+import { memo, useState, useEffect } from 'react'
 import { View, TouchableOpacity } from 'react-native'
 
-import Section from '../components/Section'
-// import Button from './components/Button'
-
+import SettingSection from '../../components/SettingSection'
+import Button from '../../components/Button'
+import { sizeFormate } from '@/utils'
 import { createStyle, openUrl } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import Text, { FontFamilies } from '@/components/common/Text'
+import { useVersionDownloadProgressUpdated, useVersionInfo } from '@/store/version/hook'
+import { showModal } from '@/core/version'
+import { FORM_ROW_PADDING } from '@/config/form'
 import { SPACING } from '@/config/spacing'
 
-// const qqGroupUrl = 'mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3Du1zyxek8roQAwic44nOkBXtG9CfbAxFw'
-// const qqGroupUrl2 = 'mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26jump_from%3Dwebapi%26k%3D-l4kNZ2bPQAuvfCQFFhl1UoibvF5wcrQ'
-// const qqGroupWebUrl = 'https://qm.qq.com/cgi-bin/qm/qr?k=jRZkyFSZ4FmUuTHA3P_RAXbbUO_Rrn5e&jump_from=webapi'
-// const qqGroupWebUrl2 = 'https://qm.qq.com/cgi-bin/qm/qr?k=HPNJEfrZpBZ9T8szYWbe2d5JrAAeOt_l&jump_from=webapi'
+const currentVer = process.versions.app
 
+const openHomePage = () => {
+  void openUrl('https://github.com/lyswhut/lx-music-mobile#readme')
+}
+const openIssuePage = () => {
+  void openUrl('https://github.com/lyswhut/lx-music-mobile/issues?q=is%3Aissue+')
+}
+const openGHReleasePage = () => {
+  void openUrl('https://github.com/lyswhut/lx-music-mobile/releases')
+}
+const openFAQPage = () => {
+  void openUrl('https://lyswhut.github.io/lx-music-doc/mobile/faq')
+}
+
+// 关于节（2026-10-21 设置页重构：版本节并入——Version 六态状态机收编为卡内
+// 版本信息行+动态状态行+检查更新按钮，正文说明保留；正文硬编码中文为已知现状不动）
 export default memo(() => {
   const theme = useTheme()
   const t = useI18n()
-  const openHomePage = () => {
-    void openUrl('https://github.com/lyswhut/lx-music-mobile#readme')
-  }
-  const openIssuePage = () => {
-    void openUrl('https://github.com/lyswhut/lx-music-mobile/issues?q=is%3Aissue+')
-  }
-  const openGHReleasePage = () => {
-    void openUrl('https://github.com/lyswhut/lx-music-mobile/releases')
-  }
-  const openFAQPage = () => {
-    void openUrl('https://lyswhut.github.io/lx-music-doc/mobile/faq')
-  }
-  // const openIssuesPage = () => {
-  //   openUrl('https://github.com/lyswhut/lx-music-mobile/issues')
-  // }
+  const versionInfo = useVersionInfo()
+  const progress = useVersionDownloadProgressUpdated()
+  const [statusText, setStatusText] = useState('')
 
-  // const goToQQGroup = () => {
-  //   openUrl(qqGroupUrl).catch(() => {
-  //     void openUrl(qqGroupWebUrl)
-  //   })
-  // }
-  // const goToQQGroup2 = () => {
-  //   openUrl(qqGroupUrl2).catch(() => {
-  //     void openUrl(qqGroupWebUrl2)
-  //   })
-  // }
+  useEffect(() => {
+    if (versionInfo.isLatest) {
+      setStatusText(t('version_tip_latest'))
+    } else if (versionInfo.isUnknown) {
+      setStatusText(t('version_tip_unknown'))
+    } else {
+      switch (versionInfo.status) {
+        case 'downloading':
+          setStatusText(t('version_btn_downloading', {
+            total: sizeFormate(progress.total),
+            current: sizeFormate(progress.current),
+            progress: progress.total == 0 ? 0 : Math.floor((progress.current / progress.total) * 100),
+          }))
+          break
+        case 'downloaded':
+          setStatusText(t('version_title_update'))
+          break
+        case 'checking':
+          setStatusText(t('version_title_checking'))
+          break
+        case 'error':
+          setStatusText(t('version_tip_failed'))
+          break
+        default:
+          setStatusText(t('version_title_new'))
+          break
+      }
+    }
+  }, [t, versionInfo, progress])
 
   const textLinkStyle = {
     ...styles.text,
     textDecorationLine: 'underline',
     color: theme['c-primary-font'],
-    // fontSize: 14,
   } as const
 
-
   return (
-    <Section title={t('setting_about')}>
+    <SettingSection title={t('setting_about')}>
+      <View style={styles.row}>
+        <Text style={styles.label}>{t('version_label_current_ver')}</Text>
+        <Text style={styles.value}>{currentVer}</Text>
+      </View>
+      <View style={styles.row}>
+        <Text style={styles.label}>{t('version_label_latest_ver')}</Text>
+        <Text style={styles.value}>{versionInfo.newVersion?.version ?? '--'}</Text>
+      </View>
+      {
+        statusText
+          ? (
+              <View style={styles.row}>
+                <Text size={13} color={theme['c-font-label']}>{statusText}</Text>
+              </View>
+            )
+          : null
+      }
+      <View style={styles.row}>
+        <Button onPress={() => { showModal() }}>{t('setting_version_show_ver_modal')}</Button>
+      </View>
       <View style={styles.part}>
         <Text style={styles.text} >本软件完全免费，代码已开源。开源地址：</Text>
         <TouchableOpacity onPress={openHomePage}>
@@ -100,11 +140,24 @@ export default memo(() => {
         <Text style={styles.text}>By: </Text>
         <Text style={styles.text}>落雪无痕</Text>
       </View>
-    </Section>
+    </SettingSection>
   )
 })
 
 const styles = createStyle({
+  row: {
+    ...FORM_ROW_PADDING,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  label: {
+    flexGrow: 1,
+    flexShrink: 1,
+    paddingRight: SPACING.s12,
+  },
+  value: {
+    flexShrink: 1,
+  },
   part: {
     marginLeft: SPACING.s16,
     marginRight: SPACING.s16,

@@ -1,6 +1,6 @@
 import { memo } from 'react'
 
-import Section from '../../components/Section'
+import SettingSection from '../../components/SettingSection'
 import IsShowHotSearch from './IsShowHotSearch'
 import IsShowHistorySearch from './IsShowHistorySearch'
 
@@ -10,9 +10,9 @@ export default memo(() => {
   const t = useI18n()
 
   return (
-    <Section title={t('setting_search')}>
+    <SettingSection title={t('setting_search')}>
       <IsShowHotSearch />
       <IsShowHistorySearch />
-    </Section>
+    </SettingSection>
   )
 })
