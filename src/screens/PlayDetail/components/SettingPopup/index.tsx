@@ -53,20 +53,15 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
             <View style={styles.cards} onStartShouldSetResponder={() => true}>
               <SectionHeader label={t('playback')} />
               <SettingTimeoutExit />
-              <Divider />
               <SettingPlaybackRate />
+              {/* 横线语义反转（2026-10-21 真机反馈拍板）：线只作组间边界（组内无线靠行距），易误读的组内线废弃 */}
+              <Divider />
               <SectionHeader label={t('lyric')} />
               <SettingLyricProgress />
-              <Divider />
               <SettingLrcAlign />
               {/* 字体大小已上播放页歌词动作行（方案 §问题7 拍板：竖屏删、横屏留；歌词节行序=拖拽→对齐→字体大小） */}
               {direction == 'horizontal'
-                ? (
-                    <>
-                      <Divider />
-                      <SettingLrcFontSize direction={direction} />
-                    </>
-                  )
+                ? <SettingLrcFontSize direction={direction} />
                 : null}
             </View>
           </ScrollView>

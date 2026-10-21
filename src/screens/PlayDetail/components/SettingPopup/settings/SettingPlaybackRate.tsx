@@ -17,8 +17,9 @@ import styles from './style'
 // （B 站预设列表/网易云横排预设/Spotify 循环切换，滑杆自定义小众）；点 1x 即重置（语义内化，
 // 原滑杆+重置钮废弃）。非预设历史值（如 0.62x）无勾选态，标题右侧显示当前值小字（审查过渡期
 // 补偿），点任一预设即归化、小字消失。
-// 2026-10-21 布局治理拍板：block 布局标题独行 + 胶囊 wrap 整行换行全可见（弃横向滚动）、
-// glass 玻璃填充 + flush 贴 16dp 单一网格
+// 2026-10-21 布局治理拍板：block 布局标题独行 + glass 玻璃填充 + flush 贴 16dp 单一网格；
+// 真机反馈轮（同日）：wrap 5+1 掉行占三行难看——改 uniform 单行六等分（对标长视频倍速排），
+// 恒一行高度减半
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default () => {
@@ -53,7 +54,7 @@ export default () => {
         onChange={id => { handleRateChange(parseFloat(id)) }}
         style={styles.chips}
         fill="glass"
-        wrap
+        layout="uniform"
         flush
         expandTouch
       />

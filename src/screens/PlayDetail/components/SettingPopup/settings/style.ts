@@ -4,11 +4,12 @@ import { SPACING } from '@/config/spacing'
 export default createStyle({
   // 字体大小行容器（SettingLrcFontSize 专用）：双场景消费——横屏更多弹层 + 竖屏歌词动作行
   // SheetBase，调参须双场景走查（审查 S-D）；padding 与 Card.tsx ROW_PADDING 同值双源互指
+  // （py s8 组内致密，同 Card）
   container: {
-    paddingTop: SPACING.s12,
+    paddingTop: SPACING.s8,
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
-    paddingBottom: SPACING.s12,
+    paddingBottom: SPACING.s8,
     alignItems: 'flex-start',
   },
   // title: {

@@ -14,12 +14,14 @@ export default ({ children, layout = 'inline' }: { children: React.ReactNode, la
 }
 
 // 行内边距单源：row/block 共享（审查 S-C）；与 style.ts container（SettingLrcFontSize 行）同值
-// 双源互指，调行节奏须两处同步
+// 双源互指，调行节奏须两处同步。
+// py s8（2026-10-21 真机反馈：去组内发丝线后 24dp 行距读成大空档——业界分组=组内致密+组间大留白，
+// 行距收至 16dp 与节头 pt s24 形成约 2:1 反差）
 const ROW_PADDING = {
   paddingLeft: SPACING.s16,
   paddingRight: SPACING.s16,
-  paddingTop: SPACING.s12,
-  paddingBottom: SPACING.s12,
+  paddingTop: SPACING.s8,
+  paddingBottom: SPACING.s8,
 }
 
 const styles = createStyle({

@@ -33,7 +33,7 @@ export default () => {
   return (
     <Card layout="block">
       <Text>{t('play_detail_setting_lrc_align')}</Text>
-      <CategoryChips items={list} activeId={align} onChange={setPosition} style={styles.chips} fill="glass" wrap flush expandTouch />
+      <CategoryChips items={list} activeId={align} onChange={setPosition} style={styles.chips} fill="glass" layout="wrap" flush expandTouch />
     </Card>
   )
 }
