@@ -191,7 +191,9 @@ const InputSheet = ({
             disabled={!text.trim().length}
             onPressIn={handleConfirm}
           >
-            <Text size={14} color={theme['c-on-primary']}>{confirmText ?? t('confirm')}</Text>
+            {/* 空串同样回退默认文案（|| 非 ??）：动态文案消费方（定时关闭）在未开启态传空串，
+                ?? 会让确认钮白底无字（真机反馈 2026-10-21） */}
+            <Text size={14} color={theme['c-on-primary']}>{confirmText || t('confirm')}</Text>
           </Button>
         </View>
       </View>

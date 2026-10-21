@@ -39,13 +39,6 @@ const styles = createStyle({
     minWidth: '60%',
     maxHeight: '78%',
     borderRadius: DIALOG_RADIUS,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    // 无阴影（对齐 Dialog/Menu 拍板：elevation 阴影轮廓=「外框+白块」两层分离感根源）
   },
 })

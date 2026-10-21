@@ -27,14 +27,9 @@ const styles = createStyle({
     minWidth: '60%',
     maxHeight: '78%',
     borderRadius: DIALOG_RADIUS,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 6,
-    },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 8,
+    // 无阴影（真机反馈 2026-10-20：与菜单浮层同款「外框+白块」两层分离感，根源=elevation 阴影
+    // 轮廓把面板框成独立一块——对齐 Menu 38da2ffb 拍板「毛玻璃与页面融合一体」）：层次由跨窗
+    // blur-behind+GLASS_TINT 承担，只剩圆角与背景模糊的差异
   },
   // iOS Alert 式头部（弹窗体系统一方案批1 拍板#3）：居中加粗标题，旧色条头部移除；
   // 字号字重对齐 SheetBase title，对齐方式按 iOS Alert 居中（两族对齐相反为有意差异，勿照抄左对齐）

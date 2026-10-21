@@ -3,9 +3,11 @@ import { View, TouchableOpacity } from 'react-native'
 
 import Modal, { type ModalType } from './Modal'
 import { Icon } from '@/components/common/Icon'
+import { sheetHandleStyles, MASK_COLOR } from './SheetBase'
+import useDialogBlurBehind from './useDialogBlurBehind'
+import { GLASS_TINT } from './GlassSurface'
 import { useBottomInset } from '@/utils/insetsTool'
 import { createStyle } from '@/utils/tools'
-import { scaleSizeW } from '@/utils/pixelRatio'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import Text from './Text'
@@ -19,21 +21,21 @@ const styles = createStyle({
     // alignItems: 'center',
   },
   modalView: {
-    elevation: 6,
+    // 无阴影（对齐 Menu/Dialog 拍板：elevation 阴影轮廓=「外框+白块」两层分离感根源）
     flexGrow: 0,
     flexShrink: 1,
   },
   header: {
     flex: 0,
     flexDirection: 'row',
-    borderTopLeftRadius: scaleSizeW(16),
-    borderTopRightRadius: scaleSizeW(16),
+    // 标题对齐 SheetBase（17/600 左对齐，弹窗体系头部单源；原 13px 小字+右上叉为旧体系残留）
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s4,
   },
   title: {
-    paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s26,
-    paddingTop: SPACING.s10,
-    paddingBottom: SPACING.s10,
+    fontWeight: '600',
     // lineHeight: 20,
   },
   closeBtn: {
@@ -55,6 +57,8 @@ export interface PopupProps {
   keyHide?: boolean
   bgHide?: boolean
   closeBtn?: boolean
+  /** 顶部把手（2026-10-20 真机反馈：对齐全弹窗体系「上中横条」，替代右上叉关闭惯例） */
+  handle?: boolean
   position?: 'top' | 'left' | 'right' | 'bottom'
   title?: string
   children: React.ReactNode
@@ -69,6 +73,7 @@ export default forwardRef<PopupType, PopupProps>(({
   keyHide = true,
   bgHide = true,
   closeBtn = true,
+  handle = false,
   position = 'bottom',
   title = '',
   children,
@@ -76,11 +81,16 @@ export default forwardRef<PopupType, PopupProps>(({
   const theme = useTheme()
   const bottomInset = useBottomInset()
   const statusBarHeight = useStatusbarHeight()
+  // 弹层玻璃（2026-10-20 真机反馈补接线：播放队列/设置等 Popup 弹层此前实色，与页面其它弹窗
+  // 材质割裂——对齐 SheetBase/Dialog 同款跨窗 blur-behind+GLASS_TINT 分流，回退实色观感同旧版）
+  const { blurBehind, armAndRefresh } = useDialogBlurBehind()
 
   const modalRef = useRef<ModalType>(null)
 
   useImperativeHandle(ref, () => ({
     setVisible(visible: boolean) {
+      // arm 须在 Modal setVisible 之前（窗口创建即消费，SheetBase 同款时序）
+      if (visible) armAndRefresh()
       modalRef.current?.setVisible(visible)
     },
   }))
@@ -172,12 +182,21 @@ export default forwardRef<PopupType, PopupProps>(({
   }, [position, statusBarHeight])
 
   return (
-    <Modal onHide={onHide} keyHide={keyHide} bgHide={bgHide} bgColor="rgba(50,50,50,.2)" ref={modalRef}>
+    <Modal onHide={onHide} keyHide={keyHide} bgHide={bgHide} bgColor={MASK_COLOR} ref={modalRef}>
       <View style={{ ...styles.centeredView, ...centeredViewStyle }}>
-        {/* inset 垫在白底内部（延伸式）：sheet 表面盖住手势条区，内容避让（对齐 AM 底部弹层惯例） */}
-        <View style={{ ...styles.modalView, ...modalViewStyle, paddingBottom: bottomInset, backgroundColor: theme['c-content-background'] }} onStartShouldSetResponder={() => true}>
+        {/* inset 垫在弹层内部（延伸式）：sheet 表面盖住手势条区，内容避让（对齐 AM 底部弹层惯例）；
+            玻璃 tint（blur-behind 透出模糊底）vs 实色回退——GLASS_TINT 弹层族单源 */}
+        <View
+          style={{ ...styles.modalView, ...modalViewStyle, paddingBottom: bottomInset, backgroundColor: blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : theme['c-content-background'] }}
+          onStartShouldSetResponder={() => true}
+        >
+          {handle ? (
+            <View style={sheetHandleStyles.handle}>
+              <View style={{ ...sheetHandleStyles.handleBar, backgroundColor: theme['c-font-label'] }} />
+            </View>
+          ) : null}
           <View style={styles.header}>
-            <Text size={13} style={styles.title} numberOfLines={1}>{title}</Text>
+            <Text size={17} style={styles.title} numberOfLines={1}>{title}</Text>
             {closeBtnComponent}
           </View>
           {children}
