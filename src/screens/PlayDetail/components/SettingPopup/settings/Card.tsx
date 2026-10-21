@@ -1,7 +1,7 @@
 import { View } from 'react-native'
 
 import { createStyle } from '@/utils/tools'
-import { SPACING } from '@/config/spacing'
+import { FORM_ROW_PADDING } from '@/config/form'
 
 // 设置行容器（2026-10-21 真机反馈重构：原「独立白底行卡」在玻璃上成白框——
 // 对齐 Apple Music 弹层惯例：玻璃面板直排裸行，层级靠行节奏+行间发丝线+控件体量，
@@ -13,26 +13,17 @@ export default ({ children, layout = 'inline' }: { children: React.ReactNode, la
   return <View style={layout === 'block' ? styles.block : styles.row}>{children}</View>
 }
 
-// 行内边距单源：row/block 共享（审查 S-C）；与 style.ts container（SettingLrcFontSize 行）同值
-// 双源互指，调行节奏须两处同步。
-// py s8（2026-10-21 真机反馈：去组内发丝线后 24dp 行距读成大空档——业界分组=组内致密+组间大留白，
-// 行距收至 16dp 与节头 pt s24 形成约 2:1 反差）
-const ROW_PADDING = {
-  paddingLeft: SPACING.s16,
-  paddingRight: SPACING.s16,
-  paddingTop: SPACING.s8,
-  paddingBottom: SPACING.s8,
-}
-
+// 行内边距=FORM_ROW_PADDING 单源（2026-10-21 设置页重构起与设置行组件共享，审查 S-A 定案不互指；
+// py s8 组内致密——业界分组=组内致密+组间大留白，与节头 pt s24 形成约 2:1 反差）
 const styles = createStyle({
   row: {
-    ...ROW_PADDING,
+    ...FORM_ROW_PADDING,
     alignItems: 'center',
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
   block: {
-    ...ROW_PADDING,
+    ...FORM_ROW_PADDING,
     alignItems: 'stretch',
     flexDirection: 'column',
   },
