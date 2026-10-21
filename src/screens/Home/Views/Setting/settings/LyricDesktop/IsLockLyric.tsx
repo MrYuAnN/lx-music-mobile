@@ -6,17 +6,15 @@ import { createStyle } from '@/utils/tools'
 
 
 import CheckBoxItem from '../../components/CheckBoxItem'
-import { toggleDesktopLyricLock } from '@/core/desktopLyric'
-import { updateSetting } from '@/core/common'
+import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { SPACING } from '@/config/spacing'
 
 export default memo(() => {
   const t = useI18n()
   const isLock = useSettingValue('desktopLyric.isLock')
+  // 锁定走含通知权限请求的主链路（审查 I4）；解锁直达
   const setLock = (isLock: boolean) => {
-    void toggleDesktopLyricLock(isLock).then(() => {
-      updateSetting({ 'desktopLyric.isLock': isLock })
-    })
+    void (isLock ? lockDesktopLyric() : unlockDesktopLyric()).catch(() => {})
   }
 
   return (

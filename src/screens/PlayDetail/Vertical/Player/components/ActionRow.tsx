@@ -18,7 +18,7 @@ import { navigations } from '@/navigation'
 import commonState from '@/store/common/state'
 import { updateSetting } from '@/core/common'
 import { toggleTranslation } from '@/core/lyric'
-import { toggleDesktopLyricLock as lrcToggleDesktopLyricLock } from '@/core/desktopLyric'
+import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { reloadCurrentWithQuality } from '@/core/player/player'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
 import { qualityLabel } from '@/utils/music'
@@ -87,10 +87,9 @@ const ActionRow = ({ page }: ActionRowProps) => {
   }, [enabledLyric])
 
   const toggleDesktopLyricLock = useCallback(() => {
+    // 锁定走含通知权限请求的主链路（审查 I4）；解锁直达
     const isLock = !settingState.setting['desktopLyric.isLock']
-    void lrcToggleDesktopLyricLock(isLock).then(() => {
-      updateSetting({ 'desktopLyric.isLock': isLock })
-    }).catch(() => {})
+    void (isLock ? lockDesktopLyric() : unlockDesktopLyric()).catch(() => {})
   }, [])
 
   const showQualitySheet = useCallback(() => {

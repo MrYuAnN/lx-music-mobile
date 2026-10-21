@@ -96,3 +96,8 @@ export {
   useI18n,
   createI18n,
 }
+
+/** 非 hook 上下文取文案（core 层 toast 等；i18n 未初始化时返回空串） */
+export const getMessage = (key: keyof Message): string => {
+  return i18n?.getMessage(key) ?? ''
+}

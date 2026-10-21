@@ -2,33 +2,6 @@ import { NativeModules, NativeEventEmitter } from 'react-native'
 
 const { LyricModule } = NativeModules
 
-// export const themes = [
-//   { id: 'green', value: '#07c556' },
-//   { id: 'yellow', value: '#fffa12' },
-//   { id: 'blue', value: '#19b5fe' },
-//   { id: 'red', value: '#ff1222' },
-//   { id: 'pink', value: '#f1828d' },
-//   { id: 'purple', value: '#c851d4' },
-//   { id: 'orange', value: '#ffad12' },
-//   { id: 'grey', value: '#bdc3c7' },
-//   { id: 'black', value: '#333333' },
-//   { id: 'white', value: '#ffffff' },
-// ]
-
-// export const textPositionX = [
-//   { id: 'left', value: 'LEFT' },
-//   { id: 'center', value: 'CENTER' },
-//   { id: 'right', value: 'RIGHT' },
-// ]
-// export const textPositionY = [
-//   { id: 'top', value: 'TOP' },
-//   { id: 'center', value: 'CENTER' },
-//   { id: 'bottom', value: 'BOTTOM' },
-// ]
-
-// const getThemeColor = themeId => (themes.find(t => t.id == themeId) || themes[0]).value
-// const getTextPositionX = x => (textPositionX.find(t => t.id == x) || textPositionX[0]).value
-// const getTextPositionY = y => (textPositionY.find(t => t.id == y) || textPositionY[0]).value
 const getAlpha = (num: number) => num / 100
 const getTextSize = (num: number) => num / 10
 
@@ -47,8 +20,6 @@ export const setSendLyricTextEvent = async(isSend: boolean) => {
 export const showDesktopLyricView = async({
   isShowToggleAnima,
   isSingleLine,
-  width,
-  maxLineNum,
   isLock,
   unplayColor,
   playedColor,
@@ -57,13 +28,9 @@ export const showDesktopLyricView = async({
   textSize,
   positionX,
   positionY,
-  textPositionX,
-  textPositionY,
 }: {
   isShowToggleAnima: boolean
   isSingleLine: boolean
-  width: number
-  maxLineNum: number
   isLock: boolean
   unplayColor: string
   playedColor: string
@@ -72,8 +39,6 @@ export const showDesktopLyricView = async({
   textSize: number
   positionX: number
   positionY: number
-  textPositionX: LX.AppSetting['desktopLyric.textPosition.x']
-  textPositionY: LX.AppSetting['desktopLyric.textPosition.y']
 }): Promise<void> => {
   return LyricModule.showDesktopLyric({
     isSingleLine,
@@ -86,10 +51,6 @@ export const showDesktopLyricView = async({
     textSize: getTextSize(textSize),
     lyricViewX: positionX,
     lyricViewY: positionY,
-    textX: textPositionX.toUpperCase(),
-    textY: textPositionY.toUpperCase(),
-    width,
-    maxLineNum,
   })
 }
 
@@ -100,6 +61,23 @@ export const hideDesktopLyricView = async(): Promise<void> => {
   return LyricModule.hideDesktopLyric()
 }
 
+/**
+ * 前台隐身（D7）：摘窗保实例，恢复即显示当前行
+ */
+export const pauseDesktopLyricView = async(): Promise<void> => {
+  return LyricModule.pauseDesktopLyricView()
+}
+
+export const resumeDesktopLyricView = async(): Promise<void> => {
+  return LyricModule.resumeDesktopLyricView()
+}
+
+/**
+ * 播放态同步（工具条播放/暂停图标）
+ */
+export const setDesktopLyricPlayState = async(isPlay: boolean): Promise<void> => {
+  return LyricModule.setDesktopLyricPlayState(isPlay)
+}
 
 /**
  * play lyric
@@ -140,7 +118,7 @@ export const toggleTranslation = async(isShowTranslation: boolean): Promise<void
 }
 
 /**
- * toggle show roma lyric
+ * toggle show roma lyric（roma 已移出悬浮窗（D10），桥保留仅同步内嵌歌词链路状态）
  * @param isShowRoma is show roma lyric
  */
 export const toggleRoma = async(isShowRoma: boolean): Promise<void> => {
@@ -189,26 +167,6 @@ export const setSingleLine = async(isSingleLine: boolean): Promise<void> => {
   return LyricModule.setSingleLine(isSingleLine)
 }
 
-export const setPosition = async(x: number, y: number): Promise<void> => {
-  return LyricModule.setPosition(x, y)
-}
-
-export const setMaxLineNum = async(maxLineNum: number): Promise<void> => {
-  return LyricModule.setMaxLineNum(maxLineNum)
-}
-
-export const setWidth = async(width: number): Promise<void> => {
-  return LyricModule.setWidth(width)
-}
-
-// export const fixViewPosition = async(): Promise<void> => {
-//   return LyricModule.fixViewPosition()
-// }
-
-export const setLyricTextPosition = async(textX: LX.AppSetting['desktopLyric.textPosition.x'], textY: LX.AppSetting['desktopLyric.textPosition.y']): Promise<void> => {
-  return LyricModule.setLyricTextPosition(textX.toUpperCase(), textY.toUpperCase())
-}
-
 export const checkOverlayPermission = async(): Promise<void> => {
   return LyricModule.checkOverlayPermission()
 }
@@ -241,3 +199,29 @@ export const onLyricLinePlay = (handler: (lineInfo: { text: string, extendedLyri
   }
 }
 
+export type DesktopLyricToolbarAction = 'togglePlay' | 'skipPrev' | 'skipNext'
+  | 'fontSizeDown' | 'fontSizeUp' | 'lock' | 'close'
+
+export const onToolbarAction = (handler: (action: DesktopLyricToolbarAction) => void): () => void => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  const eventEmitter = new NativeEventEmitter(LyricModule)
+  const eventListener = eventEmitter.addListener('lyric-toolbar-action', event => {
+    handler((event as { action: DesktopLyricToolbarAction }).action)
+  })
+
+  return () => {
+    eventListener.remove()
+  }
+}
+
+export const onLockChange = (handler: (lockInfo: { isLock: boolean }) => void): () => void => {
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+  const eventEmitter = new NativeEventEmitter(LyricModule)
+  const eventListener = eventEmitter.addListener('lyric-lock-changed', event => {
+    handler(event as { isLock: boolean })
+  })
+
+  return () => {
+    eventListener.remove()
+  }
+}

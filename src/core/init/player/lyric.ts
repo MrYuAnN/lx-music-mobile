@@ -1,6 +1,6 @@
 import { init as initLyricPlayer, toggleTranslation, toggleRoma, play, pause, stop, setLyric, setPlaybackRate } from '@/core/lyric'
 import { updateSetting } from '@/core/common'
-import { onDesktopLyricPositionChange, showDesktopLyric, onLyricLinePlay, showRemoteLyric } from '@/core/desktopLyric'
+import { initDesktopLyricListener, onDesktopLyricPositionChange, setDesktopLyricPlayState, showDesktopLyric, onLyricLinePlay, showRemoteLyric } from '@/core/desktopLyric'
 import playerState from '@/store/player/state'
 import { updateNowPlayingTitles } from '@/plugins/player/utils'
 import { setLastLyric } from '@/core/player/playInfo'
@@ -54,11 +54,29 @@ export default async(setting: LX.AppSetting) => {
     }
   })
 
+  // 悬浮歌词事件接线（工具条动作/通知解锁回写/前后台隐身 D7）
+  initDesktopLyricListener()
 
-  global.app_event.on('play', play)
-  global.app_event.on('pause', pause)
-  global.app_event.on('stop', stop)
-  global.app_event.on('error', pause)
-  global.app_event.on('musicToggled', stop)
+  // 播放态同步悬浮歌词工具条播放/暂停图标
+  global.app_event.on('play', () => {
+    play()
+    void setDesktopLyricPlayState(true)
+  })
+  global.app_event.on('pause', () => {
+    pause()
+    void setDesktopLyricPlayState(false)
+  })
+  global.app_event.on('stop', () => {
+    stop()
+    void setDesktopLyricPlayState(false)
+  })
+  global.app_event.on('error', () => {
+    pause()
+    void setDesktopLyricPlayState(false)
+  })
+  global.app_event.on('musicToggled', () => {
+    stop()
+    void setDesktopLyricPlayState(false)
+  })
   global.app_event.on('lyricUpdated', setLyric)
 }
