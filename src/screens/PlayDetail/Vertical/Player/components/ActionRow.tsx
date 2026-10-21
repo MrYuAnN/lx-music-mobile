@@ -156,12 +156,12 @@ const ActionRow = ({ page }: ActionRowProps) => {
   // 歌词页动作组（参考图2：字体大小/翻译/悬浮歌词/更多）
   const lyricActions = useMemo<ActionItem[]>(() => {
     return [
-      { id: 'font_size', icon: 'edit-metadata', label: t('font_size'), onPress: showFontSizeSheet },
-      { id: 'translation', icon: 'toggle-source', label: t('translation'), onPress: handleToggleTranslation, disabled: !hasTranslation },
+      { id: 'font_size', icon: 'font-size', label: t('font_size'), onPress: showFontSizeSheet },
+      { id: 'translation', icon: isShowTranslation ? 'translate-on' : 'translate-off', label: t('translation'), onPress: handleToggleTranslation, disabled: !hasTranslation },
       { id: 'desktop_lyric', icon: enabledLyric ? 'lyric-on' : 'lyric-off', label: t('desktop_lyric'), onPress: toggleDesktopLyric, onLongPress: toggleDesktopLyricLock },
       { id: 'more', icon: 'more', label: t('more_action'), onPress: showSettingPopup },
     ]
-  }, [t, hasTranslation, enabledLyric, showFontSizeSheet, handleToggleTranslation, toggleDesktopLyric, toggleDesktopLyricLock, showSettingPopup])
+  }, [t, hasTranslation, enabledLyric, isShowTranslation, showFontSizeSheet, handleToggleTranslation, toggleDesktopLyric, toggleDesktopLyricLock, showSettingPopup])
 
   const actions = page == 1 ? lyricActions : coverActions
 
@@ -178,9 +178,11 @@ const ActionRow = ({ page }: ActionRowProps) => {
             onLongPress={action.onLongPress}
           >
             {
-              // 「更多」用 DotsVertical 组件（Icon 三点字形为横向，项目约定恒竖向；业界 AM/Spotify 同为 ellipsis 唤起菜单）
+              // 「更多」用 DotsVertical 组件（Icon 三点字形为横向，项目约定恒竖向；业界 AM/Spotify 同为 ellipsis 唤起菜单）。
+              // size=动作图标半高（真机反馈 2026-10-20：默认 14dp 实心点与 24dp 线性图标同框显粗大——
+              // 缩至 12dp 槽内点径 2.6dp，视觉密度对齐线性图标线宽）
               action.id === 'more'
-                ? <View style={styles.moreIconSlot}><DotsVertical color={action.disabled ? theme['c-font-label'] : theme['c-font']} /></View>
+                ? <View style={styles.moreIconSlot}><DotsVertical size={ICON_SIZE_ACTION * 0.5} color={action.disabled ? theme['c-font-label'] : theme['c-font']} /></View>
                 : <Icon name={action.icon} size={ICON_SIZE_ACTION} color={action.disabled ? theme['c-font-label'] : theme['c-font']} />
             }
             <Text style={styles.label} size={11} numberOfLines={1} color={theme['c-font-label']}>{action.label}</Text>

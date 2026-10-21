@@ -13,7 +13,8 @@ import settingState from '@/store/setting/state'
 
 const MAX_MIN = 1440
 const rxp = /([1-9]\d*)/
-const formatTime = (time: number) => {
+// 倒计时格式化单源（播放页更多弹层「定时关闭」入口行复用）
+export const formatTime = (time: number) => {
   let h = Math.trunc(time / 3600)
   let hStr = h ? h.toString() + ':' : ''
   time = time % 3600
@@ -59,13 +60,26 @@ const PlayedStopSetting = () => {
 }
 
 export const useTimeInfo = () => {
-  const [exitTimeInfo, setExitTimeInfo] = useState({
-    cancelText: '',
-    confirmText: '',
-    isPlayedStop: false,
-    active: false,
-  })
   const t = useI18n()
+  // 懒初始化读真实计时态（审查 S-3，与 useTimeoutExitTimeInfo I-E 修复同构）：硬编码空值会让
+  // 「激活态」首帧按钮文案/播完停止勾选闪变，paint 后才被订阅校正
+  const [exitTimeInfo, setExitTimeInfo] = useState(() => {
+    const isPlayedStop = global.lx.isPlayedStop
+    if (getTimeoutExitTime() < 0) {
+      return {
+        cancelText: isPlayedStop ? t('timeout_exit_btn_wait_cancel') : '',
+        confirmText: '',
+        isPlayedStop,
+        active: false,
+      }
+    }
+    return {
+      cancelText: t('timeout_exit_btn_cancel'),
+      confirmText: t('timeout_exit_btn_update'),
+      isPlayedStop,
+      active: true,
+    }
+  })
 
   useEffect(() => {
     let active: boolean | null = null

@@ -12,15 +12,16 @@ import { SPACING } from '@/config/spacing'
 
 // const FONT_SIZE = 13
 
+// 时间标签 AM 规格精修（2026-10-20 拍板）：caption 12 + 次要字色 + 等宽数字防走秒抖动（原默认 15 过大）
 const PlayTimeCurrent = ({ timeStr }: { timeStr: string }) => {
   const theme = useTheme()
   // console.log(timeStr)
-  return <Text color={theme['c-500']}>{timeStr}</Text>
+  return <Text size={12} color={theme['c-font-label']} style={styles.time}>{timeStr}</Text>
 }
 
 const PlayTimeMax = memo(({ timeStr }: { timeStr: string }) => {
   const theme = useTheme()
-  return <Text color={theme['c-500']}>{timeStr}</Text>
+  return <Text size={12} color={theme['c-font-label']} style={styles.time}>{timeStr}</Text>
 })
 
 export default () => {
@@ -62,5 +63,8 @@ const styles = createStyle({
     flexShrink: 1,
     paddingLeft: SPACING.s10,
     paddingRight: SPACING.s10,
+  },
+  time: {
+    fontVariant: ['tabular-nums'],
   },
 })

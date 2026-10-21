@@ -1,4 +1,4 @@
-import { memo, useRef } from 'react'
+import { memo } from 'react'
 
 import { View, StyleSheet } from 'react-native'
 import Animated from 'react-native-reanimated'
@@ -11,10 +11,8 @@ import { usePlayerMusicInfo } from '@/store/player/hook'
 import Text from '@/components/common/Text'
 import { SCREEN_HEADER_HEIGHT as _HEADER_HEIGHT, NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import commonState from '@/store/common/state'
-import SettingPopup, { type SettingPopupType } from '../../components/SettingPopup'
 import { useStatusbarHeight } from '@/store/common/hook'
 import Btn from './Btn'
-import TimeoutExitBtn from './TimeoutExitBtn'
 import { SPACING } from '@/config/spacing'
 
 export const HEADER_HEIGHT = _HEADER_HEIGHT
@@ -33,17 +31,14 @@ const Title = () => {
   )
 }
 
+// 播放页顶栏仅返回+标题（2026-10-20 拍板：定时入口迁入更多弹层、设置钮与「更多」重复入口删除）
 export default memo(() => {
-  const popupRef = useRef<SettingPopupType>(null)
   const statusBarHeight = useStatusbarHeight()
   // push 元素进出场（RNN elementTransitions 等价：alpha 0→1 + translationY -32→0）
   const introStyle = useIntroStyle('header')
 
   const back = () => {
     pop(commonState.componentIds.playDetail)
-  }
-  const showSetting = () => {
-    popupRef.current?.show()
   }
 
   return (
@@ -53,12 +48,9 @@ export default memo(() => {
     >
       <StatusBar />
       <View style={styles.container}>
-        <Btn icon="chevron-left" onPress={back} />
+        <Btn icon="chevron-left" onPress={back} plain />
         <Title />
-        <TimeoutExitBtn />
-        <Btn icon="slider" onPress={showSetting} />
       </View>
-      <SettingPopup ref={popupRef} direction="vertical" />
     </Animated.View>
   )
 })

@@ -30,4 +30,19 @@ export default createStyle({
     flexWrap: 'wrap',
     paddingTop: SPACING.s6,
   },
+  // 倍速行卡 label（flexGrow 撑满行，右侧非预设当前值小字靠右）
+  title: {
+    flexGrow: 1,
+  },
+  // 非预设历史倍速当前值小字（审查过渡期补偿：点任一预设归化后消失）
+  rateText: {
+    width: 48,
+    textAlign: 'right',
+  },
+  // 行卡内胶囊组与 label 的间距（倍速/歌词对齐，2026-10-20 重构）
+  chips: {
+    flexGrow: 1,
+    flexShrink: 1,
+    marginTop: SPACING.s10,
+  },
 })

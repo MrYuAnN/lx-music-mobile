@@ -1,12 +1,13 @@
+import Text from '@/components/common/Text'
 import { View } from 'react-native'
-// import Text from '@/components/common/Text'
+
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
-import CheckBox from '@/components/common/CheckBox'
-import styles from './style'
+import Switch from '@/components/common/Switch'
+import Card from './Card'
 
-
+// 「显示歌词进度」开关行卡（2026-10-20 更多弹层重构：Switch 行——label 左+开关右，业界标准 toggle 形态）
 export default () => {
   const t = useI18n()
   const isShowLyricProgressSetting = useSettingValue('playDetail.isShowLyricProgressSetting')
@@ -15,14 +16,11 @@ export default () => {
   }
 
   return (
-    <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.content}>
-          <CheckBox marginBottom={3} check={isShowLyricProgressSetting} label={t('play_detail_setting_show_lyric_progress_setting')} onChange={setShowLyricProgressSetting} />
-        </View>
+    <Card>
+      <View style={{ flexGrow: 1, flexShrink: 1 }}>
+        <Text>{t('play_detail_setting_show_lyric_progress_setting')}</Text>
       </View>
-    </View>
-
+      <Switch check={isShowLyricProgressSetting} onChange={setShowLyricProgressSetting} />
+    </Card>
   )
 }
-

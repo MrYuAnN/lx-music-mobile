@@ -72,7 +72,8 @@ export const getTimeoutExitTime = () => {
 }
 
 export const useTimeoutExitTimeInfo = () => {
-  const [info, setInfo] = useState({ time: 0, isPlayedStop: false })
+  // 懒初始化取真实计时值（审查 I-E：硬编码 time:0 会让「未激活」首帧渲染成红色 00:00，paint 后才被 hook 校正）
+  const [info, setInfo] = useState(() => ({ time: timeoutTools.getTime(), isPlayedStop: global.lx.isPlayedStop }))
   useEffect(() => {
     const hook: Hook = (time, isPlayedStop) => {
       setInfo({ time, isPlayedStop })

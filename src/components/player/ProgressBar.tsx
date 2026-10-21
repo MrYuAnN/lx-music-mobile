@@ -2,21 +2,23 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { View, PanResponder } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
-import { scaleSizeW, scaleSizeH } from '@/utils/pixelRatio'
 import { useDrag } from '@/utils/hooks'
 // import { AppColors } from '@/theme'
 
+// AM 同构（2026-10-20 拍板）：已播放/圆点=品牌红实色（原半透明淡红显糊）、轨道=中性分隔灰、
+// 圆点 12dp（原 19dp 过大）、轨道 3dp（对齐迷你条先例与 AM 细线形态）
 
 const DefaultBar = memo(() => {
   const theme = useTheme()
 
-  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-300-alpha-800'], position: 'absolute', width: '100%', left: 0, top: 0 }}></View>
+  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-border-background'], position: 'absolute', width: '100%', left: 0, top: 0 }}></View>
 })
 
 const BufferedBar = memo(({ progress }: { progress: number }) => {
   // console.log(bufferedProgress)
   const theme = useTheme()
-  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-400-alpha-700'], position: 'absolute', width: `${progress * 100}%`, left: 0, top: 0 }}></View>
+  // 缓冲段极淡红（c-primary-alpha-900=10%，审查 I-D：避免与实色已播段混淆，接近 AM 轻缓冲形态）
+  return <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-alpha-900'], position: 'absolute', width: `${progress * 100}%`, left: 0, top: 0 }}></View>
 })
 
 
@@ -80,7 +82,7 @@ const Progress = ({ progress, duration, buffered }: {
       borderRadius: progressDotSize / 2,
       position: 'absolute',
       right: -progressDotSize / 2,
-      top: -(progressDotSize - progressHeightSize) / 2,
+      top: -(progressDotSize - progressHeight) / 2,
     } as const
   }, [])
 
@@ -101,15 +103,15 @@ const Progress = ({ progress, duration, buffered }: {
           draging
             ? (
                 <>
-                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-700'], width: progressStr, position: 'absolute', left: 0, top: 0 }} />
-                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-600'], width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
+                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-alpha-400'], width: progressStr, position: 'absolute', left: 0, top: 0 }} />
+                  <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary'], width: `${dragProgress * 100}%`, position: 'absolute', left: 0, top: 0 }}>
                     {/* 圆点用纯 View（字体 glyph 基线下沉导致偏移，几何圆保证圆心严格落在条上） */}
-                    <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary-light-100'] }} />
+                    <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary'] }} />
                   </View>
                 </>
               ) : (
-                <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary-light-100-alpha-400'], width: progressStr, position: 'absolute', left: 0, top: 0 }}>
-                  <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary-light-100'] }} />
+                <View style={{ ...styles.progressBar, backgroundColor: theme['c-primary'], width: progressStr, position: 'absolute', left: 0, top: 0 }}>
+                  <View style={{ ...progressDotStyle, backgroundColor: theme['c-primary'] }} />
                 </View>
               )
         }
@@ -123,10 +125,9 @@ const Progress = ({ progress, duration, buffered }: {
 
 
 const progressContentPadding = 10
-const progressHeight = 3.6
+const progressHeight = 3
 const progressContentHeight = progressContentPadding * 2 + progressHeight
-const progressHeightSize = scaleSizeH(progressHeight)
-let progressDotSize = scaleSizeW(progressContentHeight * 0.8)
+const progressDotSize = 12
 const styles = createStyle({
   progress: {
     width: '100%',
@@ -138,7 +139,7 @@ const styles = createStyle({
   },
   progressBar: {
     height: progressHeight,
-    borderRadius: 4,
+    borderRadius: 1.5,
   },
   pressBar: {
     position: 'absolute',
