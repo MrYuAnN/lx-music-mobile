@@ -11,16 +11,18 @@ import android.os.Build;
 
 import cn.toside.music.mobile.R;
 
-// 锁定期间的解锁通知（项目无前台服务/媒体通知，载体为独立低优先级通知）：
-// action「解锁」→ 动态 receiver（NOT_EXPORTED）→ Lyric.unlockLyric + lock-changed 事件同步 JS 设置。
+// 锁定期间的解锁通知（业界共识解锁通道：QQ/酷狗同款；锁定态歌词窗全穿透隐形，通知栏是唯一
+// 不依赖触摸的解锁锚点）。action「解锁」→ 动态 receiver（NOT_EXPORTED）→ Lyric.unlockLyric +
+// lyric-lock-changed 事件同步 JS 设置。通知权限被拒时静默跳过（JS 侧负责引导授权）。
 public class DesktopLyricNotification {
   public static final String ACTION_UNLOCK_DESKTOP_LYRIC = "cn.toside.music.mobile.action.UNLOCK_DESKTOP_LYRIC";
   private static final String CHANNEL_ID = "desktop_lyric";
-  private static final int NOTIFICATION_ID = 1001;
+  // 不可用 1001：track-player 媒体通知占同 id，同 id notify 会顶掉媒体控制（实证 2026-10-21）
+  private static final int NOTIFICATION_ID = 2001;
 
   public static void show(Context context) {
     NotificationManager manager = (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
-    // 权限未授予：静默跳过（主链路在 JS 锁定动作时已就地请求，拒绝后走 App 内解锁兜底）
+    // 权限未授予：静默跳过（主链路在 JS 锁定动作时已引导授权）
     if (manager == null || !manager.areNotificationsEnabled()) return;
 
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -50,7 +52,7 @@ public class DesktopLyricNotification {
       .setContentText(context.getString(R.string.desktop_lyric_locked_text))
       .setOngoing(true)
       .setContentIntent(contentPendingIntent)
-      .addAction(new Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_lyric_tb_lock),
+      .addAction(new Notification.Action.Builder(Icon.createWithResource(context, R.drawable.ic_lyric_tb_unlock),
         context.getString(R.string.desktop_lyric_unlock), unlockPendingIntent).build());
     manager.notify(NOTIFICATION_ID, builder.build());
   }

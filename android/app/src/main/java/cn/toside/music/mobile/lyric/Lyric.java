@@ -73,7 +73,7 @@ public class Lyric extends LyricPlayer {
     reactAppContext.registerReceiver(screenOnOffReceiver, theFilter);
   }
 
-  /** 通知栏「解锁」动作（targetSdk 34+ 动态 receiver 必须显式 NOT_EXPORTED，审查 I5） */
+  /** 通知栏「解锁」动作（业界共识解锁通道；targetSdk 34+ 动态 receiver 必须显式 NOT_EXPORTED） */
   private void registerUnlockReceiver() {
     IntentFilter filter = new IntentFilter(DesktopLyricNotification.ACTION_UNLOCK_DESKTOP_LYRIC);
     BroadcastReceiver unlockReceiver = new BroadcastReceiver() {
@@ -174,6 +174,8 @@ public class Lyric extends LyricPlayer {
       Log.e("Lyric", e.getMessage());
       return;
     }
+    // 锁定态重建（关开/重启）时补发解锁通知，否则穿透态无解锁入口
+    if (options.getBoolean("isLock")) DesktopLyricNotification.show(reactAppContext);
     isRunPlayer = true;
     promise.resolve(null);
   }
@@ -269,9 +271,9 @@ public class Lyric extends LyricPlayer {
     refreshLyric();
   }
 
-  public void setPlayedColor(String unplayColor, String playedColor, String shadowColor) {
+  public void setPlayedColor(String playedColor) {
     if (lyricView == null) return;
-    lyricView.setColor(unplayColor, playedColor, shadowColor);
+    lyricView.setColor(playedColor);
   }
 
   public void setAlpha(float alpha) {
@@ -287,5 +289,10 @@ public class Lyric extends LyricPlayer {
   public void setPlayState(boolean isPlay) {
     if (lyricView == null) return;
     lyricView.setToolbarPlayState(isPlay);
+  }
+
+  public void setThemePalette(int[] palette) {
+    if (lyricView == null) return;
+    lyricView.setThemePalette(palette);
   }
 }

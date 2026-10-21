@@ -15,15 +15,17 @@ import {
   setTextSize,
   setShowToggleAnima,
   setSingleLine,
+  setThemePalette,
+  setDesktopLyricPlayState,
+  openNotificationSettings,
   pauseDesktopLyricView,
   resumeDesktopLyricView,
-  setDesktopLyricPlayState,
   onToolbarAction,
   onLockChange,
   checkOverlayPermission,
   openOverlayPermissionActivity,
   onPositionChange,
-  type DesktopLyricToolbarAction,
+  type DesktopLyricToolbarEvent,
 } from '@/utils/nativeModules/lyricDesktop'
 import settingState from '@/store/setting/state'
 import playerState from '@/store/player/state'
@@ -31,7 +33,7 @@ import { tranditionalize } from '@/utils/simplify-chinese-main'
 import { getPosition } from '@/plugins/player'
 import { updateSetting } from '@/core/common'
 import { handlePlayerAction } from '@/core/init/deeplink/playerAction'
-import { toast } from '@/utils/tools'
+import { confirmDialog, toast } from '@/utils/tools'
 import { getMessage } from '@/lang/i18n'
 export {
   onLyricLinePlay,
@@ -43,15 +45,40 @@ const FONT_SIZE_MIN = 100
 const FONT_SIZE_MAX = 500
 const FONT_SIZE_STEP = 10
 
+// 色板单源（AM 精致化：仅当前行可配色；下一句固定白 55%、阴影固定柔和，2026-10-21 拍板）：
+// 设置页 Theme 色板与悬浮工具条调色行共用
+export const desktopLyricThemes = [
+  '#08e664',
+  '#fffa12',
+  '#019ce4',
+  '#ff1222',
+  '#ef6976',
+  '#c851d4',
+  '#ffa600',
+  '#000000',
+  '#ffffff',
+] as const
+export type DesktopLyricTheme = typeof desktopLyricThemes[number]
+
+export const applyDesktopLyricTheme = async(theme: DesktopLyricTheme) => {
+  await setDesktopLyricColor(theme)
+  updateSetting({ 'desktopLyric.style.lyricPlayedColor': theme })
+}
+
+const hexToInt = (hex: string): number => (0xff000000 | parseInt(hex.slice(1), 16))
+
+/** 工具条色板下发（JS 单源色板 → 原生色块） */
+export const syncDesktopLyricPalette = async() => {
+  return setThemePalette(desktopLyricThemes.map(hexToInt))
+}
+
 export const showDesktopLyric = async() => {
   const setting = settingState.setting
   await showDesktopLyricView({
     isShowToggleAnima: setting['desktopLyric.showToggleAnima'],
     isSingleLine: setting['desktopLyric.isSingleLine'],
     isLock: setting['desktopLyric.isLock'],
-    unplayColor: setting['desktopLyric.style.lyricUnplayColor'],
     playedColor: setting['desktopLyric.style.lyricPlayedColor'],
-    shadowColor: setting['desktopLyric.style.lyricShadowColor'],
     opacity: setting['desktopLyric.style.opacity'],
     textSize: setting['desktopLyric.style.fontSize'],
     positionX: setting['desktopLyric.position.x'],
@@ -71,6 +98,7 @@ export const showDesktopLyric = async() => {
     })
   }
   void setDesktopLyricPlayState(playerState.isPlay)
+  void syncDesktopLyricPalette()
   // D7 前台隐身：应用前台开启时不显示悬浮窗，切后台自动出现
   if (AppState.currentState === 'active') await pauseDesktopLyricView()
 }
@@ -79,22 +107,40 @@ export const hideDesktopLyric = async() => {
   return hideDesktopLyricView()
 }
 
-/** 锁定（含 Android 13+ 通知权限就地请求：解锁通知主链路，拒绝则 toast 指引 App 内兜底，审查 I4） */
+/** 锁定（业界共识形态：锁定后歌词完全隐形，解锁=通知栏一键 + App 内兜底） */
 export const lockDesktopLyric = async() => {
+  // 通知解锁通道可用性前置（死路修复：权限被拒后系统不再弹窗，只能在锁定时机引导；
+  // 审查 C2：引导框需可取消——只有点「去设置」才跳转，关闭仅 toast 提示）
+  let notificationReady = true
   if (Platform.OS === 'android' && Platform.Version >= 33) {
     try {
       let granted = await PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
-      // 权限弹窗只能在应用前台触发；工具条（后台）发起的锁定跳过请求，走 App 内解锁兜底
       if (!granted && AppState.currentState === 'active') {
         granted = (await PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)) === 'granted'
       }
-      if (!granted) toast(getMessage('setting_lyric_desktop_lock_no_notification_tip'), 'long')
+      if (!granted) {
+        notificationReady = false
+        if (AppState.currentState === 'active') {
+          // 已拒绝：系统不再弹窗 → 对话框引导（用户开完权限回前台自动补挂通知，见 initDesktopLyricListener）
+          const goSettings = await confirmDialog({
+            title: getMessage('setting_lyric_desktop_lock_notification_title'),
+            message: getMessage('setting_lyric_desktop_lock_notification_dialog'),
+            confirmButtonText: getMessage('setting_lyric_desktop_lock_go_settings'),
+          })
+          if (goSettings) await openNotificationSettings()
+          else toast(getMessage('setting_lyric_desktop_lock_no_notification_tip'), 'long')
+        } else {
+          // 防御分支：当前锁定入口均在前台 UI
+          toast(getMessage('setting_lyric_desktop_lock_no_notification_tip'), 'long')
+        }
+      }
     } catch {
       // 权限流程异常不阻断锁定
     }
   }
   await toggleDesktopLyricLock(true)
   updateSetting({ 'desktopLyric.isLock': true })
+  if (notificationReady) toast(getMessage('setting_lyric_desktop_lock_tips'), 'long')
 }
 
 export const unlockDesktopLyric = async() => {
@@ -102,7 +148,7 @@ export const unlockDesktopLyric = async() => {
   updateSetting({ 'desktopLyric.isLock': false })
 }
 
-const handleToolbarAction = async(action: DesktopLyricToolbarAction) => {
+const handleToolbarAction = async({ action, index }: DesktopLyricToolbarEvent) => {
   switch (action) {
     // 播放类动作名对齐 PlayerAction，复用单源分发器（审查 S6）
     case 'togglePlay':
@@ -120,9 +166,12 @@ const handleToolbarAction = async(action: DesktopLyricToolbarAction) => {
       updateSetting({ 'desktopLyric.style.fontSize': target })
       break
     }
-    case 'lock':
-      await lockDesktopLyric()
+    case 'themeColor': {
+      const theme = desktopLyricThemes[index ?? -1]
+      if (!theme) return
+      await applyDesktopLyricTheme(theme)
       break
+    }
     case 'close':
       await hideDesktopLyric()
       updateSetting({ 'desktopLyric.enable': false })
@@ -132,16 +181,23 @@ const handleToolbarAction = async(action: DesktopLyricToolbarAction) => {
 
 /** 悬浮歌词事件接线（init 调一次）：工具条动作 / 通知栏解锁回写 / 前后台隐身（D7） */
 export const initDesktopLyricListener = () => {
-  onToolbarAction(action => {
-    void handleToolbarAction(action).catch(() => {})
+  onToolbarAction(event => {
+    void handleToolbarAction(event).catch(() => {})
   })
   onLockChange(({ isLock }) => {
     updateSetting({ 'desktopLyric.isLock': isLock })
   })
   AppState.addEventListener('change', state => {
     if (!settingState.setting['desktopLyric.enable']) return
-    if (state === 'active') void pauseDesktopLyricView()
-    else void resumeDesktopLyricView()
+    if (state === 'active') {
+      void pauseDesktopLyricView()
+      // 用户从系统设置开启通知权限回来后自动补挂解锁通知（审查 C2：死路闭环最后一步）
+      if (settingState.setting['desktopLyric.isLock'] && Platform.OS === 'android' && Platform.Version >= 33) {
+        void PermissionsAndroid.check(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS).then(granted => {
+          if (granted) void toggleDesktopLyricLock(true)
+        }).catch(() => {})
+      }
+    } else void resumeDesktopLyricView()
   })
 }
 
@@ -152,11 +208,8 @@ export const setDesktopLyricPlaybackRate = setPlaybackRate
 export const toggleDesktopLyricTranslation = toggleTranslation
 export const toggleDesktopLyricRoma = toggleRoma
 export const toggleDesktopLyricLock = toggleLock
-export const setDesktopLyricColor = async(unplayColor: string | null, playedColor: string | null, shadowColor: string | null) => {
-  return setColor(unplayColor ?? settingState.setting['desktopLyric.style.lyricUnplayColor'],
-    playedColor ?? settingState.setting['desktopLyric.style.lyricPlayedColor'],
-    shadowColor ?? settingState.setting['desktopLyric.style.lyricShadowColor'],
-  )
+export const setDesktopLyricColor = async(playedColor: string) => {
+  return setColor(playedColor)
 }
 export const setDesktopLyricAlpha = setAlpha
 export const setDesktopLyricTextSize = setTextSize

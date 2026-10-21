@@ -2,6 +2,7 @@ package cn.toside.music.mobile.lyric;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.graphics.Color;
 import android.text.TextPaint;
 import android.view.Gravity;
 import android.view.ViewGroup;
@@ -17,19 +18,21 @@ import androidx.annotation.Nullable;
 
 import java.util.ArrayList;
 
-// 三行悬浮歌词容器（无底板重设计）：行1 当前行（TextSwitcher 轮换+跑马灯）、行2 翻译（×0.72）、
-// 行3 下一句（×0.85，未播色）。单行模式仅行1；docked 细条态仅行1 且停跑马灯。
-// 文字对齐固定水平居中（对齐设置已砍，D8）。
+// 三行悬浮歌词容器（AM 风格精致化）：行1 当前行（TextSwitcher 轮换+跑马灯）、行2 翻译（×0.72）、
+// 行3 下一句（×0.85，固定白 55% 不随色板——彩字半透明叠壁纸显脏，真机拍板 2026-10-21）。
+// 单行模式仅行1；docked 细条态仅行1 且停跑马灯。文字对齐固定水平居中（对齐设置已砍，D8）。
 @SuppressLint({"ViewConstructor"})
 public final class LyricSwitchView extends LinearLayout {
   private static final float TRANSLATION_SIZE_RATIO = 0.72f;
   private static final float NEXT_SIZE_RATIO = 0.85f;
   private static final float ROW_SPACING_RATIO = 0.18f;
+  // 下一句行固定色：白 55%（参照 AM 歌词视觉语言「未播行半透明」；具体数值无业界对标，本产品自定）
+  private static final int NEXT_LINE_COLOR = 0x8CFFFFFF;
 
   private final TextSwitcher mainSwitcher;
   private final ArrayList<LyricTextView> mainViews;
-  private final LyricStrokeTextView translationView;
-  private final LyricStrokeTextView nextView;
+  private final LyricSecondaryTextView translationView;
+  private final LyricSecondaryTextView nextView;
   private final boolean isSingleLine;
   private boolean isShowAnima;
   private boolean isDocked = false;
@@ -61,8 +64,10 @@ public final class LyricSwitchView extends LinearLayout {
     });
     setMainAnima();
 
-    translationView = new LyricStrokeTextView(context);
-    nextView = new LyricStrokeTextView(context);
+    translationView = new LyricSecondaryTextView(context);
+    nextView = new LyricSecondaryTextView(context);
+    // 下一句固定色（返修审查 C1：定义后必须接线，否则随 App 主题漂移）
+    nextView.setTextColor(NEXT_LINE_COLOR);
 
     translationView.setGravity(gravity);
     nextView.setGravity(gravity);
@@ -145,16 +150,6 @@ public final class LyricSwitchView extends LinearLayout {
   /** 主行视宽同步（跑马灯按 viewWidth 判定），容器内其余行为 MATCH_PARENT 自取实际宽 */
   public void setWidth(int width) {
     for (LyricTextView v : mainViews) v.setWidth(width);
-  }
-
-  public void setUnplayColor(int color) {
-    nextView.setTextColor(color);
-  }
-
-  public void setShadowColor(int color) {
-    for (LyricTextView v : mainViews) v.setShadowLayer(1.6f, 1.5f, 1.3f, color);
-    translationView.setShadowLayer(1.6f, 1.5f, 1.3f, color);
-    nextView.setShadowLayer(1.6f, 1.5f, 1.3f, color);
   }
 
   public void setTextSize(float size) {

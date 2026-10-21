@@ -43,10 +43,11 @@ export default (setting: any): Partial<LX.AppSetting> => {
   return setting
 }
 
-// 存量 v2 用户悬浮歌词颜色重置（无底板重设计 D1/D3）：旧默认红字、旧 unplay 全亮白与新默认双层次冲突。
+// 存量 v2 用户悬浮歌词颜色重置（无底板重设计）：旧默认红字与新默认白字冲突。
 // migrateSetting 仅覆盖 v1→2.0，且 version 每次启动被刷平（setting.ts updateSetting），
 // 故由 initSetting 每次调用比对；仅当值与旧默认完全一致才重置（RGBA 解析数值比较，
 // 防空格/格式变体失配，审查 I2），用户自定义值不受影响（主动选红色会被一并重置，业界通行取舍，方案 §4.3.3）。
+// AM 精致化（2026-10-21）：unplay/shadow 两键退役（下一句固定白 55%、阴影固定），仅迁移 played。
 const parseRgba = (color: string): [number, number, number, number] | null => {
   const match = /rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*(?:,\s*([\d.]+)\s*)?\)/.exec(color)
   if (!match) return null
@@ -57,15 +58,10 @@ const equalsRgba = (a: [number, number, number, number], b: [number, number, num
   a[0] === b[0] && a[1] === b[1] && a[2] === b[2] && Math.abs(a[3] - b[3]) < 0.001
 
 const OLD_PLAYED_COLOR: [number, number, number, number] = [250, 35, 59, 1]
-const OLD_UNPLAY_COLOR: [number, number, number, number] = [255, 255, 255, 1]
 
 export const migrateDesktopLyricStyle = (setting: LX.AppSetting): void => {
   const played = parseRgba(setting['desktopLyric.style.lyricPlayedColor'] ?? '')
   if (played && equalsRgba(played, OLD_PLAYED_COLOR)) {
     setting['desktopLyric.style.lyricPlayedColor'] = defaultSetting['desktopLyric.style.lyricPlayedColor']
-  }
-  const unplay = parseRgba(setting['desktopLyric.style.lyricUnplayColor'] ?? '')
-  if (unplay && equalsRgba(unplay, OLD_UNPLAY_COLOR)) {
-    setting['desktopLyric.style.lyricUnplayColor'] = defaultSetting['desktopLyric.style.lyricUnplayColor']
   }
 }

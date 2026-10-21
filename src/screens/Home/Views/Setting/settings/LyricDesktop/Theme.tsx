@@ -1,5 +1,4 @@
-import { updateSetting } from '@/core/common'
-import { setDesktopLyricColor } from '@/core/desktopLyric'
+import { applyDesktopLyricTheme, desktopLyricThemes, type DesktopLyricTheme } from '@/core/desktopLyric'
 import { useI18n } from '@/lang'
 import { memo } from 'react'
 import { StyleSheet, View, TouchableOpacity } from 'react-native'
@@ -7,35 +6,14 @@ import { StyleSheet, View, TouchableOpacity } from 'react-native'
 import SubTitle from '../../components/SubTitle'
 import { SPACING } from '@/config/spacing'
 
-const themes = [
-  ['#08e664', 'rgba(0,0,0,0.6)'],
-  ['#fffa12', 'rgba(0,0,0,0.6)'],
-  ['#019ce4', 'rgba(0,0,0,0.6)'],
-  ['#ff1222', 'rgba(0,0,0,0.6)'],
-  ['#ef6976', 'rgba(0,0,0,0.6)'],
-  ['#c851d4', 'rgba(0,0,0,0.6)'],
-  ['#ffa600', 'rgba(0,0,0,0.6)'],
-  ['#000000', '#ffffff'],
-  ['#ffffff', 'rgba(0,0,0,0.6)'],
-] as const
-type Theme = typeof themes[number]
-
-// 未播色由已播色派生（审查 I8：色板三元组联动）：同色系透明度降至一半，保证当前行/下一句亮暗层次
-const deriveUnplayColor = (hex: string) => {
-  const match = /^#([0-9a-f]{6})$/i.exec(hex)
-  if (!match) return hex
-  const value = parseInt(match[1], 16)
-  return `rgba(${(value >> 16) & 255}, ${(value >> 8) & 255}, ${value & 255}, 0.5)`
-}
-
 const ThemeItem = ({ color, change }: {
-  color: Theme
-  change: (color: Theme) => void
+  color: DesktopLyricTheme
+  change: (color: DesktopLyricTheme) => void
 }) => {
   return (
     <TouchableOpacity style={styles.item} activeOpacity={0.5} onPress={() => { change(color) }}>
       <View style={styles.colorContent}>
-        <View style={{ ...styles.image, backgroundColor: color[0] }}></View>
+        <View style={{ ...styles.image, backgroundColor: color }}></View>
       </View>
     </TouchableOpacity>
   )
@@ -44,22 +22,15 @@ const ThemeItem = ({ color, change }: {
 export default memo(() => {
   const t = useI18n()
 
-  const setThemeDesktopLyric = (color: Theme) => {
-    const unplayColor = deriveUnplayColor(color[0])
-    void setDesktopLyricColor(unplayColor, color[0], color[1]).then(() => {
-      updateSetting({
-        'desktopLyric.style.lyricPlayedColor': color[0],
-        'desktopLyric.style.lyricUnplayColor': unplayColor,
-        'desktopLyric.style.lyricShadowColor': color[1],
-      })
-    })
+  const setThemeDesktopLyric = (color: DesktopLyricTheme) => {
+    void applyDesktopLyricTheme(color)
   }
 
   return (
     <SubTitle title={t('setting_lyric_desktop_theme')}>
       <View style={styles.list}>
         {
-          themes.map((c, i) => <ThemeItem key={i.toString()} color={c} change={setThemeDesktopLyric} />)
+          desktopLyricThemes.map((c, i) => <ThemeItem key={i.toString()} color={c} change={setThemeDesktopLyric} />)
         }
       </View>
     </SubTitle>

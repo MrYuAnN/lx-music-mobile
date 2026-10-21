@@ -8,8 +8,9 @@ import android.graphics.Paint;
 import android.view.Gravity;
 import android.widget.TextView;
 
-// 主行歌词控件：双层自绘（底层描边 + 上层填充，无底板方案的可读性保障）+ 可开关的跑马灯滚动。
-// 跑马灯关闭（docked 细条态）时静态绘制，超出部分裁切。
+// 主行歌词控件：参照 AM 歌词视觉语言的双层柔和阴影绘制（远层柔晕 + 近层贴影，无描边——真机反馈
+// 描边显脏，2026-10-21 拍板去描边；阴影系数无业界对标，本产品自定）+ 可开关的跑马灯滚动。
+// 跑马灯关闭（docked 细条态）时静态绘制。
 // https://github.com/Block-Network/StatusBarLyric/blob/main/app/src/main/java/statusbar/lyric/view/LyricTextView.kt
 @SuppressLint("AppCompatCustomView")
 public class LyricTextView extends TextView {
@@ -23,9 +24,10 @@ public class LyricTextView extends TextView {
   private int gravityVertical = Gravity.TOP;
   private int gravityHorizontal = Gravity.CENTER;
   private float y = 0F;
-  private String text = null;
+  // volatile：悬浮窗视图创建于 RN modules 线程，屏灭恢复等路径在主线程回写 text，防跨线程可见性竞态
+  private volatile String text = null;
   private final Paint mPaint;
-  private final Paint mStrokePaint;
+  private final Paint mAmbientShadowPaint;
   private boolean marqueeEnabled = true;
   private final Runnable mStartScrollRunnable;
   private final Runnable invalidateRunnable;
@@ -37,17 +39,13 @@ public class LyricTextView extends TextView {
     mStartScrollRunnable = LyricTextView.this::startScroll;
     invalidateRunnable = LyricTextView.this::invalidate;
     mPaint = getPaint();
-    mStrokePaint = new Paint(mPaint);
-    mStrokePaint.setStyle(Paint.Style.STROKE);
-    mStrokePaint.setColor(Color.BLACK);
-    // 描边 pass 不带阴影，避免双影（阴影只在填充 pass）
-    mStrokePaint.setShadowLayer(0F, 0F, 0F, Color.TRANSPARENT);
+    // 近层贴影
+    mPaint.setShadowLayer(0.06F * getTextSize(), 0F, 0.02F * getTextSize(), 0x59000000);
+    // 远层柔晕（AM 式低透明大半径）
+    mAmbientShadowPaint = new Paint(mPaint);
+    mAmbientShadowPaint.setColor(0xFFFFFFFF);
+    mAmbientShadowPaint.setShadowLayer(0.22F * getTextSize(), 0F, 0.06F * getTextSize(), 0x40000000);
     speed = SPEED_LIMIT * getTextSize();
-    updateStrokeWidth();
-  }
-
-  private void updateStrokeWidth() {
-    mStrokePaint.setStrokeWidth(Math.max(1F, getTextSize() * 0.08F));
   }
 
   private void init() {
@@ -74,21 +72,19 @@ public class LyricTextView extends TextView {
   @Override
   public void setTextColor(int color) {
     if (mPaint != null) mPaint.setColor(color);
+    // 柔晕层同色联动：深色字时白柔晕会泛白边（返修审查 S6）
+    if (mAmbientShadowPaint != null) mAmbientShadowPaint.setColor(color);
     postInvalidate();
-  }
-
-  @Override
-  public void setShadowLayer(float radius, float dx, float dy, int shadowColor) {
-    if (mPaint != null) mPaint.setShadowLayer(radius, dx, dy, shadowColor);
-    post(mStartScrollRunnable);
   }
 
   @Override
   public void setTextSize(float size) {
     super.setTextSize(size);
-    mStrokePaint.setTextSize(getPaint().getTextSize());
-    updateStrokeWidth();
-    speed = SPEED_LIMIT * getTextSize();
+    float px = getPaint().getTextSize();
+    mAmbientShadowPaint.setTextSize(px);
+    mAmbientShadowPaint.setShadowLayer(0.22F * px, 0F, 0.06F * px, 0x40000000);
+    mPaint.setShadowLayer(0.06F * px, 0F, 0.02F * px, 0x59000000);
+    speed = SPEED_LIMIT * px;
     if (text == null) return;
     post(mStartScrollRunnable);
   }
@@ -140,12 +136,15 @@ public class LyricTextView extends TextView {
   @Override
   protected void onDraw(Canvas canvas) {
     if (getHeight() > 0) viewHeight = getHeight();
+    // volatile 字段取局部快照，防绘制中途跨线程写入（返修审查 S5）
+    String currentText = text;
     float mSpeed = speed;
-    if (text != null) {
+    if (currentText != null) {
       float x = getDrawX();
-      canvas.drawText(text, x, y, mStrokePaint);
-      canvas.drawText(text, x, y, mPaint);
-      if (getText().length() >= 20) {
+      // 远层柔晕 + 近层正文（正文自带贴影），无描边
+      canvas.drawText(currentText, x, y, mAmbientShadowPaint);
+      canvas.drawText(currentText, x, y, mPaint);
+      if (currentText.length() >= 20) {
         mSpeed += mSpeed;
       }
     }
@@ -181,7 +180,8 @@ public class LyricTextView extends TextView {
   }
 
   private float getTextLength() {
-    return mPaint == null ? 0.0F : mPaint.measureText(text);
+    // 判空为本文件跑马灯崩溃（measureText(null)，真机 2026-10-21）的实际生效修复点
+    return mPaint == null || text == null ? 0.0F : mPaint.measureText(text);
   }
 
   private float getDrawY() {

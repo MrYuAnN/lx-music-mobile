@@ -11,6 +11,7 @@ import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
 import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
 import com.facebook.react.bridge.ReadableMap;
 
 public class LyricModule extends ReactContextBaseJavaModule {
@@ -158,9 +159,34 @@ public class LyricModule extends ReactContextBaseJavaModule {
     promise.resolve(null);
   }
 
+  /** JS 下发工具条色板（单源在 JS 色板表，原生色块点击回传 index） */
   @ReactMethod
-  public void setColor(String unplayColor, String playedColor, String shadowColor, Promise promise) {
-    if (lyric != null) lyric.setPlayedColor(unplayColor, playedColor, shadowColor);
+  public void setThemePalette(ReadableArray colors, Promise promise) {
+    if (lyric != null && colors != null && colors.size() > 0) {
+      int[] palette = new int[colors.size()];
+      for (int i = 0; i < colors.size(); i++) palette[i] = colors.getInt(i);
+      lyric.setThemePalette(palette);
+    }
+    promise.resolve(null);
+  }
+
+  @ReactMethod
+  public void setColor(String playedColor, Promise promise) {
+    if (lyric != null) lyric.setPlayedColor(playedColor);
+    promise.resolve(null);
+  }
+
+  /** 引导用户去系统通知设置（锁定解锁通知的死路修复：权限被拒后系统不再弹窗，只能引导） */
+  @ReactMethod
+  public void openNotificationSettings(Promise promise) {
+    try {
+      Intent intent = new Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+      intent.putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, reactContext.getPackageName());
+      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+      reactContext.startActivity(intent);
+    } catch (Exception ignored) {
+      // 页面不可达（罕见 ROM）静默忽略
+    }
     promise.resolve(null);
   }
 

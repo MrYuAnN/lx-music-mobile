@@ -45,10 +45,8 @@ const defaultSetting: LX.AppSetting = {
   'desktopLyric.position.y': 0,
   'desktopLyric.style.fontSize': 180,
   'desktopLyric.style.opacity': 100,
-  // 无底板重设计默认形态（D1/D3）：白字黑边双层次——当前行白、下一句半透明
-  'desktopLyric.style.lyricUnplayColor': 'rgba(255, 255, 255, 0.5)',
+  // AM 精致化默认形态（2026-10-21 拍板）：白字柔和阴影无描边；下一句固定白 55%、阴影固定（native 写死不设键）
   'desktopLyric.style.lyricPlayedColor': 'rgba(255, 255, 255, 1)',
-  'desktopLyric.style.lyricShadowColor': 'rgba(0, 0, 0, 0.6)',
 
   'search.isShowHotSearch': false,
   'search.isShowHistorySearch': false,

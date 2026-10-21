@@ -21,9 +21,7 @@ export const showDesktopLyricView = async({
   isShowToggleAnima,
   isSingleLine,
   isLock,
-  unplayColor,
   playedColor,
-  shadowColor,
   opacity,
   textSize,
   positionX,
@@ -32,9 +30,7 @@ export const showDesktopLyricView = async({
   isShowToggleAnima: boolean
   isSingleLine: boolean
   isLock: boolean
-  unplayColor: string
   playedColor: string
-  shadowColor: string
   opacity: number
   textSize: number
   positionX: number
@@ -44,9 +40,7 @@ export const showDesktopLyricView = async({
     isSingleLine,
     isShowToggleAnima,
     isLock,
-    unplayColor,
     playedColor,
-    shadowColor,
     alpha: getAlpha(opacity),
     textSize: getTextSize(textSize),
     lyricViewX: positionX,
@@ -134,13 +128,18 @@ export const toggleLock = async(isLock: boolean): Promise<void> => {
 }
 
 /**
- * set color
- * @param unplayColor
+ * set color（AM 精致化：仅当前行可配色，下一句固定白、阴影固定柔和，2026-10-21 拍板）
  * @param playedColor
- * @param shadowColor
  */
-export const setColor = async(unplayColor: string, playedColor: string, shadowColor: string): Promise<void> => {
-  return LyricModule.setColor(unplayColor, playedColor, shadowColor)
+export const setColor = async(playedColor: string): Promise<void> => {
+  return LyricModule.setColor(playedColor)
+}
+
+/**
+ * 引导去系统通知设置（锁定解锁通知的授权死路修复）
+ */
+export const openNotificationSettings = async(): Promise<void> => {
+  return LyricModule.openNotificationSettings()
 }
 
 /**
@@ -165,6 +164,13 @@ export const setShowToggleAnima = async(isShowToggleAnima: boolean): Promise<voi
 
 export const setSingleLine = async(isSingleLine: boolean): Promise<void> => {
   return LyricModule.setSingleLine(isSingleLine)
+}
+
+/**
+ * 下发工具条色板（单源在 JS 色板表，原生色块点击回传 index）
+ */
+export const setThemePalette = async(palette: number[]): Promise<void> => {
+  return LyricModule.setThemePalette(palette)
 }
 
 export const checkOverlayPermission = async(): Promise<void> => {
@@ -200,13 +206,19 @@ export const onLyricLinePlay = (handler: (lineInfo: { text: string, extendedLyri
 }
 
 export type DesktopLyricToolbarAction = 'togglePlay' | 'skipPrev' | 'skipNext'
-  | 'fontSizeDown' | 'fontSizeUp' | 'lock' | 'close'
+  | 'fontSizeDown' | 'fontSizeUp' | 'close' | 'themeColor'
 
-export const onToolbarAction = (handler: (action: DesktopLyricToolbarAction) => void): () => void => {
+export interface DesktopLyricToolbarEvent {
+  action: DesktopLyricToolbarAction
+  /** themeColor 专用：色板索引 */
+  index?: number
+}
+
+export const onToolbarAction = (handler: (event: DesktopLyricToolbarEvent) => void): () => void => {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const eventEmitter = new NativeEventEmitter(LyricModule)
   const eventListener = eventEmitter.addListener('lyric-toolbar-action', event => {
-    handler((event as { action: DesktopLyricToolbarAction }).action)
+    handler(event as DesktopLyricToolbarEvent)
   })
 
   return () => {

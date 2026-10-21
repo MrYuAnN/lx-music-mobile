@@ -65,9 +65,7 @@ public class LyricView implements View.OnTouchListener {
   private boolean dockedLeft = false;
   private boolean isViewAttached = false;
   private boolean isViewPaused = false;
-  private String unplayColor = "rgba(255, 255, 255, 1)";
-  private String playedColor = "rgba(7, 197, 86, 1)";
-  private String shadowColor = "rgba(0, 0, 0, 0.15)";
+  private String playedColor = "rgba(255, 255, 255, 1)";
   private float alpha = 1f;
   private float textSize = 18f;
   private int maxWidth = 0;
@@ -205,9 +203,7 @@ public class LyricView implements View.OnTouchListener {
     isLock = options.getBoolean("isLock", isLock);
     isSingleLine = options.getBoolean("isSingleLine", isSingleLine);
     isShowToggleAnima = options.getBoolean("isShowToggleAnima", isShowToggleAnima);
-    unplayColor = options.getString("unplayColor", unplayColor);
     playedColor = options.getString("playedColor", playedColor);
-    shadowColor = options.getString("shadowColor", shadowColor);
     prevViewPercentageX = (float) options.getDouble("lyricViewX", 0f) / 100f;
     prevViewPercentageY = (float) options.getDouble("lyricViewY", 0f) / 100f;
     alpha = (float) options.getDouble("alpha", alpha);
@@ -235,8 +231,6 @@ public class LyricView implements View.OnTouchListener {
     textView.setLyric(currentLyric, currentExtendedLyrics, currentNextLyric);
 
     textView.setTextColor(parseColor(playedColor));
-    textView.setUnplayColor(parseColor(unplayColor));
-    textView.setShadowColor(parseColor(shadowColor));
     textView.setAlpha(isDocked ? DOCKED_ALPHA : alpha);
     textView.setTextSize(textSize);
     // 重建（切单行等）时同步外层 docked 态，防状态机分裂（审查 I3）
@@ -369,7 +363,7 @@ public class LyricView implements View.OnTouchListener {
           prevViewPercentageY = percentageY / 100f;
           sendPositionEvent(percentageX, percentageY);
         }
-        if (!isDocked && !isLock) checkDock();
+        if (!isDocked && !isLock) checkDock(event.getRawX());
         if (toolbar != null && toolbar.isShowing()) {
           // 拖动后工具条跟随重算（审查 S13）
           showToolbar();
@@ -379,11 +373,14 @@ public class LyricView implements View.OnTouchListener {
     return true;
   }
 
-  /** 拖动落点贴近左右屏缘 → 吸附半隐（D6） */
-  private void checkDock() {
-    int maxX = maxWidth - layoutParams.width;
-    if (layoutParams.x <= dockEdgeThreshold) dock(true);
-    else if (layoutParams.x >= maxX - dockEdgeThreshold) dock(false);
+  /**
+   * 手指松手时贴近屏幕左右缘 → 吸附半隐（D6）。
+   * 按手指而非窗口位置判定：92% 定宽下窗口 x 全程距屏缘 ≤8% 屏宽（<24dp 判定区），
+   * 按窗口判定会每次松手必误触（真机反馈「松手乱飘/细条遮挡」）。
+   */
+  private void checkDock(float rawX) {
+    if (rawX <= dockEdgeThreshold) dock(true);
+    else if (rawX >= maxWidth - dockEdgeThreshold) dock(false);
   }
 
   private void dock(boolean left) {
@@ -463,14 +460,10 @@ public class LyricView implements View.OnTouchListener {
     if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
   }
 
-  public void setColor(String unplayColor, String playedColor, String shadowColor) {
-    this.unplayColor = unplayColor;
+  public void setColor(String playedColor) {
     this.playedColor = playedColor;
-    this.shadowColor = shadowColor;
     if (textView == null) return;
     textView.setTextColor(parseColor(playedColor));
-    textView.setUnplayColor(parseColor(unplayColor));
-    textView.setShadowColor(parseColor(shadowColor));
   }
 
   public void setAlpha(float alpha) {
@@ -540,6 +533,10 @@ public class LyricView implements View.OnTouchListener {
   public void setToolbarPlayState(boolean play) {
     currentPlayState = play;
     if (toolbar != null) toolbar.setPlayState(play);
+  }
+
+  public void setThemePalette(int[] palette) {
+    if (toolbar != null) toolbar.setPalette(palette);
   }
 
   public void destroyView() {

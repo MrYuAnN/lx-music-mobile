@@ -3,51 +3,45 @@ package cn.toside.music.mobile.lyric;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.graphics.Canvas;
-import android.graphics.Color;
 import android.graphics.Paint;
 import android.view.Gravity;
 import android.widget.TextView;
 
-// 副行歌词控件（翻译行/下一句行）：与主行同款双层描边绘制，单行手动省略号截断，无跑马灯。
+// 副行歌词控件（翻译行/下一句行）：参照 AM 歌词视觉语言的双层柔和阴影（无描边，同主行；
+// 阴影系数无业界对标，本产品自定），单行手动省略号截断，无跑马灯。
 @SuppressLint("AppCompatCustomView")
-public class LyricStrokeTextView extends TextView {
+public class LyricSecondaryTextView extends TextView {
   private final Paint mPaint;
-  private final Paint mStrokePaint;
+  private final Paint mAmbientShadowPaint;
   private int gravityVertical = Gravity.TOP;
   private int gravityHorizontal = Gravity.CENTER_HORIZONTAL;
   private float y = 0F;
 
-  public LyricStrokeTextView(Context context) {
+  public LyricSecondaryTextView(Context context) {
     super(context);
     mPaint = getPaint();
-    mStrokePaint = new Paint(mPaint);
-    mStrokePaint.setStyle(Paint.Style.STROKE);
-    mStrokePaint.setColor(Color.BLACK);
-    mStrokePaint.setShadowLayer(0F, 0F, 0F, Color.TRANSPARENT);
+    mPaint.setShadowLayer(0.06F * getTextSize(), 0F, 0.02F * getTextSize(), 0x59000000);
+    mAmbientShadowPaint = new Paint(mPaint);
+    mAmbientShadowPaint.setColor(0xFFFFFFFF);
+    mAmbientShadowPaint.setShadowLayer(0.22F * getTextSize(), 0F, 0.06F * getTextSize(), 0x40000000);
     y = getDrawY();
-  }
-
-  private void updateStrokeWidth() {
-    mStrokePaint.setStrokeWidth(Math.max(1F, getTextSize() * 0.08F));
   }
 
   @Override
   public void setTextColor(int color) {
     if (mPaint != null) mPaint.setColor(color);
-    postInvalidate();
-  }
-
-  @Override
-  public void setShadowLayer(float radius, float dx, float dy, int shadowColor) {
-    if (mPaint != null) mPaint.setShadowLayer(radius, dx, dy, shadowColor);
+    // 柔晕层同色联动：深色字时白柔晕会泛白边（返修审查 S6）
+    if (mAmbientShadowPaint != null) mAmbientShadowPaint.setColor(color);
     postInvalidate();
   }
 
   @Override
   public void setTextSize(float size) {
     super.setTextSize(size);
-    mStrokePaint.setTextSize(getPaint().getTextSize());
-    updateStrokeWidth();
+    float px = getPaint().getTextSize();
+    mAmbientShadowPaint.setTextSize(px);
+    mAmbientShadowPaint.setShadowLayer(0.22F * px, 0F, 0.06F * px, 0x40000000);
+    mPaint.setShadowLayer(0.06F * px, 0F, 0.02F * px, 0x59000000);
     y = getDrawY();
     postInvalidate();
   }
@@ -83,7 +77,7 @@ public class LyricStrokeTextView extends TextView {
         x = 0;
         break;
     }
-    canvas.drawText(text, x, y, mStrokePaint);
+    canvas.drawText(text, x, y, mAmbientShadowPaint);
     canvas.drawText(text, x, y, mPaint);
   }
 
