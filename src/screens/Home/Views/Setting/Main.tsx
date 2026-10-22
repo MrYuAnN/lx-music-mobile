@@ -4,9 +4,7 @@ import Basic from './settings/Basic'
 import Player from './settings/Player'
 import LyricDesktop from './settings/LyricDesktop'
 import Search from './settings/Search'
-import List from './settings/List'
 import Download from './settings/Download'
-import Sync from './settings/Sync'
 import Backup from './settings/Backup'
 import Other from './settings/Other'
 import About from './settings/About'
@@ -18,10 +16,8 @@ export const SETTING_SCREENS = [
   'basic',
   'player',
   'download',
-  'list',
   'search',
   'lyric_desktop',
-  'sync',
   'backup',
   'other',
   'about',
@@ -33,10 +29,8 @@ export const SETTING_COMPONENTS: Record<SettingScreenIds, React.ComponentType<{ 
   basic: Basic,
   player: Player,
   download: Download,
-  list: List,
   search: Search,
   lyric_desktop: LyricDesktop,
-  sync: Sync,
   backup: Backup,
   other: Other,
   about: About,

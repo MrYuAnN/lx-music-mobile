@@ -84,19 +84,6 @@ declare namespace LX {
       position: number
     }
 
-    interface ListActionMusicAdd {
-      id: string
-      musicInfos: LX.Music.MusicInfo[]
-      addMusicLocationType: LX.AddMusicLocationType
-    }
-
-    interface ListActionMusicMove {
-      fromId: string
-      toId: string
-      musicInfos: LX.Music.MusicInfo[]
-      addMusicLocationType: LX.AddMusicLocationType
-    }
-
     interface ListActionCheckMusicExistList {
       listId: string
       musicInfoId: string

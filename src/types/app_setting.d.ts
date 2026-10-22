@@ -148,11 +148,6 @@ declare global {
       'player.isShowBluetoothLyric': boolean
 
       /**
-       * 是否启用蓝牙完整歌词
-       */
-      'player.isShowBluetoothFullLyric': boolean
-
-      /**
        * 播放详情页-是否缩放当前播放的歌词行
        */
       // 'playDetail.isZoomActiveLrc': boolean
@@ -240,7 +235,6 @@ declare global {
       /**
        * 是否启用双击列表里的歌曲时自动切换到当前列表播放（仅对歌单、排行榜有效）
        */
-      'list.isClickPlayList': boolean
 
       /**
        * 是否显示歌曲来源（仅对我的列表有效）
@@ -250,12 +244,10 @@ declare global {
       /**
        * 是否显示歌曲专辑名
        */
-      'list.isShowAlbumName': boolean
 
       /**
        * 是否显示歌曲时长
        */
-      'list.isShowInterval': boolean
 
       /**
        * 是否自动恢复列表滚动位置（仅对我的列表有效）
@@ -265,7 +257,6 @@ declare global {
       /**
        * 添加歌曲到我的列表时的方式
        */
-      'list.addMusicLocationType': AddMusicLocationType
 
       /**
        * 「我喜欢」自定义封面（歌单封面机制批②）：本地文件路径，null=红心占位；
@@ -295,10 +286,6 @@ declare global {
        */
       'download.isAllowMobileNetwork': boolean
 
-      /**
-       * 是否启用同步
-       */
-      'sync.enable': boolean
     }
   }
 }

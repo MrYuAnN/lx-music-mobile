@@ -57,10 +57,5 @@ declare namespace LX {
         filePath: string
       }
     }
-
-    interface saveDownloadMusicInfo {
-      list: ListItem[]
-      addMusicLocationType: LX.AddMusicLocationType
-    }
   }
 }
