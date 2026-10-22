@@ -710,7 +710,7 @@ export const collectMusic = () => {
     'progress' in playerState.playMusicInfo.musicInfo
       ? playerState.playMusicInfo.musicInfo.metadata.musicInfo
       : playerState.playMusicInfo.musicInfo,
-  ], settingState.setting['list.addMusicLocationType'])
+  ])
 }
 
 /**

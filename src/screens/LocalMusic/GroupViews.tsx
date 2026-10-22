@@ -60,7 +60,6 @@ const SongRow = memo(({ item, index, list, actions }: {
     showSource={false}
     showInterval={false}
     showSublineInterval
-    isShowAlbumName={false}
     isLiked={actions.isLiked(item.id)}
     onLikePress={actions.onLikePress}
     onPress={(_, pressIndex) => { actions.onSongPress(list[pressIndex], list) }}

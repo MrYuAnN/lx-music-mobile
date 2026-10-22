@@ -166,7 +166,7 @@ export class ListEvent extends Event {
    * @param addMusicLocationType 添加在到列表的位置
    * @param isRemote 是否属于远程操作
    */
-  async list_music_add(listId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType, isRemote: boolean = false) {
+  async list_music_add(listId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType, isRemote: boolean = false) {
     const changedIds = await listMusicAdd(listId, musicInfos, addMusicLocationType)
     await checkUpdateList(changedIds)
     this.emit('list_music_add', listId, musicInfos, addMusicLocationType, isRemote)
@@ -180,10 +180,10 @@ export class ListEvent extends Event {
    * @param addMusicLocationType 添加在到列表的位置
    * @param isRemote 是否属于远程操作
    */
-  async list_music_move(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType, isRemote: boolean = false) {
-    const changedIds = await listMusicMove(fromId, toId, musicInfos, addMusicLocationType)
+  async list_music_move(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], isRemote: boolean = false) {
+    const changedIds = await listMusicMove(fromId, toId, musicInfos)
     await checkUpdateList(changedIds)
-    this.emit('list_music_move', fromId, toId, musicInfos, addMusicLocationType, isRemote)
+    this.emit('list_music_move', fromId, toId, musicInfos, isRemote)
   }
 
   /**

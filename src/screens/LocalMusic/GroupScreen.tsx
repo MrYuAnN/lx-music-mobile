@@ -71,7 +71,6 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
             showSource={false}
             showInterval={false}
             showSublineInterval
-            isShowAlbumName={false}
             isLiked={likedSet.has(item.id)}
             onLikePress={toggleLike}
             onPress={(_, pressIndex) => { handlePlay(list[pressIndex], list) }}

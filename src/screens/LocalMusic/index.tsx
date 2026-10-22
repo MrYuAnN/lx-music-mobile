@@ -259,7 +259,6 @@ export default ({ componentId }: { componentId: string }) => {
                               showSource={false}
                               showInterval={false}
                               showSublineInterval
-                              isShowAlbumName={false}
                               isLiked={likedSet.has(item.id)}
                               onLikePress={toggleLike}
                               onPress={(_, pressIndex) => { handleSongPress(filteredRef.current[pressIndex], filteredRef.current) }}

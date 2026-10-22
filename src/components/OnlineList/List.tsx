@@ -10,12 +10,10 @@ import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useTheme } from '@/store/theme/hook'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
-import settingState from '@/store/setting/state'
 import { MULTI_SELECT_BAR_HEIGHT } from './MultipleModeBar'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
 import { handlePlay } from './listAction'
-import { useSettingValue } from '@/store/setting/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 import { SPACING } from '@/config/spacing'
 
@@ -89,8 +87,6 @@ const List = forwardRef<ListType, ListProps>(({
   const [visibleMultiSelect, setVisibleMultiSelect] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const rowInfo = useRef(getRowInfo(rowType))
-  const isShowAlbumName = useSettingValue('list.isShowAlbumName')
-  const isShowInterval = useSettingValue('list.isShowInterval')
   const likedSet = useLikedSet()
   const toggleLike = useLikeToggle()
   // const currentListIdRef = useRef('')
@@ -187,7 +183,9 @@ const List = forwardRef<ListType, ListProps>(({
       if (isMultiSelectModeRef.current) {
         handleSelect(item, index)
       } else {
-        if (settingState.setting['list.isClickPlayList'] && onPlayList != null) {
+        // 点歌行为（2026-10-22 治理批 P7-a）：有来源列表的屏（歌单/排行榜）恒整张列表入队
+        // （后台全量拉取+来源 id 播放态识别，对齐 QQ/网易云）；无来源列表（搜索等）走已加载片段临时队列
+        if (onPlayList != null) {
           onPlayList(index)
         } else {
           void handlePlay(currentList, index)
@@ -220,8 +218,8 @@ const List = forwardRef<ListType, ListProps>(({
       rankBadge={rankBadge}
       showCover={false}
       showSource={showSource}
-      showInterval={isShowInterval}
-      isShowAlbumName={isShowAlbumName}
+      // 时长恒显、专辑副行恒显（P7-b/c：删 list.isShowInterval / list.isShowAlbumName 开关）
+      showInterval={true}
       isLiked={likedSet.has(item.id)}
       onLikePress={toggleLike}
       // OnlineList 数据源恒为在线歌曲，统一行按联合类型收窄，边界处断言

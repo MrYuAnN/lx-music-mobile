@@ -248,7 +248,7 @@ export const listMusicOverwrite = async(listId: string, musicInfos: LX.Music.Mus
   return [listId]
 }
 
-export const listMusicAdd = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType): Promise<string[]> => {
+export const listMusicAdd = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType): Promise<string[]> => {
   const targetList = await getListMusics(id)
 
   const listSet = new Set<string>()
@@ -258,7 +258,11 @@ export const listMusicAdd = async(id: string, musicInfos: LX.Music.MusicInfo[], 
     listSet.add(item.id)
     return true
   })
-  switch (addMusicLocationType) {
+  // 插入位置单点内定（2026-10-22 治理批 P8：删 list.addMusicLocationType 设置）：
+  // 未显式指定时红心恒顶部（Spotify Liked Songs/网易云「我喜欢的音乐」=新喜欢的在前），
+  // 其余列表恒末尾追加（QQ/网易云/Spotify 加歌惯例）
+  const location = addMusicLocationType ?? (id === LIST_IDS.LOVE ? 'top' : 'bottom')
+  switch (location) {
     case 'top':
       arrUnshift(targetList, musicInfos)
       break
@@ -286,10 +290,11 @@ export const listMusicRemove = async(listId: string, ids: string[]): Promise<str
   return [listId]
 }
 
-export const listMusicMove = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType): Promise<string[]> => {
+export const listMusicMove = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[]): Promise<string[]> => {
+  // 移动落点恒末尾（P8 拍板：move 无「新歌」语义）
   return [
     ...await listMusicRemove(fromId, musicInfos.map(musicInfo => musicInfo.id)),
-    ...await listMusicAdd(toId, musicInfos, addMusicLocationType),
+    ...await listMusicAdd(toId, musicInfos, 'bottom'),
   ]
 }
 

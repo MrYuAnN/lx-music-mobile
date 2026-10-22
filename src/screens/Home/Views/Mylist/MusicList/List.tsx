@@ -17,7 +17,6 @@ import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useActiveListId, useLikedSet, useLikeToggle } from '@/store/list/hook'
-import { useSettingValue } from '@/store/setting/hook'
 import { useTheme } from '@/store/theme/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 import { useDragReorder } from './useDragReorder'
@@ -117,8 +116,6 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const currentListIdRef = useRef('')
   const waitJumpListPositionRef = useRef(false)
   const rowInfo = useRef(getRowInfo())
-  const isShowAlbumName = useSettingValue('list.isShowAlbumName')
-  const isShowInterval = useSettingValue('list.isShowInterval')
   // console.log('render music list')
 
   useImperativeHandle(ref, () => ({
@@ -491,8 +488,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         showCover={false}
         // 歌单内混多源歌曲（kw/wy/...+local），行显来源角标（真机反馈 2026-10-20）
         showSource
-        showInterval={isShowInterval}
-        isShowAlbumName={isShowAlbumName}
+        // 时长/专辑恒显（治理批 P7-b/c）
+        showInterval={true}
         activeIndex={activeViewIndex}
         isLiked={likedSet.has(item.id)}
         onLikePress={toggleLike}
@@ -560,8 +557,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
                   showIndex={false}
                   showCover={false}
                   showSource
-                  showInterval={isShowInterval}
-                  isShowAlbumName={isShowAlbumName}
+                  showInterval={true}
                   activeIndex={-1}
                   isLiked={likedSet.has(drag.dragItem.id)}
                   onPress={() => {}}

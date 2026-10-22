@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import state, { type InitState } from './state'
 import { addListMusics, getListMusics, removeListMusics } from '@/core/list'
 import { LIST_IDS } from '@/config/constant'
-import settingState from '@/store/setting/state'
 import { hapticImpactLight } from '@/utils/haptic'
 
 // 显示名读时映射（不写存储）：index 0/1 恒为 default/love（allList 恒定构造），
@@ -125,7 +124,8 @@ export const useLikeToggle = () => {
     if (isLiked) {
       void removeListMusics(LIST_IDS.LOVE, [musicInfo.id])
     } else {
-      void addListMusics(LIST_IDS.LOVE, [musicInfo], settingState.setting['list.addMusicLocationType'])
+      // 红心恒顶部（P8 单点内定，此处显式省略）
+      void addListMusics(LIST_IDS.LOVE, [musicInfo])
     }
   }, [])
 }

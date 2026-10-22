@@ -5,7 +5,6 @@ import Title from './Title'
 import List from './List'
 import { useI18n } from '@/lang'
 import { addListMusics, moveListMusics } from '@/core/list'
-import settingState from '@/store/setting/state'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfo | null
@@ -53,7 +52,6 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
     if (selectInfo.isMove) {
       void moveListMusics(selectInfo.listId, listInfo.id,
         [selectInfo.musicInfo!],
-        settingState.setting['list.addMusicLocationType'],
       ).then(() => {
         onAdded?.()
         toast(t('list_edit_action_tip_move_success'))
@@ -63,7 +61,6 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
     } else {
       void addListMusics(listInfo.id,
         [selectInfo.musicInfo!],
-        settingState.setting['list.addMusicLocationType'],
       ).then(() => {
         onAdded?.()
         toast(t('list_edit_action_tip_add_success'))

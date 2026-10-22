@@ -170,7 +170,7 @@ export const handleToggleSource = async(listId: string, musicInfo: LX.Music.Musi
   const oldId = musicInfo.id
   let oldIdx = list.findIndex(m => m.id == oldId)
   if (oldIdx < 0) {
-    void addListMusics(listId, [toggleMusicInfo], settingState.setting['list.addMusicLocationType'])
+    void addListMusics(listId, [toggleMusicInfo])
     return true
   }
   const id = toggleMusicInfo.id
@@ -185,6 +185,8 @@ export const handleToggleSource = async(listId: string, musicInfo: LX.Music.Musi
     removeIds.push(id)
   }
   void removeListMusics(listId, removeIds).then(async() => {
+    // 显式 'bottom'：换源原位替换的中间态（最终位置由下方 updateListMusicPosition 校正），
+    // toId 可为 LOVE——不省略参数以避免单点内定 top 介入中间态（审查 PM-S 注释补记）
     await addListMusics(listId, [toggleMusicInfo], 'bottom')
     if (index != -1 && index < oldIdx) oldIdx--
     await updateListMusicPosition(listId, oldIdx, [id])

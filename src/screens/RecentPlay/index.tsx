@@ -129,7 +129,6 @@ export default ({ componentId }: { componentId: string }) => {
             showCover
             showSource={false}
             showInterval
-            isShowAlbumName={false}
             isLiked={likedSet.has(item.musicInfo.id)}
             onLikePress={toggleLike}
             onPress={(_, pressIndex) => { void handlePlay(pressIndex) }}

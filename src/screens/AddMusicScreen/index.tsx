@@ -18,7 +18,6 @@ import { getRowInfo, createStyle, toast } from '@/utils/tools'
 import { debounce, toNewMusicInfo } from '@/utils'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
-import { useSettingValue } from '@/store/setting/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useMyList } from '@/store/list/hook'
 import { useWindowSize } from '@/utils/hooks'
@@ -30,7 +29,6 @@ import { useRecentPlayList } from '@/core/player/recentPlay'
 import { getDownloadListSnapshot, toDownloadedMusicInfo } from '@/core/download'
 import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
-import settingState from '@/store/setting/state'
 import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
@@ -70,8 +68,6 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const localMusicList = useLocalMusicList()
   const windowSize = useWindowSize()
   const lists = useMyList()
-  const isShowAlbumName = useSettingValue('list.isShowAlbumName')
-  const isShowInterval = useSettingValue('list.isShowInterval')
 
   const scrollY = useRef(new Animated.Value(0)).current
   const handleScroll = useMemo(() => Animated.event(
@@ -216,7 +212,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const handleAdd = useCallback((musicInfos: LX.Music.MusicInfo[]) => {
     const pending = musicInfos.filter(m => !addedIds.has(m.id))
     if (!pending.length) return
-    void addListMusics(listId, pending, settingState.setting['list.addMusicLocationType']).then(() => {
+    // 插入位置内定（治理批 P8）
+    void addListMusics(listId, pending).then(() => {
       setAddedIds(prev => {
         const next = new Set(prev)
         for (const musicInfo of pending) next.add(musicInfo.id)
@@ -368,13 +365,13 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       showIndex={false}
       showCover
       showSource={source != 'search' && source != 'local'}
-      showInterval={isShowInterval}
-      isShowAlbumName={isShowAlbumName}
+      // 时长/专辑恒显（治理批 P7-b/c）
+      showInterval={true}
       onPress={handlePress}
       addAction={handleAddAction}
       added={addedIds.has(item.id)}
     />
-  ), [rowInfo, pickSelected, source, isShowInterval, isShowAlbumName, handlePress, handleAddAction, addedIds])
+  ), [rowInfo, pickSelected, source, handlePress, handleAddAction, addedIds])
 
   const keyExtractor = useCallback((item: LX.Music.MusicInfo) => item.id, [])
   const getItemLayout = useCallback((_data: ArrayLike<LX.Music.MusicInfo> | null | undefined, index: number) => (

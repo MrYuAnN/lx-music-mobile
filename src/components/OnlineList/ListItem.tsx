@@ -35,7 +35,7 @@ const PRESSED_BACKGROUND = {
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, isShowAlbumName, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -47,7 +47,6 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   showSource: boolean
   showInterval: boolean
   showSublineInterval?: boolean
-  isShowAlbumName: boolean
   activeIndex?: number
   isLiked?: boolean
   /** 显式音质标签（下载管理已完成行按实际下载档显示） */
@@ -174,7 +173,8 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   const chartColorKey = rankBadge && index < 3 ? CHART_COLOR_KEYS[index] : null
 
   let subline = item.singer || t('singer_unknown')
-  if (isShowAlbumName && item.meta?.albumName) subline += ` · ${item.meta.albumName}`
+  // 专辑副行恒显（2026-10-22 治理批 P7-c：删 list.isShowAlbumName 开关，全局恒显）
+  if (item.meta?.albumName) subline += ` · ${item.meta.albumName}`
   if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
   const rowElement = (
@@ -269,7 +269,6 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
     prevProps.showSource === nextProps.showSource &&
     prevProps.showInterval === nextProps.showInterval &&
     prevProps.showSublineInterval === nextProps.showSublineInterval &&
-    prevProps.isShowAlbumName === nextProps.isShowAlbumName &&
     prevProps.isLiked === nextProps.isLiked &&
     prevProps.qualityOverride === nextProps.qualityOverride &&
     prevProps.activeIndex != nextProps.index &&

@@ -221,7 +221,6 @@ export default ({ componentId }: { componentId: string }) => {
                     showCover
                     showSource={false}
                     showInterval
-                    isShowAlbumName={false}
                     qualityOverride={item.qualityOverride}
                     isLiked={likedSet.has(item.musicInfo.id)}
                     onLikePress={toggleLike}

@@ -4,7 +4,6 @@ import { debounce } from '@/utils'
 import { searchListMusic } from './listAction'
 import { toast, getRowInfo } from '@/utils/tools'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
-import { useSettingValue } from '@/store/setting/hook'
 import { useI18n } from '@/lang'
 import listState from '@/store/list/state'
 
@@ -38,8 +37,6 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
   const getListRef = useRef(getList)
   getListRef.current = getList
   const rowInfoRef = useRef(getRowInfo())
-  const isShowAlbumName = useSettingValue('list.isShowAlbumName')
-  const isShowInterval = useSettingValue('list.isShowInterval')
   const t = useI18n()
 
   const handleShowList = (keyword: string, height: number) => {
@@ -115,11 +112,11 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
       showIndex={false}
       showCover={false}
       showSource={false}
-      showInterval={isShowInterval}
-      isShowAlbumName={isShowAlbumName}
+      // 时长/专辑恒显（治理批 P7-b/c）
+      showInterval={true}
       onPress={info => { onScrollToInfo(info) }}
     />
-  ), [onScrollToInfo, isShowInterval, isShowAlbumName])
+  ), [onScrollToInfo])
   const getkey: SearchTipListProps['keyExtractor'] = item => item.id
   const getItemLayout: SearchTipListProps['getItemLayout'] = (data, index) => {
     return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }

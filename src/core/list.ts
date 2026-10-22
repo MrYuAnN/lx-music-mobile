@@ -1,7 +1,6 @@
 import { LIST_IDS } from '@/config/constant'
 import listAction from '@/store/list/action'
 import listState from '@/store/list/state'
-import settingState from '@/store/setting/state'
 import { fixNewMusicInfoQuality } from '@/utils'
 import { saveListPrevSelectId } from '@/utils/data'
 import { isListContentReadonly } from '@/utils/listManage'
@@ -57,7 +56,8 @@ export const updateUserListPosition = async(position: number, ids: string[]) => 
 /**
  * 批量添加歌曲到列表
  */
-export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType) => {
+// 插入位置由底层 listMusicAdd 单点内定（治理批 P8：删 list.addMusicLocationType 设置）
+export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType) => {
   if (!guardListWritable(id)) return
   await global.list_event.list_music_add(id, musicInfos, addMusicLocationType)
 }
@@ -65,11 +65,11 @@ export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[],
 /**
  * 跨列表批量移动歌曲
  */
-export const moveListMusics = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType: LX.AddMusicLocationType) => {
+export const moveListMusics = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[]) => {
   // 移动=从 from 移除 + 向 to 写入，双向守卫（审查 C2：仅守 from 时「移动到收藏歌单」旁路写入）
   if (!guardListWritable(fromId)) return
   if (!guardListWritable(toId)) return
-  await global.list_event.list_music_move(fromId, toId, musicInfos, addMusicLocationType)
+  await global.list_event.list_music_move(fromId, toId, musicInfos)
 }
 
 /**
@@ -175,7 +175,8 @@ export const createList = async({ name, id = `userlist_${Date.now()}`, list = []
   if (list) {
     // 创建链豁免只读守卫（审查 C1）：新建收藏/克隆/备份导入的列表经 list_create 已带 source
     // 入 userLists，复用 addListMusics 会被自身守卫拦截致歌曲丢失；与远程同步同走事件层豁免通道
-    await global.list_event.list_music_add(id, list, settingState.setting['list.addMusicLocationType'])
+    // 插入位置内定（P8）：备份导入/克隆歌单恒末尾
+    await global.list_event.list_music_add(id, list)
   }
 }
 
