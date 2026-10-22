@@ -13,7 +13,8 @@ import { SPACING } from '@/config/spacing'
 
 export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceList']]>
 
-// 词块 + 显式 × 单删（2026-10-22 治理批 P9：替代不可发现的长按删除，对标 QQ/网易云）
+// 一体胶囊（走查反馈：删除叉号重设计，网易云/QQ/B站/抖音词块同形态）：外壳单容器统一底色，
+// 文字钮（搜索）与 × 钮（单删）内嵌左右、× 命中区加大——替代旧两段拼接式（有接缝、叉号悬空）
 const ListItem = ({ keyword, onSearch, onRemove }: {
   keyword: string
   onSearch: (keyword: string) => void
@@ -22,19 +23,16 @@ const ListItem = ({ keyword, onSearch, onRemove }: {
   const theme = useTheme()
   const t = useI18n()
   return (
-    <View style={styles.item}>
-      <Button
-        style={{ ...styles.button, backgroundColor: theme['c-button-background'] }}
-        onPress={() => { onSearch(keyword) }}
-      >
+    <View style={{ ...styles.item, backgroundColor: theme['c-button-background'] }}>
+      <Button style={styles.button} onPress={() => { onSearch(keyword) }}>
         <Text color={theme['c-button-font']} size={13} numberOfLines={1}>{keyword}</Text>
       </Button>
       <TouchableOpacity
-        style={{ ...styles.removeBtn, backgroundColor: theme['c-button-background'] }}
+        style={styles.removeBtn}
         onPress={() => { onRemove(keyword) }}
         accessibilityLabel={t('search_history_delete')}
       >
-        <Icon name="close" size={12} color={theme['c-font-label']} />
+        <Icon name="close" size={13} color={theme['c-font-label']} />
       </TouchableOpacity>
     </View>
   )
@@ -132,23 +130,21 @@ const styles = createStyle({
   item: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 4,
+    maxWidth: 170,
+    paddingLeft: SPACING.s10,
     marginRight: SPACING.s10,
     marginTop: SPACING.s8,
   },
   button: {
-    paddingLeft: SPACING.s10,
     paddingTop: SPACING.s6,
     paddingBottom: SPACING.s6,
-    borderTopLeftRadius: 4,
-    borderBottomLeftRadius: 4,
-    maxWidth: 150,
+    flexShrink: 1,
   },
   removeBtn: {
     paddingLeft: SPACING.s6,
     paddingRight: SPACING.s6,
     paddingTop: SPACING.s6,
     paddingBottom: SPACING.s6,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
   },
 })

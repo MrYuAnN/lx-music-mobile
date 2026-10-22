@@ -3,15 +3,17 @@ import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import settingState from '@/store/setting/state'
 import { getMusicUrl, getLyricInfo } from '@/core/music/online'
-import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, externalStorageDirectoryPath } from '@/utils/fs'
+import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, stat, externalStorageDirectoryPath } from '@/utils/fs'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
 import { throttle } from '@/utils/common'
 import { toast } from '@/utils/tools'
 
 // 下载引擎（multifix 问题 4）：并发 N 队列、自建音质回退链、RNFS 写公共 Music/拾音/、
-// 完成后同名 .lrc + 封面 + scanFile 入库；任务模型复用 LX.Download.ListItem，持久化 @download_list。
-// 暂停=中断保留 .tmp，继续=从头重下（RNFS Android 无断点续传，方案期核实拍板）。
+// 成功判定=音频+歌词+封面全部成功（走查拍板 10-23，任一失败标错可重试；RNFS 对 HTTP 4xx
+// 也 resolve，音频/封面均需状态码自检）+ scanFile 入库尽力而为；任务模型复用
+// LX.Download.ListItem，持久化 @download_list。暂停=中断保留 .tmp，继续=从头重下
+// （RNFS Android 无断点续传，方案期核实拍板）。
 
 // 自建下载回退链（不复用缺 ape 的 getPlayQuality，架构师 I3）
 const DOWNLOAD_QUALITY_CHAIN = ['flac24bit', 'flac', 'ape', '320k', '128k'] as const
@@ -148,10 +150,17 @@ const runDownload = async(task: LX.Download.ListItem) => new Promise<void>((reso
     },
   })
   runningJobs.set(task.id, job.jobId)
-  job.promise.then(async() => {
+  job.promise.then(async(res) => {
+    // 状态码自检：RNFS 对 HTTP 4xx/5xx 也 resolve，不查会把错误页当音频落盘还标「已完成」
+    // （走查反馈②④：重试后只剩 lrc/cover 的直接嫌疑）；失败文案指明环节（走查拍板：人话报错）
+    if (res && res.statusCode >= 400) {
+      throw new Error(`${global.i18n.t('download_failed_audio')}（HTTP ${res.statusCode}）`)
+    }
     // .tmp → 成品（重下载同名场景先清目标）
     await unlink(task.metadata.filePath).catch(() => {})
     await moveFile(tmpPath, task.metadata.filePath)
+    const info = await stat(task.metadata.filePath).catch(() => null)
+    console.warn('[download] moved:', task.metadata.filePath, info?.size ?? -1, 'bytes') // 排查插桩（疑案结案即删）
   }).then(() => { resolve() }).catch(reject)
 })
 
@@ -171,25 +180,35 @@ const runDownloadWithRefresh = async(task: LX.Download.ListItem) => {
  * 完成后处理（尽力而为不阻塞，慢图床不拖住完成态——审查 S③）：
  * 同名 .lrc + 隐藏封面 + scanFile 入库
  */
+/**
+ * 完成后素材处理（走查拍板 10-23：成功判定=音频+歌词+封面全部成功，替代旧「尽力而为静默降级」
+ * ——审查 S③ 的「不拖住完成态」顾虑由 15s 超时封顶）：歌词取失败/封面下载失败即上抛标错可重试；
+ * 内容本身为空（无歌词/无封面）不算失败；scanFile 为系统入库动作失败不影响素材完整性
+ */
 const postProcess = async(task: LX.Download.ListItem) => {
   const { musicInfo, filePath } = task.metadata
   const baseName = filePath.replace(/\.[^.]+$/, '')
+  // 失败文案指明环节（走查拍板：人话报错，替代裸 HTTP 码）
+  let lyricInfo
   try {
-    const lyricInfo = await getLyricInfo({ musicInfo, isRefresh: false })
-    if (lyricInfo.lyric) await writeFile(`${baseName}.lrc`, lyricInfo.lyric)
-  } catch {}
-  try {
-    const picUrl = musicInfo.meta.picUrl
-    if (picUrl) {
-      // 封面前导 . 隐藏文件，不被系统媒体库收进相册（审查 S④）；15s 超时防慢图床
-      const dir = filePath.slice(0, filePath.lastIndexOf('/'))
-      const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
-      await downloadFile(picUrl, `${dir}/.${fileName}.cover.jpg`, {
-        connectionTimeout: 15000,
-        readTimeout: 15000,
-      }).promise
+    lyricInfo = await getLyricInfo({ musicInfo, isRefresh: false })
+  } catch {
+    throw new Error(global.i18n.t('download_failed_lyric'))
+  }
+  if (lyricInfo.lyric) await writeFile(`${baseName}.lrc`, lyricInfo.lyric)
+  const picUrl = musicInfo.meta.picUrl
+  if (picUrl) {
+    // 封面前导 . 隐藏文件，不被系统媒体库收进相册（审查 S④）；15s 超时防慢图床
+    const dir = filePath.slice(0, filePath.lastIndexOf('/'))
+    const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
+    const res = await downloadFile(picUrl, `${dir}/.${fileName}.cover.jpg`, {
+      connectionTimeout: 15000,
+      readTimeout: 15000,
+    }).promise
+    if (res.statusCode >= 400) {
+      throw new Error(`${global.i18n.t('download_failed_cover')}（HTTP ${res.statusCode}）`)
     }
-  } catch {}
+  }
   try {
     await NativeModules.DownloadSupport?.scanFile?.(filePath)
   } catch {}
@@ -228,6 +247,8 @@ const startTask = async(task: LX.Download.ListItem) => {
     task.progress = 0
     task.speed = ''
     await runDownloadWithRefresh(task)
+    // 成功判定=全部素材成功（走查拍板 10-23）：歌词/封面失败同样标错可重试
+    await postProcess(task)
   } catch (err) {
     failed = err as Error
   }
@@ -243,6 +264,7 @@ const startTask = async(task: LX.Download.ListItem) => {
     }
     task.status = 'error'
     task.statusText = failed.message || global.i18n.t('download_failed')
+    console.warn('[download] task error:', task.id, failed.message) // 排查插桩（疑案结案即删）
     notifyChanged()
     pump()
     return
@@ -253,8 +275,6 @@ const startTask = async(task: LX.Download.ListItem) => {
   task.progress = 100
   task.speed = ''
   notifyChanged()
-  // 完成态即时落定，歌词/封面/入库异步后处理（审查 S③）
-  void postProcess(task)
   pump()
 }
 
@@ -292,7 +312,7 @@ export const revalidateWifiWaiting = async() => {
  */
 export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline): Promise<boolean> => {
   await initDownloadList()
-  const taskId = `download__${musicInfo.source}__${musicInfo.id}`
+  const taskId = getTaskId(musicInfo)
   downloadList = downloadList.filter(t => !(t.id == taskId && t.status == 'completed'))
   if (downloadList.some(t => t.id == taskId)) return false
   const granted = await isStorageGranted()
@@ -379,7 +399,8 @@ export const removeDownloadTask = async(id: string) => {
   pump()
 }
 
-/** 已完成任务 → 可播放的 MusicInfoLocal（meta.filePath 指向下载文件，走 local 播放分流，蓝本 §5.6） */
+/** 已完成任务 → 可播放的 MusicInfoLocal（meta.filePath 指向下载文件，走 local 播放分流，蓝本 §5.6）；
+ * 保留原曲 picUrl 与在线身份（走查反馈①③：封面即时显示，评论/切档按原曲取链） */
 export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.MusicInfoLocal => {
   const musicInfo = task.metadata.musicInfo
   return {
@@ -391,9 +412,47 @@ export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.Musi
     meta: {
       songId: task.metadata.filePath,
       albumName: musicInfo.meta.albumName,
+      picUrl: musicInfo.meta.picUrl,
       filePath: task.metadata.filePath,
       ext: task.metadata.ext,
+      onlineInfo: musicInfo,
     },
   }
+}
+
+const getTaskId = (musicInfo: LX.Music.MusicInfoOnline) => `download__${musicInfo.source}__${musicInfo.id}`
+
+/**
+ * 进页复核（走查反馈②④）：外部删除（系统清理/误删）会让完成任务仍标「已完成」，点播静默走在线
+ * 兜底——权限正常时校验完成任务的文件在位性，丢失的任务标错（重试=重新下载，复用 error 行 UI）；
+ * 权限失效时不误标（existsFile 对任何路径都 false），返回 false 由调用方引导授权
+ */
+export const revalidateCompletedFiles = async(): Promise<boolean> => {
+  await initDownloadList()
+  if (!(await isStorageGranted())) return false
+  let changed = false
+  for (const task of downloadList) {
+    // 排查插桩（疑案结案即删）：任务级元数据串位取证
+    console.warn('[download] task check:', task.status, task.metadata.musicInfo.name, '->', task.metadata.filePath)
+    if (task.status != 'completed' || !task.metadata.filePath) continue
+    if (!(await existsFile(task.metadata.filePath))) {
+      task.status = 'error'
+      task.statusText = global.i18n.t('download_file_missing')
+      changed = true
+    }
+  }
+  if (changed) notifyChanged()
+  return true
+}
+
+/**
+ * 本地优先播放匹配（走查反馈②，网易云/QQ 已下载歌曲同款）：在线取链前按 source+id 查完成下载任务，
+ * 文件在位即返回本地路径——秒开+离线可播；未命中/文件缺失返回空串走在线。
+ */
+export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<string> => {
+  await initDownloadList()
+  const task = downloadList.find(t => t.id == getTaskId(musicInfo) && t.status == 'completed')
+  if (!task?.metadata.filePath) return ''
+  return (await existsFile(task.metadata.filePath)) ? task.metadata.filePath : ''
 }
 

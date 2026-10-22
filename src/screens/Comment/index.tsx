@@ -85,7 +85,9 @@ const TABS = [
 ] as const
 const getMusicInfo = (musicInfo: LX.Player.PlayMusic | null) => {
   if (!musicInfo) return null
-  return 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo
+  const info = 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo
+  // 已下载曲（走查反馈③）：本地播放信息携带原曲在线身份，评论按原曲拉取（网易云/QQ 已下载曲评论同款）
+  return info.source == 'local' ? (info.meta.onlineInfo ?? info) : info
 }
 export default memo(({ componentId }: {
   componentId: string

@@ -17,6 +17,8 @@ import {
   getPicUrl as getLocalPicUrl,
   getLyricInfo as getLocalLyricInfo,
 } from './local'
+import { getCompletedDownloadPath } from '@/core/download'
+import { toLocalFileUrl } from '@/utils/music'
 
 
 export const getMusicUrl = async({
@@ -37,6 +39,13 @@ export const getMusicUrl = async({
   } else if (musicInfo.source == 'local') {
     return getLocalMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
   } else {
+    // 本地优先（走查反馈②，网易云/QQ 已下载歌曲同款）：完成下载表 source+id 精确命中且文件在位
+    // 即播本地文件——秒开+离线可播，播放身份保持在线原曲（评论/音质/封面链路零感知）；
+    // 切档重链（isRefresh=true）不 substitute，保证切档按新档在线播放
+    if (!isRefresh) {
+      const localPath = await getCompletedDownloadPath(musicInfo)
+      if (localPath) return toLocalFileUrl(localPath)
+    }
     return getOnlineMusicUrl({ musicInfo, isRefresh, quality, onToggleSource, allowToggleSource })
   }
 }

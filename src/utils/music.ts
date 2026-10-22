@@ -8,6 +8,11 @@ export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promi
   return /\/\d+$/.test(musicInfo.meta.filePath) ? musicInfo.meta.filePath : ''
 }
 
+/** 本地路径转播放可用 URL：RNTP 安卓层 Uri.parse 直通 ExoPlayer，裸绝对路径无 scheme 播放报错
+ * （走查反馈②：下载曲本地播放报错→在线兜底，与 getPicUrl 的 file:// 前缀同款处理），
+ * content:// 等已有 scheme 的输入原样返回 */
+export const toLocalFileUrl = (path: string) => path.startsWith('/') ? `file://${path}` : path
+
 /** online 行音质元数据提取（local 无 _qualitys 返回 undefined）；统一行/PlayListPanel/下载引擎共用。
  * meta 可选链防御（2026-10-20 真机崩溃：外部源数据存在 meta 缺失条目，如聚合/异常解析结果） */
 export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQualityType | undefined => {

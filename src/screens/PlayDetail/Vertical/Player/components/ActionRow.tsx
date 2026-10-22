@@ -100,9 +100,12 @@ const ActionRow = ({ page }: ActionRowProps) => {
   }, [])
 
   const qualityOptions = useMemo<readonly CheckSheetItem[]>(() => {
-    const musicInfo = playMusicInfo.musicInfo
+    const rawMusicInfo = playMusicInfo.musicInfo
       ? ('progress' in playMusicInfo.musicInfo ? playMusicInfo.musicInfo.metadata.musicInfo : playMusicInfo.musicInfo)
       : null
+    // 已下载曲（走查反馈③）：按原曲在线身份展示可切档位，切档经 reloadCurrentWithQuality 在线重链
+    // （无业界对标，本产品自定：免重下载在线试听新档，审查 I-3）
+    const musicInfo = rawMusicInfo?.source == 'local' && rawMusicInfo.meta.onlineInfo ? rawMusicInfo.meta.onlineInfo : rawMusicInfo
     const sourceQualityList = musicInfo ? global.lx.qualityList[musicInfo.source] : undefined
     // 本地歌曲等无在线音质元数据的场景：选项集为空 → 音质入口置灰（缺失能力不上界面，拍板原则）
     const songQualitys = musicInfo

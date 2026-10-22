@@ -104,6 +104,7 @@ const isRequestStale = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, al
 }
 const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false, allowReload = false): Promise<string | null> => {
   // this.musicInfo.url = await getMusicPlayUrl(targetSong, type)
+  console.warn('[play] getMusicPlayUrl entry:', ('progress' in musicInfo ? musicInfo.metadata.musicInfo.name : musicInfo.name)) // 排查插桩（疑案结案即删）
   setStatusText(global.i18n.t('player__getting_url'))
   addLoadTimeout()
 
@@ -353,6 +354,11 @@ export const playList = async(listId: string, index: number) => {
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   setPlayMusicInfo(listId, getList(listId)[index])
+  // 排查插桩（疑案结案即删）：播放器实际入队对象取证
+  {
+    const resolved = getList(listId)[index]
+    console.warn('[play] playList resolve:', listId, index, resolved?.name, '->', (resolved?.meta as LX.Music.MusicInfoMeta_local | undefined)?.filePath ?? '')
+  }
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
   await handlePlay()

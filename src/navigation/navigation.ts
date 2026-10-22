@@ -15,6 +15,7 @@ import {
   DOWNLOAD_SCREEN,
   ADD_MUSIC_SCREEN,
   DISLIKE_MANAGE_SCREEN,
+  ABOUT_SCREEN,
 } from './screenNames'
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
@@ -94,3 +95,7 @@ export function pushCommentScreen(componentId: string) {
   void componentId
   pushRoute(COMMENT_SCREEN)
 }
+
+// 「关于」独立页（2026-10-23 设置关于节重设计）：设置平铺架构不变（对标网易云设置），
+// 关于节改入口行 push 本屏
+export const pushAboutScreen = (componentId: string) => { void componentId; pushAmScreen(ABOUT_SCREEN) }

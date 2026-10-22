@@ -48,7 +48,7 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
 
   return (
     showBlankView
-      ? <BlankView ref={blankViewRef} onSearch={onSearch} />
+      ? <BlankView ref={blankViewRef} onSearch={onSearch} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
       : listType == 'songlist'
         ? <SonglistList ref={listRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
         : <MusicList ref={listRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />

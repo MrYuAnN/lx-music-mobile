@@ -19,6 +19,10 @@ export interface HotSearchType {
 
 export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceList']]>
 
+// 聚合词块收起态条数（本产品自定阈值，无业界对标数值：与搜索历史 15 条上限对齐、约 3 行词块首屏可容；
+// 封顶+展开交互为搜索中间页泛通行做法，方案审查 I-3）
+const COLLAPSED_COUNT = 15
+
 // 词块（聚合模式：跨源合并无榜单语义，2026-10-22 治理批 P9）
 const ChipItem = ({ keyword, onSearch }: {
   keyword: string
@@ -58,10 +62,12 @@ const EmptyText = () => {
 export default forwardRef<HotSearchType, ListProps>((props, ref) => {
   const [list, setList] = useState<List>([])
   const [isRank, setIsRank] = useState(false)
+  const [expanded, setExpanded] = useState(false)
   // 加载态（审查 S3：防加载期误闪「暂无热搜」空态）+ 请求序号守卫（快速切源竞态，后发先至）
   const [loading, setLoading] = useState(false)
   const requestSeqRef = useRef(0)
   const t = useI18n()
+  const theme = useTheme()
 
   const isUnmountedRef = useRef(false)
   useEffect(() => {
@@ -75,6 +81,7 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
     show(source) {
       // 单源=榜单形态（有原始榜单序），聚合=词块形态（跨源合并无榜单语义）
       setIsRank(source != 'all')
+      setExpanded(false)
       const seq = ++requestSeqRef.current
       setLoading(true)
       void getList(source).then((list) => {
@@ -95,13 +102,22 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
                 {
                   isRank
                     ? list.map((keyword, index) => <RankItem key={keyword} keyword={keyword} index={index} onSearch={props.onSearch} />)
-                    : list.map(keyword => <ChipItem key={keyword} keyword={keyword} onSearch={props.onSearch} />)
+                    : (expanded ? list : list.slice(0, COLLAPSED_COUNT)).map(keyword => <ChipItem key={keyword} keyword={keyword} onSearch={props.onSearch} />)
                 }
               </View>
             )
           : loading
             ? null
             : <EmptyText />
+      }
+      {
+        !isRank && list.length > COLLAPSED_COUNT
+          ? (
+              <Button style={styles.moreBtn} onPress={() => { setExpanded(value => !value) }}>
+                <Text size={13} color={theme['c-font-label']}>{t(expanded ? 'search_hot_search_collapse' : 'search_hot_search_expand')}</Text>
+              </Button>
+            )
+          : null
       }
     </View>
   )
@@ -143,5 +159,11 @@ const styles = createStyle({
   },
   empty: {
     marginTop: SPACING.s10,
+  },
+  moreBtn: {
+    alignSelf: 'center',
+    marginTop: SPACING.s10,
+    paddingHorizontal: SPACING.s12,
+    paddingVertical: SPACING.s6,
   },
 })

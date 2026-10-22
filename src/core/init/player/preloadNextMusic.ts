@@ -25,15 +25,19 @@ const preloadNextMusicUrl = async(curTime: number) => {
     // 播放缓存仍由 native ExoPlayer 缓存（maxCacheSize 上限自管）生效。
     // allowToggleSource=false：预加载阶段只刷新不换源（HEAD 405/403 误判不应触发换源回写，
     // 换源决策留给切歌时的正式取链，审查 O-I1）
-    const url = await getMusicUrl({ musicInfo: info.musicInfo, allowToggleSource: false }).catch(() => '')
+    const url = await getMusicUrl({ musicInfo: info.musicInfo, isRefresh: false, allowToggleSource: false }).catch(() => '')
     if (url) {
       console.log('preload url', url)
-      // URL 可达性检查兜底；allowToggleSource=false 已保证误判不换源，
-      // 最多多刷一次链接，预加载场景代价可接受
-      const available = await checkUrl(url).then(() => true).catch(() => false)
-      if (!available) {
-        const url = await getMusicUrl({ musicInfo: info.musicInfo, isRefresh: true }).catch(() => '')
-        console.log('preload url refresh', url)
+      // 本地文件路径（本地优先命中，走查反馈②）不经 HTTP HEAD 检查——RN fetch 不支持本地路径
+      // 必失败反触发多余的在线重取（审查 I-1），文件在位性已由取链侧 existsFile 保证
+      if (/^https?:/.test(url)) {
+        // URL 可达性检查兜底；allowToggleSource=false 已保证误判不换源，
+        // 最多多刷一次链接，预加载场景代价可接受
+        const available = await checkUrl(url).then(() => true).catch(() => false)
+        if (!available) {
+          const url = await getMusicUrl({ musicInfo: info.musicInfo, isRefresh: true }).catch(() => '')
+          console.log('preload url refresh', url)
+        }
       }
     }
   }

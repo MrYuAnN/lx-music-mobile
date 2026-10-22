@@ -77,10 +77,10 @@ const AddRuleSheet = forwardRef<AddRuleSheetType, Props>(({ onAdd }, ref) => {
                   TYPES.map(({ id, labelKey }) => (
                     <TouchableOpacity
                       key={id}
-                      style={{ ...styles.typeChip, backgroundColor: type == id ? theme['c-primary-alpha-200'] : theme['c-button-background'] }}
+                      style={{ ...styles.typeChip, backgroundColor: type == id ? theme['c-primary'] : theme['c-button-background'] }}
                       onPress={() => { setType(id) }}
                     >
-                      <Text size={13} color={type == id ? theme['c-primary-font'] : theme['c-font']}>{t(labelKey)}</Text>
+                      <Text size={13} color={type == id ? theme['c-on-primary'] : theme['c-font']}>{t(labelKey)}</Text>
                     </TouchableOpacity>
                   ))
                 }
@@ -111,7 +111,7 @@ const AddRuleSheet = forwardRef<AddRuleSheetType, Props>(({ onAdd }, ref) => {
               }
               <Text size={12} color={theme['c-font-label']} style={styles.tip}>{t('dislike_escape_tip')}</Text>
               <Button style={{ ...styles.confirmBtn, backgroundColor: theme['c-primary'] }} onPress={handleConfirm}>
-                <Text size={14} color={theme['c-primary-light-100']}>{t('confirm')}</Text>
+                <Text size={14} color={theme['c-on-primary']}>{t('confirm')}</Text>
               </Button>
             </View>
           </Popup>

@@ -12,9 +12,10 @@ import {
   getOnlineOtherSourcePicUrl,
   getOtherSource,
 } from './utils'
-import { getLocalFilePath } from '@/utils/music'
+import { getLocalFilePath, toLocalFileUrl } from '@/utils/music'
 import { readLyric, readPic } from '@/utils/localMediaMetadata'
 import { stat } from '@/utils/fs'
+import { getMusicUrl as getOnlineMusicUrl } from './online'
 
 const getOtherSourceByLocal = async<T>(musicInfo: LX.Music.MusicInfoLocal, handler: (infos: LX.Music.MusicInfoOnline[]) => Promise<T>) => {
   let result: LX.Music.MusicInfoOnline[] = []
@@ -74,8 +75,30 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
 }): Promise<string> => {
   if (!isRefresh) {
     const path = await getLocalFilePath(musicInfo)
-    // console.log(path)
-    if (path) return path
+    if (path) {
+      // 排查插桩（走查反馈②④，疑案结案即删）：下载曲快路径命中必经此，观察原生层是否再报错；
+      // name+path 同打——区分「整个对象被换」与「对象内路径被改」
+      if (musicInfo.meta.onlineInfo) console.warn('[play] local fast path:', musicInfo.name, path)
+      return toLocalFileUrl(path)
+    }
+    // 排查插桩（走查反馈②④，疑案结案即删）：仅下载曲 miss 是异常路径线索——
+    // 扫描本地曲文件被删/改名属正常兜底场景，不打印防刷屏（审查 S 批量）
+    if (musicInfo.meta.onlineInfo) console.warn('[play] local file miss:', musicInfo.meta.filePath)
+  }
+
+  // 下载曲（走查反馈②③）：优先按原曲身份在线取链——同曲直取快于按名换源搜索；
+  // 切档重链（isRefresh=true）亦经此按新全局档在线播放该档（无业界对标，本产品自定：免重下载试听新档，审查 I-3）
+  if (musicInfo.meta.onlineInfo) {
+    try {
+      return await getOnlineMusicUrl({
+        musicInfo: musicInfo.meta.onlineInfo,
+        isRefresh,
+        onToggleSource,
+        allowToggleSource,
+      })
+    } catch (err) {
+      console.warn('[play] onlineInfo direct fetch failed:', (err as Error).message) // 与上插桩同生命周期
+    }
   }
 
   try {

@@ -18,12 +18,13 @@ import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import {
   initDownloadList, getDownloadListSnapshot, pauseDownloadTask, resumeDownloadTask,
   removeDownloadTask, addDownloadTask, revalidateWifiWaiting, toDownloadedMusicInfo, pump,
+  revalidateCompletedFiles,
 } from '@/core/download'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { LIST_IDS, storageDataPrefix, ICON_SIZE, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { qualityLabel as formatQuality } from '@/utils/music'
-import { createStyle } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import { SPACING } from '@/config/spacing'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 
@@ -68,11 +69,18 @@ export default ({ componentId }: { componentId: string }) => {
   useEffect(() => {
     // 进页恢复任务表 + 重查 Wi-Fi 挂起（审查 I5：前台网络切换无回调，重进页面是恢复路径之一）
     // + 续跑未完成任务（引擎不随启动自动跑，避免后台静默流量）
-    void initDownloadList().then(() => {
+    void initDownloadList().then(async() => {
       setTasks(getDownloadListSnapshot())
       void revalidateWifiWaiting()
       pump()
+      // 文件在位性复核（走查反馈②④）：外部清理删文件后任务仍标已完成，点播静默走在线兜底的根因；
+      // 权限失效时不复核任务（防误标），提示引导授权
+      const granted = await revalidateCompletedFiles()
+      setTasks(getDownloadListSnapshot())
+      if (!granted) toast(t('download_storage_permission_lost'))
     })
+    // t 仅用于权限丢失 toast（挂载单次执行，语言切换重进页即刷新）
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
@@ -189,6 +197,8 @@ export default ({ componentId }: { componentId: string }) => {
   }, [])
 
   const handleCompletedPress = useCallback((musicInfo: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => {
+    // 排查插桩（疑案结案即删）：核对点击目标与实际入队目标
+    console.warn('[play] tap download row:', musicInfo.name, 'index:', list.findIndex(m => m.id == musicInfo.id), 'of', list.length)
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
       const index = list.findIndex(m => m.id == musicInfo.id)
       if (index > -1) void playList(LIST_IDS.TEMP, index)

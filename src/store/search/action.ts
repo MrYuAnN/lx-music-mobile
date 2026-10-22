@@ -50,6 +50,7 @@ export default {
     let index = state.historyList.indexOf(word)
     if (index == 0) return
     if (index > -1) state.historyList.splice(index, 1)
+    // 上限 15 与搜索页热搜聚合收起阈值（BlankView/HotSearch COLLAPSED_COUNT）语义对齐，调整时同步评估（审查 S-3）
     if (state.historyList.length >= 15) state.historyList.splice(14, state.historyList.length - 14)
     state.historyList.unshift(word)
     return [...state.historyList]

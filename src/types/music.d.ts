@@ -34,6 +34,7 @@ declare namespace LX {
     interface MusicInfoMeta_local extends MusicInfoMetaBase {
       filePath: string
       ext: string
+      onlineInfo?: MusicInfoOnline // 下载曲的原曲在线身份（评论/切档取链用，扫描本地曲无此字段）
     }
 
 
