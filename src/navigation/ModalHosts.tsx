@@ -2,12 +2,9 @@ import { useEffect, useState } from 'react'
 import { Modal } from 'react-native'
 
 import { useVersionModalVisible } from '@/store/version/hook'
-import { useSyncModeModalVisible } from '@/store/sync/hook'
 import { hideModal } from '@/core/version'
-import { removeSyncModeEvent } from '@/core/sync'
 import { armDialogBlur } from '@/components/common/useDialogBlurBehind'
 import VersionModal from './components/VersionModal'
-import SyncModeModal from './components/SyncModeModal'
 
 // RNN showOverlay 弹窗体系的 react-navigation 等价（N1 迁移）：
 // RN Modal 挂根部（原生窗口层，恒在 screens/迷你条之上），可见性由 store 驱动；
@@ -44,17 +41,6 @@ export const VersionModalHost = () => {
   return (
     <Modal visible={visible && rendered} transparent statusBarTranslucent navigationBarTranslucent animationType="fade" onRequestClose={hideModal}>
       {visible ? <VersionModal /> : null}
-    </Modal>
-  )
-}
-
-export const SyncModeModalHost = () => {
-  const visible = useSyncModeModalVisible()
-  const rendered = useArmGate(visible)
-
-  return (
-    <Modal visible={visible && rendered} transparent statusBarTranslucent navigationBarTranslucent animationType="fade" onRequestClose={removeSyncModeEvent}>
-      {visible ? <SyncModeModal /> : null}
     </Modal>
   )
 }

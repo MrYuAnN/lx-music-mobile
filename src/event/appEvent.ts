@@ -180,10 +180,6 @@ export class AppEvent extends Event {
       }, 200)
     }
   }
-
-  selectSyncMode(mode: LX.Sync.ModeType) {
-    this.emit('selectSyncMode', mode)
-  }
 }
 
 

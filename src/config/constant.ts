@@ -49,6 +49,7 @@ export enum COMPONENT_IDS {
   playDetail = 'playDetail',
   songlistDetail = 'songlistDetail',
   comment = 'comment',
+  setting = 'setting',
 }
 
 export enum NAV_SHEAR_NATIVE_IDS {
@@ -87,10 +88,6 @@ export const storageDataPrefix = {
   TEMP_LIST_LOCAL: 'local__play',
   TEMP_LIST_ONLINE: 'online__play',
 
-  syncAuthKey: '@sync_auth_key',
-  syncHost: '@sync_host',
-  syncHostHistory: '@sync_host_history',
-
   openStoragePath: '@open_storage_path',
   selectedManagedFolder: '@selected_managed_folder',
   notificationTipEnable: '@notification_tip_enable',
@@ -124,9 +121,6 @@ export const storageDataPrefixOld = {
   // lyric: '@lyric__',
   // musicUrl: '@music_url__',
   playInfo: '@play_info',
-  syncAuthKey: '@sync_auth_key',
-  syncHost: '@sync_host',
-  syncHostHistory: '@sync_host_history',
   notificationTipEnable: '@notification_tip_enable',
 } as const
 
@@ -185,3 +179,7 @@ export const DEFAULT_SETTING = {
     // query: {},
   },
 }
+
+// destructive 红语义独立于品牌色（HIG 惯例不随 tint）：AM 双态红（治理批审查 I1 单源化，
+// ActionSheet/Setting ActionRow 共用）
+export const DESTRUCTIVE_RED = { dark: '#FB4B54', light: '#FA233B' } as const

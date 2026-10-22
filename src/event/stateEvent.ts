@@ -93,10 +93,6 @@ export class StateEvent extends Event {
     this.emit('fetchingListStatusUpdated', fetchingListStatus)
   }
 
-  syncStatusUpdated(status: LX.Sync.Status) {
-    this.emit('syncStatusUpdated', status)
-  }
-
   versionInfoUpdated(info: VersionState['versionInfo']) {
     this.emit('versionInfoUpdated', info)
   }
@@ -111,10 +107,6 @@ export class StateEvent extends Event {
 
   versionModalUpdated(visible: VersionState['showModal']) {
     this.emit('versionModalUpdated', visible)
-  }
-
-  syncModeModalUpdated(visible: boolean) {
-    this.emit('syncModeModalUpdated', visible)
   }
 
   // 全局确认弹窗（弹窗体系统一方案批1）：无参广播，hook 读 store/confirm 快照

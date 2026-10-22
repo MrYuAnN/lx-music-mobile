@@ -18,7 +18,7 @@ import { Provider } from '@/store/Provider'
 import RootStack from '@/navigation/RootStack'
 import { navigationRef, handleNavigationStateChange } from '@/navigation'
 import { CoverFlyHost } from '@/navigation/transitions/coverFly'
-import { VersionModalHost, SyncModeModalHost } from '@/navigation/ModalHosts'
+import { VersionModalHost } from '@/navigation/ModalHosts'
 import PlaylistCoverGenHost from '@/components/common/PlaylistCoverGenHost'
 import ConfirmHost from '@/components/common/ConfirmHost'
 import PlayerBar from '@/components/player/PlayerBar'
@@ -95,7 +95,6 @@ const AppRoot = () => {
                 </NavigationContainer>
                 <PlayerBar />
                 <VersionModalHost />
-                <SyncModeModalHost />
               </>
             )
           : null

@@ -5,7 +5,6 @@ import initI18n from './i18n'
 import initUserApi from './userApi'
 import initPlayer from './player'
 import dataInit from './dataInit'
-import initSync from './sync'
 import initCommonState from './common'
 import { initDeeplink } from './deeplink'
 import { setApiSource } from '@/core/apiSource'
@@ -13,6 +12,8 @@ import commonActions from '@/store/common/action'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { initRecentPlay } from '@/core/player/recentPlay'
+import settingState from '@/store/setting/state'
+import { navigations } from '@/navigation'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
@@ -20,7 +21,13 @@ const handlePushedHomeScreen = async() => {
   if (isFirstPush) {
     isFirstPush = false
     void checkUpdate()
-    void initDeeplink()
+    // getInitialURL 低概率 reject：兜底为无链接，防启动链悬挂+首推播放页永久丢失（审查 S1）
+    const hasInitialLink = await initDeeplink().catch(() => false)
+    // 「启动时打开播放页」（治理批 P1）：启动 push 从 Home 挂载 effect 上收到容器就绪后的启动链——
+    // N1 迁移后 Home effect 先于容器就绪执行，pushRoute 的 isReady 守卫必丢；deeplink 冷启动优先
+    if (!hasInitialLink && settingState.setting['player.startupPushPlayDetailScreen']) {
+      navigations.pushPlayDetailScreen('', true)
+    }
   }
 }
 
@@ -56,9 +63,6 @@ export default async() => {
   bootLog('Data inited.')
   await initCommonState()
   bootLog('Common State inited.')
-
-  void initSync(setting)
-  bootLog('Sync inited.')
 
   // syncSetting()
 
