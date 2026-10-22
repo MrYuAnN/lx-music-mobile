@@ -18,7 +18,7 @@ import { createStyle } from '@/utils/tools'
 
 // 歌单两列网格卡（单源，2026-10-21）：视觉=添加歌曲页「其他歌单」网格卡（歌单广场卡同构：
 // 方形封面 r8 + 双行标题 + 可选左上来源角标），MusicAddModal / MusicMultiAddModal 弹窗同构延用。
-// 封面三态：「我喜欢的」LOVE_GRADIENT 红渐变白心（首页 hero 同款定案视觉）→ pic（DEFAULT 走
+// 封面三态：「我喜欢的」LOVE_GRADIENT 红渐变白心（首页音乐库 hub 卡同款定案视觉）→ pic（DEFAULT 走
 // setting list.defaultPic 单键）→ PlaylistCover 默认封面；角标仅读语义场景显示（写目标选择场景
 // 经只读过滤后恒为本地自建歌单，「本地」标无信息量不显示）。
 // 布局纪律（审查 S-3）：组件只管自身内容，行距/列距归调用方容器（rowGap / columnWrapperStyle），

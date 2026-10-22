@@ -30,15 +30,16 @@ import { setLoveCover } from '@/core/loveCover'
 import PlaylistCover from '@/components/common/PlaylistCover'
 
 // AM-6 首页内容：原规格源 .review-bundle/2026-10-10/home-proto.html（v-dense）。
-// 2026-10-20 首页改版（快捷格 1×4 +「我喜欢」hero 卡）起，形态与字号以 doc/design-principles.md §7
-// 拍板为准；尺寸仍脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接用 dp 值
+// 2026-10-23 首页顶部区改版（「音乐库」hub 卡，推翻 10-20 快捷格+hero 两形态；三席方案审查定稿
+// .review-bundle/2026-10-23/context.md）起，形态与字号以 doc/design-principles.md §7 拍板为准；
+// 尺寸仍脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接用 dp 值
 // （间距走 SPACING 单源；图标走 ICON_SIZE 语义 token；文字沿用 Text 组件 setSpText 保留用户字号设置）。
 
 const isCollectList = (info: LX.List.MyListInfo): boolean => {
   return 'source' in info ? !!info.source : false
 }
 
-// 打开歌单页（模块级单源）：LoveSection 与 PlaylistShelf 共用（LoveCard 从 MyMusic 拆出后两侧各持调用）
+// 打开歌单页（模块级单源）：MusicHub 与 PlaylistShelf 共用（LoveCard 从 MyMusic 拆出后两侧各持调用）
 const openList = (id: string) => {
   const componentId = commonState.componentIds.home
   if (!componentId) return
@@ -72,11 +73,69 @@ const ensureListPic = async(item: LX.List.UserListInfo) => {
   }
 }
 
-const QuickNav = () => {
+// 「音乐库」hub 卡（2026-10-23 顶部区改版拍板，推翻 10-20 快捷格+hero 两形态）：单卡收编
+// 「我喜欢的音乐」行 + 1×4 功能入口行（三席方案审查定稿 .review-bundle/2026-10-23/context.md）。
+// 我喜欢的行=84 封面三态：无 lovePic 回退 LOVE_GRADIENT 红渐变白心 tile（与 PlaylistGridCard 网格卡
+// LOVE 特判同款视觉，LOVE 语义色族单源 constant.ts）；有 lovePic 封面直出。
+// 叠层契约：红渐变恒铺底层、封面 Image 作叠加层——解码空窗/existsFile 异步清键窗口透出渐变，两态无闪变。
+// 播放键=显式切全局随机后起播（2026-10-20 拍板维持，doc/plans/home-music-section-c.md 已归档标注）；
+// 曲数=0 禁用沿用。existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——
+// 方案审查 I-a/N2 降级路径）。入口行=金刚区语言收进卡内的收敛变体（无完全同构先例，本产品自定）。
+const MusicHub = () => {
   const theme = useTheme()
   const t = useI18n()
+  const lovePic = useSettingValue('list.lovePic')
+  // 曲数读 allMusicList 内存 Map；预载完成不自发事件，事件到达与预载完成后本地 bump 刷新
+  const [, setMusicVersion] = useState(0)
 
-  const items: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, action: () => void }> = [
+  // 冷启动预载 LOVE（真机反馈 2026-10-18：不预载曲数误显 0 且播放键静默失败）。
+  // 预载按组件域拆分：本组件只管 LOVE（shelf 侧归 MyMusic，代码审查 I1：useMyList 恒含 LOVE，
+  // 不得经 map 隐式带回），getListMusics 内存缓存幂等；预载失败被吞后 effect 不重跑，故借事件
+  // bump 补载自持重试路径（拆分后 MyMusic 侧不再隐式兜底 LOVE）
+  const preloadLove = useCallback(() => {
+    if (allMusicList.has(LIST_IDS.LOVE)) return
+    void getListMusics(LIST_IDS.LOVE).catch(() => {}).then(() => {
+      setMusicVersion(v => v + 1)
+    })
+  }, [])
+
+  useEffect(() => {
+    const bump = () => {
+      preloadLove()
+      setMusicVersion(v => v + 1)
+    }
+    preloadLove()
+    global.state_event.on('mylistUpdated', bump)
+    global.app_event.on('myListMusicUpdate', bump)
+    return () => {
+      global.state_event.off('mylistUpdated', bump)
+      global.app_event.off('myListMusicUpdate', bump)
+    }
+  }, [preloadLove])
+
+  useEffect(() => {
+    if (!lovePic) return
+    let cancelled = false
+    void existsFile(lovePic).then(ok => {
+      if (!cancelled && !ok) void setLoveCover(null)
+    }).catch(() => {})
+    return () => { cancelled = true }
+  }, [lovePic])
+
+  const count = allMusicList.get(LIST_IDS.LOVE)?.length ?? 0
+  const canPlay = count > 0
+
+  const handlePlay = () => {
+    if (!canPlay) return
+    // 顺序契约：先切全局随机、后起播——首曲需以随机语义入 playedList（player.ts handlePlay 按
+    // 播放那一刻的模式值入队），反序则随机选曲被 playedList 短路回退「回放历史」；
+    // updateSetting 内存同步生效（throttleSave 仅管持久化），随后 playList 即读新值
+    updateSetting({ 'player.togglePlayMethod': 'random' })
+    void playList(LIST_IDS.LOVE, 0)
+  }
+
+  // 四功能入口（本地/下载/排行榜/歌单广场）全网仅此一处调用点，首页一键直达底线维持
+  const navItems: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, action: () => void }> = [
     { id: 'nav_local_music', icon: 'folder-music', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLocalMusicScreen(componentId) } },
     { id: 'nav_download', icon: 'download-2', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushDownloadScreen(componentId) } },
     { id: 'nav_top', icon: 'trophy', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
@@ -84,15 +143,42 @@ const QuickNav = () => {
   ]
 
   return (
-    <View style={styles.quick}>
-      {
-        items.map(({ id, icon, action }) => (
-          <TouchableOpacity key={id} style={{ ...styles.tile, backgroundColor: theme['c-content-background'] }} activeOpacity={0.6} onPress={action}>
-            <Icon name={icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
-            <Text style={styles.tileLabel} size={13} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
-          </TouchableOpacity>
-        ))
-      }
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+      <View style={styles.cardHead}>
+        <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_music_library')}</Text>
+      </View>
+      <TouchableOpacity style={styles.loveRow} activeOpacity={0.6} onPress={() => { openList(LIST_IDS.LOVE) }}>
+        <View style={styles.loveCover}>
+          <LinearGradient colors={LOVE_GRADIENT} style={[StyleSheet.absoluteFill, styles.loveCoverFallback]}>
+            {lovePic ? null : <Icon name="love-fill" size={84 * 0.3} color="#FFFFFF" />}
+          </LinearGradient>
+          {lovePic ? <Image url={lovePic} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
+        </View>
+        <View style={styles.loveTexts}>
+          <Text style={styles.loveName} size={17} color={theme['c-font']} numberOfLines={1}>{t('list_name_love')}</Text>
+          <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{t('music_count', { count })}</Text>
+        </View>
+        <TouchableOpacity
+          style={{ ...styles.lovePlayBtn, opacity: canPlay ? 1 : 0.35 }}
+          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+          disabled={!canPlay}
+          activeOpacity={0.7}
+          onPress={handlePlay}
+        >
+          <Icon name="play" size={20} color="#FFFFFF" />
+        </TouchableOpacity>
+      </TouchableOpacity>
+      <View style={{ ...styles.hubDivider, backgroundColor: theme['c-border-background'] }} />
+      <View style={styles.entryRow}>
+        {
+          navItems.map(({ id, icon, action }) => (
+            <TouchableOpacity key={id} style={styles.entryItem} activeOpacity={0.6} onPress={action}>
+              <Icon name={icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
+              <Text style={styles.entryLabel} size={13} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
+            </TouchableOpacity>
+          ))
+        }
+      </View>
     </View>
   )
 }
@@ -147,98 +233,6 @@ const RecentPlayCard = () => {
         showsVerticalScrollIndicator={false}
       />
     </View>
-  )
-}
-
-// 「我喜欢的音乐」hero 卡（2026-10-20 首页改版拍板）：封面直出+底部深色遮罩（对标 AM Top Picks poster 式
-// 封面直出卡，v1 取色渐变方案经审查证伪作废）；无 lovePic 回退 LOVE_GRADIENT 红系渐变（LOVE 语义色族
-// 单源 constant.ts）。红系渐变端点/卡高/播放键/遮罩浓度等细目无业界统一规格，本产品自定，真机校准定稿。
-// 叠层契约：红渐变恒铺底层、封面 Image 作叠加层——解码空窗/existsFile 异步清键窗口透出渐变，两态无闪变。
-// 播放键=显式切全局随机后起播（2026-10-20 拍板，推翻 2026-10-16「固定第一首、无隐藏随机」，
-// doc/plans/home-music-section-c.md 已归档标注）；曲数=0 禁用沿用。
-// existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——方案审查 I-a/N2 降级路径）
-const LoveSection = () => {
-  const t = useI18n()
-  const lovePic = useSettingValue('list.lovePic')
-  // 曲数读 allMusicList 内存 Map；预载完成不自发事件，事件到达与预载完成后本地 bump 刷新
-  const [, setMusicVersion] = useState(0)
-
-  // 冷启动预载 LOVE（真机反馈 2026-10-18：不预载曲数误显 0 且播放键静默失败）。
-  // 预载按组件域拆分：本组件只管 LOVE（shelf 侧归 MyMusic，代码审查 I1：useMyList 恒含 LOVE，
-  // 不得经 map 隐式带回），getListMusics 内存缓存幂等；预载失败被吞后 effect 不重跑，故借事件
-  // bump 补载自持重试路径（拆分后 MyMusic 侧不再隐式兜底 LOVE）
-  const preloadLove = useCallback(() => {
-    if (allMusicList.has(LIST_IDS.LOVE)) return
-    void getListMusics(LIST_IDS.LOVE).catch(() => {}).then(() => {
-      setMusicVersion(v => v + 1)
-    })
-  }, [])
-
-  useEffect(() => {
-    const bump = () => {
-      preloadLove()
-      setMusicVersion(v => v + 1)
-    }
-    preloadLove()
-    global.state_event.on('mylistUpdated', bump)
-    global.app_event.on('myListMusicUpdate', bump)
-    return () => {
-      global.state_event.off('mylistUpdated', bump)
-      global.app_event.off('myListMusicUpdate', bump)
-    }
-  }, [preloadLove])
-
-  useEffect(() => {
-    if (!lovePic) return
-    let cancelled = false
-    void existsFile(lovePic).then(ok => {
-      if (!cancelled && !ok) void setLoveCover(null)
-    }).catch(() => {})
-    return () => { cancelled = true }
-  }, [lovePic])
-
-  const count = allMusicList.get(LIST_IDS.LOVE)?.length ?? 0
-  const canPlay = count > 0
-
-  const handlePlay = () => {
-    if (!canPlay) return
-    // 顺序契约：先切全局随机、后起播——首曲需以随机语义入 playedList（player.ts handlePlay 按
-    // 播放那一刻的模式值入队），反序则随机选曲被 playedList 短路回退「回放历史」；
-    // updateSetting 内存同步生效（throttleSave 仅管持久化），随后 playList 即读新值
-    updateSetting({ 'player.togglePlayMethod': 'random' })
-    void playList(LIST_IDS.LOVE, 0)
-  }
-
-  return (
-    <TouchableOpacity style={styles.heroCard} activeOpacity={0.8} onPress={() => { openList(LIST_IDS.LOVE) }}>
-      <LinearGradient colors={LOVE_GRADIENT} style={StyleSheet.absoluteFill} />
-      {
-        lovePic
-          ? <>
-              <Image url={lovePic} style={StyleSheet.absoluteFill} resizeMode="cover" />
-              <LinearGradient colors={['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0.55)']} locations={[0.35, 1]} style={StyleSheet.absoluteFill} />
-            </>
-          : null
-      }
-      <View style={styles.heroContent}>
-        <View style={styles.heroInfo}>
-          <Icon name="love-fill" size={ICON_SIZE.emphasis} color="#FFFFFF" />
-          <View style={styles.heroTexts}>
-            <Text style={styles.heroName} size={17} color="#FFFFFF" numberOfLines={1}>{t('list_name_love')}</Text>
-            <Text size={13} color="rgba(255, 255, 255, 0.88)" numberOfLines={1}>{t('music_count', { count })}</Text>
-          </View>
-        </View>
-        <TouchableOpacity
-          style={{ ...styles.heroPlayBtn, opacity: canPlay ? 1 : 0.35 }}
-          hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
-          disabled={!canPlay}
-          activeOpacity={0.7}
-          onPress={handlePlay}
-        >
-          <Icon name="play" size={20} color={LOVE_COLOR} />
-        </TouchableOpacity>
-      </View>
-    </TouchableOpacity>
   )
 }
 
@@ -503,7 +497,7 @@ const MyMusic = () => {
   // 冷启动预载 shelf 全部歌单（真机反馈 2026-10-18：杀 app 重进曲数全显 0）：allMusicList
   // 惰性加载，不预载则曲数误显 0。预载按组件域拆分：此处只管 shelf 侧——slice(2) 与 shelfLists
   // 同口径（useMyList 的 allList 恒含 LOVE 于 index 1，不得经 map 隐式带回，代码审查 I1），
-  // LOVE 归 LoveSection；getListMusics 内存缓存幂等无重复读盘；预载不自发事件，完成后本地
+  // LOVE 归 MusicHub；getListMusics 内存缓存幂等无重复读盘；预载不自发事件，完成后本地
   // bump 刷新；lists 异步就绪后本 effect 重跑，仅缓存未命中才预载+bump（三席审查 S-7）
   useEffect(() => {
     let stale = false
@@ -538,7 +532,8 @@ const MyMusic = () => {
             <Icon name="plus" size={ICON_SIZE.control} color={theme['c-primary']} />
           </TouchableOpacity>
           {/* 导入图标（真机反馈 2026-10-20 拍板：弃文字形态换图标+调序 [+ 新建][导入]）——download-2
-              沿用原歌单菜单导入项字形（用户语义认知延续；与 QuickNav 下载 tile 同屏但色块场景差异大） */}
+              沿用原歌单菜单导入项字形（用户语义认知延续；与音乐库 hub 入口行下载图标同字形同屏，
+              场景差异=本钮为歌单导入、入口行为全局下载管理页，走查关注点备案 2026-10-23） */}
           <TouchableOpacity style={styles.importBtn} activeOpacity={0.6} onPress={() => { importDialogRef.current?.show() }}>
             <Icon name="download-2" size={ICON_SIZE.control} color={theme['c-primary']} />
           </TouchableOpacity>
@@ -554,8 +549,7 @@ const MyMusic = () => {
 export default () => {
   return (
     <>
-      <QuickNav />
-      <LoveSection />
+      <MusicHub />
       <RecentPlayCard />
       <MyMusic />
     </>
@@ -564,21 +558,56 @@ export default () => {
 
 // 原型 v-dense 1:1 dp 值（390 基准）
 const styles = StyleSheet.create({
-  quick: {
+  // 音乐库 hub 卡：我喜欢的行（84 封面三态+文本+播放键）/ 分隔线 / 1×4 入口行
+  loveRow: {
     flexDirection: 'row',
-    gap: SPACING.s12,
-    paddingHorizontal: SPACING.s16,
-    marginBottom: SPACING.s14,
-  },
-  tile: {
-    flex: 1,
-    height: 80,
-    borderRadius: 14,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: SPACING.s6,
+    gap: SPACING.s12,
+    paddingLeft: SPACING.s16,
+    paddingRight: SPACING.s16,
+    paddingVertical: SPACING.s12,
   },
-  tileLabel: {
+  loveCover: {
+    width: 84,
+    height: 84,
+    borderRadius: 10,
+    overflow: 'hidden',
+  },
+  loveCoverFallback: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loveTexts: {
+    flex: 1,
+    gap: SPACING.s2,
+  },
+  loveName: {
+    fontFamily: FontFamilies.bold,
+  },
+  lovePlayBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: LOVE_COLOR,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  hubDivider: {
+    height: 1,
+    marginHorizontal: SPACING.s16,
+  },
+  entryRow: {
+    flexDirection: 'row',
+    paddingTop: SPACING.s10,
+    paddingBottom: SPACING.s14,
+  },
+  entryItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: SPACING.s6,
+    paddingVertical: SPACING.s6,
+  },
+  entryLabel: {
     fontFamily: FontFamilies.semibold,
   },
   section: {
@@ -622,42 +651,6 @@ const styles = StyleSheet.create({
   shelfName: {
     marginBottom: SPACING.s2,
     fontFamily: FontFamilies.semibold,
-  },
-  // 「我喜欢」hero 卡（2026-10-20 拍板）：红渐变恒铺底层，封面/遮罩叠加层见组件内
-  heroCard: {
-    height: 128,
-    marginHorizontal: SPACING.s16,
-    marginBottom: SPACING.s14,
-    borderRadius: 14,
-    overflow: 'hidden',
-  },
-  heroContent: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: SPACING.s16,
-  },
-  heroInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.s12,
-    flexShrink: 1,
-  },
-  heroTexts: {
-    flexShrink: 1,
-    gap: SPACING.s2,
-  },
-  heroName: {
-    fontFamily: FontFamilies.bold,
-  },
-  heroPlayBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   plusBtn: {
     // 触区 44（AM-6 拍板），无底色不显形，仅扩大点击区

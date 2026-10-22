@@ -5,8 +5,9 @@ export const LIST_ITEM_HEIGHT = 64
 
 // LOVE 红心固定红色系（问题 1 拍板：不随主题 token，love 未选/love-fill 选中同色）
 export const LOVE_COLOR = '#FA2C4C'
-// 「我喜欢的」hero 卡红系渐变端点族（首页改版 2026-10-20：LOVE 语义色族与 LOVE_COLOR 同源单点，
-// 代码审查 S2 归位；端点值无业界统一规格，本产品自定，真机校准定稿）
+// 「我喜欢的」红心 tile 红系渐变端点族（音乐库 hub 卡回退态与 PlaylistGridCard 网格卡同款，
+// 2026-10-23 顶部区改版；LOVE 语义色族与 LOVE_COLOR 同源单点，代码审查 S2 归位；端点值无业界统一
+// 规格，本产品自定，真机校准定稿）
 export const LOVE_GRADIENT = [LOVE_COLOR, '#C21136']
 
 // 图标尺寸语义 token（AM-6 拍板口径，全局唯一单源；裸 dp 不随用户字号缩放——对标 AM Android/Material，
@@ -19,7 +20,7 @@ export const ICON_SIZE = {
   control: 24, // 播放控制键（迷你条/播放页次级键）
   nav: 26, // 页头导航图标（首页搜索/设置圆钮、二级页返回键）
   emphasis: 26, // 行内强调图标（我喜欢的音乐、页标题标识）
-  tile: 26, // 首页快捷格小图标（1×4，2026-10-20 首页改版）
+  tile: 26, // 音乐库 hub 卡入口行小图标（1×4，2026-10-23 顶部区改版，沿用原快捷格 token）
 } as const
 export const LIST_SCROLL_POSITION_KEY = '__LIST_SCROLL_POSITION_KEY__'
 
