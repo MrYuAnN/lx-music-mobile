@@ -50,6 +50,9 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     // 玻璃面中性半透明填充（弹层内 chips 未选中底等；iOS systemFill 半透明惯例：浅色黑基、
     // dark≈light×2 先验）。blur 降级实色回退下黑基仍可辨，故不用白基。初值 2026-10-21 单点上车，真机标定可调
     'c-glass-fill': theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.07)',
+    // 开关关态轨道底（2026-10-21 设置页真机反馈：白卡上 c-input-background 白轨道隐身；
+    // iOS UISwitch off 态取值 systemGray 系）
+    'c-switch-track': theme.isDark ? '#39393D' : '#E9E9EB',
     'c-quality-24bit': theme.isDark ? '#E3B341' : '#B8860B',
     'c-quality-sq': theme.isDark ? '#7CC98A' : '#3D9A50',
     'c-quality-hq': theme.isDark ? '#93B1D8' : '#5E81AC',

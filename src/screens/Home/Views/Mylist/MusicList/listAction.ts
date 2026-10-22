@@ -3,7 +3,7 @@ import { playList, playListById } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import settingState from '@/store/setting/state'
 import { similar, sortInsert, toOldMusicInfo } from '@/utils'
-import { confirmDialog, openUrl, shareMusic, toast } from '@/utils/tools'
+import { clipboardWriteText, confirmDialog, openUrl, shareMusic, toast } from '@/utils/tools'
 import playerState from '@/store/player/state'
 import musicSdk from '@/utils/musicSdk'
 
@@ -108,7 +108,14 @@ export const handleUpdateMusicInfo = (listId: SelectInfo['listId'], musicInfo: L
 
 
 export const handleShare = (musicInfo: SelectInfo['musicInfo']) => {
-  shareMusic(settingState.setting['common.shareType'], settingState.setting['download.fileName'], musicInfo)
+  // 系统分享面板（shareType 设置项已删，业界分享到面板自选）
+  shareMusic(settingState.setting['download.fileName'], musicInfo)
+}
+
+export const handleCopyLink = (musicInfo: SelectInfo['musicInfo']) => {
+  const url = musicSdk[musicInfo.source as LX.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo))
+  clipboardWriteText(`${musicInfo.name}${url ? ' ' + url : ''}`)
+  toast(global.i18n.t('copy_name_tip'))
 }
 
 

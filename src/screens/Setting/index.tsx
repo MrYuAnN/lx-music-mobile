@@ -22,7 +22,7 @@ export default ({ componentId }: { componentId: string }) => {
       <View style={{ flex: 1 }}>
         <Setting scrollYAnimated={scrollY} contentPaddingTop={statusBarHeight + SCREEN_HEADER_HEIGHT} />
         {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
-        <ScreenHeader componentId={componentId} title={t('nav_setting')} progress={scrollY} />
+        <ScreenHeader componentId={componentId} title={t('nav_setting')} progress={scrollY} alwaysShowTitle />
       </View>
       <PlayerBarPlaceholder />
     </PageContent>

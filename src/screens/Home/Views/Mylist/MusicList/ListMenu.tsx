@@ -19,7 +19,8 @@ export interface ListMenuProps {
   onAdd: (selectInfo: SelectInfo) => void
   onMove: (selectInfo: SelectInfo) => void
   onEditMetadata: (selectInfo: SelectInfo) => void
-  onCopyName: (selectInfo: SelectInfo) => void
+  onShare: (selectInfo: SelectInfo) => void
+  onCopyLink: (selectInfo: SelectInfo) => void
   onToggleSource: (selectInfo: SelectInfo) => void
   onRemove: (selectInfo: SelectInfo) => void
   onDownload: (selectInfo: SelectInfo) => void
@@ -74,7 +75,8 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       ...(readonly ? [] : [
         { action: 'toggleSource', label: t('toggle_source'), icon: 'toggle-source' },
       ]),
-      { action: 'copyName', label: t('copy_name'), icon: 'copy-name' },
+      { action: 'share', label: t('copy_name'), icon: 'copy-name' },
+        { action: 'copyLink', label: t('copy_link'), icon: 'copy-name' },
       // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」「清除缓存」「不喜欢」（同在线侧 OnlineList/ListMenu 注释）
       // { action: 'musicSearch', label: t('music_search') },
       ...(readonly ? [] : [{ action: 'remove', label: t('delete'), icon: 'trash', destructive: true }]),
@@ -122,8 +124,11 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       case 'editMetadata':
         props.onEditMetadata(selectInfo)
         break
-      case 'copyName':
-        props.onCopyName(selectInfo)
+      case 'share':
+        props.onShare(selectInfo)
+        break
+      case 'copyLink':
+        props.onCopyLink(selectInfo)
         break
       case 'toggleSource':
         props.onToggleSource(selectInfo)

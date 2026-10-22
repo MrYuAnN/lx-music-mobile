@@ -31,7 +31,7 @@ export default memo(({ label, check, onChange, helpDesc }: {
         <Text style={styles.label}>{label}</Text>
         {
           helpDesc
-            ? <Text size={12} color={theme['c-font-label']} style={styles.helpDesc}>{helpDesc}</Text>
+            ? <Text size={12} color={theme['c-font-label']} style={styles.helpDesc} numberOfLines={2}>{helpDesc}</Text>
             : null
         }
       </View>

@@ -3,7 +3,9 @@ import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import settingState from '@/store/setting/state'
-import { shareMusic } from '@/utils/tools'
+import { clipboardWriteText, shareMusic, toast } from '@/utils/tools'
+import musicSdk from '@/utils/musicSdk'
+import { toOldMusicInfo } from '@/utils'
 
 const ONLINE_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_ONLINE
 
@@ -23,5 +25,12 @@ export const handlePlayLater = (musicInfo: LX.Music.MusicInfoOnline, selectedLis
 
 
 export const handleShare = (musicInfo: LX.Music.MusicInfoOnline) => {
-  shareMusic(settingState.setting['common.shareType'], settingState.setting['download.fileName'], musicInfo)
+  // 系统分享面板（shareType 设置项已删，业界分享到面板自选）
+  shareMusic(settingState.setting['download.fileName'], musicInfo)
+}
+
+export const handleCopyLink = (musicInfo: LX.Music.MusicInfoOnline) => {
+  const detailUrl = musicSdk[musicInfo.source]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo)) ?? ''
+  clipboardWriteText(`${musicInfo.name}${detailUrl ? '\n' + detailUrl : ''}`)
+  toast(global.i18n.t('copy_name_tip'))
 }

@@ -3,7 +3,7 @@ import { useCallback, useMemo, useRef, useState, useEffect } from 'react'
 import listState from '@/store/list/state'
 import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
-import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleShare, handleUpdateMusicInfo, isReadonlyList } from './listAction'
+import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleCopyLink, handleShare, handleUpdateMusicInfo, isReadonlyList } from './listAction'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
@@ -322,7 +322,8 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onPlay={info => { handlePlayMusic(info.listId, info.index) }}
         onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
         onRemove={info => { if (!guardWritableList(info.listId)) return; hancelExitSelect(); handleRemoveMusic(info.listId, info.musicInfo, info.selectedList, hancelExitSelect) }}
-        onCopyName={info => { handleShare(info.musicInfo) }}
+        onShare={info => { handleShare(info.musicInfo) }}
+        onCopyLink={info => { handleCopyLink(info.musicInfo) }}
         onAdd={handleAddMusic}
         onMove={handleMoveMusic}
         onEditMetadata={handleEditMetadata}

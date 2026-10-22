@@ -268,6 +268,7 @@ const state: InitState = {
     'c-on-primary': '#FFFFFF',
     'c-input-background': '#FFFFFF',
     'c-glass-fill': 'rgba(0, 0, 0, 0.07)',
+    'c-switch-track': '#E9E9EB',
     'c-quality-24bit': '#B8860B',
     'c-quality-sq': '#3D9A50',
     'c-quality-hq': '#5E81AC',

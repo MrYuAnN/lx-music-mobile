@@ -29,7 +29,7 @@ export const SETTING_SCREENS = [
 
 export type SettingScreenIds = typeof SETTING_SCREENS[number]
 
-export const SETTING_COMPONENTS: Record<SettingScreenIds, React.ComponentType> = {
+export const SETTING_COMPONENTS: Record<SettingScreenIds, React.ComponentType<{ first?: boolean }>> = {
   basic: Basic,
   player: Player,
   download: Download,
@@ -61,7 +61,7 @@ const Main = forwardRef<MainType, {}>((props, ref) => {
 
   const component = useMemo(() => {
     const Section = SETTING_COMPONENTS[id]
-    return <Section />
+    return <Section first />
   }, [id])
 
   return component

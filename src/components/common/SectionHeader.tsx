@@ -11,10 +11,10 @@ import { createStyle } from '@/utils/tools'
 // （与组内行距同大，节头独自扛分组必然隐形），二版 15 主色败于与行文字撞车——均非「小灰」之过。
 // 组间留白 pt s24（组内行距 24dp 的 1.5 倍+组间线，iOS "additional space" 对位）。
 // 设置页改版将复用本件（YAGNI 审查 S-E：预留 style prop 已删，届时按需一行加回）
-export default memo(({ label }: { label: string }) => {
+export default memo(({ label, compactTop = false }: { label: string, compactTop?: boolean }) => {
   const theme = useTheme()
   return (
-    <Text size={13} color={theme['c-font-label']} style={styles.header}>{label}</Text>
+    <Text size={13} color={theme['c-font-label']} style={[styles.header, compactTop ? styles.compactTop : null]}>{label}</Text>
   )
 })
 
@@ -24,5 +24,9 @@ const styles = createStyle({
     paddingTop: SPACING.s24,
     paddingBottom: SPACING.s4,
     fontFamily: FontFamilies.medium,
+  },
+  // 首节/横屏单节模式：不吃组间留白（顶部空反馈修复）
+  compactTop: {
+    paddingTop: SPACING.s4,
   },
 })

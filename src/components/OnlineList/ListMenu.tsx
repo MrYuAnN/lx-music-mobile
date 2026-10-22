@@ -16,7 +16,8 @@ export interface ListMenuProps {
   onPlay: (selectInfo: SelectInfo) => void
   onPlayLater: (selectInfo: SelectInfo) => void
   onAdd: (selectInfo: SelectInfo) => void
-  onCopyName: (selectInfo: SelectInfo) => void
+  onShare: (selectInfo: SelectInfo) => void
+  onCopyLink: (selectInfo: SelectInfo) => void
   onDownload: (selectInfo: SelectInfo) => void
 }
 export interface ListMenuType {
@@ -56,7 +57,8 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },
       { action: 'download', label: t('download_action'), icon: 'download-2' },
       { action: 'add', label: t('add_to'), icon: 'add-to' },
-      { action: 'copyName', label: t('copy_name'), icon: 'copy-name' },
+      { action: 'share', label: t('copy_name'), icon: 'copy-name' },
+      { action: 'copyLink', label: t('copy_link'), icon: 'copy-name' },
     ])
   }
 
@@ -75,8 +77,11 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
       case 'add':
         props.onAdd(selectInfo)
         break
-      case 'copyName':
-        props.onCopyName(selectInfo)
+      case 'share':
+        props.onShare(selectInfo)
+        break
+      case 'copyLink':
+        props.onCopyLink(selectInfo)
         break
       default:
         break

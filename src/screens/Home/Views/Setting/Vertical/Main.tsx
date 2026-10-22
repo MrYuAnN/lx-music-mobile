@@ -10,10 +10,11 @@ type FlatListType = FlatListProps<SettingScreenIds>
 
 
 const styles = createStyle({
+  // 垂直零 padding（2026-10-21 真机反馈顶部空旷：排行榜同构——顶栏让位由 contentPaddingTop
+  // 独立承担，此层不再叠加；首节头 compactTop s8 后内容紧贴顶栏区）
   content: {
     paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
-    paddingTop: SPACING.s16,
     paddingBottom: SPACING.s16,
     flex: 0,
   },
@@ -23,9 +24,10 @@ const styles = createStyle({
 // 修复竖屏缺挂 download 类事故结构洞）
 const ListItem = memo(({
   id,
-}: { id: SettingScreenIds }) => {
+  first,
+}: { id: SettingScreenIds, first: boolean }) => {
   const Section = SETTING_COMPONENTS[id]
-  return <Section />
+  return <Section first={first} />
 }, () => true)
 
 export interface SettingMainProps {
@@ -48,7 +50,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       { useNativeDriver: true },
     )
   }, [scrollYAnimated])
-  const renderItem: FlatListType['renderItem'] = ({ item }) => <ListItem id={item} />
+  const renderItem: FlatListType['renderItem'] = ({ item, index }) => <ListItem id={item} first={index === 0} />
   const getkey: FlatListType['keyExtractor'] = item => item
 
   return (
@@ -57,7 +59,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       keyboardShouldPersistTaps={'always'}
       renderItem={renderItem}
       keyExtractor={getkey}
-      contentContainerStyle={{ ...styles.content, paddingTop: styles.content.paddingTop + (contentPaddingTop ?? 0), paddingBottom: bottomInset }}
+      contentContainerStyle={{ ...styles.content, paddingTop: contentPaddingTop ?? 0, paddingBottom: bottomInset }}
       onScroll={scrollHandler}
       scrollEventThrottle={16}
       maxToRenderPerBatch={2}

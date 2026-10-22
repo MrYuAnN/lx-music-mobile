@@ -52,7 +52,7 @@ export default memo(({ check, onChange }: { check: boolean, onChange: (v: boolea
       accessibilityRole="switch"
       accessibilityState={{ checked: check }}
     >
-      <Animated.View style={{ ...styles.track, backgroundColor: check ? theme['c-primary'] : theme['c-input-background'] }}>
+      <Animated.View style={{ ...styles.track, backgroundColor: check ? theme['c-primary'] : theme['c-switch-track'] }}>
         <Animated.View style={{ ...styles.thumb, transform: [{ translateX }] }} />
       </Animated.View>
     </TouchableOpacity>

@@ -53,9 +53,9 @@ const cleanUndefined = <T extends object>(obj: T): T => {
 const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'], duration?: LX.Player.Track['duration']): LX.Player.Track[] => {
   const mInfo = formatMusicInfo(musicInfo)
   const track = [] as LX.Player.Track[]
-  const isShowNotificationImage = settingState.setting['player.isShowNotificationImage']
   const album = mInfo.album || undefined
-  const artwork = isShowNotificationImage && mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
+  // 通知封面恒开（2026-10-21 设置页瘦身：业界默认开无开关）
+  const artwork = mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
   const lyric = getCurrentFullLyric(mInfo.id)
   if (url) {
     track.push(cleanUndefined({
@@ -89,9 +89,9 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
 }
 // const buildTrack = (musicInfo: LX.Player.PlayMusic, url: LX.Player.Track['url'], duration?: LX.Player.Track['duration']): LX.Player.Track => {
 //   const mInfo = formatMusicInfo(musicInfo)
-//   const isShowNotificationImage = settingState.setting['player.isShowNotificationImage']
-//   const album = mInfo.album || undefined
-//   const artwork = isShowNotificationImage && mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
+// //   const album = mInfo.album || undefined
+//   // 通知封面恒开（2026-10-21 设置页瘦身：业界默认开无开关）
+//   const artwork = mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
 //   return url
 //     ? {
 //         id: `${mInfo.id}__//${Math.random()}__//${url}`,
@@ -203,7 +203,6 @@ export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: num
 // let duration = 0
 let prevArtwork: string | undefined
 const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
-  const isShowNotificationImage = settingState.setting['player.isShowNotificationImage']
   // const mInfo = formatMusicInfo(musicInfo)
   // console.log('+++++updateMusicPic+++++', track.artwork, track.duration)
 
@@ -218,7 +217,7 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
   // console.log('+++++updateMetaInfo+++++', mInfo.name)
   // N2 换装：getState() → getPlaybackState()
   state.isPlaying = (await TrackPlayer.getPlaybackState()).state == State.Playing
-  let artwork = isShowNotificationImage ? mInfo.pic ?? prevArtwork : undefined
+  let artwork = mInfo.pic ?? prevArtwork
   if (mInfo.pic) prevArtwork = mInfo.pic
   let title: string
   let artist: string

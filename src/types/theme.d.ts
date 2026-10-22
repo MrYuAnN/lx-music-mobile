@@ -274,6 +274,7 @@ declare global {
       'c-on-primary': string
       'c-input-background': string
       'c-glass-fill': string
+      'c-switch-track': string
       'c-quality-24bit': string
       'c-quality-sq': string
       'c-quality-hq': string

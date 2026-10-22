@@ -333,20 +333,14 @@ export const formatMusicName = (format: string, name: string, singer: string) =>
   return format.replace('歌手', singer).replace('歌名', name)
 }
 
-export const shareMusic = (shareType: LX.ShareType, downloadFileName: LX.AppSetting['download.fileName'], musicInfo: LX.Music.MusicInfo) => {
+export const shareMusic = (downloadFileName: LX.AppSetting['download.fileName'], musicInfo: LX.Music.MusicInfo) => {
   const name = musicInfo.name
   const singer = musicInfo.singer
   const detailUrl = musicInfo.source == 'local' ? '' : musicSdk[musicInfo.source]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo)) ?? ''
   const musicTitle = formatMusicName(downloadFileName, name, singer)
-  switch (shareType) {
-    case 'system':
-      void shareText(global.i18n.t('share_card_title_music', { name }), global.i18n.t('share_title_music'), `${musicTitle.replace(/\s/g, '')}${detailUrl ? '\n' + detailUrl : ''}`)
-      break
-    case 'clipboard':
-      clipboardWriteText(`${musicTitle}${detailUrl ? '\n' + detailUrl : ''}`)
-      toast(global.i18n.t('copy_name_tip'))
-      break
-  }
+  // 系统分享面板（2026-10-21 设置页瘦身：shareType 设置项删除，业界分享到面板自选；
+  // 复制链接走独立菜单动作 handleCopyLink）
+  void shareText(global.i18n.t('share_card_title_music', { name }), global.i18n.t('share_title_music'), `${musicTitle.replace(/\s/g, '')}${detailUrl ? '\n' + detailUrl : ''}`)
 }
 
 export const onDimensionChange = (handler: (info: { window: ScaledSize, screen: ScaledSize }) => void) => {

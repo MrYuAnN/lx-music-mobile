@@ -9,6 +9,7 @@ import { SPACING } from '@/config/spacing'
 
 import SettingTimeoutExit from './settings/SettingTimeoutExit'
 import SettingLyricProgress from './settings/SettingLyricProgress'
+import SettingLrcRoma from './settings/SettingLrcRoma'
 import SettingPlaybackRate from './settings/SettingPlaybackRate'
 import SettingLrcFontSize from './settings/SettingLrcFontSize'
 import SettingLrcAlign from './settings/SettingLrcAlign'
@@ -58,8 +59,11 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
               <Divider />
               <SectionHeader label={t('lyric')} />
               <SettingLyricProgress />
+              <Divider />
+              <SettingLrcRoma />
+              <Divider />
               <SettingLrcAlign />
-              {/* 字体大小已上播放页歌词动作行（方案 §问题7 拍板：竖屏删、横屏留；歌词节行序=拖拽→对齐→字体大小） */}
+              {/* 字体大小已上播放页歌词动作行（方案 §问题7 拍板：竖屏删、横屏留；歌词节行序=拖拽→罗马音→对齐→字体大小） */}
               {direction == 'horizontal'
                 ? <SettingLrcFontSize direction={direction} />
                 : null}
