@@ -3,7 +3,7 @@ import { TouchableOpacity, View } from 'react-native'
 import { type InitState } from '@/store/hotSearch/state'
 import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
-import { createStyle } from '@/utils/tools'
+import { createStyle, confirmDialog } from '@/utils/tools'
 import { ICON_SIZE } from '@/config/constant'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
@@ -13,20 +13,30 @@ import { SPACING } from '@/config/spacing'
 
 export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceList']]>
 
+// 词块 + 显式 × 单删（2026-10-22 治理批 P9：替代不可发现的长按删除，对标 QQ/网易云）
 const ListItem = ({ keyword, onSearch, onRemove }: {
   keyword: string
   onSearch: (keyword: string) => void
   onRemove: (keyword: string) => void
 }) => {
   const theme = useTheme()
+  const t = useI18n()
   return (
-    <Button
-      style={{ ...styles.button, backgroundColor: theme['c-button-background'] }}
-      onPress={() => { onSearch(keyword) }}
-      onLongPress={() => { onRemove(keyword) }}
-    >
-      <Text color={theme['c-button-font']} size={13}>{keyword}</Text>
-    </Button>
+    <View style={styles.item}>
+      <Button
+        style={{ ...styles.button, backgroundColor: theme['c-button-background'] }}
+        onPress={() => { onSearch(keyword) }}
+      >
+        <Text color={theme['c-button-font']} size={13} numberOfLines={1}>{keyword}</Text>
+      </Button>
+      <TouchableOpacity
+        style={{ ...styles.removeBtn, backgroundColor: theme['c-button-background'] }}
+        onPress={() => { onRemove(keyword) }}
+        accessibilityLabel={t('search_history_delete')}
+      >
+        <Icon name="close" size={12} color={theme['c-font-label']} />
+      </TouchableOpacity>
+    </View>
   )
 }
 
@@ -60,20 +70,27 @@ export default forwardRef<HistorySearchType, HistorySearchProps>((props, ref) =>
     },
   }), [])
 
-  const handleClear = () => {
-    clearHistoryList()
-    setList([])
-  }
-
-  const handleRemove = useCallback((keyword: string) => {
-    setList(list => {
-      list = [...list]
-      const index = list.indexOf(keyword)
-      list.splice(index, 1)
-      removeHistoryWord(index)
-      return list
+  // 清空加二次确认（P9：误触即丢全部历史）
+  const handleClear = useCallback(() => {
+    void confirmDialog({
+      message: t('search_history_clear_confirm'),
+      confirmButtonText: t('confirm'),
+    }).then(isConfirm => {
+      if (!isConfirm) return
+      clearHistoryList()
+      setList([])
     })
-  }, [])
+  }, [t])
+
+  // 审查 I2：副作用移出 setState updater（纯函数契约）+ indexOf 未命中守卫（防 -1 误删末条）
+  const handleRemove = useCallback((keyword: string) => {
+    const index = list.indexOf(keyword)
+    if (index < 0) return
+    const next = [...list]
+    next.splice(index, 1)
+    setList(next)
+    removeHistoryWord(index)
+  }, [list])
 
   return (
     list.length
@@ -81,13 +98,13 @@ export default forwardRef<HistorySearchType, HistorySearchProps>((props, ref) =>
           <View>
             <View style={styles.titleContent}>
               <Text size={16}>{t('search_history_search')}</Text>
-              <TouchableOpacity onPress={handleClear} style={styles.titleBtn}>
+              <TouchableOpacity onPress={handleClear} style={styles.titleBtn} accessibilityLabel={t('search_history_clear')}>
                 <Icon name="eraser" color={theme['c-300']} size={ICON_SIZE.inline} />
               </TouchableOpacity>
             </View>
             <View style={styles.list}>
               {
-                list.map(keyword => <ListItem keyword={keyword} key={keyword} onSearch={props.onSearch} onRemove={handleRemove} />)
+                list.map(keyword => <ListItem key={keyword} keyword={keyword} onSearch={props.onSearch} onRemove={handleRemove} />)
               }
             </View>
           </View>
@@ -103,29 +120,35 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  title: {
-    // paddingLeft: 15,
-    // paddingBottom: 5,
-  },
   titleBtn: {
     marginLeft: SPACING.s10,
     padding: SPACING.s6,
   },
   list: {
-    // paddingLeft: 15,
-    // paddingRight: 15,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    // paddingBottom: 15,
+    marginTop: SPACING.s4,
   },
-  button: {
-    textAlign: 'center',
-    paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s10,
-    paddingTop: SPACING.s6,
-    paddingBottom: SPACING.s6,
-    borderRadius: 4,
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
     marginRight: SPACING.s10,
     marginTop: SPACING.s8,
+  },
+  button: {
+    paddingLeft: SPACING.s10,
+    paddingTop: SPACING.s6,
+    paddingBottom: SPACING.s6,
+    borderTopLeftRadius: 4,
+    borderBottomLeftRadius: 4,
+    maxWidth: 150,
+  },
+  removeBtn: {
+    paddingLeft: SPACING.s6,
+    paddingRight: SPACING.s6,
+    paddingTop: SPACING.s6,
+    paddingBottom: SPACING.s6,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
   },
 })

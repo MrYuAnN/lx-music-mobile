@@ -95,13 +95,15 @@ const runLinkAction = async(link: string) => {
   // }
 }
 
-export const initDeeplink = async() => {
+/** 注册监听并派发冷启动链接；返回是否存在冷启动链接（启动链互斥判断用，治理批 P1） */
+export const initDeeplink = async(): Promise<boolean> => {
   Linking.addEventListener('url', ({ url }) => {
     void runLinkAction(url)
     console.log('deeplink', url)
   })
   const initialUrl = await Linking.getInitialURL()
-  if (initialUrl == null) return
+  if (initialUrl == null) return false
   console.log('deeplink', initialUrl)
   void runLinkAction(initialUrl)
+  return true
 }

@@ -22,7 +22,8 @@ export default ({ componentId }: { componentId: string }) => {
       <View style={{ flex: 1 }}>
         <Search scrollYAnimated={scrollY} contentPaddingTop={statusBarHeight + SCREEN_HEADER_HEIGHT} />
         {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
-        <ScreenHeader componentId={componentId} title={t('nav_search')} progress={scrollY} />
+        {/* 标题常显（2026-10-22 治理批 P15：撤销 10-19「搜索框即身份」豁免，回归「有钉位子头→标题常显」通用判据） */}
+        <ScreenHeader componentId={componentId} title={t('nav_search')} progress={scrollY} alwaysShowTitle />
       </View>
       <PlayerBarPlaceholder />
     </PageContent>

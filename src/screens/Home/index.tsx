@@ -5,8 +5,6 @@ import { setComponentId } from '@/core/common'
 import { COMPONENT_IDS } from '@/config/constant'
 import Vertical from './Vertical'
 import Horizontal from './Horizontal'
-import { navigations } from '@/navigation'
-import settingState from '@/store/setting/state'
 
 
 interface Props {
@@ -18,11 +16,8 @@ export default ({ componentId }: Props) => {
   const isHorizontalMode = useHorizontalMode()
   useEffect(() => {
     setComponentId(COMPONENT_IDS.home, componentId)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-
-    if (settingState.setting['player.startupPushPlayDetailScreen']) {
-      navigations.pushPlayDetailScreen(componentId, true)
-    }
+    // 启动 push（启动时打开播放页）已上收启动链收尾（core/init P1）：
+    // Home 挂载 effect 先于 react-navigation 容器就绪，此处派发必被 isReady 守卫丢弃
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
-import { ScrollView, View } from 'react-native'
+import { View } from 'react-native'
 import { type Source, type InitState } from '@/store/hotSearch/state'
 import Button from '@/components/common/Button'
 import { getList } from '@/core/hotSearch'
@@ -19,24 +19,49 @@ export interface HotSearchType {
 
 export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceList']]>
 
-const ListItem = ({ keyword, onSearch }: {
+// 词块（聚合模式：跨源合并无榜单语义，2026-10-22 治理批 P9）
+const ChipItem = ({ keyword, onSearch }: {
   keyword: string
   onSearch: (keyword: string) => void
 }) => {
   const theme = useTheme()
   return (
-    <Button style={{ ...styles.button, backgroundColor: theme['c-button-background'] }} onPress={() => { onSearch(keyword) }}>
+    <Button style={{ ...styles.chip, backgroundColor: theme['c-button-background'] }} onPress={() => { onSearch(keyword) }}>
       <Text color={theme['c-button-font']} size={13}>{keyword}</Text>
     </Button>
   )
 }
 
-export default forwardRef<HotSearchType, ListProps>((props, ref) => {
-  // const [listType, setListType] = useState<SearchState['searchType']>('music')
-  // const listRef = useRef<MusicListType>(null)
-  const [list, setList] = useState<List>([])
+// 榜单项（单源模式：序号+按序位梯度着色，前三名主题红；对标网易云/QQ 热搜区，P9）
+const RankItem = ({ keyword, index, onSearch }: {
+  keyword: string
+  index: number
+  onSearch: (keyword: string) => void
+}) => {
+  const theme = useTheme()
+  const rankColor = index < 3 ? theme['c-primary'] : theme['c-font-label']
+  return (
+    <Button style={styles.rankItem} onPress={() => { onSearch(keyword) }}>
+      <Text size={13} color={rankColor} style={styles.rankNum}>{index + 1}</Text>
+      <Text size={13} color={theme['c-font']} numberOfLines={1} style={styles.rankText}>{keyword}</Text>
+    </Button>
+  )
+}
+
+// 失败/空态占位（P9：不再静默空白）
+const EmptyText = () => {
+  const theme = useTheme()
   const t = useI18n()
-  // const theme = useTheme()
+  return <Text style={styles.empty} size={13} color={theme['c-font-label']}>{t('search_hot_search_empty')}</Text>
+}
+
+export default forwardRef<HotSearchType, ListProps>((props, ref) => {
+  const [list, setList] = useState<List>([])
+  const [isRank, setIsRank] = useState(false)
+  // 加载态（审查 S3：防加载期误闪「暂无热搜」空态）+ 请求序号守卫（快速切源竞态，后发先至）
+  const [loading, setLoading] = useState(false)
+  const requestSeqRef = useRef(0)
+  const t = useI18n()
 
   const isUnmountedRef = useRef(false)
   useEffect(() => {
@@ -48,45 +73,51 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
 
   useImperativeHandle(ref, () => ({
     show(source) {
+      // 单源=榜单形态（有原始榜单序），聚合=词块形态（跨源合并无榜单语义）
+      setIsRank(source != 'all')
+      const seq = ++requestSeqRef.current
+      setLoading(true)
       void getList(source).then((list) => {
-        if (isUnmountedRef.current) return
+        if (isUnmountedRef.current || seq !== requestSeqRef.current) return
         setList(list)
+        setLoading(false)
       })
     },
   }), [])
 
   return (
-    list.length
-      ? (
-          <ScrollView showsVerticalScrollIndicator={false}>
-            <Text style={styles.title} size={16}>{t('search_hot_search')}</Text>
-            <View style={styles.list}>
-              {
-                list.map(keyword => <ListItem keyword={keyword} key={keyword} onSearch={props.onSearch} />)
-              }
-            </View>
-          </ScrollView>
-        )
-      : null
+    <View>
+      <Text style={styles.title} size={16}>{t('search_hot_search')}</Text>
+      {
+        list.length
+          ? (
+              <View style={styles.list}>
+                {
+                  isRank
+                    ? list.map((keyword, index) => <RankItem key={keyword} keyword={keyword} index={index} onSearch={props.onSearch} />)
+                    : list.map(keyword => <ChipItem key={keyword} keyword={keyword} onSearch={props.onSearch} />)
+                }
+              </View>
+            )
+          : loading
+            ? null
+            : <EmptyText />
+      }
+    </View>
   )
 })
 
 
 const styles = createStyle({
   title: {
-    // paddingLeft: 15,
     paddingTop: SPACING.s16,
-    // paddingBottom: 10,
   },
   list: {
-    // paddingLeft: 15,
-    // paddingRight: 15,
     flexDirection: 'row',
     flexWrap: 'wrap',
-    // paddingBottom: 15,
+    marginTop: SPACING.s4,
   },
-  button: {
-    textAlign: 'center',
+  chip: {
     paddingLeft: SPACING.s10,
     paddingRight: SPACING.s10,
     paddingTop: SPACING.s6,
@@ -94,5 +125,23 @@ const styles = createStyle({
     borderRadius: 4,
     marginRight: SPACING.s10,
     marginTop: SPACING.s8,
+  },
+  rankItem: {
+    width: '50%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingTop: SPACING.s8,
+    paddingBottom: SPACING.s8,
+    paddingRight: SPACING.s10,
+  },
+  rankNum: {
+    width: 22,
+  },
+  rankText: {
+    flexShrink: 1,
+    flex: 1,
+  },
+  empty: {
+    marginTop: SPACING.s10,
   },
 })
