@@ -132,7 +132,10 @@ public class Lyric extends LyricPlayer {
   }
   private void handleGetCurrentLyric(int lineNum) {
     lastLine = lineNum;
-    if (lineNum >= 0 && lineNum < lines.size()) {
+    // lineNum<0（暂停/切歌间隙/空歌词）保留当前渲染不清空——业界口径（QQ/网易云暂停保留最后一句，
+    // 走查反馈：暂停与等歌间隙悬浮词不应消失，2026-10-21）
+    if (lineNum < 0) return;
+    if (lineNum < lines.size()) {
       HashMap line = (HashMap) lines.get(lineNum);
       if (line != null) {
         // 下一句行（D2 双行结构）；末行越界防护：置空由视图层隐藏（审查 S11）
@@ -147,7 +150,6 @@ public class Lyric extends LyricPlayer {
         return;
       }
     }
-    setCurrentLyric("", new ArrayList<>(0), "");
   }
 
   public void setSendLyricTextEvent(boolean isSend) {
@@ -224,7 +226,7 @@ public class Lyric extends LyricPlayer {
   @Override
   public void onSetLyric(List lines) {
     this.lines = lines;
-    handleGetCurrentLyric(-1);
+    // 空歌词（切歌加载间隙）不清空：保留上一首最后一句直到新歌词/播放推进（走查反馈 2026-10-21）
   }
 
   @Override
@@ -234,8 +236,7 @@ public class Lyric extends LyricPlayer {
 
   public void pauseLyric() {
     pause();
-    if (!isRunPlayer) return;
-    handleGetCurrentLyric(-1);
+    // 暂停保留当前行渲染（走查反馈：暂停不清空悬浮词，2026-10-21）
   }
 
   public void lockLyric() {

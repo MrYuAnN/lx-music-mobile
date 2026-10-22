@@ -305,6 +305,7 @@ public class LyricView implements View.OnTouchListener {
     if (textView.getTotalHeight() != oldHeight) {
       setLayoutParamsHeight();
       if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
+      repositionToolbar();
     }
   }
 
@@ -429,6 +430,13 @@ public class LyricView implements View.OnTouchListener {
     toolbar.show(layoutParams.x, layoutParams.y, layoutParams.width, layoutParams.height);
   }
 
+  /** 歌词窗几何变化后工具条跟随，防毛玻璃压住歌词导致调参效果不可见（走查反馈 2026-10-21） */
+  private void repositionToolbar() {
+    if (toolbar != null && toolbar.isShowing()) {
+      toolbar.repositionTo(layoutParams.x, layoutParams.y, layoutParams.width, layoutParams.height);
+    }
+  }
+
   private void dismissToolbar() {
     if (toolbar != null) toolbar.dismiss();
   }
@@ -486,6 +494,7 @@ public class LyricView implements View.OnTouchListener {
       isViewAttached = true;
     }
     setLyric(currentLyric, currentExtendedLyrics, currentNextLyric);
+    repositionToolbar();
   }
 
   public void setShowToggleAnima(boolean showToggleAnima) {
@@ -500,7 +509,10 @@ public class LyricView implements View.OnTouchListener {
     textView.setTextSize(size);
     setLayoutParamsHeight();
     if (isViewAttached) windowManager.updateViewLayout(textView, layoutParams);
-    if (toolbar != null && toolbar.isShowing()) toolbar.setTextSizeState(size);
+    if (toolbar != null && toolbar.isShowing()) {
+      toolbar.setTextSizeState(size);
+      repositionToolbar();
+    }
   }
 
   /** 前台隐身（D7）：仅摘除窗口保留实例，歌词播放器状态不动；与 hideDesktopLyric 的销毁不同 */
