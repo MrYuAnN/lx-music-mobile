@@ -14,6 +14,7 @@ import {
   type LOCAL_MUSIC_SCREEN,
   type LOCAL_MUSIC_GROUP_SCREEN,
   type ADD_MUSIC_SCREEN,
+  type DISLIKE_MANAGE_SCREEN,
 } from './screenNames'
 
 // RNN passProps → 路由参数（N1 迁移）；键复用 screenNames 常量（与 RNN 组件名 1:1，屏名不变）。
@@ -34,4 +35,5 @@ export type RootStackParamList = {
   [LOCAL_MUSIC_SCREEN]: undefined
   [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string, list: LX.Music.MusicInfoLocal[] }
   [ADD_MUSIC_SCREEN]: { listId: string, listName: string }
+  [DISLIKE_MANAGE_SCREEN]: undefined
 }

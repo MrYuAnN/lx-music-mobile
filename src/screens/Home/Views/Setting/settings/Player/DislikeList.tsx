@@ -1,51 +1,21 @@
-import { memo, useRef } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { memo, useCallback } from 'react'
 
-// import { gzip, ungzip } from 'pako'
-
-import SubTitle from '../../components/SubTitle'
-import Button from '../../components/Button'
-import { toast } from '@/utils/tools'
+import SelectRow from '../../components/SelectRow'
+import { useRuleNum } from '@/store/dislikeList/hook'
 import { useI18n } from '@/lang'
-import Text from '@/components/common/Text'
-import { state, useRuleNum } from '@/store/dislikeList'
-import DislikeEditModal, { type DislikeEditModalType } from './DislikeEditModal'
-import { overwirteDislikeInfo } from '@/core/dislikeList'
-import { SPACING } from '@/config/spacing'
+import commonState from '@/store/common/state'
+import { navigations } from '@/navigation'
 
+// 黑名单入口（治理批 P5：旧「不喜欢的歌曲规则」textarea 编辑退役，改独立管理页跳转，
+// 对标 QQ音乐「黑名单设置」；UI 命名「黑名单」，内部 dislike 协议与存储格式不动）
 export default memo(() => {
   const t = useI18n()
-  const modalRef = useRef<DislikeEditModalType>(null)
   const ruleNum = useRuleNum()
 
-  const handleShow = () => {
-    modalRef.current?.show(state.dislikeInfo.rules)
-  }
+  const handlePress = useCallback(() => {
+    const componentId = commonState.componentIds.setting
+    if (componentId) navigations.pushDislikeManageScreen(componentId)
+  }, [])
 
-  const handleSave = async(rules: string) => {
-    if (state.dislikeInfo.rules.trim() == rules.trim()) return
-    await overwirteDislikeInfo(rules)
-    toast(t('setting__other_dislike_list_saved_tip'))
-  }
-
-  return (
-    <SubTitle title={t('setting__other_dislike_list')}>
-      <View style={styles.ruleNum}>
-        <Text>{t('setting__other_dislike_list_label', { num: ruleNum })}</Text>
-      </View>
-      <View style={styles.btn}>
-        <Button onPress={handleShow}>{t('setting_other_dislike_list_show_btn')}</Button>
-      </View>
-      <DislikeEditModal ref={modalRef} onSave={handleSave} />
-    </SubTitle>
-  )
-})
-
-const styles = StyleSheet.create({
-  ruleNum: {
-    marginBottom: SPACING.s6,
-  },
-  btn: {
-    flexDirection: 'row',
-  },
+  return <SelectRow label={t('dislike_setting_entry')} value={t('dislike_rule_num', { num: ruleNum })} onPress={handlePress} />
 })

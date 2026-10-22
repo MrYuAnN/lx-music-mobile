@@ -1,12 +1,14 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { Animated, View } from 'react-native'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { useI18n } from '@/lang'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
+
 import Setting from '../Home/Views/Setting'
+import { setComponentId } from '@/core/common'
+import { COMPONENT_IDS, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 
 // AM-2：原 Home 内嵌 View screen 化（doc/plans/apple-music-redesign.md §3.1）
 // 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：header 悬浮玻璃，设置列表延伸整屏
@@ -16,6 +18,12 @@ export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
   const statusBarHeight = useStatusbarHeight()
   const scrollY = useRef(new Animated.Value(0)).current
+
+  useEffect(() => {
+    // 屏级 componentId 注册（治理批 P5）：设置页内二级跳转（黑名单管理页等）寻址用，
+    // 与 home/playDetail 同款模式
+    setComponentId(COMPONENT_IDS.setting, componentId)
+  }, [componentId])
 
   return (
     <PageContent>

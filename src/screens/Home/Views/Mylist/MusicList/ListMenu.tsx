@@ -3,6 +3,7 @@ import { useI18n } from '@/lang'
 import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
 import { existsFile } from '@/utils/fs'
 import { isReadonlyList } from './listAction'
+import { handleDislike } from '@/components/OnlineList/listAction'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfo
@@ -77,7 +78,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       ]),
       { action: 'share', label: t('copy_name'), icon: 'copy-name' },
         { action: 'copyLink', label: t('copy_link'), icon: 'copy-name' },
-      // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」「清除缓存」「不喜欢」（同在线侧 OnlineList/ListMenu 注释）
+      { action: 'dislike', label: t('dislike_menu_action'), icon: 'close' },
+      // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」「清除缓存」（同在线侧 OnlineList/ListMenu 注释）；
+      // 「不喜欢」随黑名单重设计（治理批 P5）回归菜单（见下方 dislike 项）
       // { action: 'musicSearch', label: t('music_search') },
       ...(readonly ? [] : [{ action: 'remove', label: t('delete'), icon: 'trash', destructive: true }]),
     ]
@@ -133,6 +136,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       case 'toggleSource':
         props.onToggleSource(selectInfo)
         // setVIsibleMusicPosition(true)
+        break
+      case 'dislike':
+        handleDislike(selectInfo.musicInfo)
         break
       case 'remove':
         props.onRemove(selectInfo)

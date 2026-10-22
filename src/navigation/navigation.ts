@@ -14,6 +14,7 @@ import {
   MYLIST_SCREEN,
   DOWNLOAD_SCREEN,
   ADD_MUSIC_SCREEN,
+  DISLIKE_MANAGE_SCREEN,
 } from './screenNames'
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
@@ -55,6 +56,12 @@ export function pushSonglistDetailScreen(componentId: string, info: ListInfoItem
 export function pushAddMusicScreen(componentId: string, listId: string, listName: string) {
   void componentId
   pushRoute(ADD_MUSIC_SCREEN, { listId, listName })
+}
+
+// 播放黑名单管理页（治理批 P5）：普通 push
+export function pushDislikeManageScreen(componentId: string) {
+  void componentId
+  pushAmScreen(DISLIKE_MANAGE_SCREEN)
 }
 
 export function pop(componentId?: string) {

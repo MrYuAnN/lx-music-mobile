@@ -8,6 +8,7 @@ import { useTheme } from '@/store/theme/hook'
 import { SPACING } from '@/config/spacing'
 
 import SettingTimeoutExit from './settings/SettingTimeoutExit'
+import SettingDislike from './settings/SettingDislike'
 import SettingLyricProgress from './settings/SettingLyricProgress'
 import SettingLrcRoma from './settings/SettingLrcRoma'
 import SettingPlaybackRate from './settings/SettingPlaybackRate'
@@ -54,6 +55,7 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
             <View style={styles.cards} onStartShouldSetResponder={() => true}>
               <SectionHeader label={t('playback')} />
               <SettingTimeoutExit />
+              <SettingDislike onDismiss={() => { popupRef.current?.setVisible(false) }} />
               <SettingPlaybackRate />
               {/* 横线语义反转（2026-10-21 真机反馈拍板）：线只作组间边界（组内无线靠行距），易误读的组内线废弃 */}
               <Divider />

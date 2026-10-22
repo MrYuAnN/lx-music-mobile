@@ -29,7 +29,6 @@ export class DislikeEvent extends Event {
    * 批量添加歌曲到列表
    * @param dislikeId 列表id
    * @param musicInfos 添加的歌曲信息
-   * @param addMusicLocationType 添加在到列表的位置
    * @param isRemote 是否属于远程操作
    */
   async dislike_music_add(musicInfo: LX.Dislike.DislikeMusicInfo[], isRemote: boolean = false) {

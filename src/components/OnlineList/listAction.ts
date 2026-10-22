@@ -1,4 +1,5 @@
 import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { addDislikeInfo } from '@/core/dislikeList'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
@@ -14,6 +15,13 @@ export const handlePlay = async(list: LX.Music.MusicInfoOnline[], index: number)
   await setTempList(ONLINE_TEMP_LIST_ID, [...list])
   void playList(LIST_IDS.TEMP, index)
 }
+// 拉黑当前条目（治理批 P5：菜单快捷入口回归，对标 QQ 歌单 ⋮ 快捷拉黑；列表内标记不切歌，
+// 写入经 core→utils 转义单点）
+export const handleDislike = (musicInfo: { name: string, singer: string }) => {
+  void addDislikeInfo([{ name: musicInfo.name, singer: musicInfo.singer }])
+  toast(global.i18n.t('dislike_add_success_tip'))
+}
+
 export const handlePlayLater = (musicInfo: LX.Music.MusicInfoOnline, selectedList: LX.Music.MusicInfoOnline[], onCancelSelect: () => void) => {
   if (selectedList.length) {
     addTempPlayList(selectedList.map(s => ({ listId: '', musicInfo: s })))

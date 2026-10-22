@@ -1,6 +1,7 @@
 import { useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
 import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
+import { handleDislike } from './listAction'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfoOnline
@@ -50,7 +51,8 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
   }))
 
   // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」（跳源站网页低频）/「清除缓存」（播放链接缓存，
-  // 播放器对过期链接自动重取）/「不喜欢」（功能入口归播放页），8 项 -> 5 项
+  // 播放器对过期链接自动重取），8 项 -> 5 项；「不喜欢」随黑名单重设计（治理批 P5）回归菜单
+  // （快捷入口+播放页双入口，覆盖原「入口归播放页」拍板）
   const handleSetMenu = (_musicInfo: LX.Music.MusicInfo) => {
     setMenus([
       { action: 'play', label: t('play'), icon: 'play' },
@@ -59,6 +61,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
       { action: 'add', label: t('add_to'), icon: 'add-to' },
       { action: 'share', label: t('copy_name'), icon: 'copy-name' },
       { action: 'copyLink', label: t('copy_link'), icon: 'copy-name' },
+      { action: 'dislike', label: t('dislike_menu_action'), icon: 'close' },
     ])
   }
 
@@ -82,6 +85,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
         break
       case 'copyLink':
         props.onCopyLink(selectInfo)
+        break
+      case 'dislike':
+        handleDislike(selectInfo.musicInfo)
         break
       default:
         break
