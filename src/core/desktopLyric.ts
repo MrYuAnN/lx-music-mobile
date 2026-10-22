@@ -40,10 +40,15 @@ export {
   setDesktopLyricPlayState,
 } from '@/utils/nativeModules/lyricDesktop'
 
-// 工具条字号步进边界与设置页 TextSize 滑杆同源（审查 S3）
+// 工具条字号步进边界（审查 S3 单源）
 const FONT_SIZE_MIN = 100
 const FONT_SIZE_MAX = 500
 const FONT_SIZE_STEP = 10
+// 透明度步进边界（治理批 P10：设置页 TextOpacity 滑杆退役，工具条调色板行 α± 步进，
+// 边界单源迁此；原滑杆 min10/max100/step2 语义不变）
+export const OPACITY_MIN = 10
+export const OPACITY_MAX = 100
+export const OPACITY_STEP = 2
 
 // 色板单源（AM 精致化：仅当前行可配色；下一句固定白 55%、阴影固定柔和，2026-10-21 拍板）：
 // 设置页 Theme 色板与悬浮工具条调色行共用
@@ -164,6 +169,16 @@ const handleToolbarAction = async({ action, index }: DesktopLyricToolbarEvent) =
       if (target === current) return
       await setDesktopLyricTextSize(target)
       updateSetting({ 'desktopLyric.style.fontSize': target })
+      break
+    }
+    case 'opacityDown':
+    case 'opacityUp': {
+      const current = settingState.setting['desktopLyric.style.opacity']
+      const target = Math.min(OPACITY_MAX, Math.max(OPACITY_MIN,
+        current + (action === 'opacityUp' ? OPACITY_STEP : -OPACITY_STEP)))
+      if (target === current) return
+      await setDesktopLyricAlpha(target)
+      updateSetting({ 'desktopLyric.style.opacity': target })
       break
     }
     case 'themeColor': {

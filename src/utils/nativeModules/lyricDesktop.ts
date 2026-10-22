@@ -206,6 +206,7 @@ export const onLyricLinePlay = (handler: (lineInfo: { text: string, extendedLyri
 }
 
 export type DesktopLyricToolbarAction = 'togglePlay' | 'skipPrev' | 'skipNext'
+  | 'opacityDown' | 'opacityUp'
   | 'fontSizeDown' | 'fontSizeUp' | 'close' | 'themeColor'
 
 export interface DesktopLyricToolbarEvent {

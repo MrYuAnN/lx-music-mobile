@@ -2,7 +2,6 @@ import TrackPlayer, { State } from 'react-native-track-player'
 import BackgroundTimer from 'react-native-background-timer'
 import { defaultUrl } from '@/config'
 // import { action as playerAction } from '@/store/modules/player'
-import settingState from '@/store/setting/state'
 import playerState from '@/store/player/state'
 
 
@@ -32,13 +31,6 @@ const formatMusicInfo = (musicInfo: LX.Player.PlayMusic) => {
   }
 }
 
-const getCurrentFullLyric = (targetId: string | null) => {
-  return (settingState.setting['player.isShowBluetoothFullLyric'] && targetId &&
-      playerState.musicInfo.id == targetId && playerState.musicInfo.lrc)
-    ? playerState.musicInfo.lrc
-    : undefined
-}
-
 // RN 0.86 TurboModule 直传下 undefined 字段会以 null 落到 native（旧桥会自动丢弃），
 // track 里 album/artwork/lyric/duration 等可选字段的 null 使 fork 的 add 解析抛 NPE，
 // 构造后清掉 undefined 键
@@ -56,7 +48,6 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
   const album = mInfo.album || undefined
   // 通知封面恒开（2026-10-21 设置页瘦身：业界默认开无开关）
   const artwork = mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
-  const lyric = getCurrentFullLyric(mInfo.id)
   if (url) {
     track.push(cleanUndefined({
       id: `${mInfo.id}__//${Math.random()}__//${url}`,
@@ -67,7 +58,6 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
       artwork,
       userAgent: defaultUserAgent,
       musicId: mInfo.id,
-      lyric,
       // original: { ...musicInfo },
       duration,
     }))
@@ -80,7 +70,6 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
     album,
     artwork,
     musicId: mInfo.id,
-    lyric,
     // original: { ...musicInfo },
     duration: 0,
   }))

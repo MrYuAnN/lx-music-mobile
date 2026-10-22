@@ -1,35 +1,23 @@
 import { memo, useState, useEffect } from 'react'
-import { View, TouchableOpacity } from 'react-native'
+import { View } from 'react-native'
 
 import SettingSection from '../../components/SettingSection'
-import Button from '../../components/Button'
+import ActionRow from '../../components/ActionRow'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { sizeFormate } from '@/utils'
 import { createStyle, openUrl } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
-import Text, { FontFamilies } from '@/components/common/Text'
 import { useVersionDownloadProgressUpdated, useVersionInfo } from '@/store/version/hook'
-import { showModal } from '@/core/version'
-import { FORM_ROW_PADDING } from '@/config/form'
+import { checkUpdate } from '@/core/version'
 import { SPACING } from '@/config/spacing'
 
 const currentVer = process.versions.app
 
-const openHomePage = () => {
-  void openUrl('https://github.com/lyswhut/lx-music-mobile#readme')
-}
-const openIssuePage = () => {
-  void openUrl('https://github.com/lyswhut/lx-music-mobile/issues?q=is%3Aissue+')
-}
-const openGHReleasePage = () => {
-  void openUrl('https://github.com/lyswhut/lx-music-mobile/releases')
-}
-const openFAQPage = () => {
-  void openUrl('https://lyswhut.github.io/lx-music-doc/mobile/faq')
-}
-
-// 关于节（2026-10-21 设置页重构：版本节并入——Version 六态状态机收编为卡内
-// 版本信息行+动态状态行+检查更新按钮，正文说明保留；正文硬编码中文为已知现状不动）
+// 关于节（治理批 P14 定稿：品牌区（App 名+版本）+ 检查更新动作行（副文本实时反馈状态机，
+// 点击=直接 checkUpdate——发现新版自动弹 VersionModal 完成下载/安装闭环）+ 开源地址/常见问题
+// 两行链接（对标主流关于页信息链接惯例，FAQ 为自定义源问题唯一 app 内出口）+ 上游致谢小字。
+// 上游 lx-music 十段防骗声明文案随个人 fork 语境删除）
 export default memo(() => {
   const theme = useTheme()
   const t = useI18n()
@@ -52,10 +40,10 @@ export default memo(() => {
           }))
           break
         case 'downloaded':
-          setStatusText(t('version_title_update'))
+          setStatusText(t('version_tip_downloaded'))
           break
         case 'checking':
-          setStatusText(t('version_title_checking'))
+          setStatusText(t('version_tip_checking'))
           break
         case 'error':
           setStatusText(t('version_tip_failed'))
@@ -67,111 +55,31 @@ export default memo(() => {
     }
   }, [t, versionInfo, progress])
 
-  const textLinkStyle = {
-    ...styles.text,
-    textDecorationLine: 'underline',
-    color: theme['c-primary-font'],
-  } as const
-
   return (
     <SettingSection title={t('setting_about')}>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('version_label_current_ver')}</Text>
-        <Text style={styles.value}>{currentVer}</Text>
+      <View style={styles.brand}>
+        <Text style={styles.brandName} size={20} color={theme['c-font']}>{t('about_app_name')}</Text>
+        <Text size={12} color={theme['c-font-label']} style={styles.brandVer}>{currentVer}</Text>
+        <Text size={11} color={theme['c-font-label']}>{t('about_credit')}</Text>
       </View>
-      <View style={styles.row}>
-        <Text style={styles.label}>{t('version_label_latest_ver')}</Text>
-        <Text style={styles.value}>{versionInfo.newVersion?.version ?? '--'}</Text>
-      </View>
-      {
-        statusText
-          ? (
-              <View style={styles.row}>
-                <Text size={13} color={theme['c-font-label']}>{statusText}</Text>
-              </View>
-            )
-          : null
-      }
-      <View style={styles.row}>
-        <Button onPress={() => { showModal() }}>{t('setting_version_show_ver_modal')}</Button>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text} >本软件完全免费，代码已开源。开源地址：</Text>
-        <TouchableOpacity onPress={openHomePage}>
-          <Text style={textLinkStyle}>https://github.com/lyswhut/lx-music-mobile</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>最新版下载地址：</Text>
-        <TouchableOpacity onPress={openGHReleasePage}>
-          <Text style={textLinkStyle}>GitHub Releases</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text} >软件的常见问题可转至：</Text>
-        <TouchableOpacity onPress={openFAQPage}>
-          <Text style={textLinkStyle}>移动版常见问题</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}><Text style={styles.boldText}>本软件没有客服</Text>，但我们整理了一些常见的使用问题。<Text style={styles.boldText} >仔细、仔细、仔细</Text>地阅读常见问题后，</Text>
-        <Text style={styles.text}>仍有问题可到 GitHub </Text>
-        <TouchableOpacity onPress={openIssuePage}>
-          <Text style={textLinkStyle}>提交 Issue</Text>
-        </TouchableOpacity>
-        <Text style={styles.text}>。</Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>由于软件开发的初衷仅是为了对新技术的学习与研究，因此软件直至停止维护都将会一直保持纯净。</Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>目前本项目的原始发布地址<Text style={styles.boldText}>只有 GitHub</Text>，其他渠道均为第三方转载发布，可信度请自行鉴别。</Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}><Text style={styles.boldText}>本项目没有微信公众号之类的所谓「官方账号」，也未在小米、华为、vivo 等应用商店发布同名应用，谨防被骗！</Text></Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>若你使用过程中遇到<Text style={styles.boldText}>广告</Text>或者<Text style={styles.boldText}>引流</Text>（如需要加群、关注公众号之类才能使用或者升级）的信息，则表明你当前运行的软件是「第三方修改版」。</Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>若在升级新版本时提示「<Text style={styles.boldText}>签名不一致</Text>」，则表明你手机上的旧版本或者将要安装的新版本中<Text style={styles.boldText}>有一方</Text>是「<Text style={styles.boldText}>第三方修改版</Text>」。</Text>
-      </View>
-      <View style={styles.part}>
-        <Text style={styles.text}>By: </Text>
-        <Text style={styles.text}>落雪无痕</Text>
-      </View>
+      <ActionRow label={t('about_check_update')} value={statusText} onPress={() => { void checkUpdate() }} />
+      <ActionRow label={t('about_link_repo')} onPress={() => { void openUrl('https://github.com/lyswhut/lx-music-mobile#readme') }} />
+      <ActionRow label={t('about_link_faq')} onPress={() => { void openUrl('https://lyswhut.github.io/lx-music-doc/mobile/faq') }} />
     </SettingSection>
   )
 })
 
 const styles = createStyle({
-  row: {
-    ...FORM_ROW_PADDING,
-    flexDirection: 'row',
+  brand: {
     alignItems: 'center',
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s10,
   },
-  label: {
-    flexGrow: 1,
-    flexShrink: 1,
-    paddingRight: SPACING.s12,
+  brandName: {
+    fontFamily: FontFamilies.medium,
   },
-  value: {
-    flexShrink: 1,
-  },
-  part: {
-    marginLeft: SPACING.s16,
-    marginRight: SPACING.s16,
-    marginBottom: SPACING.s10,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  text: {
-    fontSize: 14,
-    textAlignVertical: 'bottom',
-  },
-  boldText: {
-    fontSize: 14,
-    fontFamily: FontFamilies.bold,
-    textAlignVertical: 'bottom',
+  brandVer: {
+    marginTop: SPACING.s2,
+    marginBottom: SPACING.s4,
   },
 })

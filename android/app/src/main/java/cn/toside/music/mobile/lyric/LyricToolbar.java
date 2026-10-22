@@ -9,6 +9,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.DisplayMetrics;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageButton;
@@ -78,19 +79,26 @@ public class LyricToolbar {
       : WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY;
     layoutParams.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
       | WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+      | WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH
       | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
     layoutParams.format = PixelFormat.TRANSPARENT;
-    // AM 毛玻璃：API 31+ 背后实时模糊（系统未开「允许模糊」时自动退化为纯色半透明底）
-    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-      layoutParams.flags |= WindowManager.LayoutParams.FLAG_BLUR_BEHIND;
-      layoutParams.setBlurBehindRadius(dp(20));
-    }
+    // 注意：不用 FLAG_BLUR_BEHIND——MIUI 实测（2026-10-21 真机截图）会把工具条以外全屏模糊，
+    // 歌词被糊掉导致调参效果不可见；纯色半透明胶囊为跨 ROM 安全形态
     layoutParams.gravity = Gravity.TOP | Gravity.START;
     layoutParams.width = WindowManager.LayoutParams.WRAP_CONTENT;
     layoutParams.height = WindowManager.LayoutParams.WRAP_CONTENT;
     // 初值按预估工具条高度放歌词窗上方，attach 后实测尺寸精确定位（防首帧跳变，审查 S3）
     layoutParams.x = lyricX + lyricWidth / 2;
     layoutParams.y = lyricY - dp(52);
+
+    // 点工具条以外空白区域立即收起（走查反馈：只等 3s 自动隐藏太久）
+    layout.setOnTouchListener((v, event) -> {
+      if (event.getAction() == MotionEvent.ACTION_OUTSIDE) {
+        dismiss();
+        return true;
+      }
+      return false;
+    });
 
     windowManager.addView(layout, layoutParams);
     applyTextSizeState();
@@ -143,6 +151,16 @@ public class LyricToolbar {
   public void setPalette(int[] colors) {
     palette = colors;
     rebuildPaletteChips();
+  }
+
+  /** 歌词窗几何变化（字号/行数等）后跟随重定位，保证工具条永不压住歌词（走查反馈：实时可见调参效果） */
+  public void repositionTo(int lyricX, int lyricY, int lyricWidth, int lyricHeight) {
+    if (layout == null || layoutParams == null) return;
+    lastLyricX = lyricX;
+    lastLyricY = lyricY;
+    lastLyricWidth = lyricWidth;
+    lastLyricHeight = lyricHeight;
+    layout.post(this::updatePosition);
   }
 
   private void updatePosition() {
@@ -224,6 +242,12 @@ public class LyricToolbar {
       chip.setOnClickListener(v -> selectTheme(index));
       paletteRow.addView(chip);
     }
+    // 透明度步进（治理批 P10：设置页滑杆退役并入工具条，对齐 A± 模式；当前值由 JS 侧维护，
+    // 到边界后再点无效果）。点击不收起色板行，支持连续调节
+    TextView alphaDownButton = textButton("α-", "opacityDown");
+    paletteRow.addView(alphaDownButton);
+    TextView alphaUpButton = textButton("α+", "opacityUp");
+    paletteRow.addView(alphaUpButton);
   }
 
   private void selectTheme(int index) {
