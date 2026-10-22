@@ -1,6 +1,6 @@
 import { updateListMusics } from '@/core/list'
 import { setMaxplayTime, setNowPlayTime } from '@/core/player/progress'
-import { setCurrentTime, getDuration, getPosition } from '@/plugins/player'
+import { isInitialized, setCurrentTime, getDuration, getPosition } from '@/plugins/player'
 import { formatPlayTime2 } from '@/utils/common'
 import { savePlayInfo } from '@/utils/data'
 import { throttleBackgroundTimer } from '@/utils/tools'
@@ -27,13 +27,16 @@ export default () => {
   let isScreenOn = true
 
   const getCurrentTime = () => {
+    // 播放器未就绪不查进度（2026-10-21 存档恒开后启动早期会进入此路径）
+    if (!isInitialized()) return
     let id = playerState.musicInfo.id
     void getPosition().then(position => {
       if (!position || id != playerState.musicInfo.id) return
       setNowPlayTime(position)
       if (!playerState.isPlay) return
 
-      if (settingState.setting['player.isSavePlayTime'] && !playerState.playMusicInfo.isTempPlay && isScreenOn) {
+      // isSavePlayTime 设置项已删（2026-10-21 设置页瘦身：业界均自动恢复进度），存档恒开
+      if (!playerState.playMusicInfo.isTempPlay && isScreenOn) {
         delaySavePlayInfo()
       }
     })
@@ -72,11 +75,12 @@ export default () => {
 
   const setProgress = (time: number, maxTime?: number) => {
     if (!playerState.musicInfo.id) return
-    // console.log('setProgress', time, maxTime)
     setNowPlayTime(time)
-    void setCurrentTime(time)
-
     if (maxTime != null) setMaxplayTime(maxTime)
+    // 播放器未就绪只记账不 seek（启动恢复进度场景，初始化完成后按存储进度开始；
+    // 2026-10-21 存档恒开后此路径不再被 isSavePlayTime 门卫，崩溃 Boot Log：player is not initialized）
+    if (!isInitialized()) return
+    void setCurrentTime(time)
 
     // if (!isPlay) audio.play()
   }

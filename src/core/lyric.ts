@@ -15,7 +15,7 @@ import {
   toggleDesktopLyricTranslation,
   toggleDesktopLyricRoma,
 } from '@/core/desktopLyric'
-import { getPosition } from '@/plugins/player'
+import { getPosition, isInitialized } from '@/plugins/player'
 import playerState from '@/store/player/state'
 
 /**
@@ -78,13 +78,32 @@ export const setPlaybackRate = async(playbackRate: number) => {
 }
 
 /**
+ * 翻译/罗马音开关后重启歌词解析器：重解析会把进度拉回最初，
+ * 必须无条件按当前播放进度重定位（播放态继续推进；暂停态定位当前行后保持暂停）。
+ * 旧实现 `if (playerState.isPlay) play()` 在暂停/加载间隙切换时歌词冻结在第一行（走查反馈 2026-10-21）。
+ */
+const restartLyricParser = async() => {
+  // 启动序列守卫（2026-10-21 崩溃回归修复）：initLyric 的 translation/roma 切换先于
+  // playerInitial 执行，未就绪时查进度即抛 player is not initialized——此时仅落歌词开关，
+  // 解析器重定位待播放器就绪后自然进行
+  if (!isInitialized()) return
+  const position = await getPosition()
+  if (playerState.isPlay) {
+    play()
+  } else {
+    handlePlay(position * 1000)
+    pause()
+  }
+}
+
+/**
  * toggle show translation
  * @param isShowTranslation is show translation
  */
 export const toggleTranslation = async(isShowTranslation: boolean) => {
   lrcToggleTranslation(isShowTranslation)
   await toggleDesktopLyricTranslation(isShowTranslation)
-  if (playerState.isPlay) play()
+  await restartLyricParser()
 }
 
 /**
@@ -94,7 +113,7 @@ export const toggleTranslation = async(isShowTranslation: boolean) => {
 export const toggleRoma = async(isShowLyricRoma: boolean) => {
   lrcToggleRoma(isShowLyricRoma)
   await toggleDesktopLyricRoma(isShowLyricRoma)
-  if (playerState.isPlay) play()
+  await restartLyricParser()
 }
 
 export const play = () => {
