@@ -10,9 +10,9 @@ interface Props {
   children: React.ReactNode
 }
 
-// 居中弹窗内容基座（导航层 VersionModal/SyncModeModal，弹窗体系统一方案批1）：
+// 居中弹窗内容基座（导航层 VersionModal，弹窗体系统一方案批1）：
 // 与 Dialog 同规格——跨窗 blur-behind 玻璃 tint 分流（回退实色）+DIALOG_RADIUS 14+遮罩单源；
-// 旧色条 header 移除（VersionModal/SyncModeModal 内容自带标题，删色条不丢标题——审查 I-4；
+// 旧色条 header 移除（VersionModal 内容自带标题，删色条不丢标题——审查 I-4；
 // 旧 borderTopRadius 4 不随面板改 14 会顶出圆角边界）
 export default ({ children }: Props) => {
   const theme = useTheme()

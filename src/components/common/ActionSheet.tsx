@@ -6,7 +6,7 @@ import Text from './Text'
 import { Icon } from './Icon'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
-import { ICON_SIZE } from '@/config/constant'
+import { ICON_SIZE , DESTRUCTIVE_RED } from '@/config/constant'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { hapticSelection } from '@/utils/haptic'
 
@@ -98,11 +98,11 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                     <Icon
                       name={menu.icon ?? 'full_stop'}
                       size={ICON_SIZE.list}
-                      // destructive 红语义独立于品牌色（HIG 惯例不随 tint），取 AM 双态红常量
-                      color={menu.destructive ? (theme.isDark ? '#FB4B54' : '#FA233B') : theme['c-font']}
+                      // destructive 红语义独立于品牌色（HIG 惯例不随 tint），AM 双态红单源 DESTRUCTIVE_RED
+                      color={menu.destructive ? (theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light) : theme['c-font']}
                       style={styles.icon}
                     />
-                    <Text size={15} color={menu.destructive ? (theme.isDark ? '#FB4B54' : '#FA233B') : theme['c-font']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
+                    <Text size={15} color={menu.destructive ? (theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light) : theme['c-font']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
                     { renderBadge(menu) }
                   </TouchableOpacity>
                 )
