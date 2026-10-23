@@ -69,7 +69,7 @@
 
 | 类别 | 值 |
 |---|---|
-| 圆角 | 大封面 12 · **组卡 12（单源，2026-10-23 拍板 #7；M3 card medium 12dp 对标，iOS 系统 inset grouped 10pt 不对齐，防误改回）** · 缩略封面 8（PlaylistGridCard/广场网格卡媒体圆角）· 84 封面 tile 10（首页 hub 卡/LOVE tile 媒体圆角）· **媒体浮层面板 16（2026-10-23 批 F 播放页控制面板新增档）** · 胶囊按钮 999 · 图标钮圆形成 il |
+| 圆角 | 大封面 12 · **组卡 12（单源，2026-10-23 拍板 #7；M3 card medium 12dp 对标，iOS 系统 inset grouped 10pt 不对齐，防误改回）** · 缩略封面 8（PlaylistGridCard/广场网格卡媒体圆角）· 84 封面 tile 10（首页 hub 卡/LOVE tile 媒体圆角）· 胶囊按钮 999 · 图标钮圆形成 il |
 | 页面边距 | 16（SPACING.s16；框/chips/列表对齐）；卡片内边距 12（s12）；shelf 卡间距 12（s12） |
 | 列表行高 | 56-60（封面 44-48 + 上下 padding） |
 | 全局页头 | HEADER_HEIGHT=88 延续（裸 dp）；AM 大标题区在其语义上改造 |
@@ -155,7 +155,7 @@
 - **首页头部**：应用名大标题（34/bold，标题区下间距 12——34 号字行高余量不足真机反馈修正 2026-10-20）+ 右上双圆钮（放大镜/齿轮，44dp 圆形热区，AM-6 拍板维持，达 HIG/WCAG 44 最低触控目标）；SearchBox 移除。
 - **列表行**：缩略封面 8dp 圆角 + 双行文本（17/13）+ chevron.right；按压态浅灰（`c-border-background` 系）。
 - **卡片（2026-10-23 拍板 #2/#7 终局，废止旧表述「无边框阴影淡投影」）**：组卡=实色 `c-content-background`（浅纯白/深 `#1C1C1E` elevated）+ 四周发丝线（色单源 `GLASS_HAIRLINE_COLOR`、线宽 `BorderWidths.normal`）+ 圆角 12，无投影。对标=M3 outlined card（1dp outline 描边卡）近似+iOS inset grouped 灰底白卡（无边框为已放弃形态：深色档卡界可辨度不足）；分组标题 20/bold。内容项卡「封面即卡」形态豁免白底与发丝线（媒体圆角）。
-- **首页「音乐库」hub 卡（2026-10-23 顶部区改版拍板，推翻 10-20「快捷格 1×4+hero 卡」两形态；三席方案审查定稿 `.review-bundle/2026-10-23/context.md`）**：单卡收编「我喜欢的音乐」行+1×4 功能入口行（本地/下载/排行榜/歌单广场），卡序 音乐库→最近播放→我的歌单。我喜欢的行=84 封面三态：无自定义封面回退 LOVE_GRADIENT 红渐变白心 tile（r10、白心 84×0.3，与 PlaylistGridCard 网格卡 LOVE 特判同款视觉，constant.ts 单源；红渐变恒铺底层+封面叠加防两态闪变）；「色底白心=收藏歌单封面语言」定案维持（对标 Spotify Liked Songs 紫/网易云红心均为封面级——通栏 hero 色卡零业界先例故拆除）。播放键 44dp 红底白 icon 20（Spotify Liked Songs 行内圆钮同构）；先切全局随机后起播契约与曲数 0 禁用沿用。入口行=细分隔线（1dp `c-border-background`）+1×4 等分（icon 26 主题红+13 semibold、无独立底色块，触区≥44）——金刚区语言收进卡内的收敛变体，无完全同构先例本产品自定；四入口首页一键直达底线维持（10-20 拍板延续）。
+- **首页「音乐库」hub 卡（2026-10-23 顶部区改版拍板，推翻 10-20「快捷格 1×4+hero 卡」两形态；三席方案审查定稿 `.review-bundle/2026-10-23/context.md`；同日「LOVE 纳入自动轨」批改 tile 形态，方案 `doc/plans/love-home-tile-cover.md`）**：单卡收编「我喜欢的音乐」行+1×4 功能入口行（本地/下载/排行榜/歌单广场），卡序 音乐库→最近播放→我的歌单。我喜欢的行 tile=**图标级中性样式**：`c-chip-background` 底 + LOVE_COLOR 红心（tile 宽 84×0.4，r10），**恒显不随封面内容变**（Q4 拍板「首页不应变保证首页效果」——语义为不随封面变，非视觉冻结；封面职能已移交自动轨，tile 是入口图标非封面。一线音乐 App liked 入口无同构 tile 先例，本产品自定，依据 Apple 系统级 App tile+glyph 行语言；原「红渐变白心封面语言」在本行拆除，改判据见下）。播放键 44dp 红底白 icon 20（Spotify Liked Songs 行内圆钮同构）；先切全局随机后起播契约与曲数 0 禁用沿用。LOVE 封面=自动斜叠轨全量成员（自定义 lovePic > 自动轨 > 占位）：详情页 hero/氛围带与加歌弹窗网格消费生成封面（内容派，YouTube Music Liked music 先例）；网格卡 LOVE 无封面 fallback=LOVE_GRADIENT 红渐变白心（封面位品牌语言保留，网易云/Spotify 封面位品牌图惯例）。入口行=细分隔线（1dp `c-border-background`）+1×4 等分（icon 26 主题红+13 semibold、无独立底色块，触区≥44）——金刚区语言收进卡内的收敛变体，无完全同构先例本产品自定；四入口首页一键直达底线维持（10-20 拍板延续）。
 - **播放页**：预模糊封面 + 主色渐变背景；大封面圆角 12 居中；控制三键 fill 变体（64dp 主键）。
 - **弹层/菜单**：长按上下文菜单（@react-native-menu/menu）；底部弹层 AM 圆角卡片式。
 
@@ -167,7 +167,7 @@
 |---|---|---|
 | 功能层（玻璃） | 顶栏族、迷你条、弹层族、钉位子头、播放页控制钮 | GlassSurface（参数=2026-10-20 真机校准终值 blur 64/弹层 20，单源 `glass-system-rollout.md` §1，不再动）；**弹层族例外：Android=原生窗跨窗 blur-behind+GLASS_TINT 单源色，非 GlassSurface 组件实例**（iOS 窗内才走 GlassSurface） |
 | 内容层（实色） | 组卡容器、内容项卡、列表行、页面底色 | 页面底恒 `c-app-background`（浅 #F2F2F7/深 #000）；组卡恒 `c-content-background` 白卡+发丝线+圆角 12（§7） |
-| 媒体层（沉浸） | 播放页（coverBg）、歌单页 hero（ambientPic 氛围带） | 封面取色沉浸底；媒体浮层可用玻璃（Spotify 播放页面板先例，HIG clear 变体口径） |
+| 媒体层（沉浸） | 播放页（coverBg）、歌单页 hero（ambientPic 氛围带） | 封面取色沉浸底；媒体之上的浮层控件可用玻璃（播放页控制胶囊/头部圆片为现行形态，HIG clear 变体口径；2026-10-23 走查否决大面板形态——胶囊轻盈感即融合本体） |
 
 - **底色语义**：`c-app-background`=页面底专用；`c-content-background`=卡片/浮面内容专用；`c-main-background`=遗留别名（仅 LoadingMask 存量消费，新代码禁用）。豁免两处：①PageContent 歌单页氛围分支整页底=c-content-background（hero 渐变终点衔接，媒体层语义非违例）；②PlayerBar 玻璃 fallback=c-content-background（「回退=现状」历史拍板，悬浮件不属页面底）。
 - **chips 四形态（2026-10-23 批 D 审查按代码实况收口；选中态恒主色系不在材质分类内）**：

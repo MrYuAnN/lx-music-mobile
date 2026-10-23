@@ -58,20 +58,6 @@ export const GLASS_BAR_FALLBACK = {
   dark: 'rgba(18, 12, 16, 0.72)',
 }
 
-// 媒体浮层 tint（2026-10-23 批 F 新增单源；**批 F2 走查反馈修正：亮态黑基→白基磨砂**）。
-// 拍板 #3 双态语言（亮=白磨砂+黑字/暗=深玻璃+白字）对媒体浮层同构适用——初版「亮态黑基
-// 0.30」系错误推理（误以为白基浊化封面；实际浅色主题播放页底=76% 白纱罩的近白氛围，黑玻璃
-// +四黑图标=走查「黑不拉几」反例）。现值：亮=白基 0.55（悬浮白玻璃卡）/暗=黑基 0.40；
-// **双态数值均无业界公开对标，本产品自定，真机校准点**。
-// 【净口径校准清单——三席审查备案，校准时合并计算】①blurType 引擎内置叠色未随 media 分族：
-// 亮态 regular≈14% 白与白基 overlay 同向、暗态≈25% 暗同向叠加，净遮蔽以真机对拍为准；
-// ②blurAmount 沿用 64（白底内容页校准值），媒体底是否同档待验。头部功能钮圆片仍 bar 族
-// （10-20 校准拍板），是否迁 media 为独立拍板项不随本批
-const MEDIA_TINT = {
-  light: 'rgba(255, 255, 255, 0.55)',
-  dark: 'rgba(0, 0, 0, 0.40)',
-}
-
 export const isGlassSupported = () => {
   return Platform.OS == 'ios' || Number(Platform.Version) >= GLASS_MIN_ANDROID_API
 }
@@ -89,16 +75,12 @@ interface Props {
   hairline?: 'all' | 'bottom' | 'none'
   /** 玻璃不可用回退底色（必填：回退态不模糊，消费方须按自身场景给足遮蔽，架构席 S-2） */
   fallbackColor: string
-  /** overlay tint 族（2026-10-23 批 F 拆分）：bar=白基提亮（白底 chrome 顶栏族，默认）；
-   *  media=媒体浮层族（亮=白磨砂 0.55/暗=黑基暗化 0.40，双态口径见 MEDIA_TINT 注释）——两族勿混用 */
-  variant?: 'bar' | 'media'
   children?: React.ReactNode
 }
 
-export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', radius, fallbackColor, variant = 'bar', children }: Props) => {
+export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', radius, fallbackColor, children }: Props) => {
   const theme = useTheme()
   const mode = theme.isDark ? 'dark' : 'light'
-  const tint = variant == 'media' ? MEDIA_TINT[mode] : BAR_TINT[mode]
   const hairlineColor = { borderColor: HAIRLINE_COLOR[mode] }
   const hairlineStyles = [
     hairline == 'all' && styles.hairlineAll,
@@ -121,9 +103,8 @@ export default ({ style, blurAmount = GLASS_BLUR_AMOUNT, hairline = 'none', radi
   return (
     <View style={[styles.surface, radiusStyle, ...hairlineStyles, style]}>
       <BlurView style={styles.backdrop} blurType={BLUR_TYPE[mode]} blurAmount={blurAmount} />
-      {/* overlay tint 层：顶栏族 BAR_TINT 单源精准承担（弹层族走 GLASS_TINT 跨窗路径不共用；
-          媒体浮层族 MEDIA_TINT 双态口径，variant='media'） */}
-      <View style={[styles.backdrop, { backgroundColor: tint }]} pointerEvents="none" />
+      {/* overlay tint 层：顶栏族 BAR_TINT 单源精准承担（弹层族走 GLASS_TINT 跨窗路径，不共用） */}
+      <View style={[styles.backdrop, { backgroundColor: BAR_TINT[mode] }]} pointerEvents="none" />
       {children}
     </View>
   )

@@ -82,8 +82,11 @@ const styles = createStyle({
   container: {
     flexGrow: 1,
     flexShrink: 1,
-    justifyContent: 'center',
+    // 底部锚定（2026-10-23 走查反馈：原 center 居中把余量均分到标题下方，歌名离功能行过远；
+    // 改贴底后歌名紧贴 ActionRow，弹性余量留在封面上方——AM/Spotify 同为「标题贴控制区」锚定）
+    justifyContent: 'flex-end',
     alignItems: 'center',
+    paddingBottom: SPACING.s6,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   content: {

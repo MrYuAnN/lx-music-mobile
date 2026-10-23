@@ -5,7 +5,6 @@ import Animated from 'react-native-reanimated'
 import ActionRow from './components/ActionRow'
 import PlayInfo from './components/PlayInfo'
 import ControlBtn from './components/ControlBtn'
-import GlassSurface from '@/components/common/GlassSurface'
 import { createStyle } from '@/utils/tools'
 import { NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
 import { useIntroStyle } from '@/navigation/transitions/intro'
@@ -26,20 +25,8 @@ export default memo(({ page }: { page: number }) => {
       nativeID={NAV_SHEAR_NATIVE_IDS.playDetail_player}
     >
       <ActionRow page={page} />
-      {/* 控制面板（2026-10-23 批 F C 档，AM iOS 26 底部形态同构，用户拍板）：进度+控制一体
-          玻璃面板（媒体浮层族 MEDIA_TINT 双态：亮白磨砂 0.55/暗黑基 0.40，radius 16 媒体浮层档），
-          ActionRow 二级功能行留外保持轻/重层级；控制胶囊（四黑一红）拆壳收编入面板；回退=透明底
-          现状观感；贴缘细线已随批 F2 实施（组件注释见 PlayInfo） */}
-      <GlassSurface
-        variant="media"
-        radius={16}
-        hairline="all"
-        fallbackColor="rgba(0, 0, 0, 0)"
-        style={styles.panel}
-      >
-        <PlayInfo />
-        <ControlBtn />
-      </GlassSurface>
+      <PlayInfo />
+      <ControlBtn />
     </Animated.View>
   )
 })
@@ -48,18 +35,22 @@ const styles = createStyle({
   container: {
     flex: 0,
     width: '100%',
+    // paddingTop: progressContentPadding,
+    // marginTop: -progressContentPadding,
+    // backgroundColor: 'rgba(0, 0, 0, .1)',
     paddingHorizontal: SPACING.s16,
     paddingBottom: SPACING.s16,
     paddingTop: SPACING.s6,
+    // backgroundColor: AppColors.primary,
+    // backgroundColor: 'red',
     flexDirection: 'column',
   },
-  // 面板内边距（初值，真机校准点）：面板外缘与 ActionRow 同缩进（container s16），内容刻意
-  // 再内缩 s16 一档（AM 悬浮面板「内容内缩」常态，非对齐 ActionRow）——走查定案；顶部 s16=
-  // 贴缘线（3dp）与时间行的呼吸；面板内容自适应高度不定高（Player 区 flex:0 无剩余空间，
-  // flexGrow/flexShrink 为无效声明不写）
-  panel: {
-    paddingHorizontal: SPACING.s16,
-    paddingTop: SPACING.s16,
-    paddingBottom: SPACING.s6,
+  status: {
+    marginTop: SPACING.s10,
+    flexDirection: 'column',
+    flex: 0,
+    paddingLeft: SPACING.s6,
+    justifyContent: 'space-evenly',
+    // backgroundColor: 'rgba(0, 0, 0, .1)',
   },
 })

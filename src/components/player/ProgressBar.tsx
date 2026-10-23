@@ -71,9 +71,10 @@ const PreassBar = memo(({ onDragState, setDragProgress, onSetProgress, style }: 
 type ProgressTone = 'primary' | 'neutral'
 type ProgressThumb = 'always' | 'drag'
 
-// 双态取色：primary=品牌红（10-20 拍板原形态）；neutral=主字色系（2026-10-23 批 F2 贴缘细线，
-// 红色语义归还播放模式状态=四黑一红更纯，AM 无点细线同构）。neutral 的 dragGhost 用 0.35 透明度
-// 与已播段区分（三席审查 I-2：同色同实度丢「原位置」参照；opacity 兼容 rgb()/hex 字色）
+// 双态取色：primary=品牌红（10-20 拍板原形态，当前唯一消费形态）；neutral=主字色系。
+// 【扩展点备案 2026-10-23 批 F3】tone/thumb/edge 三 props 系播放页面板化探索批（F/F2，已作废
+// 回退）期间引入的扩展 API——**当前无消费方**（唯一消费方 PlayInfo 走全默认=原形态），保留作
+// 该类场景预留；neutral 的 dragGhost 0.35 透明度与已播段区分（同色同实度丢「原位置」参照）
 const toneColors = (theme: { 'c-font': string, 'c-primary': string, 'c-primary-alpha-400': string }, tone: ProgressTone) => {
   if (tone == 'neutral') return { played: theme['c-font'], dot: theme['c-font'], dragGhost: theme['c-font'], ghostOpacity: 0.35 }
   return { played: theme['c-primary'], dot: theme['c-primary'], dragGhost: theme['c-primary-alpha-400'], ghostOpacity: 1 }
@@ -83,13 +84,12 @@ const Progress = ({ progress, duration, buffered, tone = 'primary', thumb = 'alw
   progress: number
   duration: number
   buffered: number
-  /** 配色族：primary=品牌红（默认，存量形态）/ neutral=主字色系（播放页贴缘细线） */
+  /** 配色族：primary=品牌红（默认，当前唯一消费形态）/ neutral=主字色系（预留扩展，当前无消费方） */
   tone?: ProgressTone
-  /** 拖点形态：always=恒显（默认，存量形态）/ drag=仅拖拽时浮现（AM 无点细线同构） */
+  /** 拖点形态：always=恒显（默认，当前唯一消费形态）/ drag=仅拖拽时浮现（预留扩展） */
   thumb?: ProgressThumb
-  /** 贴缘模式（2026-10-23 批 F2 三席审查 I-1）：可见线归容器顶 y0（去默认 10dp 内容 padding，
-   *  原样式会把线推离「面板上缘」拍板位），触摸热区独立向下扩至 44dp（触控目标拍板；线与热区
-   *  分离，下方重叠带均为无交互文本无截获代价） */
+  /** 贴缘模式（预留扩展，当前无消费方）：可见线归容器顶 y0（去默认 10dp 内容 padding），
+   *  触摸热区独立向下扩至 44dp（触控目标拍板） */
   edge?: boolean
 }) => {
   // const { progress: bufferProgress } = usePlayTimeBuffer()
