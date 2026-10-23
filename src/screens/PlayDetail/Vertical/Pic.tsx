@@ -33,7 +33,11 @@ export default ({ componentId }: { componentId: string }) => {
   // console.log('render pic')
 
   const style = useMemo(() => {
-    const imgWidth = Math.min(winWidth * 0.8, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.44)
+    // 封面尺寸（2026-10-23 走查反馈：头部与封面间大空隙——业界无此形态，AM/Spotify/YTM 均为
+    // 「封面够大+顶部近贴头部，余量留给封面与控制区之间」；0.8→0.92 屏宽（侧边距收至页面边距
+    // 16dp 档）、高度系数 0.44→0.52，余量从 ~108dp 收敛到 ~60dp 呼吸位；后续若立项全出血沉浸
+    // （AM iOS 26/YTM 新形态）再单独立项）
+    const imgWidth = Math.min(winWidth * 0.92, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.52)
     return {
       width: imgWidth,
       height: imgWidth,
