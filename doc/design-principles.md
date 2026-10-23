@@ -2,6 +2,7 @@
 
 > 本文件是本项目 UI 唯一约定源（AM-0 建立，随批次演进）。冲突时以本文件为准。
 > 方案全文：`doc/plans/apple-music-redesign.md`（九项拍板 + 审查修订 v2）。
+> 材质体系：`doc/plans/glass-system-rollout.md`（毛玻璃全体系）+ `doc/plans/app-ui-unification.md`（三层律收口与导航判据，2026-10-23）。
 > 基线 `5fcd31b`；对榜样：Apple Music Android 官方客户端（iPhone 专属交互不对标）。
 
 ## 1. 基准原则
@@ -68,7 +69,7 @@
 
 | 类别 | 值 |
 |---|---|
-| 圆角 | 大封面 12 · 卡片 12-16 · 缩略封面 8 · 胶囊按钮 999 · 图标钮圆形成 il |
+| 圆角 | 大封面 12 · **组卡 12（单源，2026-10-23 拍板 #7；M3 card medium 12dp 对标，iOS 系统 inset grouped 10pt 不对齐，防误改回）** · 缩略封面 8（PlaylistGridCard/广场网格卡媒体圆角）· 84 封面 tile 10（首页 hub 卡/LOVE tile 媒体圆角）· 胶囊按钮 999 · 图标钮圆形成 il |
 | 页面边距 | 16（SPACING.s16；框/chips/列表对齐）；卡片内边距 12（s12）；shelf 卡间距 12（s12） |
 | 列表行高 | 56-60（封面 44-48 + 上下 padding） |
 | 全局页头 | HEADER_HEIGHT=88 延续（裸 dp）；AM 大标题区在其语义上改造 |
@@ -153,7 +154,33 @@
 
 - **首页头部**：应用名大标题（34/bold，标题区下间距 12——34 号字行高余量不足真机反馈修正 2026-10-20）+ 右上双圆钮（放大镜/齿轮，44dp 圆形热区，AM-6 拍板维持，达 HIG/WCAG 44 最低触控目标）；SearchBox 移除。
 - **列表行**：缩略封面 8dp 圆角 + 双行文本（17/13）+ chevron.right；按压态浅灰（`c-border-background` 系）。
-- **卡片**：白底（dark `#1C1C1E`）、圆角 12-16、无边框阴影淡投影；分组标题 20/bold。
+- **卡片（2026-10-23 拍板 #2/#7 终局，废止旧表述「无边框阴影淡投影」）**：组卡=实色 `c-content-background`（浅纯白/深 `#1C1C1E` elevated）+ 四周发丝线（色单源 `GLASS_HAIRLINE_COLOR`、线宽 `BorderWidths.normal`）+ 圆角 12，无投影。对标=M3 outlined card（1dp outline 描边卡）近似+iOS inset grouped 灰底白卡（无边框为已放弃形态：深色档卡界可辨度不足）；分组标题 20/bold。内容项卡「封面即卡」形态豁免白底与发丝线（媒体圆角）。
 - **首页「音乐库」hub 卡（2026-10-23 顶部区改版拍板，推翻 10-20「快捷格 1×4+hero 卡」两形态；三席方案审查定稿 `.review-bundle/2026-10-23/context.md`）**：单卡收编「我喜欢的音乐」行+1×4 功能入口行（本地/下载/排行榜/歌单广场），卡序 音乐库→最近播放→我的歌单。我喜欢的行=84 封面三态：无自定义封面回退 LOVE_GRADIENT 红渐变白心 tile（r10、白心 84×0.3，与 PlaylistGridCard 网格卡 LOVE 特判同款视觉，constant.ts 单源；红渐变恒铺底层+封面叠加防两态闪变）；「色底白心=收藏歌单封面语言」定案维持（对标 Spotify Liked Songs 紫/网易云红心均为封面级——通栏 hero 色卡零业界先例故拆除）。播放键 44dp 红底白 icon 20（Spotify Liked Songs 行内圆钮同构）；先切全局随机后起播契约与曲数 0 禁用沿用。入口行=细分隔线（1dp `c-border-background`）+1×4 等分（icon 26 主题红+13 semibold、无独立底色块，触区≥44）——金刚区语言收进卡内的收敛变体，无完全同构先例本产品自定；四入口首页一键直达底线维持（10-20 拍板延续）。
 - **播放页**：预模糊封面 + 主色渐变背景；大封面圆角 12 居中；控制三键 fill 变体（64dp 主键）。
 - **弹层/菜单**：长按上下文菜单（@react-native-menu/menu）；底部弹层 AM 圆角卡片式。
+
+## 8. 材质三层律与导航判据（2026-10-23 全应用 UI 统一治理拍板，单源方案 `doc/plans/app-ui-unification.md`）
+
+### 8.1 三层律总表（全 app 材质单源；glass-system-rollout §1 角色表的本批收口版）
+
+| 层 | 角色 | 材质 |
+|---|---|---|
+| 功能层（玻璃） | 顶栏族、迷你条、弹层族、钉位子头、播放页控制钮 | GlassSurface（参数=2026-10-20 真机校准终值 blur 64/弹层 20，单源 `glass-system-rollout.md` §1，不再动）；**弹层族例外：Android=原生窗跨窗 blur-behind+GLASS_TINT 单源色，非 GlassSurface 组件实例**（iOS 窗内才走 GlassSurface） |
+| 内容层（实色） | 组卡容器、内容项卡、列表行、页面底色 | 页面底恒 `c-app-background`（浅 #F2F2F7/深 #000）；组卡恒 `c-content-background` 白卡+发丝线+圆角 12（§7） |
+| 媒体层（沉浸） | 播放页（coverBg）、歌单页 hero（ambientPic 氛围带） | 封面取色沉浸底；媒体浮层可用玻璃（Spotify 播放页面板先例，HIG clear 变体口径） |
+
+- **底色语义**：`c-app-background`=页面底专用；`c-content-background`=卡片/浮面内容专用；`c-main-background`=遗留别名（仅 LoadingMask 存量消费，新代码禁用）。豁免两处：①PageContent 歌单页氛围分支整页底=c-content-background（hero 渐变终点衔接，媒体层语义非违例）；②PlayerBar 玻璃 fallback=c-content-background（「回退=现状」历史拍板，悬浮件不属页面底）。
+- **chips 四形态（2026-10-23 批 D 审查按代码实况收口；选中态恒主色系不在材质分类内）**：
+  1. **筛选 chips**（CategoryChips 默认实底，钉位子头/平面筛选场景：Search/Download/LocalMusic/AddMusicScreen）=未选中 `c-input-background`（Spotify/YTM 实心筛选胶囊独立拍板，现状保留）
+  2. **流内词块**（搜索历史/热搜/热门标签 HotTagRow 等自绘词块）=灰胶囊 `c-chip-background`（浅 #E5E5EA/深 #2C2C2E=systemGray5 真值）+字色 `c-font`（拍板 #8）
+  3. **弹层内 chips**（PlayDetail SettingPopup 等）=`fill='glass'`→`c-glass-fill`（10-21 弹层治理拍板）
+  4. **实色卡面半透明胶囊**（设置 OptionsRow 等卡面行内）=`c-glass-fill`（同③ token；10-21 审查 I-2「防白上白」拍板）
+- **永不玻璃**：列表行、卡片、歌词正文、页面底色（glass-system-rollout §1 原文；10-21 设置/关于/黑名单玻璃卡已随拍板 #2 撤回，GlassSurface 不再承接组卡）。
+
+### 8.2 顶栏标题判据 v2（拍板 #6；与 ScreenHeader.tsx 组件头注释同源）
+
+恒显为默认形态（组件 prop 默认 true，漏传即判据缺省形态）：有钉位功能子头→常显；无子头且无页内大标题→常显。唯一豁免=页内大标题页（About 品牌区）与临时态（本地音乐授权引导）显式传 `alwaysShowTitle={false}` 回退滚动淡入。适用边界=二级页 ScreenHeader 族；首页大标题（AM-2 拍板）、评论独立头（歌名恒显）不适用。
+
+### 8.3 轻重分离原则（modal vs push 任务权重）
+
+一步自包含轻任务（如单曲加歌单）→弹层（MusicAddModal）；多步探索重任务（多源搜索+多选批量）→push 独立屏（AddMusicScreen）。范例=歌单添加双形态（HIG Sheets「simple task→sheet」口径 + Spotify add-to-playlist sheet 同构）。

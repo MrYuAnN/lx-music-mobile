@@ -7,6 +7,9 @@ import { SPACING } from '@/config/spacing'
 // 实心筛选胶囊 chips（Spotify/YT Music 口径，问题 2/3 拍板）：选中主色实底反白，
 // 未选中 c-input-background 底；高 31 r999 字13，间距 10 左对齐 16；count 为 label 后缀计数。
 // 容器横向可滚（2026-10-20 添加歌曲页五来源超宽反馈拍板）：chips 少时无滚动条无观感差异。
+// chips 材质分类学（2026-10-23 全应用统一治理批 D 收口，单源=doc/design-principles.md §8.1）：
+// 本组件=形态①「筛选 chips」（c-input-background 实底）；流内词块=灰胶囊 c-chip-background（自绘，
+// 非本组件）；弹层内/实色卡面=fill='glass'（c-glass-fill）。
 // 变体 props（2026-10-21 更多弹层布局治理拍板，默认不变=四实底页零 diff）：
 // - fill='glass'：未选中底换 c-glass-fill 半透明玻璃填充（选中恒 c-primary 不变）
 // - layout='wrap'：换行流式全可见（View flexWrap 替代横向滚动，Material ChipGroup 默认口径）；

@@ -24,6 +24,8 @@
 | Dialog/ConfirmAlert（居中警示类） | **实色**（对标 [M3 dialog surface](https://m3.material.io/components/dialogs/overview)——M3 对话框无模糊；iOS alert 实为模糊材质故不引为依据，实色为警示可读性自定取舍） |
 | 永不玻璃 | 列表行、卡片、歌词正文、页面底色 |
 
+> 2026-10-23 注记：设置/关于/黑名单三处组卡曾于 10-21 改玻璃卡，已随「全应用 UI 统一治理」（`doc/plans/app-ui-unification.md` 拍板 #2）撤回实色白卡+发丝线——本行「卡片」始终有效；现行规范单源见 `doc/design-principles.md` §8（三层律总表/底色语义/chips 三分支/标题判据 v2/轻重分离）。
+
 **玻璃参数初值（仿真值，阶段一真机校准后单源固化）**：
 
 - blurRadius：顶栏/迷你条/播放页钮 **64**（2026-10-20 真机校准：轮一 24→48、轮二 48→64，白底内容页可感知度逐轮加深的增透组合）；弹层 20dp 不动——Android=`blurBehindRadius` 单值作用于窗后全域（无底板独立第二层模糊），iOS=窗内 GlassSurface 20dp；**校准锚点=AOSP 官方推荐 blur-behind≈20px（原始 px 非密度缩放），本项目 20dp×density 在高密度机≈55px，真机对拍后定值**（阶段二审查 PM S-3）
