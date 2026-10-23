@@ -15,6 +15,15 @@ import { useTheme } from '@/store/theme/hook'
 import { FontFamilies } from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 
+// 封面页高度公式单源（2026-10-23 批 F4 控制集群顶部锚定）：art 表达式=getPicArtHeight（Pic 的
+// imgWidth 与 Vertical 的 pager 定高共同调用，改系数只动这里）；页区高=getPicZoneHeight=art+74。
+// 74 构成：标题区 pt14+题行高 27+隙 4+歌手行高 19+容器底距 10——题/歌手行高已由 style lineHeight
+// 锚定+allowFontScaling=false（三席审查 I-2：定高页缘容不得字体缩放膨胀），数值确定性成立
+export const getPicArtHeight = (winWidth: number, winHeight: number, statusBarHeight: number): number =>
+  Math.min(winWidth * 0.92, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.52)
+export const getPicZoneHeight = (winWidth: number, winHeight: number, statusBarHeight: number): number =>
+  getPicArtHeight(winWidth, winHeight, statusBarHeight) + 74
+
 export default ({ componentId }: { componentId: string }) => {
   const musicInfo = usePlayerMusicInfo()
   const theme = useTheme()
@@ -34,10 +43,8 @@ export default ({ componentId }: { componentId: string }) => {
 
   const style = useMemo(() => {
     // 封面尺寸（2026-10-23 走查反馈：头部与封面间大空隙——业界无此形态，AM/Spotify/YTM 均为
-    // 「封面够大+顶部近贴头部，余量留给封面与控制区之间」；0.8→0.92 屏宽（侧边距收至页面边距
-    // 16dp 档）、高度系数 0.44→0.52，余量从 ~108dp 收敛到 ~60dp 呼吸位；后续若立项全出血沉浸
-    // （AM iOS 26/YTM 新形态）再单独立项）
-    const imgWidth = Math.min(winWidth * 0.92, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.52)
+    // 「封面够大+顶部近贴头部」；0.92 屏宽=侧边距 16dp 页面边距档）。单源=getPicArtHeight
+    const imgWidth = getPicArtHeight(winWidth, winHeight, statusBarHeight)
     return {
       width: imgWidth,
       height: imgWidth,
@@ -56,6 +63,7 @@ export default ({ componentId }: { componentId: string }) => {
         <TextTicker
           key={`name_${musicInfo.id}`}
           style={{ ...styles.title, color: theme['c-font'], fontFamily: FontFamilies.semibold, fontSize: setSpText(20) }}
+          allowFontScaling={false}
           duration={6000}
           loop
           bounce={false}
@@ -68,6 +76,7 @@ export default ({ componentId }: { componentId: string }) => {
                 <TextTicker
                   key={`singer_${musicInfo.id}`}
                   style={{ ...styles.singer, color: theme['c-font-label'], fontSize: setSpText(14) }}
+                  allowFontScaling={false}
                   duration={6000}
                   loop
                   bounce={false}
@@ -86,11 +95,11 @@ const styles = createStyle({
   container: {
     flexGrow: 1,
     flexShrink: 1,
-    // 底部锚定（2026-10-23 走查反馈：原 center 居中把余量均分到标题下方，歌名离功能行过远；
-    // 改贴底后歌名紧贴 ActionRow，弹性余量留在封面上方——AM/Spotify 同为「标题贴控制区」锚定）
-    justifyContent: 'flex-end',
+    // 顶部锚定（2026-10-23 批 F4 集群上移定案：封面/歌名/控制集群整体近贴头部，余量沉到胶囊
+    // 下方页底；底部锚定形态已走查否决——顶部空带即其产物）；底距 10=歌名→功能行行距（统一行距）
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingBottom: SPACING.s6,
+    paddingBottom: SPACING.s10,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   content: {
@@ -102,9 +111,11 @@ const styles = createStyle({
     paddingTop: SPACING.s14,
   },
   title: {
-    // fontFamily/fontSize/color 由调用处以 SF Pro 字重与主题色注入
+    // lineHeight 锚定（getPicZoneHeight 公式构成项，定高页缘不容行高浮动）
+    lineHeight: 27,
   },
   singer: {
     paddingTop: SPACING.s4,
+    lineHeight: 19,
   },
 })
