@@ -69,7 +69,7 @@
 
 | 类别 | 值 |
 |---|---|
-| 圆角 | 大封面 12 · **组卡 12（单源，2026-10-23 拍板 #7；M3 card medium 12dp 对标，iOS 系统 inset grouped 10pt 不对齐，防误改回）** · 缩略封面 8（PlaylistGridCard/广场网格卡媒体圆角）· 84 封面 tile 10（首页 hub 卡/LOVE tile 媒体圆角）· 胶囊按钮 999 · 图标钮圆形成 il |
+| 圆角 | 大封面 12 · **组卡 12（单源，2026-10-23 拍板 #7；M3 card medium 12dp 对标，iOS 系统 inset grouped 10pt 不对齐，防误改回）** · 缩略封面 8（PlaylistGridCard/广场网格卡媒体圆角）· 84 封面 tile 10（首页 hub 卡/LOVE tile 媒体圆角）· **媒体浮层面板 16（2026-10-23 批 F 播放页控制面板新增档）** · 胶囊按钮 999 · 图标钮圆形成 il |
 | 页面边距 | 16（SPACING.s16；框/chips/列表对齐）；卡片内边距 12（s12）；shelf 卡间距 12（s12） |
 | 列表行高 | 56-60（封面 44-48 + 上下 padding） |
 | 全局页头 | HEADER_HEIGHT=88 延续（裸 dp）；AM 大标题区在其语义上改造 |
@@ -172,7 +172,7 @@
 - **底色语义**：`c-app-background`=页面底专用；`c-content-background`=卡片/浮面内容专用；`c-main-background`=遗留别名（仅 LoadingMask 存量消费，新代码禁用）。豁免两处：①PageContent 歌单页氛围分支整页底=c-content-background（hero 渐变终点衔接，媒体层语义非违例）；②PlayerBar 玻璃 fallback=c-content-background（「回退=现状」历史拍板，悬浮件不属页面底）。
 - **chips 四形态（2026-10-23 批 D 审查按代码实况收口；选中态恒主色系不在材质分类内）**：
   1. **筛选 chips**（CategoryChips 默认实底，钉位子头/平面筛选场景：Search/Download/LocalMusic/AddMusicScreen）=未选中 `c-input-background`（Spotify/YTM 实心筛选胶囊独立拍板，现状保留）
-  2. **流内词块**（搜索历史/热搜/热门标签 HotTagRow 等自绘词块）=灰胶囊 `c-chip-background`（浅 #E5E5EA/深 #2C2C2E=systemGray5 真值）+字色 `c-font`（拍板 #8）
+  2. **流内词块**（搜索历史/热搜等自绘词块，单源组件 Chip）=灰胶囊 `c-chip-background`（浅 #E5E5EA/深 #2C2C2E=systemGray5 真值）+字色 `c-font`（拍板 #8）。热门标签 HotTagRow 材质挂本形态 token，但交互为选中态筛选行，**不收编 Chip 组件**（2026-10-23 批 E 决策）
   3. **弹层内 chips**（PlayDetail SettingPopup 等）=`fill='glass'`→`c-glass-fill`（10-21 弹层治理拍板）
   4. **实色卡面半透明胶囊**（设置 OptionsRow 等卡面行内）=`c-glass-fill`（同③ token；10-21 审查 I-2「防白上白」拍板）
 - **永不玻璃**：列表行、卡片、歌词正文、页面底色（glass-system-rollout §1 原文；10-21 设置/关于/黑名单玻璃卡已随拍板 #2 撤回，GlassSurface 不再承接组卡）。

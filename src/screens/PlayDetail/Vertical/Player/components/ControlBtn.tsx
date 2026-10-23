@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { TouchableOpacity } from 'react-native'
+import { TouchableOpacity, View } from 'react-native'
 
-import GlassSurface from '@/components/common/GlassSurface'
 import CheckSheet, { type CheckSheetType, type CheckSheetItem } from '@/components/common/CheckSheet'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
@@ -163,7 +162,7 @@ export default () => {
   const maxHeight = Math.max(winSize.height * 0.11, MIN_SIZE)
   const containerStyle = useMemo(() => {
     return {
-      ...styles.conatiner,
+      ...styles.container,
       maxHeight,
     }
   }, [maxHeight])
@@ -171,40 +170,35 @@ export default () => {
   const size = Math.min(Math.max(winSize.width * 0.33 * 0.4, MIN_SIZE), MAX_SIZE, maxHeight)
 
   return (
-    // 玻璃胶囊（毛玻璃全体系阶段四，方案 §6）：主控制钮组整组胶囊，背景恒封面模糊/渐变不受影响；
-    // 回退=透明底（API<31 无玻璃即现状观感，fallbackColor 透明）
-    // 「四黑一红」（2026-10-21 拍板）：前后/播放/列表四动作键统一主字色，红仅播放模式状态
-    <GlassSurface
-      style={{ ...containerStyle, borderRadius: 24, overflow: 'hidden' }}
-      fallbackColor="rgba(0, 0, 0, 0)"
-      hairline="all"
-    >
+    // 拆壳（2026-10-23 批 F C 档面板化，AM iOS 26 底部形态同构，用户拍板）：原玻璃胶囊壳
+    // 上移为 Player 容器内的「进度+控制」整块面板（GlassSurface variant='media'）——双层模糊
+    // 无增益（glass-system §0.4 同原理），五键「四黑一红」（2026-10-21 拍板）配色与布局不变
+    <View style={containerStyle}>
       <PlayModeBtn />
       <PrevBtn size={size} />
       <TogglePlayBtn size={size}/>
       <NextBtn size={size} />
       <QueueBtn color={theme['c-font']} />
-    </GlassSurface>
+    </View>
   )
 }
 
 
 const styles = createStyle({
-  conatiner: {
+  container: {
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     alignItems: 'center',
     flexGrow: 1,
     flexShrink: 1,
     paddingHorizontal: '4%',
+    // 批 F 拆壳后语义=面板内控制行呼吸（原玻璃胶囊时代内边距），与面板 padding（Player/index
+    // panel 样式）联动校准——初值 22 偏胶囊时代值，校准未定前不动
     paddingVertical: 22,
-    // backgroundColor: 'rgba(0, 0, 0, .1)',
   },
   cotrolBtn: {
     justifyContent: 'center',
     alignItems: 'center',
-
-    // backgroundColor: '#ccc',
     textShadowRadius: 1,
   },
 })

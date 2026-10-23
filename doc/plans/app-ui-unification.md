@@ -94,7 +94,14 @@
 5. 底色语义两色分工+豁免条款（PageContent 氛围分支/PlayerBar fallback）+c-main-background 别名声明
 6. chips 三分支分类学（钉位玻璃/平面灰胶囊/弹层 c-glass-fill）
 
-### 后置批 · 播放页控制区玻璃面板化（播放页走查闭环后单开）
+### 批 E · Popup 底部族收编 + Chip 词块组件（2026-10-23 追加；弹窗批 3 收窄后的真实缺口+原批 G 合并）
+| 文件 | 改动 |
+|---|---|
+| `src/components/player/PlayListPanel/index.tsx` | 收编弹层族统一形态：手动把手 View→Popup `handle` prop（把手随收编上移至标题上方=四消费方统一形态，非零视觉差）、`closeBtn={false}` 去叉（关闭=遮罩+返回键，与 AddRuleSheet/日志/SettingPopup 一致） |
+| `src/components/common/Chip.tsx`（新增） | 流内词块灰胶囊单源（形态②）：c-chip-background+整颗外壳可点+一体右叉（onRemove）；搜索历史/热搜两处自绘收编 |
+| 走查项 | 热搜词块左右内距对称；播放列表弹层把手在标题上方；长词单行截断观感 |
+
+### 后置批 · 播放页控制区玻璃面板化（播放页走查闭环后单开——**已于 10-23 确认解锁**）
 范围：控制区/曲目信息区半透明玻璃面板浮于沉浸底（Spotify 同构+HIG 媒体浮层口径）；实施前出专项方案（面板范围/参数/与现有透明钮的关系）。
 
 ## §3 验收口径
