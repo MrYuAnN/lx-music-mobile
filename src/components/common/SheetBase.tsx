@@ -15,7 +15,8 @@ import { AM_SHEET_SPRING, AM_EASE_DURATION, amEase } from '@/utils/animation'
 
 // 底部弹层共享基座（弹窗体系方案 §问题8）：Modal 窗口 + 自驱遮罩淡入淡出 + 把手/标题区 spring 上滑与下拉关闭。
 // ActionSheet / InputSheet / CheckSheet 三个变体组合本基座产出，圆角/把手单源不漂移；
-// 把手条样式与 PlayListPanel 共用（原 ActionSheet 单源约定延续至此）。
+// 把手条样式与 Popup 共用（原 ActionSheet→PlayListPanel 单源约定延续；PlayListPanel 自
+// 2026-10-23 批 E 起经 Popup handle prop 间接同源）。
 // 退场为单一下滑+遮罩同步淡出（Modal 以 animationType="none" 承载，遮罩/点击关闭/返回键均收口到本组件）。
 export const sheetHandleStyles = createStyle({
   handle: {

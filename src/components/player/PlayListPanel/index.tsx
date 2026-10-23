@@ -6,7 +6,6 @@ import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
 import QualityTag, { getOnlineQualitys } from '@/components/common/QualityTag'
 import { Icon } from '@/components/common/Icon'
-import { sheetHandleStyles } from '@/components/common/SheetBase'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { usePlayMusicInfo } from '@/store/player/hook'
@@ -252,10 +251,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
 
   return (
     visible
-      ? <Popup ref={popupRef} position="bottom" title={t('player_play_list')} bgHide>
-          <View style={sheetHandleStyles.handle}>
-            <View style={{ ...sheetHandleStyles.handleBar, backgroundColor: theme['c-font-label'] }} />
-          </View>
+      ? <Popup ref={popupRef} position="bottom" title={t('player_play_list')} bgHide handle closeBtn={false}>
           {
             list.length
               ? (

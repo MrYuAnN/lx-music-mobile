@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 're
 import { View } from 'react-native'
 import { type Source, type InitState } from '@/store/hotSearch/state'
 import Button from '@/components/common/Button'
+import Chip from '@/components/common/Chip'
 import { getList } from '@/core/hotSearch'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
@@ -22,19 +23,6 @@ export type List = NonNullable<InitState['sourceList'][keyof InitState['sourceLi
 // 聚合词块收起态条数（本产品自定阈值，无业界对标数值：与搜索历史 15 条上限对齐、约 3 行词块首屏可容；
 // 封顶+展开交互为搜索中间页泛通行做法，方案审查 I-3）
 const COLLAPSED_COUNT = 15
-
-// 词块（聚合模式：跨源合并无榜单语义，2026-10-22 治理批 P9）
-const ChipItem = ({ keyword, onSearch }: {
-  keyword: string
-  onSearch: (keyword: string) => void
-}) => {
-  const theme = useTheme()
-  return (
-    <Button style={{ ...styles.chip, backgroundColor: theme['c-chip-background'] }} onPress={() => { onSearch(keyword) }}>
-      <Text color={theme['c-font']} size={13}>{keyword}</Text>
-    </Button>
-  )
-}
 
 // 榜单项（单源模式：序号+按序位梯度着色，前三名主题红；对标网易云/QQ 热搜区，P9）
 const RankItem = ({ keyword, index, onSearch }: {
@@ -102,7 +90,8 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
                 {
                   isRank
                     ? list.map((keyword, index) => <RankItem key={keyword} keyword={keyword} index={index} onSearch={props.onSearch} />)
-                    : (expanded ? list : list.slice(0, COLLAPSED_COUNT)).map(keyword => <ChipItem key={keyword} keyword={keyword} onSearch={props.onSearch} />)
+                    // 词块（聚合模式：跨源合并无榜单语义，2026-10-22 治理批 P9）
+                    : (expanded ? list : list.slice(0, COLLAPSED_COUNT)).map(keyword => <Chip key={keyword} label={keyword} onPress={() => { props.onSearch(keyword) }} />)
                 }
               </View>
             )
@@ -132,15 +121,6 @@ const styles = createStyle({
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: SPACING.s4,
-  },
-  chip: {
-    paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s10,
-    paddingTop: SPACING.s6,
-    paddingBottom: SPACING.s6,
-    borderRadius: 4,
-    marginRight: SPACING.s10,
-    marginTop: SPACING.s8,
   },
   rankItem: {
     width: '50%',
