@@ -77,7 +77,7 @@ const AddRuleSheet = forwardRef<AddRuleSheetType, Props>(({ onAdd }, ref) => {
                   TYPES.map(({ id, labelKey }) => (
                     <TouchableOpacity
                       key={id}
-                      style={{ ...styles.typeChip, backgroundColor: type == id ? theme['c-primary'] : theme['c-button-background'] }}
+                      style={{ ...styles.typeChip, backgroundColor: type == id ? theme['c-primary'] : theme['c-glass-fill'] }}
                       onPress={() => { setType(id) }}
                     >
                       <Text size={13} color={type == id ? theme['c-on-primary'] : theme['c-font']}>{t(labelKey)}</Text>

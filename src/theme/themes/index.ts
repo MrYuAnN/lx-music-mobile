@@ -47,6 +47,10 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
     'c-primary-input-background': theme.config.themeColors['c-primary-light-400-alpha-700'],
     'c-on-primary': '#FFFFFF', // 主色实底上的前景（恒白）；c-button-font 保留给淡主色文字场景
     'c-input-background': theme.isDark ? '#2C2C2E' : '#FFFFFF', // 灰底页上的输入控件/chips 底（iOS systemGray5/elevated 惯例）
+    // 平面区 chips 胶囊底（2026-10-23 全应用统一治理拍板 #8）：搜索历史/热搜/热门标签等流内词块，
+    // iOS 搜索建议灰胶囊同构=systemGray5 真值（浅 #E5E5EA/深 #2C2C2E）；区别于 c-input-background
+    // 白底输入控件——白胶囊浮灰底 ΔL≈3% 不可辨是本 token 拆出的动因（三席审查 PM I-3）
+    'c-chip-background': theme.isDark ? '#2C2C2E' : '#E5E5EA',
     // 玻璃面中性半透明填充（弹层内 chips 未选中底等；iOS systemFill 半透明惯例：浅色黑基、
     // dark≈light×2 先验）。blur 降级实色回退下黑基仍可辨，故不用白基。初值 2026-10-21 单点上车，真机标定可调
     'c-glass-fill': theme.isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.07)',

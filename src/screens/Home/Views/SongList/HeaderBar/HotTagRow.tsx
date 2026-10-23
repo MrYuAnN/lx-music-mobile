@@ -39,9 +39,11 @@ export default memo(({ hotTags, activeTagId, onSelect }: HotTagRowProps) => {
         tags.map(item => {
           const active = item.id == activeTagId
           return (
+            // 钉位行 chips 归灰胶囊分支（拍板 #8）：未滚动时玻璃垫层透明=平面观感；深色档
+            // 原白底 #1C1C1E 与内容底同值不可辨是本改动的动因；浅色未滚动态可辨度走查备案
             <TouchableOpacity
               key={`hot-tag__${item.id}`}
-              style={{ ...styles.chip, backgroundColor: active ? theme['c-primary-alpha-900'] : theme['c-content-background'] }}
+              style={{ ...styles.chip, backgroundColor: active ? theme['c-primary-alpha-900'] : theme['c-chip-background'] }}
               activeOpacity={0.6}
               onPress={() => { if (!active) onSelect(item.name, item.id) }}
             >

@@ -81,7 +81,7 @@ const AppRoot = () => {
   }, [])
 
   return (
-    <View style={{ flex: 1, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ flex: 1, backgroundColor: theme['c-app-background'] }}>
       {
         inited
           ? (

@@ -127,6 +127,9 @@ export const storageDataPrefixOld = {
 
 
 export const NAV_MENUS = [
+  // 首页总览项（2026-10-23 全应用统一治理拍板 #3，iPad AM 侧栏含 Home 项同构）：横屏 IA 与竖屏
+  // hub 同构，补全最近播放/快捷入口可达性
+  { id: 'nav_home', icon: 'home' },
   { id: 'nav_search', icon: 'search-2' },
   { id: 'nav_songlist', icon: 'album' },
   { id: 'nav_top', icon: 'leaderboard' },
@@ -176,7 +179,8 @@ export const DEFAULT_SETTING = {
   },
 
   viewPrevState: {
-    id: 'nav_search' as NAV_ID_Type,
+    // 横竖屏冷启动落点同构（拍板 #9）：默认首页；历史存档 nav_search 仍合法可恢复
+    id: 'nav_home' as NAV_ID_Type,
     // query: {},
   },
 }

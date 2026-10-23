@@ -2,7 +2,8 @@ import { useCallback, useMemo, useRef, useState } from 'react'
 import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
 
 import ScreenHeader from '@/components/common/ScreenHeader'
-import GlassSurface from '@/components/common/GlassSurface'
+import { getGlassHairlineColor } from '@/components/common/GlassSurface'
+import { BorderWidths } from '@/theme'
 import SectionHeader from '@/components/common/SectionHeader'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
@@ -114,11 +115,19 @@ export default ({ componentId }: { componentId: string }) => {
                   return (
                     <View key={id}>
                       <SectionHeader label={t(labelKey)} />
-                      <GlassSurface style={styles.card} radius={12} hairline="all" fallbackColor={theme['c-content-background']}>
+                      <View
+                        style={[
+                          styles.card,
+                          {
+                            backgroundColor: theme['c-content-background'],
+                            borderColor: getGlassHairlineColor(theme.isDark),
+                          },
+                        ]}
+                      >
                         {
                           items.map(item => <RuleRow key={item.rule} item={item} onRemove={handleRemove} />)
                         }
-                      </GlassSurface>
+                      </View>
                     </View>
                   )
                 })
@@ -135,6 +144,7 @@ export default ({ componentId }: { componentId: string }) => {
         componentId={componentId}
         title={t('dislike_manage_title')}
         progress={scrollY}
+        alwaysShowTitle
         right={
           <TouchableOpacity style={styles.addBtn} onPress={showAddSheet} accessibilityLabel="add rule">
             <Icon name="plus" size={ICON_SIZE.nav} color={theme['c-font']} />
@@ -162,6 +172,9 @@ const styles = createStyle({
   },
   card: {
     marginBottom: SPACING.s4,
+    borderRadius: 12,
+    borderWidth: BorderWidths.normal,
+    overflow: 'hidden',
   },
   row: {
     flexDirection: 'row',

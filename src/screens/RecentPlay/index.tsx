@@ -139,8 +139,8 @@ export default ({ componentId }: { componentId: string }) => {
         ListEmptyComponent={EmptyList}
         showsVerticalScrollIndicator={false}
       />
-      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
-      <ScreenHeader componentId={componentId} title={t('recent_play')} progress={scrollY} />
+      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复）；无子头无大标题→标题常显（2026-10-23 判据修订拍板 #6） */}
+      <ScreenHeader componentId={componentId} title={t('recent_play')} progress={scrollY} alwaysShowTitle />
       <ActionSheet ref={menuRef} menus={menus} onPress={handleMenuPress} />
       <ListMusicAdd ref={listMusicAddRef} />
       <PlayerBarPlaceholder />

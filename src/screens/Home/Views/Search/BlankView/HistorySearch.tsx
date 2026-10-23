@@ -23,9 +23,9 @@ const ListItem = ({ keyword, onSearch, onRemove }: {
   const theme = useTheme()
   const t = useI18n()
   return (
-    <View style={{ ...styles.item, backgroundColor: theme['c-button-background'] }}>
+    <View style={{ ...styles.item, backgroundColor: theme['c-chip-background'] }}>
       <Button style={styles.button} onPress={() => { onSearch(keyword) }}>
-        <Text color={theme['c-button-font']} size={13} numberOfLines={1}>{keyword}</Text>
+        <Text color={theme['c-font']} size={13} numberOfLines={1}>{keyword}</Text>
       </Button>
       <TouchableOpacity
         style={styles.removeBtn}

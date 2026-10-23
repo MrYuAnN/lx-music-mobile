@@ -267,6 +267,7 @@ const state: InitState = {
     'c-primary-input-background': theme['c-primary-light-400-alpha-700'],
     'c-on-primary': '#FFFFFF',
     'c-input-background': '#FFFFFF',
+    'c-chip-background': '#E5E5EA',
     'c-glass-fill': 'rgba(0, 0, 0, 0.07)',
     'c-switch-track': '#E9E9EB',
     'c-quality-24bit': '#B8860B',

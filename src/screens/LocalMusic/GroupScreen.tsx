@@ -80,8 +80,8 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
         )}
         showsVerticalScrollIndicator={false}
       />
-      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复） */}
-            <ScreenHeader componentId={componentId} title={value} progress={scrollY} />
+      {/* 悬浮头后声明（RN 后声明者在上，C-1 层级修复）；无子头无大标题→标题常显（2026-10-23 判据修订拍板 #6） */}
+      <ScreenHeader componentId={componentId} title={value} progress={scrollY} alwaysShowTitle />
       <LocalMusicMenu ref={menuRef} />
       <PlayerBarPlaceholder />
     </PageContent>

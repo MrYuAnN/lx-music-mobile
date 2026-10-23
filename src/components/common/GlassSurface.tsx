@@ -38,10 +38,15 @@ const TINT = {
   dark: 'rgba(22, 16, 18, 0.55)',
 }
 export const GLASS_TINT = TINT
+// 发丝线单源：组卡实色化（2026-10-23 全应用 UI 统一治理拍板 #2/#7）后组卡撤玻璃保发丝线。
+// 色由本组件导出（GLASS_HAIRLINE_COLOR + getGlassHairlineColor 明暗取色 helper）；
+// 线宽单源在 theme（BorderWidths.normal，与下方 hairlineAll/hairlineBottom 同引用），改线宽去 theme
 const HAIRLINE_COLOR = {
   light: 'rgba(0, 0, 0, 0.10)',
   dark: 'rgba(255, 255, 255, 0.10)',
 }
+export const GLASS_HAIRLINE_COLOR = HAIRLINE_COLOR
+export const getGlassHairlineColor = (isDark: boolean) => (isDark ? HAIRLINE_COLOR.dark : HAIRLINE_COLOR.light)
 // 顶栏/钉位子头玻璃 chrome 渐显区间（方案 §5 单源）。2026-10-20 校准轮二：[140,320]→[20,120]——
 // 原区间过渡带过长，内容从 scroll≈0 就钻到子头底下，半透明玻璃+半可见内容+垫层底缘硬切=穿模感
 // （用户真机反馈）；压缩后内容刚到玻璃已满（iOS 导航栏同构）。真机校准调参只改此处

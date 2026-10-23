@@ -9,11 +9,13 @@ import { useRecentPlayList } from '@/core/player/recentPlay'
 import { setTempList, setActiveList, updateUserListPosition, updateUserList } from '@/core/list'
 import { getListDetail } from '@/core/songlist'
 import { playList } from '@/core/player/player'
-import { updateSetting } from '@/core/common'
+import { updateSetting, setNavActiveId } from '@/core/common'
 import commonState from '@/store/common/state'
 import listState from '@/store/list/state'
 import { navigations } from '@/navigation'
 import { Icon } from '@/components/common/Icon'
+import { getGlassHairlineColor } from '@/components/common/GlassSurface'
+import { BorderWidths } from '@/theme'
 import Image from '@/components/common/Image'
 import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR, LOVE_GRADIENT } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
@@ -81,7 +83,10 @@ const ensureListPic = async(item: LX.List.UserListInfo) => {
 // 播放键=显式切全局随机后起播（2026-10-20 拍板维持，doc/plans/home-music-section-c.md 已归档标注）；
 // 曲数=0 禁用沿用。existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——
 // 方案审查 I-a/N2 降级路径）。入口行=金刚区语言收进卡内的收敛变体（无完全同构先例，本产品自定）。
-const MusicHub = () => {
+// 横屏复用契约（2026-10-23 批 C，审查 PM I-1 处置）：navMode=true（横屏 pane）时排行榜/歌单广场
+// 入口走侧栏 pane 切换（与侧栏同路径，iPad AM 母本主导航不设重复 push 路径）；本地/下载无 pane
+// 恒 push。竖屏维持 10-23 首页批「一键直达 push」拍板语义不变
+const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
   const theme = useTheme()
   const t = useI18n()
   const lovePic = useSettingValue('list.lovePic')
@@ -138,12 +143,12 @@ const MusicHub = () => {
   const navItems: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, action: () => void }> = [
     { id: 'nav_local_music', icon: 'folder-music', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLocalMusicScreen(componentId) } },
     { id: 'nav_download', icon: 'download-2', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushDownloadScreen(componentId) } },
-    { id: 'nav_top', icon: 'trophy', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
-    { id: 'nav_songlist', icon: 'album', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushSongListScreen(componentId) } },
+    { id: 'nav_top', icon: 'trophy', action: () => { if (navMode) { setNavActiveId('nav_top'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
+    { id: 'nav_songlist', icon: 'album', action: () => { if (navMode) { setNavActiveId('nav_songlist'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushSongListScreen(componentId) } },
   ]
 
   return (
-    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'], borderColor: getGlassHairlineColor(theme.isDark) }}>
       <View style={styles.cardHead}>
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_music_library')}</Text>
       </View>
@@ -201,7 +206,7 @@ const RecentPlayCard = () => {
 
   const componentId = commonState.componentIds.home
   return (
-    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'], borderColor: getGlassHairlineColor(theme.isDark) }}>
       <View style={styles.cardHead}>
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_recent_play')}</Text>
         {
@@ -524,7 +529,7 @@ const MyMusic = () => {
   }, [shelfLists])
 
   return (
-    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'] }}>
+    <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'], borderColor: getGlassHairlineColor(theme.isDark) }}>
       <View style={styles.cardHead}>
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('tab_my_lists')}</Text>
         <View style={styles.cardHeadActions}>
@@ -546,10 +551,10 @@ const MyMusic = () => {
   )
 }
 
-export default () => {
+export default ({ navMode = false }: { navMode?: boolean } = {}) => {
   return (
     <>
-      <MusicHub />
+      <MusicHub navMode={navMode} />
       <RecentPlayCard />
       <MyMusic />
     </>
@@ -613,7 +618,8 @@ const styles = StyleSheet.create({
   section: {
     marginHorizontal: SPACING.s16,
     marginBottom: SPACING.s14,
-    borderRadius: 14,
+    borderRadius: 12,
+    borderWidth: BorderWidths.normal,
     overflow: 'hidden',
   },
   card: {},

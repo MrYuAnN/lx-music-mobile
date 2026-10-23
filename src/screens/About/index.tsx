@@ -2,7 +2,8 @@ import { useMemo, useRef, useState, useEffect } from 'react'
 import { Animated, ScrollView, View } from 'react-native'
 
 import ScreenHeader from '@/components/common/ScreenHeader'
-import GlassSurface from '@/components/common/GlassSurface'
+import { getGlassHairlineColor } from '@/components/common/GlassSurface'
+import { BorderWidths } from '@/theme'
 import Text, { FontFamilies } from '@/components/common/Text'
 import PageContent from '@/components/PageContent'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
@@ -83,16 +84,24 @@ export default ({ componentId }: { componentId: string }) => {
             <Text style={styles.brandName} size={28} color={theme['c-font']}>{t('about_app_name')}</Text>
             <Text size={13} color={theme['c-font-label']}>{currentVer}</Text>
           </View>
-          <GlassSurface style={styles.card} radius={12} hairline="all" fallbackColor={theme['c-content-background']}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme['c-content-background'],
+                borderColor: getGlassHairlineColor(theme.isDark),
+              },
+            ]}
+          >
             <ActionRow label={t('about_check_update')} value={statusText} onPress={() => { void checkUpdate() }} />
-          </GlassSurface>
+          </View>
           <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
             {t('about_copyright', { year: new Date().getFullYear() })}
           </Text>
         </ScrollView>
         <PlayerBarPlaceholder />
       </View>
-      <ScreenHeader componentId={componentId} title={t('setting_about')} progress={scrollY} />
+      <ScreenHeader componentId={componentId} title={t('setting_about')} progress={scrollY} alwaysShowTitle={false} />
     </PageContent>
   )
 }
@@ -116,6 +125,9 @@ const styles = createStyle({
   },
   card: {
     marginBottom: SPACING.s24,
+    borderRadius: 12,
+    borderWidth: BorderWidths.normal,
+    overflow: 'hidden',
   },
   copyright: {
     textAlign: 'center',

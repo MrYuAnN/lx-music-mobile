@@ -16,8 +16,9 @@ const state: InitState = {
   fontSize: global.lx.fontSize,
   statusbarHeight: 0,
   componentIds: {},
-  navActiveId: 'nav_search',
-  lastNavActiveId: 'nav_search',
+  // 横竖屏冷启动落点同构（2026-10-23 拍板 #9）：初始首页，互切保留最后 pane（setNavActiveId 现状语义）
+  navActiveId: 'nav_home',
+  lastNavActiveId: 'nav_home',
   sourceNames: initData as InitState['sourceNames'],
 }
 

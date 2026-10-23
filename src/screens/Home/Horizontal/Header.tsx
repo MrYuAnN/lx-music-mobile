@@ -1,11 +1,10 @@
-import { View } from 'react-native'
-// import Button from '@/components/common/Button'
-// import { navigations } from '@/navigation'
-// import { BorderWidths } from '@/theme'
+import { View, StyleSheet } from 'react-native'
 import { useNavActiveId, useStatusbarHeight } from '@/store/common/hook'
+import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import Text from '@/components/common/Text'
+import GlassSurface, { GLASS_BAR_FALLBACK } from '@/components/common/GlassSurface'
 import StatusBar from '@/components/common/StatusBar'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { HEADER_HEIGHT as _HEADER_HEIGHT } from '@/config/constant'
@@ -16,16 +15,14 @@ import { SPACING } from '@/config/spacing'
 
 const HEADER_HEIGHT = _HEADER_HEIGHT * 0.8
 
-
-// const LeftTitle = () => {
-//   const id = useNavActiveId()
-//   const t = useI18n()
-
-//   return <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
-// }
+// 横屏顶栏玻璃化（2026-10-23 全应用统一治理批 C）：**恒玻璃降档形态**——竖屏穿行渐显
+// （onScroll 自驱）在此不适用：单例 Header 与 pane 组件树平级、无 scrollY 上行通道（方案审查
+// 架构 I-2），overlay 化还需全 pane paddingTop 改造，回归风险高；恒玻璃无渐显为方案 §4 已备案
+// 降档，玻璃语言与全体系一致（走查后如需穿行渐显再单独立项专项设计）
 const LeftHeader = () => {
   const id = useNavActiveId()
   const t = useI18n()
+  const theme = useTheme()
   const statusBarHeight = useStatusbarHeight()
 
   return (
@@ -34,13 +31,12 @@ const LeftHeader = () => {
       height: scaleSizeH(HEADER_HEIGHT) + statusBarHeight,
       paddingTop: statusBarHeight,
     }}>
+      <View style={styles.barBgWrap} pointerEvents="none">
+        <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+      </View>
       <View style={styles.left}>
         <Text style={styles.leftTitle} size={18}>{t(id)}</Text>
       </View>
-
-      {/* <TouchableOpacity style={styles.btn} onPress={openSetting}>
-        <Icon style={{ ...styles.btnText, color: theme['c-font'] }} name="setting" size={styles.btnText.fontSize} />
-      </TouchableOpacity> */}
     </View>
   )
 }
@@ -64,8 +60,13 @@ const styles = createStyle({
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    zIndex: 10,
+  },
+  barBgWrap: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
   },
   left: {
     flex: 1,
@@ -73,28 +74,9 @@ const styles = createStyle({
     paddingLeft: SPACING.s6,
     alignItems: 'center',
     height: '100%',
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-  },
-  btn: {
-    // flex: 1,
-    width: HEADER_HEIGHT,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: '100%',
-  },
-  titleBtn: {
-    flex: 1,
-    // backgroundColor: 'rgba(0,0,0,0.1)',
-    height: '100%',
-    justifyContent: 'center',
   },
   leftTitle: {
     paddingLeft: SPACING.s10,
-    paddingRight: SPACING.s16,
-  },
-  rightTitle: {
-    paddingLeft: SPACING.s16,
     paddingRight: SPACING.s16,
   },
 })

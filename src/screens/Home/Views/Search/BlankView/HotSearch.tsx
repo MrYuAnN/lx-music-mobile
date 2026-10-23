@@ -30,8 +30,8 @@ const ChipItem = ({ keyword, onSearch }: {
 }) => {
   const theme = useTheme()
   return (
-    <Button style={{ ...styles.chip, backgroundColor: theme['c-button-background'] }} onPress={() => { onSearch(keyword) }}>
-      <Text color={theme['c-button-font']} size={13}>{keyword}</Text>
+    <Button style={{ ...styles.chip, backgroundColor: theme['c-chip-background'] }} onPress={() => { onSearch(keyword) }}>
+      <Text color={theme['c-font']} size={13}>{keyword}</Text>
     </Button>
   )
 }

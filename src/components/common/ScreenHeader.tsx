@@ -19,14 +19,16 @@ import { SPACING } from '@/config/spacing'
 // 审查 S-6 先例）；容器 pointerEvents="box-none"（审查 S-3）：非按钮区透传。
 // 消费方接线契约：列表延伸整屏 + contentContainerStyle.paddingTop=statusBar+本组件高(+固定子头)，
 // onScroll Animated.event 直驱 progress——内容从玻璃底下穿过实现真穿行。
-// 标题体系判据（2026-10-20 终版，三席方案审查闭环）：页顶有钉位功能子头→顶栏小标题常显
-// （alwaysShowTitle，透明底+滚动玻璃渐显，与图标同为恒显层）；无钉位子头→小标题滚动淡入
-// （本组件默认，TITLE_FADE 区间）。全 app 无页内大标题（钉位大标题拆除：RN Android 手写
-// 测量+塌缩动画缺陷温床，无业界先例）。适用边界=二级页 ScreenHeader 族——首页「我的」
-// AM 同行式大标题（AM-2 拍板）、评论独立头（歌名恒显）不适用；搜索页原 10-19「搜索框即
-// 身份」豁免已随 2026-10-22 治理批 P15 撤销，回归本判据（有钉位子头→常显）。
-// 判据按页面设计态静态适用；临时态（如本地音乐授权引导）无子头时传 false 回退淡入
-// （无滚动=标题恒隐）。
+// 标题体系判据（2026-10-23 修订版，全应用 UI 统一治理拍板 #6，推翻 10-20「无子头→淡入」）：
+// 顶栏小标题恒显为默认形态——有钉位功能子头的页常显（透明底+滚动玻璃渐显，与图标同为恒显层）；
+// 无钉位子头且无页内大标题的页同样常显（RecentPlay/DislikeManage/GroupScreen/Setting/
+// AddMusicScreen 等，滚动前顶部即有页面身份）。唯一豁免=有页内大标题的页面（About 品牌区）
+// 显式传 alwaysShowTitle={false} 回退滚动淡入（TITLE_FADE 区间），防顶栏标题与大标题同屏重复；
+// 临时态（如本地音乐授权引导）同样传 false 回退淡入（无滚动=标题恒隐）。组件 prop 默认已随
+// 判据翻转为常显（漏传即判据缺省形态，免逐页显式传参）。全 app 无页内大标题钉位形态（钉位
+// 大标题拆除：RN Android 手写测量+塌缩动画缺陷温床，无业界先例）。适用边界=二级页 ScreenHeader
+// 族——首页「我的」AM 同行式大标题（AM-2 拍板）、评论独立头（歌名恒显）不适用；搜索页原
+// 10-19「搜索框即身份」豁免已随 2026-10-22 治理批 P15 撤销。
 
 interface Props {
   componentId: string
@@ -35,7 +37,7 @@ interface Props {
   right?: React.ReactNode
   /** 滚动进度（页面级 Animated.Value）：穿行渐显驱动，由各屏列表 onScroll Animated.event 直驱 */
   progress: Animated.Value
-  /** 恒显标题：页顶有钉位功能子头的页置 true（判据见组件头注释），标题静止态即显不做滚动淡入 */
+  /** 恒显标题（默认 true，与 2026-10-23 修订判据同向防漏传）：唯一豁免=页内大标题页（About）显式传 false 回退滚动淡入，判据见组件头注释 */
   alwaysShowTitle?: boolean
   /** 返回覆盖（缺省内置 pop(componentId)）：页内逐级返回场景（如添加歌曲页选歌态回歌单列表）
    * 传入后点击返回执行自定义动作而不退出屏 */
@@ -45,7 +47,7 @@ interface Props {
 // 玻璃底渐显区间=GLASS_FADE_RANGE（GlassSurface 单源，子头批 S-A 收敛）；标题淡入区间独立
 const TITLE_FADE_RANGE = [180, 320]
 
-export default ({ componentId, title, right, progress, alwaysShowTitle, onBack }: Props) => {
+export default ({ componentId, title, right, progress, alwaysShowTitle = true, onBack }: Props) => {
   const theme = useTheme()
   const statusBarHeight = useStatusbarHeight()
 
