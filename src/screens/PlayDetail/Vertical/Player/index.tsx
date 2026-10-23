@@ -35,12 +35,22 @@ const styles = createStyle({
   container: {
     flex: 0,
     width: '100%',
+    // paddingTop: progressContentPadding,
+    // marginTop: -progressContentPadding,
+    // backgroundColor: 'rgba(0, 0, 0, .1)',
     paddingHorizontal: SPACING.s16,
-    // 行距统一 10dp（2026-10-23 批 F4 集群上移定案：功能行/进度/胶囊行距加大+集群顶部锚定；
-    // 首段行距（歌名→功能行）由 Pic 底距 10 承担）
-    // 实际底距由 PLAYER_PADDING_BOTTOM + inset 运行时接管（见上方 inline style，勿在此重复声明）
-    gap: SPACING.s10,
-    paddingTop: 0,
+    paddingBottom: SPACING.s16,
+    paddingTop: SPACING.s6,
+    // backgroundColor: AppColors.primary,
+    // backgroundColor: 'red',
     flexDirection: 'column',
+  },
+  status: {
+    marginTop: SPACING.s10,
+    flexDirection: 'column',
+    flex: 0,
+    paddingLeft: SPACING.s6,
+    justifyContent: 'space-evenly',
+    // backgroundColor: 'rgba(0, 0, 0, .1)',
   },
 })
