@@ -32,7 +32,13 @@ export default () => {
 
   return (
     <>
-      <View style={styles.progress}><Progress progress={progress} duration={maxPlayTime} buffered={buffered} /></View>
+      {/* 贴缘细线（2026-10-23 批 F2，AM iOS 26 同构，用户拍板 B+C）：进度线绝对定位到面板
+          上缘全宽（GlassSurface radius 自持 overflow 裁切让线随圆角弧收；absolute 不吃面板
+          padding 故可达真边缘），无恒显拖点（拖拽时浮现），主字色系配色（红色语义归还播放模式）；
+          edge 模式=线归 y0+热区下扩 44dp（三席审查 I-1 修复），zIndex 保热区命中优先于后绘时间行 */}
+      <View style={{ ...styles.progressEdge, zIndex: 2 }} pointerEvents="box-none">
+        <Progress progress={progress} duration={maxPlayTime} buffered={buffered} tone="neutral" thumb="drag" edge />
+      </View>
       <View style={styles.info}>
         <PlayTimeCurrent timeStr={nowPlayTimeStr} />
         <View style={styles.status} >
@@ -46,11 +52,11 @@ export default () => {
 
 
 const styles = createStyle({
-  progress: {
-    flexGrow: 1,
-    flexShrink: 0,
-    flexDirection: 'column',
-    justifyContent: 'center',
+  progressEdge: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
   },
   info: {
     flexDirection: 'row',

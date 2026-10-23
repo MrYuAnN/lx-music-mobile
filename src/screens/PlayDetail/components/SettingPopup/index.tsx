@@ -27,7 +27,8 @@ export interface SettingPopupType {
 // 不符）②把手对齐全弹窗体系、去右上叉 ③音量滑杆移除（系统音量键/音量键直达已覆盖，弹层内冗余））
 // 2026-10-21 布局治理拍板：分「播放」「歌词」两节（节头 label 色小字+节间留白，节内发丝线），
 // 内容左缘 16dp 单一网格；倍速/对齐胶囊 wrap 整行全可见+glass 玻璃填充
-// 2026-10-23 走查反馈：「加入黑名单」destructive 动作行从播放节移至弹层末尾独立动作区（红字+组间线）
+// 2026-10-23 走查反馈二轮：「加入黑名单」回归播放节末尾混排（对标 AM/Spotify 菜单内红字同规格
+// 行，原置底独立动作区无业界先例废；组件注释见 SettingDislike）
 export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...props }, ref) => {
   const [visible, setVisible] = useState(false)
   const popupRef = useRef<PopupType>(null)
@@ -57,6 +58,9 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
               <SectionHeader label={t('playback')} />
               <SettingTimeoutExit />
               <SettingPlaybackRate />
+              {/* 加入黑名单混排播放节末尾（2026-10-23 走查反馈二轮修正，对标 AM Suggest Less Like
+                  This 菜单内混排/Spotify 菜单内红字同规格行；原「置底独立动作区」无业界先例已废） */}
+              <SettingDislike onDismiss={() => { popupRef.current?.setVisible(false) }} />
               {/* 横线语义反转（2026-10-21 真机反馈拍板）：线只作组间边界（组内无线靠行距），易误读的组内线废弃 */}
               <Divider />
               <SectionHeader label={t('lyric')} />
@@ -69,10 +73,6 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
               {direction == 'horizontal'
                 ? <SettingLrcFontSize direction={direction} />
                 : null}
-              {/* 加入黑名单动作行置底独立动作区（2026-10-23 走查反馈：一次性 destructive 动作
-                  不与定时/倍速等有状态设置混排，前加组间线，红字防误触） */}
-              <Divider />
-              <SettingDislike onDismiss={() => { popupRef.current?.setVisible(false) }} />
             </View>
           </ScrollView>
         </Popup>

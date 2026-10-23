@@ -192,9 +192,9 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     paddingHorizontal: '4%',
-    // 批 F 拆壳后语义=面板内控制行呼吸（原玻璃胶囊时代内边距），与面板 padding（Player/index
-    // panel 样式）联动校准——初值 22 偏胶囊时代值，校准未定前不动
-    paddingVertical: 22,
+    // 批 F 拆壳后语义=面板内控制行呼吸；批 F2 走查反馈 22→12（原值为胶囊时代呼吸，叠面板
+    // padding 后顶距 32dp 过肿），与面板 padding（Player/index panel 样式）联动校准
+    paddingVertical: 12,
   },
   cotrolBtn: {
     justifyContent: 'center',
