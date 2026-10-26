@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>下载 · 拾音</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="wrap">
+<header class="site">
+  <a class="logo" href="/">拾<span>音</span></a>
+  <nav>
+    <a href="/">首页</a>
+    <a href="/download" aria-current="page">下载</a>
+    <a href="/tutorial">教程</a>
+    <a href="/faq">FAQ</a>
+    <a href="/privacy">隐私协议</a>
+  </nav>
+</header>
+
+<h1>下载拾音</h1>
+<p class="lead">Android 安装包（APK）。当前版本由官网自动同步，亦提供网盘镜像备用。</p>
+
+<h2>最新版本 <span id="ver" class="tag">加载中…</span></h2>
+<div class="card">
+  <p><a class="btn" id="dl-main" href="#">官网直链下载</a></p>
+  <p class="muted">若官网直链不可用，请使用下方网盘镜像。</p>
+</div>
+
+<h2>网盘镜像</h2>
+<div class="card">
+  <!-- 【上线前补】蓝奏云 / 123 盘链接由运营侧填入 -->
+  <p>蓝奏云：<span class="muted">【上线前补：镜像链接】</span></p>
+  <p>123 云盘：<span class="muted">【上线前补：镜像链接】</span></p>
+</div>
+
+<h2>更新日志</h2>
+<div id="releases"><p class="muted">加载中…</p></div>
+
+<footer class="site">
+  <p>安装提示：新版本直接覆盖安装即可，本地歌单与下载数据保留（仅遇签名冲突提示时才需卸载重装）；系统可能提示「未知来源应用」，允许即可。</p>
+</footer>
+</div>
+
+<script>
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = ts => new Date(ts * 1000).toLocaleDateString('zh-CN', {year: 'numeric', month: '2-digit', day: '2-digit'});
+fetch('/latest', {signal: AbortSignal.timeout(8000)}).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
+  document.getElementById('ver').textContent = 'v' + d.version;
+  document.getElementById('dl-main').href = d.url;
+  const list = document.getElementById('releases');
+  list.innerHTML = (d.releases || []).map(r =>
+    '<div class="card"><b>v' + esc(r.version) + '</b> <span class="muted">' + fmtDate(r.released_at) + '</span>' +
+    (r.note ? '<p class="muted" style="white-space:pre-line">' + esc(r.note) + '</p>' : '') +
+    '</div>').join('') || '<p class="muted">暂无历史版本</p>';
+}).catch(() => {
+  document.getElementById('ver').textContent = '暂未发布';
+  document.getElementById('releases').innerHTML = '<p class="muted">暂未发布</p>';
+});
+</script>
+</body>
+</html>

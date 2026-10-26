@@ -1,0 +1,47 @@
+/* 拾音官网 · 移动优先零依赖（对齐净屏 website/ 模式） */
+:root {
+  --bg: #0d0f14;
+  --card: #171a22;
+  --text: #e8eaf0;
+  --muted: #9aa1b2;
+  --accent: #e0564a;
+  --accent-soft: rgba(224, 86, 74, 0.14);
+  --radius: 14px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font: 16px/1.7 -apple-system, "PingFang SC", "HarmonyOS Sans SC", "Microsoft YaHei", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 720px; margin: 0 auto; padding: 0 20px 48px; }
+header.site { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+.logo { font-size: 20px; font-weight: 700; color: var(--text); text-decoration: none; }
+.logo span { color: var(--accent); }
+nav a { color: var(--muted); text-decoration: none; margin-left: 16px; font-size: 14px; }
+nav a:hover, nav a[aria-current] { color: var(--text); }
+h1 { font-size: 30px; line-height: 1.3; margin: 28px 0 12px; }
+h2 { font-size: 21px; margin: 32px 0 12px; }
+h3 { font-size: 17px; margin: 20px 0 8px; }
+p, li { color: var(--text); margin-bottom: 10px; }
+.lead { color: var(--muted); font-size: 17px; }
+.muted { color: var(--muted); font-size: 14px; }
+.card { background: var(--card); border-radius: var(--radius); padding: 18px 20px; margin: 14px 0; }
+.btn {
+  display: inline-block; background: var(--accent); color: #fff; text-decoration: none;
+  padding: 12px 26px; border-radius: 999px; font-weight: 600; margin: 6px 12px 6px 0;
+}
+.btn.ghost { background: transparent; color: var(--text); border: 1px solid #3a4052; }
+.features { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+@media (min-width: 560px) { .features { grid-template-columns: 1fr 1fr; } }
+.feature { background: var(--card); border-radius: var(--radius); padding: 16px 18px; }
+.feature b { display: block; margin-bottom: 6px; }
+.feature p { color: var(--muted); font-size: 14px; margin: 0; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 15px; }
+th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #2a2f3d; }
+th { color: var(--muted); font-weight: 500; }
+ol, ul { padding-left: 22px; }
+footer.site { border-top: 1px solid #262b38; margin-top: 48px; padding-top: 20px; color: var(--muted); font-size: 13px; }
+footer.site a { color: var(--muted); }
+.tag { display: inline-block; background: var(--accent-soft); color: var(--accent); border-radius: 6px; padding: 1px 8px; font-size: 13px; }
