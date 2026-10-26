@@ -87,7 +87,7 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 
 ## 3. 网关 server block
 
-`deploy/shiyin-api.conf` + `deploy/shiyin-sec-headers.conf` 两个文件拷入 nginx-gateway 仓 `nginx/conf.d/`，替换三处占位：
+`deploy/shiyin-api.conf` + `deploy/shiyin-sec-headers.conf` + `deploy/shiyin-edge-realip.conf` 三个文件拷入 nginx-gateway 仓 `nginx/conf.d/`，替换三处占位：
 【对外域】【回源子域】、证书 lineage 名。加载白名单文件：
 
 ```bash
@@ -109,22 +109,28 @@ certbot certonly --dns-【dns商】 -d 【对外域】 -d 【回源子域】 \
 # 验收：openssl s_client -connect 8.137.126.215:443 -servername 【回源子域】 握手通过
 ```
 
-## 5. api-server 取链服务（fork 层，实施中）
+## 5. api-server 取链服务（fork 层；**代码已实施 2026-10-27，commit 483ca33 @ shiyin 分支**）
 
-- 上游已 clone：`D:/claude_project/lx-music-api-server-upstream`（main=2026-01-10，无新提交）。
-- **扩展点已核实**：取链复用点 `modules.url.getUrl(source, songId, quality)`（tx/wy/kw/kg 四源模块）；现有 `/url` 无鉴权（脚本协议仅 key 参数）；AuthMiddleware 仅 UA 黑名单——fork 层需自建。
-- **fork 层待实施清单**（下一批）：
-  1. `routers/shiyin.py`：`POST /register`（收 receipt 核验请求 → localhost 平台 `/srv/key-entitlement` → Redis 发 token(TTL≤24h)+device_secret）、`GET /config`（五源开关+音质档位）；
-  2. `/url/{source}/{songId}/{quality}` 鉴权依赖：token+device_id+timestamp(±5min)+HMAC-SHA256(secret, method+path+timestamp+device_id) + IP/设备限流 + **全请求 `X-Client-Version`，低于 `min_client_version` → 426 upgrade_required（头缺失放行，license-platform 模式；2026-10-26 审查 I-5 勘误归位：取链端点 426 由 fork 层实现，平台端点由平台自带机制覆盖）**；
-  3. vkey 缓存复用（同歌同音质时效内）；tx 多账号轮询配置（`modules.platform.tx.users`）；kw/kg 开关与 kg 免费 token 配置；
-  4. 脚本协议面（/script 等）对公网关闭；
-  5. docker-compose（api-server+Redis 只绑 172.20.0.x）+ cookie 保活定时任务 + 摘源告警（Server酱/TG）。
-- 部署形态：`/root/shiyin/apiserver/`（compose+config），`/config` 下发内容与 App 批1 消费契约对齐后再冻结。
+- fork 工作仓：`D:/claude_project/lx-music-api-server`（独立仓，完整 clone 上游 + shiyin 分支；10-26 拍板拓扑=独立仓）。
+- **已实施**：
+  1. `routers/shiyin.py` v2（10-27 三角色审查 C-1/I1-I9/S 全修后形态）：`POST /register`（激活码 → localhost 平台 `/srv/key-entitlement` 核权益 → Redis 发 token(TTL≤24h，代码 clamp)+device_secret，**只存 key_hash 不存明文激活码**；设备席位=Lua 原子 hash（field=device_id/value=last_seen，注册时剪枝超 TTL 席位——退役设备自动让位，换机不误伤）、`GET /config`（五源开关+四档音质+server_time 供批3 时钟锚定+min_client_version+upgrade_url）、`GET /url/{source}/{songId}/{quality}` 鉴权链（Bearer token→设备一致→±5min 时窗→HMAC 恒定时间→token 时限 600/h+注册 IP 日限 10（Lua 原子 INCR/EXPIRE）+426（版本比较对齐平台 VersionLess：逐段数字前缀/缺段补 0/不可解析按 0）+**sources 开关与 quality 白名单校验**）；
+  2. `POST /admin/revoke`（**仅内网**，网关不转发 /admin/*）：X-Admin-Token + {key, device_id?} → 删设备席位+存量 token——即时踢二合一的 fork 侧动作，平台解绑/吊销后调用；
+  3. Redis 故障语义：鉴权/注册 fail-closed 返回 503 契约体（不诱导重注册风暴），限流 fail-open（有意分歧已注释）；
+  4. vkey 缓存/flac24bit→hires 翻译=上游 getUrl 内置（零改动复用）；
+  5. 脚本协议面停挂：`modules.shiyin.enable` 开关控制（main.py）；
+  6. **本地冒烟 20/20 + 审查修复后复测**（fakeredis+mock 平台）。FastAPI 依赖返回 Response 不短路（0.128 本机实测，端点内显式调用鉴权；复核待办见下）。
+- **待实施**：
+  1. docker-compose（api-server+Redis 只绑 172.20.0.x）+ 生产 data/config.json 模板（sources 开关/**kg 免费账号 token**/**tx 多账号轮询**（`modules.platform.tx.users`）/srv_token/admin_token——注意容器内访问平台用 `http://172.20.0.1:8080`（非 localhost）；
+  2. cookie 保活调优（上游已有 tx/kg 每日 refresh 任务）+ 摘源告警（Server酱/TG）；
+  3. **网关 realip 落地（审查 C-1）**：EdgeOne 回源网段生成 `shiyin-edge-realip.conf`（与 allow 同源自动更新）——未落地前注册 IP 日限按边缘 IP 分桶（全员共享桶，注册入口第一天即不可用），为网关上线前置阻断项；
+  4. 部署上 VPS + 主力号 tx cookie 配置（用户已拍板测试期用主力号）+ FastAPI 短路复核（S-7：最小 repro 验证依赖返回 Response 是否短路，修正记录）；
+  5. `/config` 下发内容与 App 批1 消费契约冻结（本批 /register 含 server_time；/config 形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障）。
+- 部署形态：`/root/shiyin/apiserver/`（compose+config），fork 仓独立演进（上游 merge 用）。
 
 ## 6. EdgeOne 回源白名单自动更新（防线 2 运维项）
 
 - EdgeOne 回源 IP 段会变化（官方文档明示），未更新=回源失败=全量取链不可用；
-- 机制：定时任务（cron/每日）调 EdgeOne API 拉取回源网段 → 生成 `shiyin-edge-allow.conf` → `nginx -t` 通过后 reload；失败告警（Server酱/TG）+ 两段式回源自检——①**轻服务链路**：`curl -s -o /dev/null -w "%{http_code}" http://172.20.0.1:8090/latest`（已发版应 200，未发版 404 属正常）；②**网关白名单验证**：从白名单内 IP 打 443，或临时 `allow 127.0.0.1;` 后 `curl -H "Host: 【回源子域】" https://127.0.0.1/latest`（预期同①；验完删临时行 reload）；
+- 机制：定时任务（cron/每日）调 EdgeOne API 拉取回源网段 → **同源生成两个文件**：`shiyin-edge-allow.conf`（`allow <网段>;`）与 `shiyin-edge-realip.conf`（`set_real_ip_from <网段>;`，审查 C-1 realip 信任源）→ `nginx -t` 通过后 reload；失败告警（Server酱/TG）+ 两段式回源自检——①**轻服务链路**：`curl -s -o /dev/null -w "%{http_code}" http://172.20.0.1:8090/latest`（已发版应 200，未发版 404 属正常）；②**网关白名单验证**：从白名单内 IP 打 443，或临时 `allow 127.0.0.1;` 后 `curl -H "Host: 【回源子域】" https://127.0.0.1/latest`（预期同①；验完删临时行 reload）；
 - 脚本归属：VPS `/root/shiyin/edge-allow-update.sh`（实施于取链服务批次）。
 
 ## 7. 构建链探针记录（2026-10-23，已回滚全部临时改动）
