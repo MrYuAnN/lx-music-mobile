@@ -9,7 +9,7 @@
 | # | 动作 | 要点 | 状态 |
 |---|---|---|---|
 | 1 | 境外注册商购新域 | **已完成（2026-10-26）：`shiyinbox.top` @ Namesilo（$1.88/年，续费 $4.88；WHOIS 隐私生效）** | ✅ |
-| 2 | EdgeOne 国际站免费套餐 | **已完成（2026-10-26）：站点 NS 接入激活（ns1/ns2.teodns.com）；加速域名 @/www→源站 8.137.126.215；边缘免费证书 CN=shiyinbox.top 已签发；解析已切边缘 IP（源站隐藏生效）**。当前访客 HTTP 525=预期（回源 Host=shiyinbox.top，源站无对应 server block/证书，EdgeOne 回源 TLS 校验失败）——待本仓网关批次上线+回源 Host 切 `sy-api.a-stock.top` 后转通；缓存规则（动态接口禁缓存）待网关批次一并配 | ✅（差网关侧开关） |
+| 2 | EdgeOne 国际站免费套餐 | **已完成（2026-10-27 全链贯通）**：NS 接入+边缘证书（2026-10-26）；**回源 Host 已切 `sy-api.a-stock.top`+回源 HTTPS:443（2026-10-27 用户控制台操作）**；源站证书+拾音 server block 同日上线，525 消除（`/` 200、`/config` 200、`/dl/` 200）。缓存规则（动态接口禁缓存）控制台侧**待用户配置**（响应头 no-store 双保险的服务端一侧已生效） | ✅（差禁缓存规则） |
 | 3 | tx 会员 cookie | **2026-10-26 用户拍板：先用主力号绿钻 cookie 测试**（风险知情：§八#4 缓解①「独立小号隔离」暂失效，主力号暴露在风控面；测试期短量小可控）。**硬门槛：放量前必须切独立小号**——此门槛写入 §六放量前置 | ✅（测试期主力号） |
 
 ## 1. license-platform 接入（产品注册→SKU→发码→srv token）
@@ -60,7 +60,7 @@ GOOS=linux GOARCH=amd64 go build -o shiyin-server .
 scp -r shiyin-server web root@8.137.126.215:/root/shiyin/
 ```
 
-systemd 单元（`/etc/systemd/system/shiyin-web.service`）：
+systemd 单元（`/etc/systemd/system/shiyin-web.service`；**2026-10-27 已部署运行**：官网 200、/latest 404=未发版正常；DASH_TOKEN 见 unit 文件 640 权限）：
 
 ```ini
 [Unit]
@@ -85,28 +85,29 @@ WantedBy=multi-user.target
 发布版本：`./shiyin-server latest-set -db shiyin.db -version 1.0.0 -url https://【对外域】/dl/shiyin-1.0.0.apk -note "首个版本"`。
 APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `location /dl/ { alias /root/shiyin/apk/; }`（大文件走 CDN 缓存可留 EdgeOne 默认策略）。
 
-## 3. 网关 server block
+## 3. 网关 server block（**2026-10-27 已上线**，netgate 仓 commit 7e2eda1+691660b+a2990db）
 
-`deploy/shiyin-api.conf` + `deploy/shiyin-sec-headers.conf` + `deploy/shiyin-edge-realip.conf` 三个文件拷入 nginx-gateway 仓 `nginx/conf.d/`，替换三处占位：
-【对外域】【回源子域】、证书 lineage 名。加载白名单文件：
+`deploy/shiyin-api.conf` + `deploy/shiyin-sec-headers.conf` 已拷入 nginx-gateway 仓 `nginx/conf.d/`（对外域=shiyinbox.top、回源子域=sy-api.a-stock.top、证书 lineage=sy-api.a-stock.top）。白名单两文件由 §6 观测脚本在 VPS 直接重写（仓内留基线）：**`shiyin-edge-allow.geo`（geo 判定表，.geo 后缀防 conf.d/*.conf 通配双加载）+ `shiyin-edge-realip.conf`**。`/dl/` APK 托管目录 `/root/shiyin/apk` 以 **`/srv/shiyin-apk:ro`** 挂载进网关容器（commit a2990db）。
+
+**首切流实测两坑（已在配置定形修复，2026-10-27）**：
+1. **realip 先于 allow/deny**（PREACCESS<ACCESS）：server 级 `allow/deny` 匹配的是被 realip 改写后的 `$remote_addr`=终端用户 IP → 放行段内边缘 IP 全员 403。定形=**geo 模块**判定（`geo $realip_remote_addr $edge_allowed`，key=改写前原始来源）+server 级 `if ($edge_allowed = 0) { return 403; }`；
+2. **/dl/ 容器内 `/root` 为 700**：nginx worker（uid 101）无法穿越取 APK → 403。定形=挂载点避让 `/root`（`/srv/shiyin-apk:ro`）。
+
+上线检查单全过（2026-10-27）：证书 SAN 覆盖回源子域 ✓（SNI 握手实测）；回源 TLS 握手 ✓（525 消除）；白名单外直连 403 ✓（本机直打源站实测）；realip 生效 ✓（日志 `$remote_addr`=用户 IP、`$realip_remote_addr`=边缘 IP）；动态接口响应头 no-store ✓（EdgeOne 控制台规则**待用户配置**）；/dl/ 直链 200 ✓；净屏回归 a-stock.top 200 / jp 301 零影响 ✓。
+
+上线检查单（拷入后逐项过）：证书 SAN 覆盖回源子域；回源 TLS 握手通过；白名单外直连源站被拒（403）；realip 生效（带 X-Forwarded-For 的回源请求，上游看到的 X-Real-IP=真实客户端 IP）；**动态接口禁缓存**（响应头已带 no-store + EdgeOne 控制台规则双保险，清单=/url /config /register /activate /redeem /device /api /latest /dash）；**/dl/ APK 直链 200**（先放一个测试文件到 /root/shiyin/apk/ 后 curl）；**凭据三处同步核对**（redis 密码：compose `.env` 与 `data/config.json` 同值；srv_token：取链 `data/config.json` 与轻服务 systemd `SHIYIN_SRV_TOKEN` 同源；Server酱/TG：取链 config notify 节与 `/root/shiyin/notify.env` 两套独立）；`upgrade_url`（`https://shiyinbox.top/download`）与轻服务官网实际下载页路由对拍防 404。
+
+## 4. 源站证书（DNS-01，**2026-10-27 已签发**；SAN=shiyinbox.top+sy-api.a-stock.top，至 2027-01-25）
+
+**已上线**：certbot 容器 `--manual` DNS-01（VPS `/root/shiyin/cert-issue.sh` 交互脚本：终端显示 TXT 值→用户在对应控制台加记录→回车，hook 等待 11 分钟覆盖 DNS 缓存 TTL——2026-10-27 首签实测三坑：控制台主机记录只填前缀勿填全名、每轮重跑 TXT 值必变须抄当轮值、改值后旧值有 ~10 分钟缓存期故 hook 长 waiting）。lineage=`sy-api.a-stock.top`（与 conf 引用一致），落 certbot_conf 卷（网关已挂载）。
+
+**运营日历**：`renew` cron 会自动跳过 manual 证书（不干扰净屏自动续期）——**每 90 天（下次 2027-01 下旬）手动重跑 `ssh -t -i ~/.ssh/jingping_deploy root@8.137.126.215 'bash /root/shiyin/cert-issue.sh'` 续期**，值重新生成重新加两条记录；净屏 webroot 续签照旧全自动。
+
+> 勘误：净屏既有续签实际为 **webroot（HTTP-01）**而非本文件早期所记「DNS-01 先例」；VPS 出站到 LE API 通道经 cron 长期验证畅通。
 
 ```bash
-# shiyin-edge-allow.conf：EdgeOne 回源网段（上线时从官方 API 拉取生成首版）
-# 后续由自动更新任务重写（§6）
-ssh root@8.137.126.215 'nginx -t && systemctl reload nginx'
-```
-
-上线检查单（拷入后逐项过）：证书 SAN 覆盖回源子域；回源 TLS 握手通过；白名单外直连源站被拒；**动态接口禁缓存**（响应头已带 no-store + EdgeOne 控制台规则双保险，清单=/url /config /register /activate /redeem /device /api /latest /dash）；**/dl/ APK 直链 200**（先放一个测试文件到 /root/shiyin/apk/ 后 curl）。
-
-## 4. 源站证书（DNS-01，SAN 必须覆盖回源子域）
-
-该 VPS 出口对 Let's Encrypt API 有阻断实拍（净屏先例）→ 复用 certbot DNS-01：
-
-```bash
-certbot certonly --dns-【dns商】 -d 【对外域】 -d 【回源子域】 \
-  --cert-name 【回源子域】   # lineage 名=回源子域，与 conf 一致
-# 90 天手动续期 → 记运营日历（certbot renew cron + reload 网关已有）
-# 验收：openssl s_client -connect 8.137.126.215:443 -servername 【回源子域】 握手通过
+# 验收（已过）：openssl s_client -connect 127.0.0.1:443 -servername sy-api.a-stock.top
+#   → SAN=shiyinbox.top+sy-api.a-stock.top；回源 525 消除
 ```
 
 ## 5. api-server 取链服务（fork 层；**代码已实施 2026-10-27，commit 483ca33 @ shiyin 分支**）
@@ -119,19 +120,27 @@ certbot certonly --dns-【dns商】 -d 【对外域】 -d 【回源子域】 \
   4. vkey 缓存/flac24bit→hires 翻译=上游 getUrl 内置（零改动复用）；
   5. 脚本协议面停挂：`modules.shiyin.enable` 开关控制（main.py）；
   6. **本地冒烟 20/20 + 审查修复后复测**（fakeredis+mock 平台）。FastAPI 依赖返回 Response 不短路（0.128 本机实测，端点内显式调用鉴权；复核待办见下）。
-- **待实施**：
-  1. docker-compose（api-server+Redis 只绑 172.20.0.x）+ 生产 data/config.json 模板（sources 开关/**kg 免费账号 token**/**tx 多账号轮询**（`modules.platform.tx.users`）/srv_token/admin_token——注意容器内访问平台用 `http://172.20.0.1:8080`（非 localhost）；
-  2. cookie 保活调优（上游已有 tx/kg 每日 refresh 任务）+ 摘源告警（Server酱/TG）；
-  3. **网关 realip 落地（审查 C-1）**：EdgeOne 回源网段生成 `shiyin-edge-realip.conf`（与 allow 同源自动更新）——未落地前注册 IP 日限按边缘 IP 分桶（全员共享桶，注册入口第一天即不可用），为网关上线前置阻断项；
-  4. 部署上 VPS + 主力号 tx cookie 配置（用户已拍板测试期用主力号）+ FastAPI 短路复核（S-7：最小 repro 验证依赖返回 Response 是否短路，修正记录）；
-  5. `/config` 下发内容与 App 批1 消费契约冻结（本批 /register 含 server_time；/config 形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障）。
+- **待实施**（2026-10-27 网关批后余项）：
+  1. **tx 主力号 cookie 填入**（用户已拍板测试期用主力号；config.tx.users[0] 五件套+`refreshLogin: true`→容器重启生效；当前 config 已部署但账号占位空、refreshLogin=false、保活未注册）+ FastAPI 短路复核（S-7）；
+  2. 告警通道密钥（Server酱 sendKey/TG token+chat_id → `data/config.json` notify 节 + `/root/shiyin/notify.env` 两处）+ 试发验证；
+  3. `/register` 全链冒烟（需先建 SKU+拿激活码——§1 SKU 建档灰度前批执行）；
+  4. `/config` 下发内容与 App 批1 消费契约冻结（本批 /register 含 server_time；/config 形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障）。
+- **部署实况（2026-10-27）**：取链双容器（shiyin-apiserver+shiyin-redis healthy）运行于 `/root/shiyin/apiserver/`，/config 公开面全链通（经 EdgeOne）；构建镜像坑两枚已修：①uv.lock 的 workspace member 仍为 fork 前旧名 `ikun-music-api-server`（改名时未重生）→钉 system Python `uv lock --python` 重生成（uv 0.9.30 对旧名直接 Missing workspace member 拒装）；②uv sync 需 README.md 随层（pyproject readme 元数据引用）。源码树=VPS `/root/shiyin/apiserver-src/`（git archive 导出，compose build context 指向它；.env 双变量切换开发/生产 build 形态）。
+- **2026-10-27 批次3 已实施**（摘源告警链+部署件，fork 仓；三席审查 3C/12I/22S 全修）：
+  1. docker-compose（`deploy/`，apiserver 端口只绑 172.20.0.1:8091+加入 gateway-net，redis 不发布端口+requirepass+maxmemory 128mb，双容器 mem_limit 416MB，日志轮转 10m×3，redis healthcheck）+ Dockerfile（python:3.12-slim+uv sync --frozen 腾讯源）+ 生产 `data/config.json` 模板（`config.prod.example.json`：sources 开关/kg token/tx 多账号/wy cookie/srv_token/admin_token 占位，`platform_base=http://172.20.0.1:8080` 非 localhost；**占位账号 `refreshLogin` 一律 false，填实值后才开 true**）；
+  2. cookie 保活调优：refresh 周期上游 86400→**43200（12h）**（摘源检测延迟 ≤24h，审查 I-5/I-2；每日两次登录续期对 cookie 寿命无额外风险）；
+  3. 摘源告警链：`modules/refresh/health.py`（per-uin 失败计数 Lua 原子化，连续 2 次可配 `source_fail_threshold`→置 `source_down:{source}:{uin}` 标记（TTL 72h=3 周期防空窗+已摘续期不重告警）→`/config` 剔除+`/url` 403 source_disabled；mark_ok 只清本账号标记（多账号一好一坏不振荡））+ `utils/server/notify.py`（Server酱/TG 双通道，冷却=至少一通道成功才占键 6h，**Server酱免费版每日 5 条额度**多告警源共用注意配额）；**摘源范围收窄**：仅 tx/kg（有保活信号）自动摘源；wy/kw 无保活任务，摘源=运营手动改 sources 开关（启用 wy 前如需自动摘源须补失效观测，方案 #9 的已知收窄，产品席 I-1 记录在案）；
+  4. 网关 realip 落地（审查 C-1）：观测法脚本 `deploy/edge-allow-update.sh`（详见 §6）——allow/realip 同源自动生成；**DEPLOY.md §3/§6 原定「EdgeOne API 拉取」口径作废**（免费套餐源站防护停用无 API，2026-10-27 拍板观测法）。
 - 部署形态：`/root/shiyin/apiserver/`（compose+config），fork 仓独立演进（上游 merge 用）。
 
-## 6. EdgeOne 回源白名单自动更新（防线 2 运维项）
+## 6. EdgeOne 回源白名单自动更新（防线 2 运维项；**2026-10-27 拍板改观测法**）
 
-- EdgeOne 回源 IP 段会变化（官方文档明示），未更新=回源失败=全量取链不可用；
-- 机制：定时任务（cron/每日）调 EdgeOne API 拉取回源网段 → **同源生成两个文件**：`shiyin-edge-allow.conf`（`allow <网段>;`）与 `shiyin-edge-realip.conf`（`set_real_ip_from <网段>;`，审查 C-1 realip 信任源）→ `nginx -t` 通过后 reload；失败告警（Server酱/TG）+ 两段式回源自检——①**轻服务链路**：`curl -s -o /dev/null -w "%{http_code}" http://172.20.0.1:8090/latest`（已发版应 200，未发版 404 属正常）；②**网关白名单验证**：从白名单内 IP 打 443，或临时 `allow 127.0.0.1;` 后 `curl -H "Host: 【回源子域】" https://127.0.0.1/latest`（预期同①；验完删临时行 reload）；
-- 脚本归属：VPS `/root/shiyin/edge-allow-update.sh`（实施于取链服务批次）。
+- **拍板背景**：EdgeOne 免费套餐 2025-10 已停用「源站防护」——回源网段无公开列表、无 API（`DescribeOriginProtection` 体系付费专属；官方对免费版的推荐替代=回源鉴权头/mTLS）。**2026-10-27 用户拍板：观测法自建**（免费；业界主流=CDN 厂商公开网段+自动拉取如 Cloudflare /ips，本产品偏离业界的原因=厂商免费档不提供数据源；后续升付费可无缝切换官方 API 数据源）。
+- 机制（fork 仓 `deploy/edge-allow-update.sh`，cron 每 5 分钟）：从网关拾音 block 访问日志（`log_format shiyin_edge`，status 恒行尾）提取**被 403 拒的回源请求**来源 IP → 三层判据（SNI∈拾音域 / XFF 非空=回源形态 / whois 腾讯归属，whois 带 10s 超时+7 天缓存）→ 入观测表（带时间戳只增不删，容量上限 200 超限告警）→ 生成 `shiyin-edge-allow.conf`（`allow <网段>;`）与 `shiyin-edge-realip.conf`（`set_real_ip_from <网段>;`，审查 C-1 realip 信任源）同源两文件 → `nginx -t` 通过后 reload（失败自动回滚备份+告警）。/24 聚合为生成时派生视图（同前缀 ≥3 个纯 IP），不改写观测表。
+- **安全边界知情条（三席审查 I-8 记录）**：SNI/XFF 可伪造、whois 无法区分 EdgeOne 边缘与腾讯云租户——白名单边界实为「腾讯全系 IP」而非「EdgeOne 回源」；伪造入表者仍需有效激活码才可注册，realip 伪造 XFF 逃逸注册限流收益低。根本安全边界=鉴权链五闸。
+- **自愈时效**：被 deny 请求照样记日志 → 新边缘 IP「首次被拒」与「被观测到」同时发生，cron 5 分钟窗口自愈；读日志与 truncate 之间有 copytruncate 型丢行窗口（影响=单 IP 观测延迟一轮，审查 I-5 取舍记录）。首版：VPS tcpdump 443 抓真实回源边缘 IP → `first-batch` 样本文件生成（自动过 whois 判定）。
+- 自检（脚本每轮自动）：`curl https://shiyinbox.top/latest` 全链回源——200/404=通（404=轻服务未发版正常）、**403=EdgeOne 被白名单拒=网段漂移立即告警**、525=回源 TLS 失败（证书问题）、000=边缘不可达。告警 Server酱/TG 双通道（`/root/shiyin/notify.env`，1h 节流）。
+- 部署清单：脚本+`notify.env` 上 VPS `/root/shiyin/`；`apt install whois`；crontab 加 `*/5 * * * * /root/shiyin/edge-allow-update.sh run >> /root/shiyin/logs/edge-update.log 2>&1`。
 
 ## 7. 构建链探针记录（2026-10-23，已回滚全部临时改动）
 

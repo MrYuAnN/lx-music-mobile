@@ -75,3 +75,4 @@ crop.ps1
 scan-line.ps1
 .tmp-*.png
 .tmp-*.xml
+backend/dist/
