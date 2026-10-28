@@ -102,10 +102,6 @@ export class StateEvent extends Event {
     this.emit('versionInfoIgnoreVersionUpdated', version)
   }
 
-  versionDownloadProgressUpdated(progress: VersionState['progress']) {
-    this.emit('versionDownloadProgressUpdated', progress)
-  }
-
   versionModalUpdated(visible: VersionState['showModal']) {
     this.emit('versionModalUpdated', visible)
   }

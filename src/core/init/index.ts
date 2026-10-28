@@ -20,7 +20,7 @@ const handlePushedHomeScreen = async() => {
   // 协议功能已移除（弹窗体系批 §问题1）：无条件执行首推逻辑（原「已同意才执行」分支删除）
   if (isFirstPush) {
     isFirstPush = false
-    void checkUpdate()
+    void checkUpdate(false) // 每日节流自动检查（手动入口不受限）
     // getInitialURL 低概率 reject：兜底为无链接，防启动链悬挂+首推播放页永久丢失（审查 S1）
     const hasInitialLink = await initDeeplink().catch(() => false)
     // 「启动时打开播放页」（治理批 P1）：启动 push 从 Home 挂载 effect 上收到容器就绪后的启动链——

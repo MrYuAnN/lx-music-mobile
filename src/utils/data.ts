@@ -16,6 +16,7 @@ const listScrollPositionKey = storageDataPrefix.listScrollPosition
 const listUpdateInfoKey = storageDataPrefix.listUpdateInfo
 const ignoreVersionKey = storageDataPrefix.ignoreVersion
 const ignoreVersionFailTipTimeKey = storageDataPrefix.ignoreVersionFailTipTimeKey
+const lastVersionCheckTimeKey = storageDataPrefix.lastVersionCheck
 const searchSettingKey = storageDataPrefix.searchSetting
 const searchHistoryListKey = storageDataPrefix.searchHistoryList
 const songListSettingKey = storageDataPrefix.songListSetting
@@ -186,6 +187,14 @@ export const saveIgnoreVersionFailTipTime = (time: number | null) => {
     void saveData(ignoreVersionFailTipTimeKey, time)
   }
 }
+
+export const getLastVersionCheckTime = async(): Promise<number> => {
+  return await getData<number>(lastVersionCheckTimeKey) ?? 0
+}
+export const saveLastVersionCheckTime = async(time: number) => {
+  await saveData(lastVersionCheckTimeKey, time)
+}
+
 // 获取忽略更新的版本号
 export const getIgnoreVersionFailTipTime = async() => {
   // eslint-disable-next-line require-atomic-updates

@@ -1,10 +1,10 @@
 import { compareVer } from '@/utils'
-import { downloadNewVersion, getVersionInfo } from '@/utils/version'
+import { getVersionInfo } from '@/utils/version'
 import versionActions from '@/store/version/action'
 import versionState, { type InitState } from '@/store/version/state'
-import { getIgnoreVersion, getIgnoreVersionFailTipTime, saveIgnoreVersion, saveIgnoreVersionFailTipTime } from '@/utils/data'
+import { getIgnoreVersion, getIgnoreVersionFailTipTime, saveIgnoreVersion, saveIgnoreVersionFailTipTime, getLastVersionCheckTime, saveLastVersionCheckTime } from '@/utils/data'
 import { showVersionModal } from '@/navigation'
-import { toast } from '@/utils/tools'
+import { openUrl, toast } from '@/utils/tools'
 
 export const showModal = () => {
   if (versionState.showModal) return
@@ -17,67 +17,66 @@ export const hideModal = () => {
   versionActions.setVisibleModal(false)
 }
 
-export const checkUpdate = async() => {
+// 每日自动检查节流（批1 阶段4；方案拍板）：init 链 24h 内跳过；手动「检查更新」走
+// checkUpdate(force) 不受限
+const DAILY_INTERVAL = 24 * 60 * 60 * 1000
+
+export const checkUpdate = async(force = true) => {
+  if (!force) {
+    const last = await getLastVersionCheckTime()
+    if (last && Date.now() - last < DAILY_INTERVAL) return
+  }
+  void saveLastVersionCheckTime(Date.now())
+
   versionActions.setVersionInfo({ status: 'checking' })
   let versionInfo: InitState['versionInfo'] = { ...versionState.versionInfo }
   try {
-    const { version, desc, history } = await getVersionInfo()
+    const info = await getVersionInfo()
+    // 404 未发版=当前即最新（独立映射，勿复用 0.0.0 错误路径）
+    if (info.notPublished) {
+      versionInfo.newVersion = null
+      versionInfo.isLatest = true
+      versionInfo.isUnknown = false
+      versionInfo.status = 'idle'
+      versionActions.setVersionInfo(versionInfo)
+      return
+    }
     versionInfo.newVersion = {
-      version,
-      desc,
-      history,
+      version: info.version,
+      desc: info.desc,
+      history: info.history,
+      url: info.url,
     }
   } catch (err) {
-    versionInfo.newVersion = {
-      version: '0.0.0',
-      desc: '',
-      history: [],
-    }
-  }
-  // const versionInfo = {
-  //   version: '1.9.0',
-  //   desc: '- 更新xxx\n- 修复xxx123的萨达修复xxx123的萨达修复xxx123的萨达修复xxx123的萨达修复xxx123的萨达',
-  //   history: [{ version: '1.8.0', desc: '- 更新xxx22\n- 修复xxx22' }, { version: '1.7.0', desc: '- 更新xxx22\n- 修复xxx22' }],
-  // }
-  if (versionInfo.newVersion.version == '0.0.0') {
+    versionInfo.newVersion = null
+    versionInfo.isLatest = false
     versionInfo.isUnknown = true
     versionInfo.status = 'error'
-  } else {
-    versionInfo.status = 'idle'
-    versionInfo.isUnknown = false
-    if (compareVer(versionInfo.version, versionInfo.newVersion.version) != -1) {
-      versionInfo.isLatest = true
-    }
+    versionActions.setVersionInfo(versionInfo)
+    const time = await getIgnoreVersionFailTipTime()
+    if (Date.now() - time < 7 * 86400000) return
+    saveIgnoreVersionFailTipTime(Date.now())
+    toast(global.i18n.t('version_tip_unknown'))
+    return
   }
+
+  versionInfo.status = 'idle'
+  versionInfo.isUnknown = false
+  versionInfo.isLatest = compareVer(versionInfo.version, versionInfo.newVersion.version) != -1
 
   versionActions.setVersionInfo(versionInfo)
 
-  if (!versionInfo.isLatest) {
-    if (versionInfo.isUnknown) {
-      const time = await getIgnoreVersionFailTipTime()
-      if (Date.now() - time < 7 * 86400000) return
-      saveIgnoreVersionFailTipTime(Date.now())
-      toast(global.i18n.t('version_tip_unknown'))
-    } else if (versionInfo.newVersion.version != await getIgnoreVersion()) {
-      showModal()
-    }
+  if (!versionInfo.isLatest && versionInfo.newVersion.version != await getIgnoreVersion()) {
+    showModal()
   }
-  // console.log(compareVer(process.versions.app, versionInfo.version))
-  // console.log(process.versions.app, versionInfo.version)
 }
 
+// 升级跳浏览器（批1 阶段4 拍板）：/latest 下发 url 交系统浏览器下载，应用内下载/安装链退役
 export const downloadUpdate = () => {
-  versionActions.setVersionInfo({ status: 'downloading' })
-  versionActions.setProgress({ total: 0, current: 0 })
-
-  downloadNewVersion(versionState.versionInfo.newVersion!.version, (total: number, current: number) => {
-    // console.log(total, current)
-    versionActions.setProgress({ total, current })
-  }).then(() => {
-    versionActions.setVersionInfo({ status: 'downloaded' })
-  }).catch(() => {
-    versionActions.setVersionInfo({ status: 'error' })
-    // console.log(err)
+  const url = versionState.versionInfo.newVersion?.url
+  if (!url) return
+  void openUrl(url).catch(() => {
+    toast(global.i18n.t('version_tip_failed'))
   })
 }
 

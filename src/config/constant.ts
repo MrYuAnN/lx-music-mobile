@@ -112,6 +112,8 @@ export const storageDataPrefix = {
   dislikeList: '@dislike_list',
 
 
+  lastVersionCheck: '@last_version_check',
+
   shiyinAuth: '@shiyin_auth',
   shiyinConfig: '@shiyin_config',
   shiyinDeviceId: '@shiyin_device_id',

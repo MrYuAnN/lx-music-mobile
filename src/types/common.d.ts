@@ -8,7 +8,8 @@ declare namespace LX {
 
   type ShareType = 'system' | 'clipboard'
 
-  type UpdateStatus = 'downloaded' | 'downloading' | 'error' | 'checking' | 'idle'
+  // 批1 阶段4：下载改跳浏览器，downloading/downloaded 态退役
+  type UpdateStatus = 'error' | 'checking' | 'idle'
   interface VersionInfo {
     version: string
     desc: string

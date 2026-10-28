@@ -1,14 +1,10 @@
 import { version } from '../../../package.json'
 
-export interface ProgressInfo {
-  total: number
-  current: number
-}
-
 export interface VersionInfo {
   version: string
   desc: string
   history?: LX.VersionInfo[]
+  url?: string
 }
 
 export interface InitState {
@@ -23,7 +19,6 @@ export interface InitState {
     status: LX.UpdateStatus
   }
   ignoreVersion: string | null
-  progress: ProgressInfo
 }
 
 const state: InitState = {
@@ -38,10 +33,6 @@ const state: InitState = {
     status: 'checking',
   },
   ignoreVersion: null,
-  progress: {
-    total: 0,
-    current: 0,
-  },
 }
 
 

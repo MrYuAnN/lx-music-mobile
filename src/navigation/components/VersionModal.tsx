@@ -1,16 +1,15 @@
 import { useMemo, useState, useEffect, memo } from 'react'
 import { View, ScrollView } from 'react-native'
 
-import { compareVer, sizeFormate } from '@/utils'
+import { compareVer } from '@/utils'
 
 import Button from '@/components/common/Button'
-import { updateApp } from '@/utils/version'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { type VersionInfo } from '@/store/version/state'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
-import { useVersionDownloadProgressUpdated, useVersionInfo, useVersionInfoIgnoreVersionUpdated } from '@/store/version/hook'
+import { useVersionInfo, useVersionInfoIgnoreVersionUpdated } from '@/store/version/hook'
 import ModalContent from './ModalContent'
 import { checkUpdate, downloadUpdate, hideModal, setIgnoreVersion } from '@/core/version'
 import { SPACING } from '@/config/spacing'
@@ -80,7 +79,6 @@ const VersionModal = () => {
   const theme = useTheme()
   const t = useI18n()
   const versionInfo = useVersionInfo()
-  const progress = useVersionDownloadProgressUpdated()
   const ignoreVersion = useVersionInfoIgnoreVersionUpdated()
   const [ignoreBtn, setIgnoreBtn] = useState({ text: t('version_btn_ignore'), show: true, disabled: false })
   const [closeBtnText, setCloseBtnText] = useState(t('version_btn_close'))
@@ -105,24 +103,6 @@ const VersionModal = () => {
       setCloseBtnText(t('version_btn_close'))
     } else {
       switch (versionInfo.status) {
-        case 'downloading':
-          setTitle(t('version_title_new'))
-          setTip(t('version_btn_downloading', {
-            total: sizeFormate(progress.total),
-            current: sizeFormate(progress.current),
-            progress: progress.total ? (progress.current / progress.total * 100).toFixed(2) : '0',
-          }))
-          if (ignoreBtnConfig.show) ignoreBtnConfig.show = false
-          if (!confirmBtn.disabled) setConfirmBtn({ text: t('version_btn_update'), show: true, disabled: true })
-          setCloseBtnText(t('version_btn_min'))
-          break
-        case 'downloaded':
-          setTitle(t('version_title_update'))
-          setTip('')
-          if (ignoreBtnConfig.show) ignoreBtnConfig.show = false
-          setConfirmBtn({ text: t('version_btn_update'), show: true, disabled: false })
-          setCloseBtnText(t('version_btn_close'))
-          break
         case 'checking':
           setTitle(t('version_title_checking'))
           setTip('')
@@ -145,8 +125,8 @@ const VersionModal = () => {
           setTip('')
           ignoreBtnConfig.show = true
           ignoreBtnConfig.disabled = false
-          setConfirmBtn({ text: t('version_btn_new'), show: true, disabled: false })
-          // setTip(t('version_btn_new'))
+          // 升级=跳浏览器下载（批1 阶段4）：按钮即触发 openUrl
+          setConfirmBtn({ text: t('version_btn_browser_update'), show: true, disabled: false })
           setCloseBtnText(t('version_btn_close'))
           break
       }
@@ -155,7 +135,7 @@ const VersionModal = () => {
     setIgnoreBtn(ignoreBtnConfig)
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, versionInfo, ignoreVersion, progress])
+  }, [t, versionInfo, ignoreVersion])
 
   const handleCancel = () => {
     hideModal()
@@ -168,10 +148,8 @@ const VersionModal = () => {
   const handleConfirm = () => {
     if (versionInfo.isLatest || versionInfo.isUnknown) {
       void checkUpdate()
-    } else if (versionInfo.status == 'downloaded') {
-      void updateApp()
-    } else if (versionInfo.status == 'idle' || versionInfo.status == 'error') {
-      downloadUpdate()
+    } else {
+      downloadUpdate() // 跳浏览器下载升级包（批1 阶段4）
     }
   }
 

@@ -29,19 +29,6 @@ export const useVersionModalVisible = () => {
   return visible
 }
 
-export const useVersionDownloadProgressUpdated = () => {
-  const [status, setStatus] = useState(state.progress)
-
-  useEffect(() => {
-    global.state_event.on('versionDownloadProgressUpdated', setStatus)
-    return () => {
-      global.state_event.off('versionDownloadProgressUpdated', setStatus)
-    }
-  }, [])
-
-  return status
-}
-
 export const useVersionInfoIgnoreVersionUpdated = () => {
   const [version, setVersion] = useState(state.ignoreVersion)
 

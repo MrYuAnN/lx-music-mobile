@@ -7,13 +7,12 @@ import { BorderWidths } from '@/theme'
 import Text, { FontFamilies } from '@/components/common/Text'
 import PageContent from '@/components/PageContent'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
-import { sizeFormate } from '@/utils'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
-import { useVersionDownloadProgressUpdated, useVersionInfo } from '@/store/version/hook'
+import { useVersionInfo } from '@/store/version/hook'
 import { checkUpdate } from '@/core/version'
 import { SPACING } from '@/config/spacing'
 import ActionRow from '@/screens/Home/Views/Setting/components/ActionRow'
@@ -32,7 +31,6 @@ export default ({ componentId }: { componentId: string }) => {
   const statusBarHeight = useStatusbarHeight()
   const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
   const versionInfo = useVersionInfo()
-  const progress = useVersionDownloadProgressUpdated()
   const [statusText, setStatusText] = useState('')
   // 标准二级页滚动接线（玻璃渐显+标题淡入驱动）
   const scrollY = useRef(new Animated.Value(0)).current
@@ -48,16 +46,6 @@ export default ({ componentId }: { componentId: string }) => {
       setStatusText(t('version_tip_unknown'))
     } else {
       switch (versionInfo.status) {
-        case 'downloading':
-          setStatusText(t('version_btn_downloading', {
-            total: sizeFormate(progress.total),
-            current: sizeFormate(progress.current),
-            progress: progress.total == 0 ? 0 : Math.floor((progress.current / progress.total) * 100),
-          }))
-          break
-        case 'downloaded':
-          setStatusText(t('version_tip_downloaded'))
-          break
         case 'checking':
           setStatusText(t('version_tip_checking'))
           break
@@ -69,7 +57,7 @@ export default ({ componentId }: { componentId: string }) => {
           break
       }
     }
-  }, [t, versionInfo, progress])
+  }, [t, versionInfo])
 
   return (
     <PageContent>
