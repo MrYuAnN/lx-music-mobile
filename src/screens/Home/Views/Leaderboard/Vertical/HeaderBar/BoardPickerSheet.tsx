@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useReducer, useRef, useState } from 'react'
 import { ScrollView, TouchableOpacity, View } from 'react-native'
 
 import SheetBase, { type SheetBaseType } from '@/components/common/SheetBase'
@@ -37,6 +37,15 @@ export interface BoardPickerSheetType {
 
 export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoundSelect, onSourceChange, onPlay, onCollect }, ref) => {
   const theme = useTheme()
+  // 摘源联动（批1 阶段2）：源 chips 直接渲染 store state，订阅广播触发重渲染取最新集
+  const [, bumpRender] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const handleSourcesUpdated = () => bumpRender()
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => {
+      global.state_event.off('sourcesUpdated', handleSourcesUpdated)
+    }
+  }, [])
   const t = useI18n()
   const sheetRef = useRef<SheetBaseType>(null)
   const listMenuRef = useRef<ListMenuType>(null)

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useReducer, useRef, useState } from 'react'
 import { Animated, StyleSheet, View } from 'react-native'
 
 import HeaderBar from './HeaderBar'
@@ -8,6 +8,7 @@ import type { Status } from './components/Songlist/List'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import { clearList, getList, getTags, setList, setListInfo } from '@/core/songlist'
 import songlistState, { type Source, type TagInfo, type TagInfoItem } from '@/store/songlist/state'
+import SourcesOfflineTip from '@/components/common/SourcesOfflineTip'
 import { getSongListSetting, saveSongListSetting } from '@/utils/data'
 import { createStyle, toast } from '@/utils/tools'
 import { useI18n } from '@/lang'
@@ -43,8 +44,10 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
     ? undefined
     : scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const listRef = useRef<SonglistType>(null)
-  const [info, setInfoState] = useState<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
-  const infoRef = useRef<SonglistInfo>({ source: 'kw', sortId: '5', tagId: '', tagName: '' })
+  // 首项跟随（批1 阶段2）：初始源=store 构建集首项（替换 'kw' 硬编码）
+  const firstSource = songlistState.sources[0] ?? 'kw'
+  const [info, setInfoState] = useState<SonglistInfo>({ source: firstSource, sortId: '5', tagId: '', tagName: '' })
+  const infoRef = useRef<SonglistInfo>({ source: firstSource, sortId: '5', tagId: '', tagName: '' })
   const [hotTags, setHotTags] = useState<TagInfoItem[]>([])
   const [tagGroups, setTagGroups] = useState<TagInfo['tags']>([])
   const [tagsState, setTagsState] = useState<TagsStatus>('loading')
@@ -159,11 +162,31 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
 
   useEffect(() => {
     void getSongListSetting().then(({ source, sortId, tagId, tagName }) => {
+      // 边界②（批1 阶段2）：持久化源已被摘（不在 /config 开启集）→重置首项
+      if (songlistState.sources.length && !songlistState.sources.includes(source)) {
+        source = songlistState.sources[0]
+        void saveSongListSetting({ source })
+      }
       infoRef.current = { source, sortId, tagId, tagName }
       setInfoState(infoRef.current)
       initList()
       void loadTags(source)
     })
+
+    // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并重拉（空集=边界①保持）
+    const handleSourcesUpdated = () => {
+      const sources = songlistState.sources
+      if (!sources.length || sources.includes(infoRef.current.source)) return
+      const next = sources[0]
+      updateInfo({ source: next, tagId: '', tagName: '' })
+      setListInfo(next, '', infoRef.current.sortId)
+      fetchList(1, { status: 'loading' })
+      void loadTags(next)
+    }
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => {
+      global.state_event.off('sourcesUpdated', handleSourcesUpdated)
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -205,16 +228,30 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
     </View>
   )
 
+  // 边界①（批1 阶段2）：空源集切「全源不可用」提示态（sourcesUpdated 已订阅 bump 重渲染）
+  const [, bumpRender] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const listener = () => bumpRender()
+    global.state_event.on('sourcesUpdated', listener)
+    return () => {
+      global.state_event.off('sourcesUpdated', listener)
+    }
+  }, [])
+
   return (
     <View style={styles.container}>
       {scrollYAnimated == null && subHeaderElement}
-      <Songlist
-        ref={listRef}
-        onRefresh={handleRefresh}
-        onLoadMore={handleLoadMore}
-        scrollYAnimated={scrollYAnimated}
-        contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
-      />
+      {songlistState.sources.length ? (
+        <Songlist
+          ref={listRef}
+          onRefresh={handleRefresh}
+          onLoadMore={handleLoadMore}
+          scrollYAnimated={scrollYAnimated}
+          contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
+        />
+      ) : (
+        <SourcesOfflineTip />
+      )}
       {scrollYAnimated != null && subHeaderElement}
     </View>
   )

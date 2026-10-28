@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from 'react'
+import { useReducer, useRef, useEffect, useState } from 'react'
 import { Animated, StyleSheet, type LayoutChangeEvent, View } from 'react-native'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 
@@ -16,6 +16,7 @@ import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import TipList, { type TipListType } from './TipList'
 import List, { type ListType } from './List'
+import SourcesOfflineTip from '@/components/common/SourcesOfflineTip'
 import { addHistoryWord } from '@/core/search/search'
 
 
@@ -33,6 +34,8 @@ export interface SearchViewProps {
 
 export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
   const theme = useTheme()
+  // 摘源联动（批1 阶段2）：订阅广播触发重渲染（空源集切「全源不可用」提示态）
+  const [, bumpRender] = useReducer((n: number) => n + 1, 0)
   // 搜索框+类型 chips 固定子头实测高（钉 header 下方整组常驻，方案 §5 Search 单列方案）
   const [subHeaderHeight, setSubHeaderHeight] = useState(0)
   // 整组渐显插值（I-F：与顶栏同区间同 Value，GLASS_FADE_RANGE 单源）；接线态才有（横屏宿主 null 走流内分支）
@@ -52,12 +55,18 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
       searchInfo.current.temp_source = info.temp_source
       searchInfo.current.source = info.source
       searchInfo.current.searchType = info.type
+      // 边界②（批1 阶段2）：持久化源已被摘（不在 /config 开启集）→重置首项
+      const store = info.type == 'music' ? searchMusicState : searchSonglistState
+      if (store.sources.length && !store.sources.includes(info.source)) {
+        searchInfo.current.source = store.sources[0]
+        void saveSearchSetting({ source: searchInfo.current.source })
+      }
       switch (info.type) {
         case 'music':
-          headerBarRef.current?.setSourceList(searchMusicState.sources, info.source)
+          headerBarRef.current?.setSourceList(searchMusicState.sources, searchInfo.current.source)
           break
         case 'songlist':
-          headerBarRef.current?.setSourceList(searchSonglistState.sources, info.source)
+          headerBarRef.current?.setSourceList(searchSonglistState.sources, searchInfo.current.source)
           break
       }
       headerBarRef.current?.setText(searchState.searchText)
@@ -71,8 +80,28 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     }
     global.app_event.on('searchTypeChanged', handleTypeChange)
 
+    // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并重搜（空集=边界①保持）
+    const handleSourcesUpdated = () => {
+      const store = searchInfo.current.searchType == 'music' ? searchMusicState : searchSonglistState
+      const sources = store.sources
+      if (!sources.length || sources.includes(searchInfo.current.source)) {
+        headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
+        return
+      }
+      searchInfo.current.source = sources[0]
+      void saveSearchSetting({ source: searchInfo.current.source })
+      headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
+      listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
+    }
+    const sourcesListener = () => {
+      handleSourcesUpdated()
+      bumpRender()
+    }
+    global.state_event.on('sourcesUpdated', sourcesListener)
+
     return () => {
       global.app_event.off('searchTypeChanged', handleTypeChange)
+      global.state_event.off('sourcesUpdated', sourcesListener)
     }
   }, [])
 
@@ -145,17 +174,23 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     </Animated.View>
   )
 
+  // 提示态条件按当前搜索类型取对应 store（bump 触发重渲染时 ref 已是最新）
+  const sourcesEmpty = !(searchInfo.current.searchType == 'music' ? searchMusicState : searchSonglistState).sources.length
+
   return (
     <View style={styles.container}>
       {scrollYAnimated == null && subHeaderElement}
       <View style={styles.content} onLayout={handleLayout}>
         <TipList ref={searchTipListRef} onSearch={handleSearch} />
+        {sourcesEmpty && <SourcesOfflineTip />}
+        {!sourcesEmpty ? null : (
         <List
           ref={listRef}
           onSearch={handleSearch}
           scrollYAnimated={scrollYAnimated}
           contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
         />
+        )}
       </View>
       {/* 接线态：悬浮子头后声明（RN 后声明者在上，C-1 层级修复） */}
       {scrollYAnimated != null && subHeaderElement}

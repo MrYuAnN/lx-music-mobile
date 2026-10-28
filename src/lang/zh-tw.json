@@ -532,6 +532,7 @@
   "about_copyright": "© {year} 拾音 Music",
   "setting_other_log_user_api_log": "記錄自訂源日誌",
   "shiyin_register_failed": "連線取鏈服務失敗，請檢查網路後重試",
+  "shiyin_all_sources_offline": "全部音源暫時不可用，稍後自動恢復",
   "shiyin_source_disabled": "該來源已暫時下線，稍後自動恢復",
   "shiyin_upgrade_required": "目前版本過低，已為你開啟升級頁面"
 }

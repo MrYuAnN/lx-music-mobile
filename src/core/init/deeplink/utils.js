@@ -1,4 +1,6 @@
 import { tipDialog } from '@/utils/tools'
+// 直连化（批1 阶段2）：源集与音质档改由 /config 下发集派生（摘源即拒，防深链直达已摘除源）
+import { getShiyinSources } from '@/core/shiyin/config'
 
 export const errorDialog = message => {
   tipDialog({
@@ -6,14 +8,12 @@ export const errorDialog = message => {
     btnText: global.i18n.t('ok'),
   })
 }
-
-export const sources = ['kw', 'kg', 'tx', 'wy', 'mg']
 export const sourceVerify = source => {
-  if (!sources.includes(source)) throw new Error('Source no match')
+  if (!(source in getShiyinSources())) throw new Error('Source no match')
 }
 
-export const qualitys = ['128k', '320k', 'flac', 'flac24bit']
 export const qualityFilter = (source, types) => {
+  const qualitys = getShiyinSources()[source]?.qualitys ?? []
   types = types.filter(({ type }) => qualitys.includes(type)).map(({ type, size, hash }) => {
     if (size != null && typeof size != 'string') throw new Error(type + ' size type no match')
     if (source == 'kg' && typeof hash != 'string') throw new Error(type + ' hash type no match')

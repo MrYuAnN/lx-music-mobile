@@ -7,6 +7,7 @@ import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { getLeaderboardSetting } from '@/utils/data'
 import { createStyle } from '@/utils/tools'
+import boardState from '@/store/leaderboard/state'
 import { SPACING } from '@/config/spacing'
 import BoardPickerSheet, { type BoardPickerSheetProps, type BoardPickerSheetType } from './BoardPickerSheet'
 
@@ -30,16 +31,27 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onBoundSelect, onSou
   const theme = useTheme()
   const t = useI18n()
   const sheetRef = useRef<BoardPickerSheetType>(null)
-  const [source, setSource] = useState<LX.OnlineSource>('kw')
+  // 首项跟随（批1 阶段2）：初值=store 构建集首项（替换 'kw' 硬编码）
+  const [source, setSource] = useState<LX.OnlineSource>(boardState.sources[0] ?? 'kw')
   const [boardId, setBoardId] = useState('')
   const [boardName, setBoardName] = useState('')
 
   // 冷启动防闪（三席审查 S-D）：源初值不再硬编码 'kw'，挂载即读持久化同步 chips——
-  // 非酷我用户首帧不闪「酷我」；榜单名仍随父层 init 网络返回（空名不渲染已由审查 S-3 处理）
+  // 非酷我用户首帧不闪「酷我」；榜单名仍随父层 init 网络返回（空名不渲染已由审查 S-3 处理）。
+  // 边界②（批1 阶段2）：持久化源已被摘→重置首项；运行时摘源经 sourcesUpdated 订阅同款重置
   useEffect(() => {
     void getLeaderboardSetting().then(({ source: persisted }) => {
-      setSource(persisted)
+      setSource(boardState.sources.includes(persisted) || !boardState.sources.length ? persisted : boardState.sources[0])
     }).catch(() => {})
+
+    const handleSourcesUpdated = () => {
+      if (!boardState.sources.length) return // 边界①：全源不可用保持上一有效值
+      setSource(prev => boardState.sources.includes(prev) ? prev : boardState.sources[0])
+    }
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => {
+      global.state_event.off('sourcesUpdated', handleSourcesUpdated)
+    }
   }, [])
 
   useImperativeHandle(ref, () => ({

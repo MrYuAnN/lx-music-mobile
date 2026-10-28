@@ -113,13 +113,26 @@ const state: InitState = {
 }
 
 
-for (const source of music.sources) {
-  const songList = music[source.id as Source]?.songList
-  if (!songList) continue
-  state.sources.push(source.id as Source)
-  state.sortList[source.id as Source] = songList.sortList as SortInfo[]
+// 初始构建=全能力集；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建（批1 阶段2）。
+// sortList 为各源静态数据，按能力位建齐不随开启集删减（选中源被摘时仍可回显）。
+const buildSources = (enabled?: string[]) => {
+  state.sources = []
+  for (const source of music.sources) {
+    const songList = music[source.id as Source]?.songList
+    if (!songList) continue
+    if (!state.sortList[source.id as Source]) state.sortList[source.id as Source] = songList.sortList as SortInfo[]
+    if (enabled != null && !enabled.includes(source.id)) continue
+    state.sources.push(source.id as Source)
+  }
 }
+buildSources()
+// 首项跟随（批1 阶段2）：初始源=构建集首项（替换 'kw' 硬编码）
+state.listInfo.source = state.sources[0] ?? 'kw'
+state.listDetailInfo.source = state.sources[0] ?? 'kw'
 
+export const rebuildSources = (enabled: string[]) => {
+  buildSources(enabled)
+}
 
 export default state
 

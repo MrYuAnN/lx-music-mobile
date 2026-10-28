@@ -1,5 +1,5 @@
 import { decodeName, toNewMusicInfo } from '@/utils'
-import { dataVerify, qualityFilter } from './utils'
+import { dataVerify, qualityFilter, sourceVerify } from './utils'
 import playerState from '@/store/player/state'
 import { LIST_IDS } from '@/config/constant'
 import { playNext } from '@/core/player/player'
@@ -42,6 +42,8 @@ import { addTempPlayList } from '@/core/player/tempPlayList'
 // }
 
 const filterInfoByPlayMusic = musicInfo => {
+  // 对齐 /config 开启集（批1 阶段2）：摘源即拒，五源 case 仅作结构校验
+  sourceVerify(musicInfo.source)
   switch (musicInfo.source) {
     case 'kw':
       musicInfo = dataVerify([

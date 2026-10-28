@@ -532,6 +532,7 @@
   "about_copyright": "© {year} ShiYin Music",
   "setting_other_log_user_api_log": "Log custom source requests",
   "shiyin_register_failed": "Failed to connect to the music service. Please check your network and try again.",
+  "shiyin_all_sources_offline": "All music sources are temporarily offline. They will recover automatically.",
   "shiyin_source_disabled": "This source is temporarily offline and will recover automatically.",
   "shiyin_upgrade_required": "Your app version is outdated. The upgrade page has been opened."
 }

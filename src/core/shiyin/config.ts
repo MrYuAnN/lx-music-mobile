@@ -65,7 +65,8 @@ export const fetchShiyinConfig = async(): Promise<void> => {
     for (const [source, info] of Object.entries(body.sources)) {
       if (info?.qualitys?.length) sources[source] = { qualitys: info.qualitys }
     }
-    if (!Object.keys(sources).length) throw new Error('config empty sources')
+    // 空列表=全源不可用（方案 §六批1 边界①）：照常 apply+广播空集（四页出「全源不可用」
+    // 提示态），选中源由 UI 侧保持上一有效值（边界②的重置逻辑跳过空集）
     applySources(sources)
     void saveData(CONFIG_CACHE_KEY, {
       sources,

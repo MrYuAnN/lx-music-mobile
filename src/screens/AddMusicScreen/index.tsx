@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 import { Animated, FlatList, StyleSheet, View } from 'react-native'
 
 import Text from '@/components/common/Text'
@@ -180,8 +180,29 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     if (searchKeywordRef.current.trim()) runSearch(searchKeywordRef.current.trim(), 1)
   }, [runSearch])
 
-  // 音源菜单（真机反馈 2026-10-20 对齐搜索页前缀筛选）：源列表读全局 state（模块加载即从 musicSdk 填充）
-  const sourceMenus = useMemo(() => searchMusicState.sources.map(s => ({ label: t(`source_real_${s}`), action: s })), [t])
+  // 音源菜单（真机反馈 2026-10-20 对齐搜索页前缀筛选）：源列表读全局 state；
+  // 订阅 sourcesUpdated 触发重算（批1 阶段2：源集 /config 化后随摘源变化）
+  const [sourcesVersion, bumpSourcesVersion] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const handleSourcesUpdated = () => {
+      bumpSourcesVersion()
+      // 边界②：当前选中源已被摘→重置首项（空集=边界①保持上一有效值）
+      const sources = searchMusicState.sources
+      if (sources.length && !sources.includes(musicSourceRef.current)) {
+        const next = sources[0] as LX.OnlineSource
+        musicSourceRef.current = next
+        setMusicSource(next)
+        if (searchKeywordRef.current.trim()) runSearch(searchKeywordRef.current.trim(), 1)
+      }
+    }
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => {
+      global.state_event.off('sourcesUpdated', handleSourcesUpdated)
+    }
+  }, [runSearch])
+  // sourcesVersion 故意依赖：sourcesUpdated 订阅 bump 驱动菜单重算（store 引用不变仅内容重建）
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const sourceMenus = useMemo(() => searchMusicState.sources.map(s => ({ label: t(`source_real_${s}`), action: s })), [t, sourcesVersion])
   const handleMusicSourcePick = useCallback((info: { action: string }) => {
     handleSourcePick(info)
   }, [handleSourcePick])

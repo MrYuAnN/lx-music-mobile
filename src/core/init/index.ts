@@ -7,6 +7,7 @@ import dataInit from './dataInit'
 import initCommonState from './common'
 import { initDeeplink } from './deeplink'
 import { initShiyinConfig } from '@/core/apiSource'
+import { initDynamicSources } from '@/core/shiyin/dynamicSources'
 import commonActions from '@/store/common/action'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
@@ -45,6 +46,8 @@ export default async() => {
   await initI18n(setting)
   bootLog('I18n inited.')
 
+  // 源注册表订阅须先于 /config 初始化（首启缓存路径的首次 sourcesUpdated 广播即依赖）
+  initDynamicSources()
   await initShiyinConfig()
   bootLog('Shiyin config inited.')
 

@@ -1,4 +1,4 @@
-import { forwardRef, useImperativeHandle, useRef } from 'react'
+import { useEffect, forwardRef, useImperativeHandle, useRef } from 'react'
 import { View } from 'react-native'
 
 import SourceSelector, {
@@ -29,7 +29,8 @@ export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => 
   const theme = useTheme()
   const sourceSelectorRef = useRef<SourceSelectorType>(null)
   const boardsListRef = useRef<BoardsListType>(null)
-  const boundInfo = useRef<{ source: LX.OnlineSource, id: string | null }>({ source: 'kw', id: null })
+  // 首项跟随（批1 阶段2）：初始源=store 构建集首项（替换 'kw' 硬编码）
+  const boundInfo = useRef<{ source: LX.OnlineSource, id: string | null }>({ source: boardState.sources[0] ?? 'kw', id: null })
   useImperativeHandle(ref, () => ({
     setBound(source, listId) {
       boundInfo.current = { source, id: listId }
@@ -40,6 +41,27 @@ export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => 
     },
   }), [])
 
+
+  // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并应用其第一榜（空集=边界①保持）
+  useEffect(() => {
+    const handleSourcesUpdated = () => {
+      const sources = boardState.sources
+      if (!sources.length || sources.includes(boundInfo.current.source)) return
+      const next = sources[0]
+      void getBoardsList(next).then(list => {
+        const id = list[0].id
+        boundInfo.current = { source: next, id }
+        sourceSelectorRef.current?.setSourceList(sources, next)
+        boardsListRef.current?.setList(list, id)
+        onChangeList(next, id)
+      }).catch(() => {})
+    }
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => {
+      global.state_event.off('sourcesUpdated', handleSourcesUpdated)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- onChangeList 父级引用不稳定，仅订阅一次
+  }, [])
 
   const onSourceChange = (source: LX.OnlineSource) => {
     boundInfo.current.source = source

@@ -1,6 +1,8 @@
-import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react'
+import { forwardRef, useEffect, useImperativeHandle, useReducer, useRef, useState } from 'react'
 import { View } from 'react-native'
 import { type Source, type InitState } from '@/store/hotSearch/state'
+import hotSearchState from '@/store/hotSearch/state'
+import SourcesOfflineTip from '@/components/common/SourcesOfflineTip'
 import Button from '@/components/common/Button'
 import Chip from '@/components/common/Chip'
 import { getList } from '@/core/hotSearch'
@@ -56,6 +58,16 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
   const requestSeqRef = useRef(0)
   const t = useI18n()
   const theme = useTheme()
+  // 边界①（批1 阶段2）：空源集切「全源不可用」提示态
+  const [, bumpRender] = useReducer((n: number) => n + 1, 0)
+  useEffect(() => {
+    const listener = () => bumpRender()
+    global.state_event.on('sourcesUpdated', listener)
+    return () => {
+      global.state_event.off('sourcesUpdated', listener)
+    }
+  }, [])
+  const sourcesEmpty = hotSearchState.sources.length == 0
 
   const isUnmountedRef = useRef(false)
   useEffect(() => {
@@ -95,9 +107,11 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
                 }
               </View>
             )
-          : loading
-            ? null
-            : <EmptyText />
+          : sourcesEmpty
+            ? <SourcesOfflineTip />
+            : loading
+              ? null
+              : <EmptyText />
       }
       {
         !isRank && list.length > COLLAPSED_COUNT
