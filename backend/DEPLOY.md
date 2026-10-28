@@ -120,8 +120,8 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
   4. vkey 缓存/flac24bit→hires 翻译=上游 getUrl 内置（零改动复用）；
   5. 脚本协议面停挂：`modules.shiyin.enable` 开关控制（main.py）；
   6. **本地冒烟 20/20 + 审查修复后复测**（fakeredis+mock 平台）。FastAPI 依赖返回 Response 不短路（0.128 本机实测，端点内显式调用鉴权；复核待办见下）。
-- **待实施**（2026-10-27 网关批后余项）：
-  1. **tx 主力号 cookie 填入**（用户已拍板测试期用主力号；config.tx.users[0] 五件套+`refreshLogin: true`→容器重启生效；当前 config 已部署但账号占位空、refreshLogin=false、保活未注册）+ FastAPI 短路复核（S-7）；
+- **待实施**（2026-10-28 tx cookie 配置后余项）：
+  1. ~~tx 主力号 cookie~~ **已完成（2026-10-28）**：用户主力号系**微信登录**（tmeLoginType=微信，QQ 互联 psrf_* 全空）——按微信映射填入（uin=wxuin / openId=wxopenid / refreshToken=wxrefresh_token / token=qm_keyst），refreshLogin=true，保活首跑**刷新成功+token 回写**（TME 统一登录接口接受微信字段集）。**已知偏差**：check_vip 对微信登录态查不到 VIP 标识（显示 normal，账号实为豪华绿钻在期）——vipType 仅记录字段不拦取链，实际音质以账号权益为准；FastAPI 短路复核（S-7）；
   2. 告警通道密钥（Server酱 sendKey/TG token+chat_id → `data/config.json` notify 节 + `/root/shiyin/notify.env` 两处）+ 试发验证；
   3. `/register` 全链冒烟（需先建 SKU+拿激活码——§1 SKU 建档灰度前批执行）；
   4. `/config` 下发内容与 App 批1 消费契约冻结（本批 /register 含 server_time；/config 形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障）。
