@@ -2,12 +2,11 @@ import { initSetting } from '@/core/common'
 import registerPlaybackService from '@/plugins/player/service'
 import initTheme from './theme'
 import initI18n from './i18n'
-import initUserApi from './userApi'
 import initPlayer from './player'
 import dataInit from './dataInit'
 import initCommonState from './common'
 import { initDeeplink } from './deeplink'
-import { setApiSource } from '@/core/apiSource'
+import { initShiyinConfig } from '@/core/apiSource'
 import commonActions from '@/store/common/action'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
@@ -46,11 +45,8 @@ export default async() => {
   await initI18n(setting)
   bootLog('I18n inited.')
 
-  await initUserApi(setting)
-  bootLog('User Api inited.')
-
-  setApiSource(setting['common.apiSource'])
-  bootLog('Api inited.')
+  await initShiyinConfig()
+  bootLog('Shiyin config inited.')
 
   registerPlaybackService()
   bootLog('Playback Service Registered.')

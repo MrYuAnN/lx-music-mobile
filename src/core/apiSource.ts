@@ -1,13 +1,9 @@
-// import { setUserApi as setUserApiAction } from '@renderer/utils/ipc'
-import musicSdk from '@/utils/musicSdk'
-// import apiSourceInfo from '@renderer/utils/musicSdk/api-source-info'
-import { updateSetting } from './common'
-import settingState from '@/store/setting/state'
-import { destroyUserApi, setUserApi } from './userApi'
-import apiSourceInfo from '@/utils/musicSdk/api-source-info'
+// 直连化闸门（批1；方案 #12）：原 setApiSource/userApi 机制退役，apiInitPromise 闸门
+// 改指 /config 拉取完成（SWR 语义见 core/shiyin/config.ts——缓存/兜底存在即 resolve(true)，
+// qualityList 由 applySources 单源填充）。
+import { initShiyinConfigClient } from './shiyin/config'
 
-
-export const setApiSource = (apiId: string) => {
+export const initShiyinConfig = async(): Promise<boolean> => {
   if (global.lx.apiInitPromise[1]) {
     global.lx.apiInitPromise[0] = new Promise(resolve => {
       global.lx.apiInitPromise[1] = false
@@ -17,28 +13,11 @@ export const setApiSource = (apiId: string) => {
       }
     })
   }
-  if (/^user_api/.test(apiId)) {
-    setUserApi(apiId).catch(err => {
-      if (!global.lx.apiInitPromise[1]) global.lx.apiInitPromise[2](false)
-      console.log(err)
-      let api = apiSourceInfo.find(api => !api.disabled)
-      if (!api) return
-      if (api.id != settingState.setting['common.apiSource']) setApiSource(api.id)
-    })
-  } else {
-    // @ts-expect-error
-    global.lx.qualityList = musicSdk.supportQuality[apiId] ?? {}
-    destroyUserApi()
-    if (!global.lx.apiInitPromise[1]) global.lx.apiInitPromise[2](true)
-    // apiSource.value = apiId
-    // void setUserApiAction(apiId)
-  }
-
-  if (apiId != settingState.setting['common.apiSource']) {
-    updateSetting({ 'common.apiSource': apiId })
-    requestAnimationFrame(() => {
-      global.state_event.apiSourceUpdated(apiId)
-    })
-  }
+  const ok = await initShiyinConfigClient()
+  if (!global.lx.apiInitPromise[1]) global.lx.apiInitPromise[2](ok)
+  return ok
 }
 
+// 临时 stub（阶段3 随设置页 Source.tsx/UserApiEditModal 一并删除）：主音源切换 UI 已无实现方，
+// 联调版点击无效果
+export const setApiSource = (_apiId: string) => {}

@@ -1,56 +1,39 @@
-import apiSourceInfo from './api-source-info'
+// 直连化接缝（批1；方案 #12 接缝瘦身）：apis(source) 直返 shiyin 直连客户端，
+// apiList 注册表/userApi 脚本桥退役（阶段3 删 common.apiSource 键）。
+// local=本地音乐元数据匹配：下载曲带原曲在线身份（toOldMusicInfo 已 merge onlineInfo），
+// 按其 source 路由 lyric/pic→musicSdk 自含、url→shiyin；扫描本地曲无身份 reject，
+// 由调用侧跨源搜索链（core/music/local.ts getOtherSourceByLocal）兜底。
+import { getShiyinMusicUrl } from '@/core/shiyin/client'
 
-// import temp_api_kw from './kw/api-temp'
-// import test_api_kg from './kg/api-test'
-// import test_api_kw from './kw/api-test'
-// import test_api_tx from './tx/api-test'
-// import test_api_wy from './wy/api-test'
-// import test_api_mg from './mg/api-test'
+const shiyinApis = (source) => ({
+  getMusicUrl(songInfo, type) {
+    return getShiyinMusicUrl(source, songInfo, type)
+  },
+})
 
-// import direct_api_kg from './kg/api-direct'
-// import direct_api_kw from './kw/api-direct'
-// import direct_api_tx from './tx/api-direct'
-// import direct_api_wy from './wy/api-direct'
-// import direct_api_mg from './mg/api-direct'
-
-import settingState from '@/store/setting/state'
-
-
-const apiList = {
-  // temp_api_kw,
-  // // test_api_bd: require('./bd/api-test'),
-  // test_api_kg,
-  // test_api_kw,
-  // test_api_tx,
-  // test_api_wy,
-  // test_api_mg,
-  // direct_api_kg,
-  // direct_api_kw,
-  // direct_api_tx,
-  // direct_api_wy,
-  // direct_api_mg,
-  // test_api_tx: require('./tx/api-test'),
-  // test_api_wy: require('./wy/api-test'),
-  // test_api_xm: require('./xm/api-test'),
-}
-const supportQuality = {}
-
-for (const api of apiSourceInfo) {
-  supportQuality[api.id] = api.supportQualitys
-  // for (const source of Object.keys(api.supportQualitys)) {
-  //   const path = `./${source}/api-${api.id}`
-  //   console.log(path)
-  //   apiList[`${api.id}_api_${source}`] = path
-  // }
+const localApis = {
+  getMusicUrl(songInfo, type) {
+    if (songInfo.source == 'local' || !songInfo.songmid) {
+      return { promise: Promise.reject(new Error('source not found')), cancelHttp() {} }
+    }
+    return getShiyinMusicUrl(songInfo.source, songInfo, type)
+  },
+  getLyric(songInfo) {
+    if (songInfo.source == 'local' || !songInfo.songmid) {
+      return { promise: Promise.reject(new Error('source not found')) }
+    }
+    // 延迟 require 防与 musicSdk/index 的循环 import
+    return require('./index').default[songInfo.source].getLyric(songInfo)
+  },
+  getPic(songInfo) {
+    if (songInfo.source == 'local' || !songInfo.songmid) {
+      return { promise: Promise.reject(new Error('source not found')) }
+    }
+    return { promise: require('./index').default[songInfo.source].getPic(songInfo) }
+  },
 }
 
-const getAPI = source => apiList[`${settingState.setting['common.apiSource']}_api_${source}`]
+/** @type {(source: string) => any} 消费契约按形态分派：url={promise,cancelHttp}、lyric={promise}、pic={promise} */
+const apis = source => (source == 'local' ? localApis : shiyinApis(source))
 
-const apis = source => {
-  if (/^user_api/.test(settingState.setting['common.apiSource'])) return global.lx.apis[source]
-  const api = getAPI(source)
-  if (api) return api
-  throw new Error('Api is not found')
-}
-
-export { apis, supportQuality }
+export { apis }

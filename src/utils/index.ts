@@ -96,6 +96,8 @@ export const toOldMusicInfo = (minfo: LX.Music.MusicInfo): any => {
     oInfo.albumId = ''
     oInfo.types = []
     oInfo._types = {}
+    // 下载曲带原曲在线身份：local 三件套直连化按此路由（api-source.js localApis）
+    if (minfo.meta.onlineInfo) Object.assign(oInfo, toOldMusicInfo(minfo.meta.onlineInfo))
   } else {
     oInfo.albumId = minfo.meta.albumId
     oInfo.types = minfo.meta.qualitys

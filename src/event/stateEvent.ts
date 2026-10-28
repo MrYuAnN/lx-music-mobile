@@ -38,6 +38,11 @@ export class StateEvent extends Event {
     this.emit('apiSourceUpdated', source)
   }
 
+  // 直连化（批1）：/config 下发的源集合变化时广播（替代 apiSourceUpdated，阶段3 随 common.apiSource 键退役）
+  sourcesUpdated(sources: Record<string, { qualitys: LX.Quality[] }>) {
+    this.emit('sourcesUpdated', sources)
+  }
+
   themeUpdated(theme: LX.ActiveTheme) {
     this.emit('themeUpdated', theme)
   }

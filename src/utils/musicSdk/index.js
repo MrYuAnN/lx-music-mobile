@@ -5,7 +5,6 @@ import wy from './wy'
 import mg from './mg'
 // import bd from './bd'
 import xm from './xm'
-import { supportQuality } from './api-source'
 import { versionChars } from './versionChars'
 
 
@@ -46,7 +45,6 @@ const sources = {
 }
 export default {
   ...sources,
-  supportQuality,
 }
 
 export const init = () => {
