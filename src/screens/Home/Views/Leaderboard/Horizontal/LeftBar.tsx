@@ -44,11 +44,27 @@ export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => 
 
   // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并应用其第一榜（空集=边界①保持）
   useEffect(() => {
+    let prevSourcesEmpty = boardState.sources.length == 0
     const handleSourcesUpdated = () => {
       const sources = boardState.sources
+      const wasEmpty = prevSourcesEmpty
+      prevSourcesEmpty = !sources.length
+      // 空集→非空恢复（审查 I-F）：按当前绑定补拉首榜
+      if (wasEmpty && sources.length) {
+        const current = boundInfo.current.source
+        void getBoardsList(current).then(list => {
+          const id = list[0]?.id
+          if (!id) return
+          boardsListRef.current?.setList(list, id)
+          onChangeList(current, id)
+        }).catch(() => {})
+      }
       if (!sources.length || sources.includes(boundInfo.current.source)) return
       const next = sources[0]
+      const seqSource = boundInfo.current.source
       void getBoardsList(next).then(list => {
+        // 守卫（审查 S-6）：在途期间用户已手动切源则弃本次自动重置
+        if (boundInfo.current.source != seqSource) return
         const id = list[0].id
         boundInfo.current = { source: next, id }
         sourceSelectorRef.current?.setSourceList(sources, next)

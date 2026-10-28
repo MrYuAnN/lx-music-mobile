@@ -380,9 +380,8 @@
   "version_label_history": "歷史版本：",
   "version_label_latest_ver": "最新版本：",
   "version_tip_checking": "檢查更新中...⏳",
-  "version_tip_failed": "安裝包下載失敗，你可以重試或者去項目位址手動下載新版更新。\n💡提示：一般多點幾次重試即可正常更新！",
+  "version_tip_failed": "無法開啟升級頁面，請檢查網路後重試，或前往官網下載新版。",
   "version_tip_latest": "軟體已是最新，盡情地體驗吧~🥂",
-  "version_tip_min": "已轉為背景下載，可在「設定 → 軟體更新」重新開啟本視窗",
   "version_tip_unknown": "獲取最新版本資訊失敗，建議手動去項目位址檢查是否有新版本",
   "version_title_checking": "⏳ 檢查更新中 ⏳",
   "version_title_failed": "❌ 下載失敗 ❌",
@@ -499,5 +498,6 @@
   "shiyin_register_failed": "連線取鏈服務失敗，請檢查網路後重試",
   "shiyin_all_sources_offline": "全部音源暫時不可用，稍後自動恢復",
   "shiyin_source_disabled": "該來源已暫時下線，稍後自動恢復",
+  "shiyin_retry": "重試",
   "shiyin_upgrade_required": "目前版本過低，已為你開啟升級頁面"
 }

@@ -81,9 +81,18 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     global.app_event.on('searchTypeChanged', handleTypeChange)
 
     // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并重搜（空集=边界①保持）
+    let prevSourcesEmpty = !(searchInfo.current.searchType == 'music' ? searchMusicState : searchSonglistState).sources.length
     const handleSourcesUpdated = () => {
       const store = searchInfo.current.searchType == 'music' ? searchMusicState : searchSonglistState
       const sources = store.sources
+      const wasEmpty = prevSourcesEmpty
+      prevSourcesEmpty = !sources.length
+      // 空集→非空恢复（审查 I-F）：重渲染后补一次重搜；空文本不触发（审查 S-3）
+      if (wasEmpty && sources.length && searchState.searchText.trim()) {
+        requestAnimationFrame(() => {
+          listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
+        })
+      }
       if (!sources.length || sources.includes(searchInfo.current.source)) {
         headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
         return
@@ -91,7 +100,9 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
       searchInfo.current.source = sources[0]
       void saveSearchSetting({ source: searchInfo.current.source })
       headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
-      listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
+      if (searchState.searchText.trim()) {
+        listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
+      }
     }
     const sourcesListener = () => {
       handleSourcesUpdated()
@@ -182,15 +193,16 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
       {scrollYAnimated == null && subHeaderElement}
       <View style={styles.content} onLayout={handleLayout}>
         <TipList ref={searchTipListRef} onSearch={handleSearch} />
-        {sourcesEmpty && <SourcesOfflineTip />}
-        {!sourcesEmpty ? null : (
-        <List
-          ref={listRef}
-          onSearch={handleSearch}
-          scrollYAnimated={scrollYAnimated}
-          contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
-        />
-        )}
+        {sourcesEmpty
+          ? <SourcesOfflineTip />
+          : (
+              <List
+                ref={listRef}
+                onSearch={handleSearch}
+                scrollYAnimated={scrollYAnimated}
+                contentPaddingTop={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : undefined}
+              />
+            )}
       </View>
       {/* 接线态：悬浮子头后声明（RN 后声明者在上，C-1 层级修复） */}
       {scrollYAnimated != null && subHeaderElement}

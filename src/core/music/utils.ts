@@ -277,7 +277,8 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
     return { musicInfo, url, quality: type, isFromCache: false }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
-    if (err.message == requestMsg.tooManyRequests) throw err
+    // 注册失败直接终止（审查 S-5）：换源再试同样过不了 ensureAuth，白耗 5 轮退避
+    if (err.message == requestMsg.tooManyRequests || err.name == 'ShiyinRegisterFailed') throw err
     console.log(err)
     return getOnlineOtherSourceMusicUrl({ musicInfos, quality, onToggleSource, isRefresh, retryedSource })
   })

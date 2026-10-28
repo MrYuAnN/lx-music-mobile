@@ -13,10 +13,6 @@ declare global {
       'common.langId': I18n['locale'] | null
 
       /**
-       * api id
-       */
-
-      /**
        * 音源名称类型，原名、别名
        */
       'common.sourceNameType': 'alias' | 'real'

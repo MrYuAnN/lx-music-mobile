@@ -32,19 +32,56 @@ interface CachedConfig {
 let currentSources: Record<string, ShiyinSourceInfo> = {}
 let refreshing: Promise<void> | null = null
 
+// 空集自愈（审查 I-E，拍板=自动重拉+手动重试）：空集态取链快速失败到不了 403 重拉分支，
+// 运行期唯一自愈源=本定时链（30s 起指数退避，上限 8min；恢复即广播复位四页）
+let emptyRetryTimer: ReturnType<typeof setTimeout> | null = null
+let emptyRetryCount = 0
+const EMPTY_RETRY_BASE = 30_000
+const EMPTY_RETRY_MAX = 8 * 60_000
+
+export const resetEmptyRetry = () => {
+  emptyRetryCount = 0
+  if (emptyRetryTimer) {
+    clearTimeout(emptyRetryTimer)
+    emptyRetryTimer = null
+  }
+}
+
+const scheduleEmptyRetry = () => {
+  if (emptyRetryTimer) return
+  const delay = Math.min(EMPTY_RETRY_BASE * 2 ** Math.min(emptyRetryCount, 4), EMPTY_RETRY_MAX)
+  emptyRetryTimer = setTimeout(() => {
+    emptyRetryTimer = null
+    void fetchShiyinConfig().then(() => {
+      resetEmptyRetry()
+    }).catch(() => {
+      if (!Object.keys(currentSources).length) {
+        emptyRetryCount++
+        scheduleEmptyRetry()
+      }
+    })
+  }, delay)
+}
+
 export const getShiyinSources = (): Record<string, ShiyinSourceInfo> => {
   return currentSources
 }
 
+// 规范化序列化（审查 S-8）：键排序后比较，同内容异键序不误判 changed
+const serializeSources = (sources: Record<string, ShiyinSourceInfo>): string => {
+  return JSON.stringify(Object.keys(sources).sort().map(k => [k, sources[k].qualitys]))
+}
+
 const applySources = (sources: Record<string, ShiyinSourceInfo>) => {
-  const changed = JSON.stringify(Object.keys(sources).sort()) != JSON.stringify(Object.keys(currentSources).sort()) ||
-    JSON.stringify(sources) != JSON.stringify(currentSources)
+  const changed = serializeSources(sources) != serializeSources(currentSources)
   currentSources = sources
   // qualityList 为 assertApiSupport/getPlayQuality 的消费单源（apiSource.ts 闸门填充）
   global.lx.qualityList = Object.fromEntries(
     Object.entries(sources).map(([source, info]) => [source, info.qualitys]),
   )
   if (changed) global.state_event.sourcesUpdated(sources)
+  if (Object.keys(sources).length) resetEmptyRetry()
+  else scheduleEmptyRetry()
 }
 
 export const fetchShiyinConfig = async(): Promise<void> => {
@@ -81,7 +118,9 @@ export const fetchShiyinConfig = async(): Promise<void> => {
 // SWR 主体（core/apiSource.ts initShiyinConfig 闸门调用）：缓存/兜底存在即放行，恒 true
 export const initShiyinConfigClient = async(): Promise<boolean> => {
   const cached = await getData<CachedConfig>(CONFIG_CACHE_KEY)
-  if (cached?.sources && Object.keys(cached.sources).length) {
+  // 空集缓存同放行（审查 S-7，随 I-E 自愈口径）：冷启动与运行时空集语义一致——
+  // 提示态+自愈定时链兜底，不再降级默认集逐曲 403；无缓存断网仍默认集兜底（初始可用性优先）
+  if (cached?.sources) {
     applySources(cached.sources)
     if (Date.now() - cached.fetchedAt > CACHE_TTL) {
       // 缓存超 TTL：先试网络再退回（与无缓存的差异=失败时旧缓存仍可放行）

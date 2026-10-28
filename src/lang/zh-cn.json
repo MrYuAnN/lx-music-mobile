@@ -380,9 +380,8 @@
   "version_label_history": "历史版本：",
   "version_label_latest_ver": "最新版本：",
   "version_tip_checking": "检查更新中...⏳",
-  "version_tip_failed": "安装包下载失败，你可以重试或者去项目地址手动下载新版更新。\n💡提示：一般多点几次重试即可正常更新！",
+  "version_tip_failed": "无法打开升级页面，请检查网络后重试，或前往官网下载新版。",
   "version_tip_latest": "软件已是最新，尽情地体验吧~🥂",
-  "version_tip_min": "已转为后台下载，可在「设置 → 软件更新」重新打开本弹窗",
   "version_tip_unknown": "获取最新版本信息失败，建议手动去项目地址检查是否有新版本",
   "version_title_checking": "⏳ 检查更新中 ⏳",
   "version_title_failed": "❌ 下载失败 ❌",
@@ -499,5 +498,6 @@
   "shiyin_register_failed": "连接取链服务失败，请检查网络后重试",
   "shiyin_all_sources_offline": "全部音源暂时不可用，稍后自动恢复",
   "shiyin_source_disabled": "该来源已暂时下线，稍后自动恢复",
+  "shiyin_retry": "重试",
   "shiyin_upgrade_required": "当前版本过低，已为你打开升级页面"
 }

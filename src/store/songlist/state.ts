@@ -132,6 +132,13 @@ state.listDetailInfo.source = state.sources[0] ?? 'kw'
 
 export const rebuildSources = (enabled: string[]) => {
   buildSources(enabled)
+  // 边界②（审查 I-B）：选中源不在新集→重置首项（空集保持）
+  if (enabled.length && !state.sources.includes(state.listInfo.source)) {
+    state.listInfo.source = state.sources[0] ?? 'kw'
+  }
+  if (enabled.length && !state.sources.includes(state.listDetailInfo.source)) {
+    state.listDetailInfo.source = state.sources[0] ?? 'kw'
+  }
 }
 
 export default state

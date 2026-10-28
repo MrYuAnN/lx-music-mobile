@@ -380,9 +380,8 @@
   "version_label_history": "History: ",
   "version_label_latest_ver": "Latest: ",
   "version_tip_checking": "Checking for updates...⏳",
-  "version_tip_failed": "Failed to download the apk. You can either retry or go to the project address and download the new update manually.",
+  "version_tip_failed": "Could not open the upgrade page. Check your network and retry, or download the new version from the website.",
   "version_tip_latest": "The app is up to date, please enjoy it~🥂",
-  "version_tip_min": "Download moved to background. Reopen this dialog from 'Settings → Update'",
   "version_tip_unknown": "Failed to get the latest version information. Recommended to manually go to the project address to check for a new version.",
   "version_title_checking": "⏳ Checking for updates ⏳",
   "version_title_failed": "❌ Failed to download ❌",
@@ -499,5 +498,6 @@
   "shiyin_register_failed": "Failed to connect to the music service. Please check your network and try again.",
   "shiyin_all_sources_offline": "All music sources are temporarily offline. They will recover automatically.",
   "shiyin_source_disabled": "This source is temporarily offline and will recover automatically.",
+  "shiyin_retry": "Retry",
   "shiyin_upgrade_required": "Your app version is outdated. The upgrade page has been opened."
 }

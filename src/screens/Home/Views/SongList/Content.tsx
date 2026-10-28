@@ -163,9 +163,11 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
   useEffect(() => {
     void getSongListSetting().then(({ source, sortId, tagId, tagName }) => {
       // 边界②（批1 阶段2）：持久化源已被摘（不在 /config 开启集）→重置首项
+      // sortId 同步重置新源第一档（审查 I-G：跨源 sortId 大概率无效，对齐 handleSwitchSource 语义）
       if (songlistState.sources.length && !songlistState.sources.includes(source)) {
         source = songlistState.sources[0]
-        void saveSongListSetting({ source })
+        sortId = songlistState.sortList[source]?.[0]?.id ?? ''
+        void saveSongListSetting({ source, sortId })
       }
       infoRef.current = { source, sortId, tagId, tagName }
       setInfoState(infoRef.current)
@@ -174,12 +176,24 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
     })
 
     // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并重拉（空集=边界①保持）
+    let prevSourcesEmpty = songlistState.sources.length == 0
     const handleSourcesUpdated = () => {
       const sources = songlistState.sources
+      const wasEmpty = prevSourcesEmpty
+      prevSourcesEmpty = !sources.length
+      // 空集→非空恢复（审查 I-F）：重渲染后按当前参数补拉
+      if (wasEmpty && sources.length) {
+        requestAnimationFrame(() => {
+          initList()
+        })
+        return
+      }
       if (!sources.length || sources.includes(infoRef.current.source)) return
       const next = sources[0]
-      updateInfo({ source: next, tagId: '', tagName: '' })
-      setListInfo(next, '', infoRef.current.sortId)
+      // sortId 重置新源第一档（审查 I-G）
+      const sortId = songlistState.sortList[next]?.[0]?.id ?? ''
+      updateInfo({ source: next, sortId, tagId: '', tagName: '' })
+      setListInfo(next, '', sortId)
       fetchList(1, { status: 'loading' })
       void loadTags(next)
     }

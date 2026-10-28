@@ -36,13 +36,23 @@ const genDeviceId = (): string => {
   })
 }
 
+let deviceIdInFlight: Promise<string> | null = null
+
 export const getDeviceId = async(): Promise<string> => {
-  let deviceId = await getData<string>(DEVICE_ID_KEY)
-  if (!deviceId) {
-    deviceId = genDeviceId()
-    await saveData(DEVICE_ID_KEY, deviceId)
-  }
-  return deviceId
+  // single-flight（审查 I-D）：并发首调共享同一 promise，防双 uuid 双注册占席位
+  if (deviceIdInFlight) return deviceIdInFlight
+  const flight = (async() => {
+    let deviceId = await getData<string>(DEVICE_ID_KEY)
+    if (!deviceId) {
+      deviceId = genDeviceId()
+      await saveData(DEVICE_ID_KEY, deviceId)
+    }
+    return deviceId
+  })().finally(() => {
+    deviceIdInFlight = null
+  })
+  deviceIdInFlight = flight
+  return flight
 }
 
 // HMAC-SHA256（方案 §四：基串=METHOD\npath\nts\ndevice_id，hex 小写）
@@ -96,13 +106,16 @@ const doRegister = async(): Promise<ShiyinAuth> => {
   return next
 }
 
-// single-flight：并发调用共享同一注册 promise；force=401 触发的强刷
+// single-flight：并发调用共享同一注册 promise；force=401 触发的强刷。
+// 占位先于任何 await（审查 I-D）：检查 inFlight 与登记新 promise 之间无挂起点，
+// 消除「检查-登记间隙」导致的双注册竞态；缓存读/校验移入 flight 内部。
 export const ensureAuth = async(force = false): Promise<ShiyinAuth> => {
   if (inFlight) return inFlight
-  const current = force ? null : await readAuth()
-  if (isValid(current)) return current
-
-  const registerPromise = (async() => {
+  const flight = (async() => {
+    if (!force) {
+      const current = await readAuth()
+      if (isValid(current)) return current
+    }
     let lastErr: Error | null = null
     for (let i = 0; i <= RETRY_DELAYS.length; i++) {
       try {
@@ -113,12 +126,13 @@ export const ensureAuth = async(force = false): Promise<ShiyinAuth> => {
       }
     }
     auth = null
-    throw new Error(global.i18n.t('shiyin_register_failed') + ` (${lastErr?.message ?? ''})`)
-  })()
-  const flight = registerPromise.finally(() => {
+    const err = new Error(global.i18n.t('shiyin_register_failed') + ` (${lastErr?.message ?? ''})`)
+    // 专用标记（审查 S-5）：供换源链识别后直接终止（同 429 待遇，不再逐源重试退避）
+    err.name = 'ShiyinRegisterFailed'
+    throw err
+  })().finally(() => {
     inFlight = null
   })
-  // eslint-disable-next-line require-atomic-updates -- single-flight：入口已读 inFlight 分流，此处仅登记新 promise
   inFlight = flight
   return flight
 }

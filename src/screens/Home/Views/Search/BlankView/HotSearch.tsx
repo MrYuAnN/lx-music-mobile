@@ -88,6 +88,11 @@ export default forwardRef<HotSearchType, ListProps>((props, ref) => {
         if (isUnmountedRef.current || seq !== requestSeqRef.current) return
         setList(list)
         setLoading(false)
+      }).catch(() => {
+        // 失败复位（审查 S-4）：不 catch 会永卡 loading 空白
+        if (isUnmountedRef.current || seq !== requestSeqRef.current) return
+        setList([])
+        setLoading(false)
       })
     },
   }), [])

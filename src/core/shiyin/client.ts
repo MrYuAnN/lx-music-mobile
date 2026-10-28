@@ -25,7 +25,6 @@ interface UrlResponse {
   code: number
   url?: string
   message?: string
-  type?: string
 }
 
 const requestUrl = (auth: { token: string, deviceSecret: string, deviceId: string }, source: string, songId: string, quality: string) => {
@@ -67,6 +66,8 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
     const body = resp.body as unknown as UrlResponse
     switch (resp.statusCode) {
       case 200:
+        // 服务端 /url 契约恒按请求档返回或报错（上游 getUrl 无降档，审查 I-C 核实），
+        // 回填请求档即实际档
         if (body.url) return { url: body.url, type: targetQuality }
         throw new Error(requestMsg.fail)
       case 403:

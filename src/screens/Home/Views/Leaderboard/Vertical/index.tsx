@@ -97,11 +97,29 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
     })
 
     // 摘源联动（批1 阶段2）：当前源不在新开启集→重置首项并应用其第一榜（空集=边界①保持）
+    let prevSourcesEmpty = boardState.sources.length == 0
     const handleSourcesUpdated = () => {
       const sources = boardState.sources
+      const wasEmpty = prevSourcesEmpty
+      prevSourcesEmpty = !sources.length
+      // 空集→非空恢复（审查 I-F）：组件重挂后按当前绑定补拉（id 失效落首榜）
+      if (wasEmpty && sources.length) {
+        requestAnimationFrame(() => {
+          void getBoardsList(boundInfo.current.source).then(list => {
+            const bound = list.find(l => l.id == boundInfo.current.id) ?? list[0]
+            if (!bound) return
+            headerBarRef.current?.setBound(boundInfo.current.source, bound.id, bound.name ?? 'Unknown')
+            handleBoundChange(boundInfo.current.source, bound.id)
+          }).catch(() => {})
+        })
+        return
+      }
       if (!sources.length || sources.includes(boundInfo.current.source)) return
       const next = sources[0]
+      const seq = sourceChangeSeqRef.current
       void getBoardsList(next).then(list => {
+        // seq 守卫（审查 S-6）：在途期间用户已手动操作则弃本次自动重置
+        if (seq != sourceChangeSeqRef.current) return
         const board = list[0]
         sourceChangeSeqRef.current++
         boundInfo.current = { source: next, id: board.id }
