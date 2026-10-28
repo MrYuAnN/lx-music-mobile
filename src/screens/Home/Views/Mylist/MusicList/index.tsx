@@ -33,6 +33,7 @@ import PlaylistHeader from '@/components/common/PlaylistHeader'
 import PlaylistTopBar, { type PlaylistTopBarType } from '@/components/common/PlaylistTopBar'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { allMusicList, getListMusicSync, getListMusics } from '@/utils/listManage'
 
 
@@ -89,6 +90,12 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   useEffect(() => {
     void getListMusics(activeListId).then(bump).catch(() => {})
   }, [activeListId, bump])
+
+  // LOVE 封面补漏（LOVE 纳入自动轨批）：LOVE 不在 userLists 搭不了 shelf 补漏车，
+  // 详情页是封面主消费位，进页触发（幂等：产物存在短路+写回值未变丢弃）
+  useEffect(() => {
+    if (activeListId == LIST_IDS.LOVE) queueCoverGen(LIST_IDS.LOVE, true)
+  }, [activeListId])
 
   const activeListInfo = useMemo(() => {
     return lists.find(l => l.id === activeListId)

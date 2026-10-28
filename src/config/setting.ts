@@ -1,7 +1,7 @@
 import { storageDataPrefix, storageDataPrefixOld } from '@/config/constant'
 import defaultSetting from '@/config/defaultSetting'
 import { getData, removeData, saveData } from '@/plugins/storage'
-import migrateSetting, { migrateDesktopLyricStyle } from './migrateSetting'
+import migrateSetting, { migrateDesktopLyricStyle, migrateLovePicCustom } from './migrateSetting'
 import settingState from '@/store/setting/state'
 import { migrateMetaData, migrateListData } from './migrate'
 import { exitApp, tipDialog } from '@/utils/tools'
@@ -104,6 +104,9 @@ export const initSetting = async() => {
   }
 
   // console.log(setting)
+  // 「我喜欢」封面存量补标自定义冻结位（LOVE 纳入自动轨批）：须在合并默认值【前】对原始持久化
+  // 数据判键（缺键=旧版手选，见 migrateSetting 注释；三席代码审查 C-1）
+  migrateLovePicCustom(setting)
   const updatedSetting = updateSetting(setting, true)
   // 悬浮歌词颜色重置（存量 v2 用户，见 migrateSetting 注释）须在合并默认值后、落盘前执行
   migrateDesktopLyricStyle(updatedSetting.setting)

@@ -62,3 +62,14 @@ export const migrateDesktopLyricStyle = (setting: LX.AppSetting): void => {
     setting['desktopLyric.style.lyricPlayedColor'] = defaultSetting['desktopLyric.style.lyricPlayedColor']
   }
 }
+
+// 「我喜欢」封面存量迁移（LOVE 纳入自动轨批，方案 doc/plans/love-home-tile-cover.md §A-4）：
+// 必须在合并默认值【前】对原始持久化数据判键——「有 lovePic 且无 lovePicCustom 键」=旧版单键
+// 时代的手选封面，补标冻结位防自动轨覆盖。不可后置：合并后新键必有默认值、缺键信息丢失，且
+// 自动轨写回后的稳态 (lovePic=产物, custom=false) 与手选不可分，后置会在二次启动误标冻结、
+// 自动轨静默失效（三席代码审查 C-1）。键只在迁移首启补写、其后随全量 setting 落盘，天然一次性
+export const migrateLovePicCustom = (setting: Partial<LX.AppSetting> | null): void => {
+  if (setting && setting['list.lovePic'] && !('list.lovePicCustom' in setting)) {
+    setting['list.lovePicCustom'] = true
+  }
+}

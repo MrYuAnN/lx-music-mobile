@@ -12,7 +12,7 @@ import { useSettingValue } from '@/store/setting/hook'
 // fixWidth 事件链一并移除。氛围层随当前激活歌单封面（push 屏与横屏 pane 两形态共用本组件）
 // push 形态（壳屏 screens/Mylist）传 showBack/onBack + footer（mini player 占位，须在
 // 氛围层内才能被贯通覆盖）；横屏 pane 不传 props，行为不变（方案审查 S2/S5）
-// 「我喜欢」氛围源走 lovePic setting 单键（歌单封面机制批②，updateList 对 LOVE 拦截）；
+// 「我喜欢」氛围源走 lovePic setting 双键指针（歌单封面机制批②；2026-10-23 纳入自动轨，自动产物同指针）；
 // 「默认歌单」同款 defaultPic（2026-10-18 拍板纳入封面机制）
 // scrollY 页面级创建（氛围滚动批 2026-10-19，对齐 SonglistDetail S-1「Value 与消费者同层」）：
 // 氛围图块滚走（PageContent）/顶栏渐显/列表 onScroll 三消费者共用一条 Value

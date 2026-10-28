@@ -259,10 +259,11 @@ declare global {
        */
 
       /**
-       * 「我喜欢」自定义封面（歌单封面机制批②）：本地文件路径，null=红心占位；
-       * LOVE 无自动轨，非空即自定义；不随备份导出
+       * 「我喜欢」封面（歌单封面机制批② + 2026-10-23 纳入自动轨批）：本地文件路径，
+       * null=占位回退；lovePicCustom=true 冻结自动轨；不随备份导出
        */
       'list.lovePic': string | null
+      'list.lovePicCustom': boolean
       'list.defaultPic': string | null
       'list.defaultPicCustom': boolean
 

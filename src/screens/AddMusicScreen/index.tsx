@@ -31,6 +31,7 @@ import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
 import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
+import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { SPACING } from '@/config/spacing'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
@@ -115,6 +116,12 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       })
     }).catch(() => {})
   }, [listId])
+
+  // LOVE 封面补漏（LOVE 纳入自动轨批）：「其他歌单」网格含 LOVE 卡，LOVE 不在 userLists
+  // 搭不了 shelf 补漏车，进页触发（幂等：产物存在短路+写回值未变丢弃）
+  useEffect(() => {
+    queueCoverGen(LIST_IDS.LOVE, true)
+  }, [])
 
   // 搜索直连 musicSdk（审查 I4 教训：不污染全局 search core）；聚合源回退 kw（AddMusicSheet 口径）。
   // 入口校验（代码审查 I-2）：非搜索来源/词已过期（清空或换词）即丢弃，防 debounce pending 回弹

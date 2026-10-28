@@ -12,6 +12,7 @@ import { customCoversDirPath } from '@/utils/playlistCoverEdit'
 import { getListMusics } from '@/utils/listManage'
 import { updateUserList } from '@/core/list'
 import { setDefaultCover } from '@/core/defaultCover'
+import { setLoveCover } from '@/core/loveCover'
 import listState from '@/store/list/state'
 import settingState from '@/store/setting/state'
 import { LIST_IDS } from '@/config/constant'
@@ -54,19 +55,30 @@ const isOwnedListId = (id: string): boolean => {
   return id != LIST_IDS.DEFAULT && id != LIST_IDS.LOVE && id != LIST_IDS.TEMP
 }
 
-// 自动轨范围（2026-10-18 拍板：默认歌单纳入封面机制）：自建+DEFAULT 开放，LOVE（setting
-// 单键自定义专属，无自动轨）/TEMP（临时队列）排除
+// 自动轨范围（2026-10-18 拍板：默认歌单纳入；2026-10-23 拍板：LOVE 纳入，方案
+// love-home-tile-cover.md §B-1）：自建+DEFAULT+LOVE 开放，TEMP（临时队列）恒排除
 const isAutoCoverListId = (id: string): boolean => {
-  return id != LIST_IDS.LOVE && id != LIST_IDS.TEMP
+  return id != LIST_IDS.TEMP
 }
 
 const isDefaultListId = (id: string): boolean => {
   return id == LIST_IDS.DEFAULT
 }
 
-// 自定义冻结判定（picCustom）：自建/收藏读条目，DEFAULT 读 setting 双键（不在 userLists）
+const isLoveListId = (id: string): boolean => {
+  return id == LIST_IDS.LOVE
+}
+
+// 自定义冻结判定（picCustom）：自建/收藏读条目，DEFAULT/LOVE 读 setting 双键（不在 userLists）。
+// 双键「标记=true 而指针为空」视同未冻结（备份/换机部分恢复的组合态若冻结则自动轨无自愈——
+// 三席代码审查 S-5 双键同修）：生成走自动轨写回时复位标记，完全回自动轨
 const isPicCustomFrozen = (listId: string): boolean => {
-  if (isDefaultListId(listId)) return settingState.setting['list.defaultPicCustom'] === true
+  if (isDefaultListId(listId)) {
+    return settingState.setting['list.defaultPicCustom'] === true && !!settingState.setting['list.defaultPic']
+  }
+  if (isLoveListId(listId)) {
+    return settingState.setting['list.lovePicCustom'] === true && !!settingState.setting['list.lovePic']
+  }
   return listState.userList.find(l => l.id === listId)?.picCustom === true
 }
 
@@ -94,12 +106,21 @@ const buildSignature = async(listId: string): Promise<string> => {
   return urls.join('\n')
 }
 
-// 写回（三写点统一防护）：写前按 id 重读最新状态仅并 pic；picCustom 冻结或值未变即丢弃。
-// DEFAULT 不在 userLists（updateList 拦截），走 setting 双键通道（setDefaultCover 同步冻结标记复位）
+// 写回（三写点统一防护）：写前按 id 重读最新状态仅并 pic；picCustom 冻结或值未变即丢弃
+// （冻结判定同 isPicCustomFrozen 的「标记+指针双真」口径，S-5 组合态放行并复位标记回自动轨）。
+// DEFAULT/LOVE 不在 userLists（updateList 拦截），走 setting 双键通道（setDefaultCover/
+// setLoveCover 同步冻结标记复位）
 const writeBackPic = async(listId: string, pic: string) => {
   if (isDefaultListId(listId)) {
-    if (settingState.setting['list.defaultPicCustom'] === true || settingState.setting['list.defaultPic'] === pic) return
+    const frozen = settingState.setting['list.defaultPicCustom'] === true && !!settingState.setting['list.defaultPic']
+    if (frozen || settingState.setting['list.defaultPic'] === pic) return
     setDefaultCover(pic, false)
+    return
+  }
+  if (isLoveListId(listId)) {
+    const frozen = settingState.setting['list.lovePicCustom'] === true && !!settingState.setting['list.lovePic']
+    if (frozen || settingState.setting['list.lovePic'] === pic) return
+    setLoveCover(pic, false)
     return
   }
   const fresh = listState.userList.find(l => l.id === listId)
@@ -113,6 +134,12 @@ const generateFor = async(listId: string): Promise<void> => {
     if (lastSignatures.get(listId) === signature) return
     lastSignatures.set(listId, signature)
     if (!signature) {
+      // 空签名终态：清 LOVE 指针回占位——=1 首降级链写回的 http URL 在取消喜欢后残留，此处自愈
+      // （三席代码审查 I-1；冻结态不清，自定义封面不随内容清空失效）。DEFAULT/自建空态不清 pic
+      // 为存量语义，本批不同构扩大（审查备案）
+      if (isLoveListId(listId) && !isPicCustomFrozen(listId) && settingState.setting['list.lovePic']) {
+        setLoveCover(null, false)
+      }
       emptyCoverLists.add(listId)
       return
     }
@@ -129,10 +156,12 @@ const generateFor = async(listId: string): Promise<void> => {
     }
     const fileName = `${listId}_${LAYOUT_TAG}_${hash8(signature)}.png`
     const targetPath = `${coversDirPath}/${fileName}`
-    // 产物已存在短路：DEFAULT 不在 userLists，读 setting 指针比对（三席审查 S-4）
+    // 产物已存在短路：DEFAULT/LOVE 不在 userLists，读 setting 指针比对（三席审查 S-4）
     const currentPic = isDefaultListId(listId)
       ? settingState.setting['list.defaultPic']
-      : listState.userList.find(l => l.id === listId)?.pic
+      : isLoveListId(listId)
+        ? settingState.setting['list.lovePic']
+        : listState.userList.find(l => l.id === listId)?.pic
     if (currentPic === targetPath && await existsFile(targetPath).catch(() => false)) {
       confirmedCovers.add(targetPath)
       return
@@ -177,7 +206,10 @@ const processQueue = async() => {
 
 // force=true 跳过签名短路（补漏/内容变更/移除封面重生成重试），并清除失败/空退避标记——
 // force 由调用方显式表达重试意图，不得被既有退避静默吞掉（三席审查 I-3：移除封面回自动轨
-// 场景 defaultPic 已置 null 而重生成被退避拦截，封面停留占位直到下次内容变更）
+// 场景 defaultPic 已置 null 而重生成被退避拦截，封面停留占位直到下次内容变更）。
+// 评估后不设「指针在位即跳过」的 O(1) 快速短路（三席审查 S-4）：内容变更链同样以 force 进入，
+// 指针在位无法区分「产物已是当前内容」与「内容已变待重生成」，短路会吞掉变更重生成；且
+// buildSignature 命中 3 张封面即早退 + getListMusics 内存缓存，残余开销为毫秒级，不值得冒险
 export const queueCoverGen = (listId: string, force = false) => {
   if (!isAutoCoverListId(listId)) return
   if (force) {
@@ -274,8 +306,8 @@ global.app_event.on('myListMusicUpdate', (ids: string[]) => {
       failedCovers.delete(id)
       emptyCoverLists.delete(id)
       // 3s 窗口内歌单可能已被删除：不存在的自建 id 不入队（防 generateFor 空转与
-      // emptyCoverLists 永久残留，三席审查 S-6）
-      if (id !== LIST_IDS.DEFAULT && !listState.userList.some(l => l.id === id)) continue
+      // emptyCoverLists 永久残留，三席审查 S-6）；DEFAULT/LOVE 不在 userLists，豁免存在性检查
+      if (id !== LIST_IDS.DEFAULT && id !== LIST_IDS.LOVE && !listState.userList.some(l => l.id === id)) continue
       queueCoverGen(id, true)
     }
   }, DEBOUNCE_MS)

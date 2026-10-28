@@ -260,7 +260,11 @@ const handleRestorePlay = async(restorePlayInfo: LX.Player.SavedPlayInfo) => {
 }
 
 
-const debouncePlay = debounceBackgroundTimer((musicInfo: LX.Player.PlayMusic) => {
+const debouncePlay = debounceBackgroundTimer(() => {
+  // fire 时重读播放状态（走查反馈②④防御加固）：切歌竞态下即使有幽灵补链改写状态，
+  // 防抖到期也永远以用户最后一次选择为准，不再使用 schedule 时的旧对象
+  const musicInfo = playerState.playMusicInfo.musicInfo
+  if (!musicInfo) return
   setMusicUrl(musicInfo)
 
   void getPicPath({ musicInfo, listId: playerState.playMusicInfo.listId }).then((url: string) => {
@@ -326,7 +330,7 @@ const handlePlay = async() => {
 
   if (settingState.setting['player.togglePlayMethod'] == 'random' && !playMusicInfo.isTempPlay) addPlayedList(playMusicInfo as LX.Player.PlayMusicInfo)
 
-  debouncePlay(musicInfo)
+  debouncePlay()
 }
 
 /**
@@ -357,7 +361,9 @@ export const playList = async(listId: string, index: number) => {
   // 排查插桩（疑案结案即删）：播放器实际入队对象取证
   {
     const resolved = getList(listId)[index]
-    console.warn('[play] playList resolve:', listId, index, resolved?.name, '->', (resolved?.meta as LX.Music.MusicInfoMeta_local | undefined)?.filePath ?? '')
+    if (resolved && !('progress' in resolved)) {
+      console.warn('[play] playList resolve:', listId, index, resolved.name, '->', (resolved.meta as LX.Music.MusicInfoMeta_local).filePath ?? '')
+    }
   }
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()

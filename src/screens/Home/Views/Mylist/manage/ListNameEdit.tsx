@@ -20,10 +20,10 @@ import { SPACING } from '@/config/spacing'
 
 // 歌单编辑面板（歌单封面机制批②，方案 §2.2-2 四形态；原「重命名」单字段升级）：
 // user=自建（名字+封面+移除）/ collect=收藏（仅名字——封面属源站语义，菜单文案保留
-// 「重命名」）/ love=我喜欢（仅封面+移除，走 lovePic setting 单键——updateList 对 LOVE
-// 拦截不可用）。封面先选后落（取消编辑不落库）；写前按 id 重读最新条目（ensureListPic
-// 竞态防护先例，防面板打开期间的并发编辑被 stale 快照回滚）。showCreate 死接口已删除
-// （零调用方，新建入口唯一为 CreateListDialog）
+// 「重命名」）/ love=我喜欢（仅封面+移除，走 lovePic setting 双键——updateList 对 LOVE
+// 拦截不可用；移除回自动轨重生成，2026-10-23 纳入自动轨批）。封面先选后落（取消编辑不落库）；
+// 写前按 id 重读最新条目（ensureListPic 竞态防护先例，防面板打开期间的并发编辑被 stale
+// 快照回滚）。showCreate 死接口已删除（零调用方，新建入口唯一为 CreateListDialog）
 interface NameInputType {
   setName: (text: string) => void
   getText: () => string
@@ -146,12 +146,14 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
       try {
         if (tempCoverRef.current) {
           const pic = await saveCustomCover(LIST_IDS.LOVE, tempCoverRef.current)
-          setLoveCover(pic)
+          setLoveCover(pic, true)
           // 指针生效后清旧（三席代码审查 I4：先删旧后改指针非原子）
           void cleanCustomCovers(LIST_IDS.LOVE, pic.split('/').pop())
         } else if (coverRemoved) {
-          setLoveCover(null)
+          // 移除回自动轨重生成（2026-10-23 LOVE 纳入自动轨批，与 default 形态同语义）
+          setLoveCover(null, false)
           void cleanCustomCovers(LIST_IDS.LOVE)
+          queueCoverGen(LIST_IDS.LOVE, true)
         }
       } catch {
         toast(t('list_cover_fail'))

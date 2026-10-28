@@ -18,9 +18,11 @@ import { createStyle } from '@/utils/tools'
 
 // 歌单两列网格卡（单源，2026-10-21）：视觉=添加歌曲页「其他歌单」网格卡（歌单广场卡同构：
 // 方形封面 r8 + 双行标题 + 可选左上来源角标），MusicAddModal / MusicMultiAddModal 弹窗同构延用。
-// 封面三态：「我喜欢的」LOVE_GRADIENT 红渐变白心（首页音乐库 hub 卡同款定案视觉）→ pic（DEFAULT 走
-// setting list.defaultPic 单键）→ PlaylistCover 默认封面；角标仅读语义场景显示（写目标选择场景
-// 经只读过滤后恒为本地自建歌单，「本地」标无信息量不显示）。
+// 封面三态（2026-10-23 LOVE 纳入自动轨批，方案 love-home-tile-cover.md §D-1）：pic 直出
+// （LOVE 走 setting list.lovePic 双键、DEFAULT 走 list.defaultPic，自建/收藏读条目——自动轨产物
+// 与自定义封面同指针）；LOVE 无 pic 回退 LOVE_GRADIENT 红渐变白心（封面位品牌语言保留，Q7 拍板）；
+// 其余无 pic → PlaylistCover 默认封面。角标仅读语义场景显示（写目标选择场景经只读过滤后恒为本地
+// 自建歌单，「本地」标无信息量不显示）。
 // 布局纪律（审查 S-3）：组件只管自身内容，行距/列距归调用方容器（rowGap / columnWrapperStyle），
 // 不内嵌 marginBottom；不做 memo（审查 S-8：调用链 onPress 均为不稳定引用，memo 恒穿透反成假象）
 
@@ -56,17 +58,19 @@ interface Props {
 export default ({ item, width, onPress, dimmed = false, showSourceBadge = false }: Props) => {
   const theme = useTheme()
   const t = useI18n()
-  // 默认歌单封面走 setting 单键（DEFAULT 不在 userLists 条目上，2026-10-18 拍板口径，shelf 同款）
+  // DEFAULT/LOVE 封面走 setting 单键（均不在 userLists 条目上，2026-10-18 拍板口径，shelf 同款；
+  // LOVE 自动轨产物与自定义封面共用 lovePic 指针，2026-10-23 纳入自动轨批）
   const defaultPic = useSettingValue('list.defaultPic')
+  const lovePic = useSettingValue('list.lovePic')
   const collect = 'source' in item ? !!item.source : false
-  const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as LX.List.UserListInfo).pic
+  const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : item.id == LIST_IDS.LOVE ? lovePic : (item as LX.List.UserListInfo).pic
   const isLove = item.id == LIST_IDS.LOVE
 
   return (
     <TouchableOpacity style={{ width, opacity: dimmed ? 0.4 : 1 }} activeOpacity={0.7} onPress={() => { onPress(item) }}>
       <View style={styles.coverWrap}>
         {
-          isLove
+          isLove && !pic
             ? (
                 <LinearGradient colors={LOVE_GRADIENT} style={{ width, height: width, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }}>
                   <Icon name="love-fill" size={width * 0.3} color="#FFFFFF" />

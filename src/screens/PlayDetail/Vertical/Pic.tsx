@@ -33,11 +33,12 @@ export default ({ componentId }: { componentId: string }) => {
   // console.log('render pic')
 
   const style = useMemo(() => {
-    // 封面尺寸（2026-10-23 走查反馈：头部与封面间大空隙——业界无此形态，AM/Spotify/YTM 均为
-    // 「封面够大+顶部近贴头部，余量留给封面与控制区之间」；0.8→0.92 屏宽（侧边距收至页面边距
-    // 16dp 档）、高度系数 0.44→0.52，余量从 ~108dp 收敛到 ~60dp 呼吸位；后续若立项全出血沉浸
-    // （AM iOS 26/YTM 新形态）再单独立项）
-    const imgWidth = Math.min(winWidth * 0.92, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.52)
+    // 封面尺寸（2026-10-23 两轮走查定档：首轮「头部与封面间大空隙」0.8→0.92 近贴头部，二轮反馈
+    // 封面偏大回调至 0.86——Spotify 档（侧边距 ~28dp），业界主流中位（AM ~0.94 / Spotify ~0.86 /
+    // 国产 0.75-0.8）；底部锚定下封面越小头部空隙越大，0.86 为两轮反馈的平衡档；高度系数 0.52
+    // 为矮屏防溢出上限，正常竖屏宽度约束先生效；后续若立项全出血沉浸（AM iOS 26/YTM 新形态）
+    // 再单独立项）
+    const imgWidth = Math.min(winWidth * 0.86, (winHeight - statusBarHeight - HEADER_HEIGHT) * 0.52)
     return {
       width: imgWidth,
       height: imgWidth,
@@ -87,10 +88,11 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     // 底部锚定（2026-10-23 走查反馈：原 center 居中把余量均分到标题下方，歌名离功能行过远；
-    // 改贴底后歌名紧贴 ActionRow，弹性余量留在封面上方——AM/Spotify 同为「标题贴控制区」锚定）
+    // 改贴底后歌名紧贴 ActionRow，弹性余量留在封面上方——AM/Spotify 同为「标题贴控制区」锚定）。
+    // 三轮反馈：封面+标题整体上移 10dp（paddingBottom s6→s16，弹性余量相应减少）
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: SPACING.s6,
+    paddingBottom: SPACING.s16,
     // backgroundColor: 'rgba(0,0,0,0.1)',
   },
   content: {

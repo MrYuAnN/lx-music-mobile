@@ -52,9 +52,11 @@ const defaultSetting: LX.AppSetting = {
 
   'list.isShowSource': true,
   'list.isSaveScrollLocation': true,
-  // 「我喜欢」自定义封面（歌单封面机制批②，方案 §2.2-1）：LOVE 无自动轨，非空即自定义；
-  // 存本地文件路径，不随备份导出（ListSaveInfo 仅列表数据）——恢复回红心为预期行为
+  // 「我喜欢」封面（歌单封面机制批② + 2026-10-23 纳入自动轨批，方案 love-home-tile-cover.md）：
+  // LOVE 不在 userLists 存储，setting 双键独立通道（指针+自定义冻结标记，defaultCover 同款）；
+  // 存本地文件路径或自动轨产物路径，不随备份导出（ListSaveInfo 仅列表数据）——悬空由 hub 兜底清键自愈
   'list.lovePic': null,
+  'list.lovePicCustom': false,
   // 默认歌单封面（2026-10-18 拍板纳入封面机制）：DEFAULT 不在 userLists 存储，setting 双键
   // 独立通道（指针+自定义冻结标记），loveCover 同款；存本地文件路径，不随备份导出
   'list.defaultPic': null,

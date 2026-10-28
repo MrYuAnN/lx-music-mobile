@@ -1,6 +1,6 @@
 import { FlatList, PanResponder, TouchableOpacity, View, StyleSheet, ScrollView, Animated } from 'react-native'
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import LinearGradient from 'react-native-linear-gradient'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n, type Message } from '@/lang'
 import { useMyList } from '@/store/list/hook'
@@ -41,6 +41,12 @@ const isCollectList = (info: LX.List.MyListInfo): boolean => {
   return 'source' in info ? !!info.source : false
 }
 
+// 我喜欢的行（2026-10-23 走查反馈轮三轮定稿 tile、五轮定播放键）——84 r10 满铺 LOVE_GRADIENT
+// 红渐变 + 白心 40 + 36 实心 LOVE 圆白三角 16；渐变恒定不随封面内容变（Q4 维持），与网格 fallback 同源同款
+const LOVE_TILE_SIZE = 84
+const LOVE_TILE_GLYPH_SIZE = 40
+const LOVE_PLAY_GLYPH_SIZE = 16
+
 // 打开歌单页（模块级单源）：MusicHub 与 PlaylistShelf 共用（LoveCard 从 MyMusic 拆出后两侧各持调用）
 const openList = (id: string) => {
   const componentId = commonState.componentIds.home
@@ -75,17 +81,21 @@ const ensureListPic = async(item: LX.List.UserListInfo) => {
   }
 }
 
-// 「音乐库」hub 卡（2026-10-23 顶部区改版拍板，推翻 10-20 快捷格+hero 两形态）：单卡收编
-// 「我喜欢的音乐」行 + 1×4 功能入口行（三席方案审查定稿 .review-bundle/2026-10-23/context.md）。
-// 我喜欢的行=84 封面三态：无 lovePic 回退 LOVE_GRADIENT 红渐变白心 tile（与 PlaylistGridCard 网格卡
-// LOVE 特判同款视觉，LOVE 语义色族单源 constant.ts）；有 lovePic 封面直出。
-// 叠层契约：红渐变恒铺底层、封面 Image 作叠加层——解码空窗/existsFile 异步清键窗口透出渐变，两态无闪变。
-// 播放键=显式切全局随机后起播（2026-10-20 拍板维持，doc/plans/home-music-section-c.md 已归档标注）；
-// 曲数=0 禁用沿用。existsFile 缺失兜底清键（lovePic 指向 DocumentDir 文件，清数据/换机后丢失——
-// 方案审查 I-a/N2 降级路径）。入口行=金刚区语言收进卡内的收敛变体（无完全同构先例，本产品自定）。
-// 横屏复用契约（2026-10-23 批 C，审查 PM I-1 处置）：navMode=true（横屏 pane）时排行榜/歌单广场
-// 入口走侧栏 pane 切换（与侧栏同路径，iPad AM 母本主导航不设重复 push 路径）；本地/下载无 pane
-// 恒 push。竖屏维持 10-23 首页批「一键直达 push」拍板语义不变
+// 「音乐库」hub 卡（2026-10-23 顶部区改版拍板：单卡收编「我喜欢的音乐」行+1×4 功能入口行，
+// .review-bundle/2026-10-23/context.md；同日 LOVE 纳入自动轨批 + 真机走查反馈轮两轮定 tile 形态，
+// 方案 doc/plans/love-home-tile-cover.md）。我喜欢的行=84 r10 满铺 LOVE_GRADIENT 红渐变 +
+// 白心 40（2026-10-23 走查反馈轮三轮定稿：紧框 glyph 空盒感真机反馈「光秃秃」推翻图标级，
+// 对标 Spotify Liked Songs / YouTube Music / 网易云——liked 封面位「品牌渐变+白心」三家同构，
+// 与网格 fallback 单源同款；恒显不随封面内容变 Q4 维持：品牌渐变为恒定语言非内容）+
+// 播放键=36 实心 LOVE 圆+白三角 16（五轮拍板：右端不可空且须实体动作键——移动端列表行/快捷格
+// 两主流语法右端均不挂中性弱键，实心品牌圆=桌面 Spotify 快捷条先例[印象级]，与渐变 tile 同语
+// 呼应；44 前科系灰底 tile+大尺寸语境，36 缩寸+红渐变呼应下重评通过）。
+// 播放键=显式切全局随机后起播（2026-10-20 拍板维持）；曲数=0 禁用沿用。
+// lovePic 兜底 effect：空指针补漏生成、http 直链跳过（=1 首降级链写回 URL，防清键-写回循环）、
+// 悬空（清数据/换机/缓存清理）清双键回自动轨重生成——custom 冻结+文件丢失的唯一自愈通道。
+// 入口行=金刚区语言收进卡内的收敛变体（无完全同构先例，本产品自定）。
+// 横屏复用契约（2026-10-23 批 C）：navMode=true（横屏 pane）时排行榜/歌单广场入口走侧栏 pane
+// 切换；本地/下载无 pane 恒 push。竖屏维持「一键直达 push」拍板语义不变
 const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
   const theme = useTheme()
   const t = useI18n()
@@ -119,10 +129,20 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
   }, [preloadLove])
 
   useEffect(() => {
-    if (!lovePic) return
+    if (!lovePic) {
+      queueCoverGen(LIST_IDS.LOVE, true)
+      return
+    }
+    // =1 首降级链写回 http URL，跳过存在性检查防清键-写回循环（syncShelfCovers 同款防护）
+    if (/^https?:/i.test(lovePic)) return
     let cancelled = false
     void existsFile(lovePic).then(ok => {
-      if (!cancelled && !ok) void setLoveCover(null)
+      if (cancelled) return
+      if (!ok) {
+        // 悬空（清数据/换机/缓存清理）：清双键回自动轨重生成——custom 冻结+文件丢失的唯一自愈通道
+        setLoveCover(null, false)
+        queueCoverGen(LIST_IDS.LOVE, true)
+      }
     }).catch(() => {})
     return () => { cancelled = true }
   }, [lovePic])
@@ -153,12 +173,9 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_music_library')}</Text>
       </View>
       <TouchableOpacity style={styles.loveRow} activeOpacity={0.6} onPress={() => { openList(LIST_IDS.LOVE) }}>
-        <View style={styles.loveCover}>
-          <LinearGradient colors={LOVE_GRADIENT} style={[StyleSheet.absoluteFill, styles.loveCoverFallback]}>
-            {lovePic ? null : <Icon name="love-fill" size={84 * 0.3} color="#FFFFFF" />}
-          </LinearGradient>
-          {lovePic ? <Image url={lovePic} style={StyleSheet.absoluteFill} resizeMode="cover" /> : null}
-        </View>
+        <LinearGradient colors={LOVE_GRADIENT} style={styles.loveTile}>
+          <Icon name="love-fill" size={LOVE_TILE_GLYPH_SIZE} color="#FFFFFF" />
+        </LinearGradient>
         <View style={styles.loveTexts}>
           <Text style={styles.loveName} size={17} color={theme['c-font']} numberOfLines={1}>{t('list_name_love')}</Text>
           <Text size={13} color={theme['c-font-label']} numberOfLines={1}>{t('music_count', { count })}</Text>
@@ -170,7 +187,7 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
           activeOpacity={0.7}
           onPress={handlePlay}
         >
-          <Icon name="play" size={20} color="#FFFFFF" />
+          <Icon name="play" size={LOVE_PLAY_GLYPH_SIZE} color="#FFFFFF" />
         </TouchableOpacity>
       </TouchableOpacity>
       <View style={{ ...styles.hubDivider, backgroundColor: theme['c-border-background'] }} />
@@ -563,7 +580,7 @@ export default ({ navMode = false }: { navMode?: boolean } = {}) => {
 
 // 原型 v-dense 1:1 dp 值（390 基准）
 const styles = StyleSheet.create({
-  // 音乐库 hub 卡：我喜欢的行（84 封面三态+文本+播放键）/ 分隔线 / 1×4 入口行
+  // 音乐库 hub 卡：我喜欢的行（84 渐变 tile+文本+播放键）/ 分隔线 / 1×4 入口行
   loveRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -572,13 +589,10 @@ const styles = StyleSheet.create({
     paddingRight: SPACING.s16,
     paddingVertical: SPACING.s12,
   },
-  loveCover: {
-    width: 84,
-    height: 84,
+  loveTile: {
+    width: LOVE_TILE_SIZE,
+    height: LOVE_TILE_SIZE,
     borderRadius: 10,
-    overflow: 'hidden',
-  },
-  loveCoverFallback: {
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -590,9 +604,10 @@ const styles = StyleSheet.create({
     fontFamily: FontFamilies.bold,
   },
   lovePlayBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    // 36 实心 LOVE 圆（五轮拍板；LOVE_COLOR 模块常量静态可用）；hitSlop 6 补足 44+ 触区
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: LOVE_COLOR,
     justifyContent: 'center',
     alignItems: 'center',

@@ -164,8 +164,10 @@ export const setPlay = async() => TrackPlayer.play()
 export const getPosition = async() => (await TrackPlayer.getProgress()).position
 export const getDuration = async() => (await TrackPlayer.getProgress()).duration
 export const setStop = async() => {
+  // 纯停止，禁止 skipToNext（走查反馈②④切歌串台根因）：调用方均为「切歌前清场/停止」语义，
+  // 队列此刻仍是旧歌的 track（含 default 占位），skip 会激活占位 track 触发 fork MusicService
+  // 按 musicId 自动补链旧歌，与用户新选择赛跑导致「点 A 播 B」；队列重建由 handlePlayMusic 负责
   await TrackPlayer.stop()
-  if (!isEmpty()) await TrackPlayer.skipToNext()
 }
 export const setLoop = async(loop: boolean) => TrackPlayer.setRepeatMode(loop ? RepeatMode.Off : RepeatMode.Track)
 
