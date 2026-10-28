@@ -31,7 +31,6 @@ export default (setting: any): Partial<LX.AppSetting> => {
     setting['list.isSaveScrollLocation'] = setting.list?.isSaveScrollLocation
     setting['common.themeId'] = setting.themeId
     setting['common.langId'] = setting.langId
-    setting['common.apiSource'] = setting.apiSource
     setting['common.sourceNameType'] = setting.sourceNameType
     setting['common.shareType'] = setting.shareType
     setting['theme.id'] = setting.themeId

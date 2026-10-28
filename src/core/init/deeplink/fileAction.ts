@@ -1,6 +1,5 @@
 import { readMetadata } from '@/utils/localMediaMetadata'
 import { handleImportList } from '@/screens/Home/Views/Setting/settings/Backup/actions'
-import { handleImportLocalFile } from '@/screens/Home/Views/Setting/settings/Basic/UserApiEditModal/action'
 import { type FileType } from '@/utils/fs'
 import { confirmDialog } from '@/utils/tools'
 import playerState from '@/store/player/state'
@@ -27,10 +26,3 @@ export const handleFileMusicAction = async(file: FileType) => {
   if (isPlaying) void playNext()
 }
 
-export const handleFileJSAction = async(file: FileType) => {
-  if (!(await confirmDialog({
-    message: global.i18n.t('deep_link_file_js_confirm_tip', { name: file.name }),
-  }))) return
-
-  handleImportLocalFile(file.path)
-}

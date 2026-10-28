@@ -4,7 +4,7 @@ import { handleMusicAction } from './musicAction'
 import { handlePlayerAction, type PlayerAction } from './playerAction'
 import { handleSonglistAction } from './songlistAction'
 import { extname, stat } from '@/utils/fs'
-import { handleFileMusicAction, handleFileJSAction, handleFileLXMCAction } from './fileAction'
+import { handleFileMusicAction, handleFileLXMCAction } from './fileAction'
 
 
 const handleLinkAction = async(link: string) => {
@@ -48,9 +48,6 @@ const handleFileAction = async(link: string) => {
     case 'json':
     case 'lxmc':
       await handleFileLXMCAction(file)
-      break
-    case 'js':
-      await handleFileJSAction(file)
       break
     case 'ogg':
     case 'flac':

@@ -11,7 +11,6 @@ import cn.toside.music.mobile.cache.CachePackage
 import cn.toside.music.mobile.crypto.CryptoPackage
 import cn.toside.music.mobile.download.DownloadPackage
 import cn.toside.music.mobile.lyric.LyricPackage
-import cn.toside.music.mobile.userApi.UserApiPackage
 import cn.toside.music.mobile.utils.UtilsPackage
 
 // N2：0.86 模板（ReactHost + loadReactNative，取代 ReactNativeHost 体系）；
@@ -29,7 +28,6 @@ class MainApplication : Application(), ReactApplication {
           add(LyricPackage())
           add(UtilsPackage())
           add(CryptoPackage())
-          add(UserApiPackage())
           add(DownloadPackage())
         },
     )

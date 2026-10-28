@@ -3,7 +3,6 @@ import { ScrollView, View } from 'react-native'
 
 import SettingSection from '../../components/SettingSection'
 import ActionRow from '../../components/ActionRow'
-import SwitchRow from '../../components/SwitchRow'
 import Popup, { type PopupType } from '@/components/common/Popup'
 import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
@@ -18,7 +17,7 @@ import { useTheme } from '@/store/theme/hook'
 import { SPACING } from '@/config/spacing'
 
 // 缓存与日志节（治理批 P13：六行归一组卡——三个缓存行=label+数值+行尾清除钮（iOS 储存空间/
-// 微信存储清理范式），日志开关沿用 SwitchRow，「查看日志」改动作行+底部 Popup 滚动区
+// 微信存储清理范式），「查看日志」为动作行+底部 Popup 滚动区
 // （替代 ConfirmAlert 文本堆）。P11 已删同步日志开关。旧 ResourceCache/MetaCache/Log 三组件
 // 及 SubTitle+填充矩形按钮形态退役）
 
@@ -33,7 +32,6 @@ export default memo(() => {
   const theme = useTheme()
   const [cleaning, setCleaning] = useState(false)
   const [cacheInfo, setCacheInfo] = useState<CacheInfo>({ appSize: null, otherSourceKeys: null, lyricKeys: null })
-  const [isEnableUserApiLog, setIsEnableUserApiLog] = useState(global.lx.isEnableUserApiLog)
   // 日志查看弹层
   const popupRef = useRef<PopupType>(null)
   const [logVisible, setLogVisible] = useState(false)
@@ -97,11 +95,6 @@ export default memo(() => {
     })
   }
 
-  const handleSetEnableUserApiLog = (enable: boolean) => {
-    setIsEnableUserApiLog(enable)
-    global.lx.isEnableUserApiLog = enable
-  }
-
   const openLogPopup = () => {
     void getLogs().then(log => {
       if (isUnmountedRef.current) return
@@ -147,7 +140,6 @@ export default memo(() => {
         onPress={handleCleanLyric}
         disabled={!cacheInfo.lyricKeys?.length}
       />
-      <SwitchRow check={isEnableUserApiLog} label={t('setting_other_log_user_api_log')} onChange={handleSetEnableUserApiLog} />
       <ActionRow label={t('setting_other_log_view')} onPress={openLogPopup} />
       {
         logVisible

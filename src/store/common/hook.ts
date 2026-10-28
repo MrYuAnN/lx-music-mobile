@@ -48,9 +48,10 @@ export const useAssertApiSupport = (source: LX.Source) => {
       update(global.lx.qualityList[source] != null || source == 'local')
     }
 
-    global.state_event.on('apiSourceUpdated', handleUpdate)
+    // 直连化（批1 阶段3）：源集/qualityList 随 /config 下发变化（apiSourceUpdated 已退役）
+    global.state_event.on('sourcesUpdated', handleUpdate)
     return () => {
-      global.state_event.off('apiSourceUpdated', handleUpdate)
+      global.state_event.off('sourcesUpdated', handleUpdate)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])

@@ -43,14 +43,11 @@ global.lx = {
   // prevListPlayIndex: -1,
 
 
-  isEnableUserApiLog: false,
-
   playerTrackId: '',
 
   gettingUrlId: '',
 
   qualityList: {},
-  apis: {},
   apiInitPromise: [Promise.resolve(false), true, () => {}],
 
   jumpMyListPosition: false,

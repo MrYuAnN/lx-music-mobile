@@ -15,7 +15,6 @@ declare global {
       /**
        * api id
        */
-      'common.apiSource': string
 
       /**
        * 音源名称类型，原名、别名

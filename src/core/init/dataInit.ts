@@ -26,7 +26,6 @@ import { TEMP_FILE_PATH } from '@/utils/tools'
 
 export default async(appSetting: LX.AppSetting) => {
   // await Promise.all([
-  //   initUserApi(), // 自定义API
   // ]).catch(err => log.error(err))
   void musicSdkInit() // 初始化音乐sdk
   bootLog('User list init...')

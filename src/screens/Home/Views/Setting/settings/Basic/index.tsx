@@ -2,7 +2,6 @@ import { memo } from 'react'
 
 import Theme from '../Theme'
 import SettingSection from '../../components/SettingSection'
-import Source from './Source'
 import Language from './Language'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
 import IsStartupPushPlayDetailScreen from './IsStartupPushPlayDetailScreen'
@@ -17,7 +16,6 @@ export default memo(() => {
       <IsStartupPushPlayDetailScreen />
       <Theme />
       <Language />
-      <Source />
     </SettingSection>
   )
 })
