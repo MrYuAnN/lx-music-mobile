@@ -4,6 +4,7 @@ import listState from '@/store/list/state'
 import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
 import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleCopyLink, handleShare, handleUpdateMusicInfo, isReadonlyList } from './listAction'
+import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
@@ -20,7 +21,6 @@ import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './Mu
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
-import { addDownloadTask } from '@/core/download'
 import { getListMusics as getCoreListMusics } from '@/core/list'
 import { navigations } from '@/navigation'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
@@ -48,6 +48,8 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const listMusicMultiAddRef = useRef<ListAddMultiType>(null)
   const metadataEditTypeRef = useRef<MetadataEditType>(null)
   const listMenuRef = useRef<ListMenuType>(null)
+  const downloadQualityModalRef = useRef<DownloadQualityModalType>(null)
+
   const musicToggleModalRef = useRef<MusicToggleModalType>(null)
   const manageMenuRef = useRef<ListManageMenuType>(null)
   const playlistTopBarRef = useRef<PlaylistTopBarType>(null)
@@ -337,11 +339,10 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onToggleSource={info => { if (!guardWritableList(info.listId)) return; musicToggleModalRef.current?.show(info) }}
         onDownload={info => {
           if (info.musicInfo.source == 'local') return
-          void addDownloadTask(info.musicInfo).then(added => {
-            toast(global.i18n.t(added ? 'download_added' : 'download_exists'))
-          })
+          downloadQualityModalRef.current?.show(info.musicInfo)
         }}
       />
+      <DownloadQualityModal ref={downloadQualityModalRef} />
       <ListManageMenu
         ref={manageMenuRef}
         onAddMusic={info => { navigations.pushAddMusicScreen('', info.id, info.name) }}

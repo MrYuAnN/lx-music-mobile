@@ -20,11 +20,12 @@ import { updateSetting } from '@/core/common'
 import { toggleTranslation } from '@/core/lyric'
 import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { reloadCurrentWithQuality } from '@/core/player/player'
+import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
+import { createStyle } from '@/utils/tools'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
 import { qualityLabel } from '@/utils/music'
 import { useLrcHasTranslation } from '@/plugins/lyric'
 import { usePlayMusicInfo } from '@/store/player/hook'
-import { createStyle } from '@/utils/tools'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import settingState from '@/store/setting/state'
 
@@ -54,6 +55,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   const theme = useTheme()
   const t = useI18n()
   const musicAddModalRef = useRef<MusicAddModalType>(null)
+  const downloadQualityModalRef = useRef<DownloadQualityModalType>(null)
   const desktopLyricRef = useRef<DesktopLyricEnableType>(null)
   const settingPopupRef = useRef<SettingPopupType>(null)
   const qualitySheetRef = useRef<CheckSheetType>(null)
@@ -144,16 +146,35 @@ const ActionRow = ({ page }: ActionRowProps) => {
     void toggleTranslation(!isShowTranslation)
   }, [isShowTranslation])
 
-  // 封面页动作组（参考图1：收藏/评论/音质/更多）
+  // 下载当前播放歌（2026-10-29 走查反馈：播放页原无下载入口，拍板封面页动作组增第五槽，
+  // 一级直达对标 QQ 音乐播放页；复用列表菜单同一下载链 addDownloadTask）
+  const handleDownloadCurrent = useCallback(() => {
+    const current = playMusicInfo.musicInfo
+    if (!current) return
+    // 下载曲在播取原曲在线身份（'progress' in 判别式对齐下方音质切换）
+    const musicInfo = 'progress' in current ? current.metadata.musicInfo : current
+    if (musicInfo.source == 'local') return
+    // 弹音质选择（走查反馈拍板），默认选中当前播放档（playQuality 即切档后的播放档）
+    downloadQualityModalRef.current?.show(musicInfo, settingState.setting['player.playQuality'])
+  }, [playMusicInfo])
+
+  // 封面页动作组（参考图1：收藏/评论/下载/音质/更多）
+  const currentPlayMusicInfo = playMusicInfo.musicInfo
+  const isDownloadDisabled = (() => {
+    if (!currentPlayMusicInfo) return true
+    const musicInfo = 'progress' in currentPlayMusicInfo ? currentPlayMusicInfo.metadata.musicInfo : currentPlayMusicInfo
+    return musicInfo.source == 'local'
+  })()
   const coverActions = useMemo<ActionItem[]>(() => {
     return [
       { id: 'collect', icon: 'heart-outline', label: t('collect'), onPress: showMusicAddModal },
       { id: 'comment', icon: 'comment', label: t('comment'), onPress: showCommentScreen },
+      { id: 'download', icon: 'download-2', label: t('download_action'), onPress: handleDownloadCurrent, disabled: isDownloadDisabled },
       // 无可消费档位（本地歌等）置灰 + 中性文案，不弹空壳（缺失能力不上界面）
       { id: 'quality', icon: 'album', label: hasQualityOptions ? qualityLabel(playQuality, t) : t('quality'), onPress: showQualitySheet, disabled: !hasQualityOptions },
       { id: 'more', icon: 'more', label: t('more_action'), onPress: showSettingPopup },
     ]
-  }, [t, playQuality, hasQualityOptions, showMusicAddModal, showCommentScreen, showQualitySheet, showSettingPopup])
+  }, [t, playQuality, hasQualityOptions, showMusicAddModal, showCommentScreen, handleDownloadCurrent, isDownloadDisabled, showQualitySheet, showSettingPopup])
 
   // 歌词页动作组（参考图2：字体大小/翻译/悬浮歌词/更多）
   const lyricActions = useMemo<ActionItem[]>(() => {
@@ -192,6 +213,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
         ))
       }
       <MusicAddModal ref={musicAddModalRef} />
+      <DownloadQualityModal ref={downloadQualityModalRef} />
       <DesktopLyricEnable ref={desktopLyricRef} />
       {
         qualitySheetVisible

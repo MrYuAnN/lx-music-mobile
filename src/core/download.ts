@@ -91,12 +91,14 @@ const buildFileName = (musicInfo: LX.Music.MusicInfoOnline, ext: LX.Download.Fil
 }
 
 /** 目标音质向下回退链探测（_qualitys 有档才探测；URL 过期由调用方 isRefresh 重取） */
-const resolveDownloadUrl = async(musicInfo: LX.Music.MusicInfoOnline, isRefresh = false): Promise<{
+const resolveDownloadUrl = async(musicInfo: LX.Music.MusicInfoOnline, isRefresh = false, qualityOverride?: LX.Quality): Promise<{
   url: string
   quality: LX.Quality
   ext: LX.Download.FileExt
 }> => {
-  const target = settingState.setting['download.quality']
+  // 目标档：任务指定档（弹窗选择/重新下载原档）优先，缺省回退下载设置档（2026-10-29 走查反馈：
+  // 下载入口统一弹音质选择，设置档退化为弹窗默认选中）
+  const target = qualityOverride ?? settingState.setting['download.quality']
   const targetIndex = DOWNLOAD_QUALITY_CHAIN.indexOf(target as typeof DOWNLOAD_QUALITY_CHAIN[number])
   const chain = DOWNLOAD_QUALITY_CHAIN.filter((_, i) => i >= targetIndex)
   const qualitys = getOnlineQualitys(musicInfo)
@@ -170,7 +172,7 @@ const runDownloadWithRefresh = async(task: LX.Download.ListItem) => {
     await runDownload(task)
   } catch (err) {
     if (abortedTasks.has(task.id)) throw err
-    const resolved = await resolveDownloadUrl(task.metadata.musicInfo, true)
+    const resolved = await resolveDownloadUrl(task.metadata.musicInfo, true, task.metadata.quality)
     applyResolved(task, resolved)
     await runDownload(task)
   }
@@ -239,7 +241,7 @@ const startTask = async(task: LX.Download.ListItem) => {
   let failed: Error | null = null
   try {
     if (!task.metadata.url) {
-      applyResolved(task, await resolveDownloadUrl(task.metadata.musicInfo))
+      applyResolved(task, await resolveDownloadUrl(task.metadata.musicInfo, false, task.metadata.quality))
     }
     await mkdir(DOWNLOAD_DIR).catch(() => {})
     task.downloaded = 0
@@ -265,6 +267,9 @@ const startTask = async(task: LX.Download.ListItem) => {
     task.status = 'error'
     task.statusText = failed.message || global.i18n.t('download_failed')
     console.warn('[download] task error:', task.id, failed.message) // 排查插桩（疑案结案即删）
+    // 全局 toast 反馈（2026-10-29 走查反馈：播放页/任意页面发起下载后无成败感知）；
+    // 主动中止（暂停/删除）不提示
+    toast(global.i18n.t('download_task_failed', { name: task.metadata.musicInfo.name }))
     notifyChanged()
     pump()
     return
@@ -274,6 +279,7 @@ const startTask = async(task: LX.Download.ListItem) => {
   task.isComplate = true
   task.progress = 100
   task.speed = ''
+  toast(global.i18n.t('download_task_completed', { name: task.metadata.musicInfo.name }))
   notifyChanged()
   pump()
 }
@@ -310,7 +316,7 @@ export const revalidateWifiWaiting = async() => {
  * 同 source+id 去重（审查 I2），已完成同 id 旧记录先移除（重新下载=重置语义，审查 I7）。
  * 返回是否成功入队（false=重复）
  */
-export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline): Promise<boolean> => {
+export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<boolean> => {
   await initDownloadList()
   const taskId = getTaskId(musicInfo)
   downloadList = downloadList.filter(t => !(t.id == taskId && t.status == 'completed'))
@@ -328,7 +334,7 @@ export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline): Promi
     metadata: {
       musicInfo,
       url: null,
-      quality: '128k',
+      quality: quality ?? '128k',
       ext: 'mp3',
       fileName: '',
       filePath: '',

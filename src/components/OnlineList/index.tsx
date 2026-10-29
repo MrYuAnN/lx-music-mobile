@@ -2,13 +2,13 @@ import { useRef, forwardRef, useImperativeHandle } from 'react'
 import { Animated, View } from 'react-native'
 // import LoadingMask, { LoadingMaskType } from '@/components/common/LoadingMask'
 import List, { type ListProps, type ListType, type Status, type RowInfoType } from './List'
+import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
 import { handlePlay, handlePlayLater, handleShare, handleCopyLink } from './listAction'
-import { addDownloadTask } from '@/core/download'
-import { createStyle, toast } from '@/utils/tools'
+import { createStyle } from '@/utils/tools'
 
 export interface OnlineListProps {
   onRefresh: ListProps['onRefresh']
@@ -45,6 +45,8 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   scrollYAnimated,
   contentPaddingTop,
 }, ref) => {
+  const downloadQualityModalRef = useRef<DownloadQualityModalType>(null)
+
   const listRef = useRef<ListType>(null)
   const multipleModeBarRef = useRef<MultipleModeBarType>(null)
   const listMusicAddRef = useRef<ListMusicAddType>(null)
@@ -137,11 +139,10 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
         onCopyLink={info => { handleCopyLink(info.musicInfo) }}
         onAdd={handleAddMusic}
         onDownload={info => {
-          void addDownloadTask(info.musicInfo).then(added => {
-            toast(global.i18n.t(added ? 'download_added' : 'download_exists'))
-          })
+          downloadQualityModalRef.current?.show(info.musicInfo)
         }}
       />
+      <DownloadQualityModal ref={downloadQualityModalRef} />
       {/* <LoadingMask ref={loadingMaskRef} /> */}
     </View>
   )

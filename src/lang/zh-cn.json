@@ -458,6 +458,8 @@
   "download_empty_waiting": "暂无排队的下载任务",
   "download_empty_error": "没有失败的下载任务",
   "download_empty_completed": "暂无已完成的下载",
+  "download_task_completed": "已下载：{name}",
+  "download_task_failed": "下载失败：{name}",
   "download_added": "已加入下载队列",
   "download_exists": "任务已在下载队列中",
   "add_music_to_list": "添加到 {name}",
