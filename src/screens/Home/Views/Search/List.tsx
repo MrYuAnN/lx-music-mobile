@@ -24,6 +24,18 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
   const [showBlankView, setShowListView] = useState(true)
   const listRef = useRef<MusicListType>(null)
   const blankViewRef = useRef<BlankViewType>(null)
+  // 待执行搜索（走查反馈：点热搜/历史词切结果页后 rAF 时 listRef 尚未挂载，loadList 被可选链
+  // 静默吞掉=只填词不搜索）。改为 ref 回调内消费：挂载 commit 同步点必然就绪，消除竞态。
+  const pendingSearchRef = useRef<{ text: string, source: MusicSource | SongListSource } | null>(null)
+
+  const handleListRef = (r: MusicListType | null) => {
+    listRef.current = r
+    if (r && pendingSearchRef.current) {
+      const { text, source } = pendingSearchRef.current
+      pendingSearchRef.current = null
+      r.loadList(text, source)
+    }
+  }
 
   useImperativeHandle(ref, () => ({
     loadList(text, source, type) {
@@ -32,9 +44,13 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
         setShowListView(false)
         setListType(type)
         // const listDetailInfo = searchMusicState.listDetailInfo
-        requestAnimationFrame(() => {
-          listRef.current?.loadList(text, source)
-        })
+        pendingSearchRef.current = { text, source }
+        // 列表已在树上时（连续搜索）ref 回调不再触发，此处直接消费
+        if (listRef.current) {
+          const pending = pendingSearchRef.current
+          pendingSearchRef.current = null
+          listRef.current.loadList(pending.text, pending.source)
+        }
       } else {
         setShowListView(true)
         requestAnimationFrame(() => {
@@ -50,7 +66,7 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
     showBlankView
       ? <BlankView ref={blankViewRef} onSearch={onSearch} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
       : listType == 'songlist'
-        ? <SonglistList ref={listRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
-        : <MusicList ref={listRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
+        ? <SonglistList ref={handleListRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
+        : <MusicList ref={handleListRef} scrollYAnimated={scrollYAnimated} contentPaddingTop={contentPaddingTop} />
   )
 })
