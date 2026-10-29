@@ -13,6 +13,8 @@ import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+import SwipeDeleteRow from '@/components/common/SwipeDeleteRow'
+import { Icon } from '@/components/common/Icon'
 
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { FolderSectionList, AlbumGrid, ArtistList, splitSingers, type MusicGroup, type GroupViewActions } from './GroupViews'
@@ -20,22 +22,30 @@ import { storageDataPrefix, LIST_IDS, SCREEN_HEADER_HEIGHT } from '@/config/cons
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { scanLocalMusic, useLocalMusicList, useLocalMusicScanning, useLocalMusicScanProgress, toMusicInfoLocal } from '@/core/localMusic'
+import { scanLocalMusic, useLocalMusicList, useLocalMusicScanning, useLocalMusicScanProgress, toMusicInfoLocal, removeLocalMusics, isAppDownloadedPath } from '@/core/localMusic'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { pushLocalMusicGroupScreen } from '@/navigation/navigation'
-import { createStyle } from '@/utils/tools'
+import { confirmDialog, createStyle, toast } from '@/utils/tools'
 import { ensureStoragePermission, isStorageGranted } from '@/utils/permissions'
 
-type ViewId = 'all' | 'folder' | 'album' | 'artist'
+// 顶部两 tab（2026-10-29 话题③定稿）：已下载（本 App 下载产物，路径前缀判定）/ 其他音乐（外部扫描）
+type ViewId = 'downloaded' | 'other'
+// 「其他音乐」tab 次级切换（分组降级）：列表/文件夹/专辑/歌手（S1 复用 CategoryChips；分组数据源=其他音乐子集 S15）
+type OtherSubview = 'list' | 'folder' | 'album' | 'artist'
 
-// 本地音乐（multifix 问题 3）：混合判定授权流（老用户无感 / 未授权走 MANAGE 开关页引导）
-// + 纯净搜索框 + 页头 ⋮ 菜单（重新扫描）+ 四视图 chips（全部/文件夹/专辑/歌手）
-// 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：搜索框+chips 钉固定子头（玻璃垫层渐显，Search
-// 终轮 C-2 同款），'all' 主列表延伸整屏真穿行；folder/album/artist 三视图滚动容器已接同一
-// scrollY（子头批转正，方案 §5 已知名额闭环），四视图穿行玻璃行为统一
+const OTHER_SUBVIEWS: readonly OtherSubview[] = ['list', 'folder', 'album', 'artist']
+
+// 编辑底栏高度（占位让位，列表 paddingBottom 防末行被遮）
+const EDIT_BAR_HEIGHT = 56
+
+// 本地音乐页（multifix 问题 3 + 话题③重构）：混合判定授权流 + 纯净搜索框 + 页头右钮（编辑/重新扫描）
+// + 两 tab 二分（已下载/其他音乐）；删除=左滑露钮单删 + 编辑批量（与下载管理同款交互），确认分级
+// ——已下载直删（可重新下载）、其他音乐强确认（文件不可恢复，审查 I-C 对标口径）；
+// 批量仅平铺形态，分组形态与二级屏走行菜单删除（审查 S13 范围声明）
+// 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）沿用
 export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -52,17 +62,17 @@ export default ({ componentId }: { componentId: string }) => {
     [{ nativeEvent: { contentOffset: { y: scrollY } } }],
     { useNativeDriver: true },
   ), [scrollY])
-  // 子头玻璃垫层渐显插值（与 ScreenHeader 同区间同 Value，GLASS_FADE_RANGE 单源）
   const subHeaderFade = scrollY.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
-  // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
   const bottomInset = usePlayerBarBottomInset()
-  // 搜索框+chips 固定子头实测高
   const [subHeaderHeight, setSubHeaderHeight] = useState(0)
-  const [view, setView] = useState<ViewId>('all')
+  const [view, setView] = useState<ViewId>('downloaded')
+  const [subView, setSubView] = useState<OtherSubview>('list')
   const [keyword, setKeyword] = useState('')
   const [permissionDenied, setPermissionDenied] = useState(false)
-  // 未授权首态：整页授权引导（隐藏搜索框/chips/页头⋮）；「暂不授权」后为普通空列表态
   const [showAuthGuide, setShowAuthGuide] = useState(false)
+  // 编辑批量模式（③-3：与下载管理同款交互；taskId 换 item id 集合判定，I-H 同构）
+  const [editMode, setEditMode] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const handleScan = useCallback(() => {
     // 重扫路径同步回写 denied 态（授权/撤销授权后空态随最新结果更新）
@@ -109,11 +119,88 @@ export default ({ componentId }: { componentId: string }) => {
   // LocalMusicItem → MusicInfoLocal 一次转换（统一行 memo 依赖稳定引用）
   const musicInfos = useMemo(() => list.map(toMusicInfoLocal), [list])
 
+  // 两 tab 二分（③-1：路径前缀带分隔符边界，审查 C-1）
+  const { downloadedInfos, otherInfos } = useMemo(() => {
+    const downloaded: LX.Music.MusicInfoLocal[] = []
+    const other: LX.Music.MusicInfoLocal[] = []
+    for (const info of musicInfos) {
+      (isAppDownloadedPath(info.meta.filePath) ? downloaded : other).push(info)
+    }
+    return { downloadedInfos: downloaded, otherInfos: other }
+  }, [musicInfos])
+
+  const activeInfos = view == 'downloaded' ? downloadedInfos : otherInfos
+
   const filtered = useMemo(() => {
-    if (!keyword) return musicInfos
+    if (!keyword) return activeInfos
     const kw = keyword.toLowerCase()
-    return musicInfos.filter(item => item.name.toLowerCase().includes(kw) || item.singer.toLowerCase().includes(kw))
-  }, [musicInfos, keyword])
+    return activeInfos.filter(item => item.name.toLowerCase().includes(kw) || item.singer.toLowerCase().includes(kw))
+  }, [activeInfos, keyword])
+
+  // 编辑批量（③-3）：仅平铺形态开放（分组形态无行概念，审查 S13 范围声明）
+  const editAvailable = view == 'downloaded' || subView == 'list'
+
+  const exitEditMode = useCallback(() => {
+    setEditMode(false)
+    setSelectedIds(new Set())
+  }, [])
+
+  const toggleEditMode = useCallback(() => {
+    if (editMode) exitEditMode()
+    else setEditMode(true)
+  }, [editMode, exitEditMode])
+
+  const toggleSelected = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }, [])
+
+  const allSelected = filtered.length > 0 && filtered.every(item => selectedIds.has(item.id))
+
+  const toggleSelectAll = useCallback(() => {
+    setSelectedIds(prev => (allSelected ? new Set() : new Set(filtered.map(item => item.id))))
+  }, [allSelected, filtered])
+
+  // 左滑删除（③-3 确认分级）：已下载直删+toast（可重新下载）；其他音乐强确认（文件不可恢复）
+  const handleSwipeDelete = useCallback((id: string) => {
+    void (async() => {
+      if (view == 'other' && !await confirmDialog({
+        title: t('local_music_delete'),
+        message: t('local_music_delete_tip_other'),
+      })) return
+      const { failed } = await removeLocalMusics([id])
+      toast(global.i18n.t(failed ? 'local_music_delete_failed' : 'local_music_deleted'))
+    })()
+  }, [view, t])
+
+  const handleBatchDelete = useCallback(async() => {
+    if (!selectedIds.size) return
+    // 批量确认分级（S4 rationale：损失可逆性差异——已下载可重下弱确认、外部文件不可恢复强确认）
+    if (!await confirmDialog({
+      title: t('local_music_delete'),
+      message: t(view == 'other' ? 'local_music_delete_multi_tip' : 'local_music_delete_multi_tip_downloaded', { num: selectedIds.size }),
+    })) return
+    const { failed } = await removeLocalMusics([...selectedIds])
+    toast(global.i18n.t(failed ? 'local_music_delete_failed' : 'local_music_deleted'))
+    exitEditMode()
+  }, [selectedIds, view, t, exitEditMode])
+
+  const handleSongPress = useCallback((item: LX.Music.MusicInfoLocal, playList_: LX.Music.MusicInfoLocal[]) => {
+    // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
+    void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, playList_).then(() => {
+      const index = playList_.findIndex(m => m.id == item.id)
+      if (index > -1) void playList(LIST_IDS.TEMP, index)
+    })
+  }, [])
+
+  // keyword 重过滤后行 item 引用不变、memo 跳过重渲染，行内回调会持有旧 filtered——
+  // 列表经 ref 取当前值，保证播放/菜单注入的队列与屏幕显示一致（架构师 I6 修复）
+  const filteredRef = useRef(filtered)
+  filteredRef.current = filtered
 
   const folders = useMemo(() => {
     const map = new Map<string, LX.Music.MusicInfoLocal[]>()
@@ -182,18 +269,10 @@ export default ({ componentId }: { componentId: string }) => {
     })
   }, [])
 
-  const handleSongPress = useCallback((item: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => {
-    // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
-    void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
-      const index = list.findIndex(m => m.id == item.id)
-      if (index > -1) void playList(LIST_IDS.TEMP, index)
-    })
-  }, [])
-
-  // keyword 重过滤后行 item 引用不变、memo 跳过重渲染，行内回调会持有旧 filtered——
-  // 列表经 ref 取当前值，保证播放/菜单注入的队列与屏幕显示一致（架构师 I6 修复）
-  const filteredRef = useRef(filtered)
-  filteredRef.current = filtered
+  const handleGroupPress = useCallback((type: 'album' | 'artist', group: MusicGroup) => {
+    // 二级屏按 type+value 自行实时派生（审查 I-G），passProps 不再传快照列表
+    pushLocalMusicGroupScreen(componentId, { type, value: group.name })
+  }, [componentId])
 
   const groupActions: GroupViewActions = useMemo(() => ({
     isLiked: id => likedSet.has(id),
@@ -202,13 +281,71 @@ export default ({ componentId }: { componentId: string }) => {
     onShowMenu: (item, viewList) => { menuRef.current?.show(item as LX.Music.MusicInfoLocal, viewList) },
   }), [likedSet, toggleLike, handleSongPress])
 
-  const handleGroupPress = useCallback((type: 'album' | 'artist', group: MusicGroup) => {
-    pushLocalMusicGroupScreen(componentId, { type, value: group.name, list: group.list })
-  }, [componentId])
+  const chips = useMemo(() => ([
+    { id: 'downloaded', label: t('local_music_tab_downloaded') },
+    { id: 'other', label: t('local_music_tab_other') },
+  ]), [t])
 
-  const chips = useMemo(() => {
-    return (['all', 'folder', 'album', 'artist'] as const).map(id => ({ id, label: t(`local_music_view_${id}`) }))
+  const subChips = useMemo(() => {
+    return OTHER_SUBVIEWS.map(id => ({ id, label: t(id == 'list' ? 'local_music_view_list' : `local_music_view_${id}`) }))
   }, [t])
+
+  const switchView = useCallback((id: string) => {
+    setView(id as ViewId)
+    exitEditMode()
+    scrollY.stopAnimation()
+    scrollY.setValue(0)
+  }, [exitEditMode, scrollY])
+
+  const switchSubView = useCallback((id: string) => {
+    setSubView(id as OtherSubview)
+    exitEditMode()
+  }, [exitEditMode])
+
+  // 平铺行公共渲染（两 tab 共用；左滑+勾选+统一行，分组形态走菜单删除——S13 范围声明）
+  const renderFlatRow = useCallback(({ item, index }: { item: LX.Music.MusicInfoLocal, index: number }) => {
+    const isDownloaded = view == 'downloaded'
+    return (
+      <SwipeDeleteRow swipeEnabled={!editMode} deleteLabel={t('local_music_delete')} onDelete={() => { handleSwipeDelete(item.id) }}>
+        <View style={styles.rowWrap}>
+          {
+            editMode
+              ? (
+                  <TouchableOpacity style={styles.checkBtn} activeOpacity={0.6} onPress={() => { toggleSelected(item.id) }}>
+                    <Icon name={selectedIds.has(item.id) ? 'checkbox-marked' : 'checkbox-blank-outline'} size={22} color={selectedIds.has(item.id) ? theme['c-primary'] : theme['c-300']} />
+                  </TouchableOpacity>
+                )
+              : null
+          }
+          <View style={styles.rowMain}>
+            <ListItem
+              item={item}
+              index={index}
+              rowInfo={{ rowNum: undefined, rowWidth: '100%' }}
+              selectedList={[]}
+              showIndex={false}
+              showCover
+              showSource={false}
+              showInterval={false}
+              showSublineInterval
+              isLiked={likedSet.has(item.id)}
+              onLikePress={editMode ? undefined : toggleLike}
+              downloaded={isDownloaded}
+              onPress={() => {
+                if (editMode) {
+                  toggleSelected(item.id)
+                  return
+                }
+                handleSongPress(filteredRef.current[index], filteredRef.current)
+              }}
+              onLongPress={editMode ? undefined : pressedItem => { menuRef.current?.show(pressedItem as LX.Music.MusicInfoLocal, filteredRef.current) }}
+              onShowMenu={editMode ? undefined : itemInfo => { menuRef.current?.show(itemInfo as LX.Music.MusicInfoLocal, filteredRef.current) }}
+            />
+          </View>
+        </View>
+      </SwipeDeleteRow>
+    )
+  }, [view, editMode, selectedIds, likedSet, toggleLike, handleSwipeDelete, toggleSelected, handleSongPress, t, theme])
 
   const headerRight = showAuthGuide
     ? null
@@ -218,13 +355,27 @@ export default ({ componentId }: { componentId: string }) => {
             {scanningLabel}
           </Text>
         )
-      : (
-          <DorpDownMenu menus={[{ label: t('local_music_rescan'), action: 'rescan' }]} onPress={handleRescan}>
-            <View style={styles.headerDots}>
-              <DotsVertical color={theme['c-font-label']} />
+      : editAvailable && filtered.length > 0
+        ? (
+            // 编辑钮与 ⋮ 并排同显（代码轮 I-5 修复：重新扫描入口不被互斥顶替，③-1「⋮ 保留」定稿）
+            <View style={styles.headerActions}>
+              <DorpDownMenu menus={[{ label: t('local_music_rescan'), action: 'rescan' }]} onPress={handleRescan}>
+                <View style={styles.headerDots}>
+                  <DotsVertical color={theme['c-font-label']} />
+                </View>
+              </DorpDownMenu>
+              <TouchableOpacity style={styles.editBtn} activeOpacity={0.6} onPress={toggleEditMode}>
+                <Text size={14} color={theme['c-primary-font']}>{t(editMode ? 'cancel' : 'download_edit')}</Text>
+              </TouchableOpacity>
             </View>
-          </DorpDownMenu>
-        )
+          )
+        : (
+            <DorpDownMenu menus={[{ label: t('local_music_rescan'), action: 'rescan' }]} onPress={handleRescan}>
+              <View style={styles.headerDots}>
+                <DotsVertical color={theme['c-font-label']} />
+              </View>
+            </DorpDownMenu>
+          )
 
   return (
     <PageContent>
@@ -234,11 +385,12 @@ export default ({ componentId }: { componentId: string }) => {
           : (
               <>
                 {
-                  view == 'all'
+                  view == 'downloaded' || subView == 'list'
                     ? (
                         <AnimatedFlatList
+                          key={`${view}-${subView}`}
                           style={styles.list}
-                          contentContainerStyle={{ paddingTop: headerTotal + subHeaderHeight, paddingBottom: bottomInset }}
+                          contentContainerStyle={{ paddingTop: headerTotal + subHeaderHeight, paddingBottom: bottomInset + (editMode ? EDIT_BAR_HEIGHT : 0) }}
                           onScroll={handleScroll}
                           scrollEventThrottle={16}
                           data={filtered}
@@ -248,48 +400,51 @@ export default ({ componentId }: { componentId: string }) => {
                             // 同款先例注记）：本列表无 scrollToIndex 调用故无漂移路径
                             (_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })
                           }
-                          renderItem={({ item, index }) => (
-                            <ListItem
-qualityOverride={item.meta._qualitys}
-                              item={item}
-                              index={index}
-                              rowInfo={{ rowNum: undefined, rowWidth: '100%' }}
-                              selectedList={[]}
-                              showIndex={false}
-                              showCover
-                              showSource={false}
-                              showInterval={false}
-                              showSublineInterval
-                              isLiked={likedSet.has(item.id)}
-                              onLikePress={toggleLike}
-                              onPress={(_, pressIndex) => { handleSongPress(filteredRef.current[pressIndex], filteredRef.current) }}
-                              onLongPress={pressedItem => { menuRef.current?.show(pressedItem as LX.Music.MusicInfoLocal, filteredRef.current) }}
-                              onShowMenu={itemInfo => { menuRef.current?.show(itemInfo as LX.Music.MusicInfoLocal, filteredRef.current) }}
-                            />
-                          )}
+                          renderItem={renderFlatRow}
                           ListEmptyComponent={
                             <EmptyList
-                              denied={permissionDenied}
+                              denied={permissionDenied && view == 'other'}
                               scanning={scanning}
                               scanningLabel={scanningLabel}
                               onOpenSettings={handleGoSettings}
+                              downloaded={view == 'downloaded'}
                             />
                           }
                           showsVerticalScrollIndicator={false}
                         />
                       )
-                    : view == 'folder'
+                    : view == 'other' && subView == 'folder'
                       ? <FolderSectionList folders={folders} actions={groupActions} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
-                      : view == 'album'
+                      : view == 'other' && subView == 'album'
                         ? <AlbumGrid albums={albums} onGroupPress={group => { handleGroupPress('album', group) }} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
                         : <ArtistList artists={artists} onGroupPress={group => { handleGroupPress('artist', group) }} scrollYAnimated={scrollY} contentPaddingTop={headerTotal + subHeaderHeight} />
+                }
+                {
+                  editMode
+                    ? (
+                        <View style={{ ...styles.editBar, bottom: bottomInset }}>
+                          <TouchableOpacity style={styles.editBarSelect} activeOpacity={0.6} onPress={toggleSelectAll}>
+                            <Icon name={allSelected ? 'checkbox-marked' : 'checkbox-blank-outline'} size={18} color={theme['c-primary-font']} />
+                            <Text size={13} color={theme['c-font']}>{t(allSelected ? 'download_select_none' : 'download_select_all')}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={{ ...styles.editBarAction, backgroundColor: selectedIds.size ? theme['c-primary'] : theme['c-border-background'] }}
+                            activeOpacity={0.7}
+                            onPress={() => { void handleBatchDelete() }}
+                          >
+                            <Text size={13} color={selectedIds.size ? theme['c-on-primary'] : theme['c-font-label']}>
+                              {t('download_batch_delete', { num: selectedIds.size })}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )
+                    : null
                 }
               </>
             )
       }
       {/* 悬浮头/钉位子头后声明（RN 后声明者在上，C-1 层级修复）；渐显只包玻璃垫层，内容控件恒显
-          （Search 终轮 C-2 同款）。授权引导态不渲染（子头批审查 I-2：原无条件渲染浮在引导页上，
-          搜索框/chips 成死交互，与 L「未授权首态隐藏搜索框/chips」意图相悖） */}
+          （Search 终轮 C-2 同款）。授权引导态不渲染（子头批审查 I-2） */}
                 {!showAuthGuide && (
                   <View
                     style={{ ...styles.subHeader, top: headerTotal, overflow: 'hidden' }}
@@ -309,8 +464,17 @@ qualityOverride={item.meta._qualitys}
                       />
                     </View>
                     <View style={styles.chips}>
-                      <CategoryChips items={chips} activeId={view} onChange={id => { setView(id as ViewId); scrollY.stopAnimation(); scrollY.setValue(0) }} />
+                      <CategoryChips items={chips} activeId={view} onChange={switchView} />
                     </View>
+                    {
+                      view == 'other'
+                        ? (
+                            <View style={styles.chips}>
+                              <CategoryChips items={subChips} activeId={subView} onChange={switchSubView} />
+                            </View>
+                          )
+                        : null
+                    }
                   </View>
                 )}
             {/* 恒显标题（有钉位子头判据）；授权引导态传 false 回退淡入——引导态无子头无滚动
@@ -358,11 +522,12 @@ const IconDisc = () => {
   )
 }
 
-const EmptyList = ({ denied, scanning, scanningLabel, onOpenSettings }: {
+const EmptyList = ({ denied, scanning, scanningLabel, onOpenSettings, downloaded }: {
   denied: boolean
   scanning: boolean
   scanningLabel: string
   onOpenSettings: () => void
+  downloaded: boolean
 }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -373,9 +538,11 @@ const EmptyList = ({ denied, scanning, scanningLabel, onOpenSettings }: {
           ? <Text size={13} color={theme['c-font-label']}>{scanningLabel}</Text>
           : (
               <>
-                <Text style={styles.emptyHint} size={13} color={theme['c-font-label']}>{t('local_music_empty_hint')}</Text>
+                <Text style={styles.emptyHint} size={13} color={theme['c-font-label']}>
+                  {t(downloaded ? 'local_music_empty_downloaded' : 'local_music_empty_hint')}
+                </Text>
                 {
-                  denied
+                  !downloaded && denied
                     ? (
                         // API<30 拒绝权限后的恢复入口（重扫同样可再触发对话框，永久拒绝时此按钮兜底）
                         <>
@@ -422,9 +589,54 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  editBtn: {
+    paddingHorizontal: SPACING.s12,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   scanLabel: {
     fontSize: 13,
     paddingRight: SPACING.s12,
+  },
+  rowWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  rowMain: {
+    flex: 1,
+  },
+  checkBtn: {
+    width: 36,
+    height: ITEM_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  editBar: {
+    position: 'absolute',
+    left: SPACING.s16,
+    right: SPACING.s16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s12,
+  },
+  editBarSelect: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s6,
+    paddingHorizontal: SPACING.s8,
+    paddingVertical: SPACING.s8,
+  },
+  editBarAction: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 40,
+    borderRadius: 999,
   },
   empty: {
     paddingVertical: 56,

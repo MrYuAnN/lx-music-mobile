@@ -7,6 +7,8 @@ import { setTempList } from '@/core/list'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playList } from '@/core/player/player'
 import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { isAppDownloadedPath, removeLocalMusics } from '@/core/localMusic'
+import { confirmDialog, toast } from '@/utils/tools'
 
 // 本地歌曲行菜单（问题 3 §2.0：播放/下一首播放/收藏），本地音乐主页与聚合二级屏共用
 export interface LocalMusicMenuType {
@@ -31,6 +33,9 @@ export default forwardRef<LocalMusicMenuType>((_, ref) => {
     { action: 'play', label: t('play'), icon: 'play' },
     { action: 'playLater', label: t('play_later'), icon: 'play-later' },
     { action: 'add', label: t('add_to'), icon: 'add-to' },
+    // 删除（2026-10-29 ③-3 定稿 I-A）：主页+二级屏共用自动生效。确认分级随条目判定——
+    // 本 App 下载产物弱确认直删（可重新下载），外部文件强确认（文件不可恢复）
+    { action: 'delete', label: t('local_music_delete'), icon: 'trash' },
   ]
 
   const handleMenuPress = useCallback(({ action }: ActionSheetItem) => {
@@ -51,8 +56,21 @@ export default forwardRef<LocalMusicMenuType>((_, ref) => {
       case 'add':
         listMusicAddRef.current?.show({ musicInfo: item, listId: '', isMove: false })
         break
+      case 'delete': {
+        const downloaded = isAppDownloadedPath(item.meta.filePath)
+        void (async() => {
+          // 其他音乐 tab：单删强确认（文件不可恢复，审查 I-C 对标口径）；已下载直删+toast
+          if (!downloaded && !await confirmDialog({
+            title: t('local_music_delete'),
+            message: t('local_music_delete_tip_other'),
+          })) return
+          const { failed } = await removeLocalMusics([item.id])
+          toast(global.i18n.t(failed ? 'local_music_delete_failed' : 'download_removed'))
+        })()
+        break
+      }
     }
-  }, [])
+  }, [t])
 
   return (
     <>

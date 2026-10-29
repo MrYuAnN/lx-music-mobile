@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
-import { readDir, existsFile, extname, externalStorageDirectoryPath } from '@/utils/fs'
+import { readDir, existsFile, extname, externalStorageDirectoryPath, stat, unlink } from '@/utils/fs'
 import { readMetadata } from '@/utils/localMediaMetadata'
 import { toMD5 } from '@/utils/tools'
-import { getDownloadListSnapshot, initDownloadList } from '@/core/download'
+import { getDownloadListSnapshot, initDownloadList, DOWNLOAD_DIR, removeDownloadTaskByPath } from '@/core/download'
 
 // 音频扩展名与 native jaudiotagger 支持矩阵对齐（ape/aac 解析不支持，移除防静默扫不进）
 const AUDIO_EXTS = ['mp3', 'flac', 'wav', 'm4a', 'ogg']
@@ -19,6 +19,11 @@ const getScanDirs = () => {
   const sd = externalStorageDirectoryPath
   return [`${sd}/Music`, `${sd}/Download`]
 }
+
+/** 本 App 下载产物判定（2026-10-29 ③-1 定稿）：前缀必须带分隔符边界——裸 startsWith 会把
+ * 「拾音备份」「拾音2」等同级目录误判进已下载（审查 C-1：误判文件走弱确认直删，击穿
+ * 其他音乐强确认防线，即网易云「偷删本地文件」传闻的同类别信任事故路径） */
+export const isAppDownloadedPath = (filePath: string) => filePath.startsWith(`${DOWNLOAD_DIR}/`)
 
 export interface LocalMusicItem {
   /** 稳定 id：local__md5(filePath) */
@@ -350,6 +355,123 @@ export const initLocalMusicList = async() => {
       console.warn('init local music list failed', err)
     }
     notifyUpdated()
+    registerDownloadLink()
   })()
   return initPromise
+}
+
+/** 单文件条目构建（下载联动 I-B 用）：存量 size 未变直接回填合成，否则读元数据过滤后合成 */
+const buildLocalMusicItem = async(filePath: string, size: number, downloadByPath: Map<string, LX.Download.ListItem>): Promise<LocalMusicItem | null> => {
+  const existing = localMusicList.find(m => m.filePath == filePath)
+  if (existing && existing.size == size) {
+    return applyDownloadMeta({ path: filePath, size }, existing, downloadByPath)
+  }
+  try {
+    const meta = await readMetadata(filePath)
+    if (!meta || meta.interval < MIN_INTERVAL_SEC || meta.size < MIN_SIZE_BYTES) return null
+    const item = toLocalMusicItem(filePath, {
+      name: meta.name || undefined,
+      singer: meta.singer || undefined,
+      albumName: meta.albumName || undefined,
+      interval: meta.interval,
+      size: meta.size,
+      ext: meta.ext,
+    } as never)
+    return applyDownloadMeta({ path: filePath, size }, item, downloadByPath)
+  } catch {
+    return null
+  }
+}
+
+// 下载联动（2026-10-29 ③ 审查 I-B 定稿）：下载完成/换档/删除后 localMusicList 实时跟进——
+// 新完成文件单文件增量入库（无需重扫/重进页），换档删旧档与外部清理的幽灵条目剔除；
+// 扫描期间跳过（扫描终态自含磁盘实况，审查 I-H 同源）；单飞防事件重入
+let downloadLinkRegistered = false
+let syncingDownloadFiles = false
+let downloadSyncDirty = false
+const registerDownloadLink = () => {
+  if (downloadLinkRegistered) return
+  downloadLinkRegistered = true
+  global.state_event.on('downloadStateChanged', handleDownloadChanged)
+}
+
+const handleDownloadChanged = (_list: LX.Download.ListItem[]) => {
+  if (isScanning) return
+  if (syncingDownloadFiles) {
+    // 单飞窗口内不丢事件：置 dirty，收尾用最新快照重跑（代码轮 I-3 修复）
+    downloadSyncDirty = true
+    return
+  }
+  syncingDownloadFiles = true
+  const drain = (): Promise<void> => syncDownloadFiles(getDownloadListSnapshot()).then(() => {
+    if (downloadSyncDirty) {
+      downloadSyncDirty = false
+      return drain()
+    }
+  }).finally(() => { syncingDownloadFiles = false })
+  void drain()
+}
+
+const syncDownloadFiles = async(list: LX.Download.ListItem[]) => {
+  let changed = false
+  // 幽灵剔除改差集定向（代码轮 I-4 修复）：仅复核「completed 记录已消失」的拾音目录条目
+  // （换档删旧档/删除），不再每事件全量 O(N) existsFile
+  const completedPaths = new Set(list.filter(t => t.status == 'completed').map(t => t.metadata.filePath))
+  for (const item of [...localMusicList]) {
+    if (!isAppDownloadedPath(item.filePath)) continue
+    if (completedPaths.has(item.filePath)) continue
+    if (await existsFile(item.filePath).catch(() => true)) continue
+    localMusicList = localMusicList.filter(m => m.id != item.id)
+    changed = true
+  }
+  // 新完成文件增量入库
+  const downloadByPath = await buildDownloadTaskMap()
+  for (const task of list) {
+    if (task.status != 'completed' || !task.metadata.filePath) continue
+    if (!isAppDownloadedPath(task.metadata.filePath)) continue
+    if (localMusicList.some(m => m.filePath == task.metadata.filePath)) continue
+    try {
+      const size = (await stat(task.metadata.filePath).catch(() => null))?.size ?? 0
+      const item = await buildLocalMusicItem(task.metadata.filePath, size, downloadByPath)
+      if (item) {
+        localMusicList = [...localMusicList, item]
+        changed = true
+      }
+    } catch { /* 单文件入库失败不影响主列表，下次扫描兜底 */ }
+  }
+  if (changed) {
+    saveLocalMusicList()
+    notifyUpdated()
+  }
+}
+
+/** 本地歌曲批量删除（2026-10-29 ③-4 定稿）：下载记录反查删除（引擎 abort+文件族清理，
+ * 不限 status）→ existsFile 复核（审查 I-E 双条件：记录清了但文件残留=失败保留条目）；
+ * isScanning 守卫（审查 I-H：进页自动扫描期间删除会被扫描终态覆盖复活）；
+ * allSettled 并行（审查 S-12）；删除正在播放的文件不特殊处理，
+ * 播完切歌由播放器 handleError 兜底（审查 S-14） */
+export const removeLocalMusics = async(ids: string[]): Promise<{ removed: number, failed: number }> => {
+  if (isScanning) return { removed: 0, failed: ids.length }
+  const targetItems = localMusicList.filter(m => ids.includes(m.id))
+  const results = await Promise.allSettled(targetItems.map(async(item) => {
+    // 下载记录反查（命中走引擎 abort+文件族清理）；无记录=外部文件，自行 unlink
+    // （代码轮 C-1 修复：引擎「调用方仅删文件」约定此前落空，其他音乐 tab 删除必失败）
+    const hasRecord = await removeDownloadTaskByPath(item.filePath)
+    if (!hasRecord) {
+      const baseName = item.filePath.replace(/\.[^.]+$/, '')
+      for (const path of [item.filePath, `${baseName}.lrc`]) {
+        await unlink(path).catch(() => {})
+      }
+    }
+    // 复核双条件（I-E）；existsFile 异常=无法判定，保守按失败保留条目（代码轮 S-13 口径）
+    const remains = await existsFile(item.filePath).catch(() => true)
+    if (remains) throw new Error('file remains')
+  }))
+  const failedIds = new Set(targetItems.filter((_, i) => results[i].status == 'rejected').map(m => m.id))
+  if (failedIds.size < targetItems.length) {
+    localMusicList = localMusicList.filter(m => !ids.includes(m.id) || failedIds.has(m.id))
+    saveLocalMusicList()
+    notifyUpdated()
+  }
+  return { removed: targetItems.length - failedIds.size, failed: failedIds.size }
 }

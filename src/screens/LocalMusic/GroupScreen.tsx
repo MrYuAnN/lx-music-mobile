@@ -6,6 +6,8 @@ import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
+import { useLocalMusicList, toMusicInfoLocal } from '@/core/localMusic'
+import { splitSingers } from './GroupViews'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
@@ -19,14 +21,23 @@ export interface LocalMusicGroupProps {
   type: 'album' | 'artist'
   /** 专辑名/歌手名（页头标题） */
   value: string
-  /** 该聚合下的歌曲（push passProps 快照） */
-  list: LX.Music.MusicInfoLocal[]
+  /** 该聚合下的歌曲（push passProps 快照；实时派生改造后已不传，契约兼容保留） */
+  list?: LX.Music.MusicInfoLocal[]
 }
+
+/** 列表实时派生（2026-10-29 ③ 审查 I-G 定稿）：passProps 是静态快照，主列表删除后二级屏
+ * 仍显示/可播已删文件——改为按 type+value 从本地列表现值过滤派生，passProps.list 仅留契约兼容 */
 
 // 本地音乐聚合二级屏（问题 3 §4.4）：统一歌曲行，点击直接播放（与全应用行交互一致），
 // 长按/三点弹本地歌曲菜单；播放链与主页一致（快照列表注入临时列表）
-export default ({ componentId, value, list }: LocalMusicGroupProps) => {
+export default ({ componentId, type, value }: LocalMusicGroupProps) => {
   const likedSet = useLikedSet()
+  const localList = useLocalMusicList()
+  const list = useMemo(() => {
+    return localList
+      .filter(item => (type == 'album' ? (item.albumName || global.i18n.t('local_music_unknown_album')) == value : splitSingers(item.singer).includes(value)))
+      .map(toMusicInfoLocal)
+  }, [localList, type, value])
   const toggleLike = useLikeToggle()
   // 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）
   const statusBarHeight = useStatusbarHeight()
