@@ -35,7 +35,7 @@ const PRESSED_BACKGROUND = {
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
 // local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, activeIndex = -1, isLiked = false, qualityOverride, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, activeIndex = -1, isLiked = false, qualityOverride, downloaded = false, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -51,6 +51,9 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   isLiked?: boolean
   /** 显式音质标签（下载管理已完成行按实际下载档显示） */
   qualityOverride?: LX.Music._MusicQualityType
+  /** 已下载角标（2026-10-29 ①-4：歌单/搜索/排行榜/收藏统一标记，对标 Apple Music⭕↓/Spotify；
+   * memo comparator 已入比较项，宿主从 useDownloadedSet 取值传入） */
+  downloaded?: boolean
   onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
   onPress: (item: LX.Music.MusicInfo, index: number) => void
   onLongPress?: (item: LX.Music.MusicInfo, index: number) => void
@@ -220,6 +223,11 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
         <View style={styles.info}>
           <Text size={15} style={styles.title} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
           <View style={styles.sublineRow}>
+            {
+              downloaded
+                ? <Icon name="download-2" size={ICON_SIZE.inline} color={theme['c-primary']} style={styles.downloadedBadge} />
+                : null
+            }
             <QualityTag qualitys={qualitys} source={item.source} showSource={showSource} />
             <Text size={12} style={styles.sublineText} color={active ? theme['c-primary-alpha-200'] : theme['c-font-label']} numberOfLines={1}>{subline}</Text>
           </View>
@@ -271,6 +279,7 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
     prevProps.showSublineInterval === nextProps.showSublineInterval &&
     prevProps.isLiked === nextProps.isLiked &&
     prevProps.qualityOverride === nextProps.qualityOverride &&
+    prevProps.downloaded === nextProps.downloaded &&
     prevProps.activeIndex != nextProps.index &&
     nextProps.activeIndex != nextProps.index &&
     prevProps.addAction === nextProps.addAction &&
@@ -345,6 +354,9 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: SPACING.s2,
+  },
+  downloadedBadge: {
+    marginRight: SPACING.s4,
   },
   sublineText: {
     flexGrow: 0,

@@ -4,6 +4,7 @@ import { debounce } from '@/utils'
 import { searchListMusic } from './listAction'
 import { toast, getRowInfo } from '@/utils/tools'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { useI18n } from '@/lang'
 import listState from '@/store/list/state'
 
@@ -103,6 +104,7 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
   }, [subscribeListEvents])
 
   // 定位结果行与歌单列表行同款（真机反馈 2026-10-20：统一行样式，替换原简行）
+  const downloadedSet = useDownloadedSet()
   const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
     <ListItem
       item={item}
@@ -114,9 +116,10 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
       showSource={false}
       // 时长/专辑恒显（治理批 P7-b/c）
       showInterval={true}
+      downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
       onPress={info => { onScrollToInfo(info) }}
     />
-  ), [onScrollToInfo])
+  ), [onScrollToInfo, downloadedSet])
   const getkey: SearchTipListProps['keyExtractor'] = item => item.id
   const getItemLayout: SearchTipListProps['getItemLayout'] = (data, index) => {
     return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }

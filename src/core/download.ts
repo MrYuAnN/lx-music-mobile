@@ -314,18 +314,30 @@ export const revalidateWifiWaiting = async() => {
  * 新增下载任务（歌曲菜单入口）：存储权限前置（未授权任务入队即 error 引导，优化师 I4）；
  * 先恢复持久化表再操作（冷启动防覆盖/去重失效——审查 C2）；
  * 同 source+id 去重（审查 I2），已完成同 id 旧记录先移除（重新下载=重置语义，审查 I7）。
- * 返回是否成功入队（false=重复）
+ * 三态返回（2026-10-29 ①-3 定稿）：added=入队 / exists=任务在途 / downloaded=已完成同档
+ * ——已下载再点不重下（对标 Apple Music/QQ音乐）；档匹配=请求档==落地档 或 ==历史请求档
+ * （审查 I-F：回退链下请求档≠落地档，仅按落地档判定会造成换档误判重复重下循环）；
+ * 判定遍历全部 completed 同 id 任务（S10，filter 多条共存先例）
  */
-export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<boolean> => {
+export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<LX.Download.AddDownloadResult> => {
   await initDownloadList()
   const taskId = getTaskId(musicInfo)
+  const requestedQuality = quality ?? settingState.setting['download.quality']
+  for (const task of downloadList) {
+    if (task.id != taskId || task.status != 'completed') continue
+    if (requestedQuality != task.metadata.quality && requestedQuality != task.metadata.requestedQuality) continue
+    if (task.metadata.filePath && await existsFile(task.metadata.filePath).catch(() => false)) {
+      return { status: 'downloaded', downloadedQuality: task.metadata.quality }
+    }
+  }
   // 换档重下（同曲已有多档旧任务）：替换记录前清旧档文件族——走查反馈：弹窗换档走本函数，
   // 旧档磁盘文件无人清理，被本地扫描重复发现（removeTask 路径仅「重新下载」按钮使用）
   const replaced = downloadList.filter(t => t.id == taskId && t.status == 'completed')
   for (const task of replaced) await removeTaskFiles(task)
   downloadList = downloadList.filter(t => !(t.id == taskId && t.status == 'completed'))
-  if (downloadList.some(t => t.id == taskId)) return false
   const granted = await isStorageGranted()
+  // 去重检查置于 grant await 之后（审查 S9）：与 push 之间无 await，并发双入口不会双入队
+  if (downloadList.some(t => t.id == taskId)) return { status: 'exists' }
   const task: LX.Download.ListItem = {
     id: taskId,
     isComplate: false,
@@ -338,7 +350,9 @@ export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, qualit
     metadata: {
       musicInfo,
       url: null,
-      quality: quality ?? '128k',
+      quality: requestedQuality,
+      // 请求档留痕（审查 I-F）：resolve 回退后 quality 被回写为落地档，请求意图由本字段保留
+      requestedQuality,
       ext: 'mp3',
       fileName: '',
       filePath: '',
@@ -347,7 +361,7 @@ export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, qualit
   downloadList.push(task)
   notifyChanged()
   if (granted) pump()
-  return true
+  return { status: 'added' }
 }
 
 const findTask = (id: string) => downloadList.find(t => t.id == id)
@@ -418,6 +432,16 @@ export const removeDownloadTask = async(id: string) => {
   pump()
 }
 
+/** 按 filePath 反查删除（2026-10-29 ③-5 定稿）：不限 status（审查 I-D——run/waiting 态
+ * filePath 已回写，限定 completed 会让「换档重下中」的删除后任务复活）；
+ * 删除全部匹配记录（审查 S-18：不同源同名歌 buildFileName 产物同名）；
+ * 返回是否有匹配记录（false=非本 App 下载产物，调用方仅删文件即可） */
+export const removeDownloadTaskByPath = async(filePath: string): Promise<boolean> => {
+  const matched = downloadList.filter(t => t.metadata.filePath == filePath)
+  for (const task of matched) await removeDownloadTask(task.id)
+  return matched.length > 0
+}
+
 /** 已完成任务 → 可播放的 MusicInfoLocal（meta.filePath 指向下载文件，走 local 播放分流，蓝本 §5.6）；
  * 保留原曲 picUrl 与在线身份（走查反馈①③：封面即时显示，评论/切档按原曲取链） */
 export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.MusicInfoLocal => {
@@ -467,11 +491,22 @@ export const revalidateCompletedFiles = async(): Promise<boolean> => {
 /**
  * 本地优先播放匹配（走查反馈②，网易云/QQ 已下载歌曲同款）：在线取链前按 source+id 查完成下载任务，
  * 文件在位即返回本地路径——秒开+离线可播；未命中/文件缺失返回空串走在线。
+ * 缺失时顺手修正已下载集合去角标（审查 S-5；lazy require 防与 store 循环 import）
  */
 export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<string> => {
   await initDownloadList()
-  const task = downloadList.find(t => t.id == getTaskId(musicInfo) && t.status == 'completed')
-  if (!task?.metadata.filePath) return ''
-  return (await existsFile(task.metadata.filePath)) ? task.metadata.filePath : ''
+  // 遍历全部 completed 同 id 任务（代码轮 S-12 口径对齐：与三态判定 S10 同构，防首条
+  // 文件缺失即走在线漏检第二条在位文件）；全部 miss 才标记去角标
+  const tasks = downloadList.filter(t => t.id == getTaskId(musicInfo) && t.status == 'completed')
+  let missingPath = ''
+  for (const task of tasks) {
+    if (!task.metadata.filePath) continue
+    if (await existsFile(task.metadata.filePath)) return task.metadata.filePath
+    missingPath = task.metadata.filePath
+  }
+  if (missingPath) {
+    require('@/store/downloaded/action').markDownloadedMissing(musicInfo.source, musicInfo.id, missingPath)
+  }
+  return ''
 }
 

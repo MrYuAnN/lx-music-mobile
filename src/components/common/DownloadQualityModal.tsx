@@ -48,8 +48,14 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
     setVisible(false)
     const musicInfo = infoRef.current
     if (!musicInfo) return
-    void addDownloadTask(musicInfo, item.action as LX.Quality).then(added => {
-      toast(global.i18n.t(added ? 'download_added' : 'download_exists'))
+    // 三态 toast（2026-10-29 ①-3 定稿）：downloaded 带实际落地档（回退链下请求档≠落地档，
+    // 审查 I-F），对标 Apple Music 显示实际已下载版本
+    void addDownloadTask(musicInfo, item.action as LX.Quality).then(({ status, downloadedQuality }) => {
+      if (status == 'downloaded') {
+        toast(global.i18n.t('download_done', { quality: qualityLabel(downloadedQuality ?? '128k', t) }))
+      } else {
+        toast(global.i18n.t(status == 'exists' ? 'download_exists' : 'download_added'))
+      }
     })
   }
 

@@ -17,6 +17,7 @@ import { usePlayInfo, usePlayMusicInfo } from '@/store/player/hook'
 import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useActiveListId, useLikedSet, useLikeToggle } from '@/store/list/hook'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { useTheme } from '@/store/theme/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 import { useDragReorder } from './useDragReorder'
@@ -276,6 +277,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     return viewIndexById.get(id) ?? -1
   }, [activeIndex, currentList, viewIndexById])
   const likedSet = useLikedSet()
+  const downloadedSet = useDownloadedSet()
   const toggleLike = useLikeToggle()
   const handlePlay = (index: number) => {
     // renderItem index 为视图序（批2#8）：playList 按物理序取歌，经 id Map 换算外抛
@@ -492,6 +494,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         showInterval={true}
         activeIndex={activeViewIndex}
         isLiked={likedSet.has(item.id)}
+        downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
         onLikePress={toggleLike}
         onPress={handlePress}
         onLongPress={dragEnabled ? handleLongPressQuiet : handleLongPress}
@@ -560,6 +563,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
                   showInterval={true}
                   activeIndex={-1}
                   isLiked={likedSet.has(drag.dragItem.id)}
+                  downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(drag.dragItem.source, drag.dragItem.id))}
                   onPress={() => {}}
                 />
               </ReAnimated.View>

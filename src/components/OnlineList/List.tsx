@@ -10,6 +10,7 @@ import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useTheme } from '@/store/theme/hook'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { MULTI_SELECT_BAR_HEIGHT } from './MultipleModeBar'
 import { useI18n } from '@/lang'
 import Text from '@/components/common/Text'
@@ -88,6 +89,7 @@ const List = forwardRef<ListType, ListProps>(({
   const [status, setStatus] = useState<Status>('idle')
   const rowInfo = useRef(getRowInfo(rowType))
   const likedSet = useLikedSet()
+  const downloadedSet = useDownloadedSet()
   const toggleLike = useLikeToggle()
   // const currentListIdRef = useRef('')
   // console.log('render music list')
@@ -221,6 +223,7 @@ const List = forwardRef<ListType, ListProps>(({
       // 时长恒显、专辑副行恒显（P7-b/c：删 list.isShowInterval / list.isShowAlbumName 开关）
       showInterval={true}
       isLiked={likedSet.has(item.id)}
+      downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
       onLikePress={toggleLike}
       // OnlineList 数据源恒为在线歌曲，统一行按联合类型收窄，边界处断言
       onPress={(pressedItem, pressIndex) => { handlePress(pressedItem as LX.Music.MusicInfoOnline, pressIndex) }}
