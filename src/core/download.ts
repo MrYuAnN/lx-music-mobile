@@ -319,6 +319,10 @@ export const revalidateWifiWaiting = async() => {
 export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<boolean> => {
   await initDownloadList()
   const taskId = getTaskId(musicInfo)
+  // 换档重下（同曲已有多档旧任务）：替换记录前清旧档文件族——走查反馈：弹窗换档走本函数，
+  // 旧档磁盘文件无人清理，被本地扫描重复发现（removeTask 路径仅「重新下载」按钮使用）
+  const replaced = downloadList.filter(t => t.id == taskId && t.status == 'completed')
+  for (const task of replaced) await removeTaskFiles(task)
   downloadList = downloadList.filter(t => !(t.id == taskId && t.status == 'completed'))
   if (downloadList.some(t => t.id == taskId)) return false
   const granted = await isStorageGranted()
@@ -382,6 +386,21 @@ export const resumeDownloadTask = (id: string) => {
 }
 
 /** 删除：登记中止令牌 + 中断 + unlink 文件（成品含同名 .lrc）+ 清记录 */
+/** 删除任务文件族：音频/.tmp/.lrc + cover sidecar（.文件名.cover.jpg，postProcess 保存）。
+ * 失败可见（warn 不吞）——走查反馈：换档重下后旧档文件族残留被本地扫描重复发现 */
+const removeTaskFiles = async(task: LX.Download.ListItem) => {
+  const { filePath } = task.metadata
+  if (!filePath) return
+  const baseName = filePath.replace(/\.[^.]+$/, '')
+  const dir = filePath.slice(0, filePath.lastIndexOf('/'))
+  const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
+  for (const path of [filePath, `${filePath}.tmp`, `${baseName}.lrc`, `${dir}/.${fileName}.cover.jpg`]) {
+    await unlink(path).catch((err) => {
+      console.warn('[download] remove file failed:', path, (err as Error)?.message)
+    })
+  }
+}
+
 export const removeDownloadTask = async(id: string) => {
   const task = findTask(id)
   if (!task) return
@@ -393,13 +412,7 @@ export const removeDownloadTask = async(id: string) => {
   }
   wifiWaitingIds.delete(id)
   speedTracker.delete(id)
-  const { filePath } = task.metadata
-  if (filePath) {
-    const baseName = filePath.replace(/\.[^.]+$/, '')
-    for (const path of [filePath, `${filePath}.tmp`, `${baseName}.lrc`]) {
-      await unlink(path).catch(() => {})
-    }
-  }
+  await removeTaskFiles(task)
   downloadList = downloadList.filter(t => t.id != id)
   notifyChanged()
   pump()

@@ -62,6 +62,7 @@ export default ({ componentId, value, list }: LocalMusicGroupProps) => {
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
         renderItem={({ item, index }) => (
           <ListItem
+qualityOverride={item.meta._qualitys}
             item={item}
             index={index}
             rowInfo={{ rowNum: undefined, rowWidth: '100%' }}

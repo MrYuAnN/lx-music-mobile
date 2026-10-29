@@ -35,6 +35,7 @@ declare namespace LX {
       filePath: string
       ext: string
       onlineInfo?: MusicInfoOnline // 下载曲的原曲在线身份（评论/切档取链用，扫描本地曲无此字段）
+      _qualitys?: _MusicQualityType // 下载曲回填的实际档（本地页音质标签，2026-10-29 走查反馈）
     }
 
 

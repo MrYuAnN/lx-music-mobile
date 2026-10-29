@@ -51,6 +51,7 @@ const SongRow = memo(({ item, index, list, actions }: {
   actions: GroupViewActions
 }) => (
   <ListItem
+qualityOverride={item.meta._qualitys}
     item={item}
     index={index}
     rowInfo={songRowInfo}

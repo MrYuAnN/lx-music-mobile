@@ -4,6 +4,7 @@ import { storageDataPrefix } from '@/config/constant'
 import { readDir, existsFile, extname, externalStorageDirectoryPath } from '@/utils/fs'
 import { readMetadata } from '@/utils/localMediaMetadata'
 import { toMD5 } from '@/utils/tools'
+import { getDownloadListSnapshot, initDownloadList } from '@/core/download'
 
 // 音频扩展名与 native jaudiotagger 支持矩阵对齐（ape/aac 解析不支持，移除防静默扫不进）
 const AUDIO_EXTS = ['mp3', 'flac', 'wav', 'm4a', 'ogg']
@@ -30,6 +31,12 @@ export interface LocalMusicItem {
   size: number
   ext: string
   filePath: string
+  // 下载曲回填（2026-10-29 走查反馈）：picUrl 直指磁盘 sidecar 封面（file://，零网络），
+  // onlineInfo=原曲在线身份（切档取链/评论/音质展示复用）；随扫描持久化
+  picUrl?: string
+  onlineInfo?: LX.Music.MusicInfoOnline
+  // 下载实际档（单档布尔形态，供 ListItem qualityOverride 点亮音质标签）
+  _qualitys?: LX.Music._MusicQualityType
 }
 
 let localMusicList: LocalMusicItem[] = []
@@ -57,6 +64,21 @@ export const toLocalMusicItem = (filePath: string, meta: {
 }
 
 /** 本地歌曲转播放/收藏用的 MusicInfoLocal */
+// 匹配回写持久化（走查反馈：裸文件播放匹配到封面/歌手后，原 updateListMusics 写歌单存储
+// 对本地页无效——本地页列表在 localMusicList 私有存储，需本接口落盘）
+export const updateLocalMusicMeta = (id: string, patch: Partial<Pick<LocalMusicItem, 'picUrl' | 'singer' | 'albumName'>>): boolean => {
+  const index = localMusicList.findIndex(m => m.id == id)
+  if (index < 0) {
+    console.warn('[localMusic] meta update miss:', id) // 排查插桩（走查反馈回填疑案，结案即删）
+    return false
+  }
+  localMusicList[index] = { ...localMusicList[index], ...patch }
+  saveLocalMusicList()
+  notifyUpdated() // 列表实时刷新（走查反馈：不应重进页面才可见）
+  console.warn('[localMusic] meta updated:', id, String(patch.picUrl).slice(0, 48)) // 排查插桩（结案即删）
+  return true
+}
+
 export const toMusicInfoLocal = (item: LocalMusicItem): LX.Music.MusicInfoLocal => {
   return {
     id: item.id,
@@ -69,6 +91,9 @@ export const toMusicInfoLocal = (item: LocalMusicItem): LX.Music.MusicInfoLocal 
       albumName: item.albumName,
       filePath: item.filePath,
       ext: item.ext,
+      picUrl: item.picUrl,
+      onlineInfo: item.onlineInfo,
+      _qualitys: item._qualitys,
     },
   }
 }
@@ -194,6 +219,46 @@ const scanDirRecursive = async(dirPath: string, depth = 0): Promise<ScanResult> 
  */
 const CONCURRENCY = 4
 
+// 下载曲回填（2026-10-29 走查反馈：本 App 下载的歌在本地页无封面/歌手/音质——
+// 下载 mp3 为纯音频流无 tag，但素材已全存盘：sidecar 封面文件+downloadList 原曲身份。
+// 扫描合并时按 filePath 匹配任务回填，存量已下载歌全覆盖；补全结果随扫描持久化，
+// 下次 size 未变走存量快照直接读（=「下载时存素材、展示直接读」，不再匹配搜索））
+const buildDownloadTaskMap = async(): Promise<Map<string, LX.Download.ListItem>> => {
+  const map = new Map<string, LX.Download.ListItem>()
+  try {
+    await initDownloadList()
+    for (const task of getDownloadListSnapshot()) {
+      if (task.status == 'error') continue
+      map.set(task.metadata.filePath, task)
+    }
+  } catch { /* 下载模块不可用时本地扫描照常（仅缺回填） */ }
+  return map
+}
+
+const applyDownloadMeta = async(file: { path: string, size: number }, item: LocalMusicItem, map: Map<string, LX.Download.ListItem>): Promise<LocalMusicItem> => {
+  const task = map.get(file.path)
+  if (!task) return item
+  const mi = task.metadata.musicInfo
+  // 只补空不覆盖：第三方已写的 tag 优先，防错配污染
+  const enriched: LocalMusicItem = {
+    ...item,
+    name: item.name || mi.name,
+    singer: item.singer || mi.singer,
+    albumName: item.albumName || mi.meta.albumName || '',
+    onlineInfo: mi,
+  }
+  // 封面直读磁盘 sidecar（下载完成时已存 .文件名.cover.jpg），零网络
+  const dir = file.path.slice(0, file.path.lastIndexOf('/'))
+  const fileName = file.path.slice(file.path.lastIndexOf('/') + 1)
+  const coverPath = `${dir}/.${fileName}.cover.jpg`
+  try {
+    if (await existsFile(coverPath)) enriched.picUrl = `file://${coverPath}`
+  } catch { /* 封面探测失败不影响条目 */ }
+  // 下载实际档（单档形态点亮列表音质标签）
+  if (task.metadata.quality) enriched._qualitys = { [task.metadata.quality]: true }
+  return enriched
+}
+
 export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
   if (isScanning) return { failedDirs: [] }
   // （并发重入路径返回空摘要，UI 仅用于 denied 判定）
@@ -212,6 +277,7 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
       failedDirs.push(...result.failedDirs)
     }
     const byPath = new Map(prevList.map(item => [item.filePath, item]))
+  const downloadByPath = await buildDownloadTaskMap()
     // 结果按扫描序落位（并发下保序），null = 文件被过滤/读取失败
     const results: Array<LocalMusicItem | null> = new Array(files.length).fill(null)
     const scannedPaths = new Set<string>()
@@ -224,22 +290,25 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
         const index = nextIndex++
         const file = files[index]
         scannedPaths.add(file.path)
-        // 增量：size 未变的存量条目跳过元数据重读
+        // 增量：size 未变的存量条目跳过元数据重读（下载曲回填在内存合成，命中即补——
+        // 首次补全前已存在的存量也能被覆盖到）
         const existing = byPath.get(file.path)
         if (existing && existing.size == file.size) {
-          results[index] = existing
+          results[index] = downloadByPath.size ? await applyDownloadMeta(file, existing, downloadByPath) : existing
         } else {
           try {
             const meta = await readMetadata(file.path)
             if (meta && meta.interval >= MIN_INTERVAL_SEC && meta.size >= MIN_SIZE_BYTES) {
-              results[index] = toLocalMusicItem(file.path, {
-                name: meta.name,
-                singer: meta.singer,
-                albumName: meta.albumName ?? '',
+              const item = toLocalMusicItem(file.path, {
+                // tag 缺失字段回退原曲身份（readMetadata 对无 tag 文件可能给出文件名解析值）
+                name: meta.name || undefined,
+                singer: meta.singer || undefined,
+                albumName: meta.albumName || undefined,
                 interval: meta.interval,
                 size: meta.size,
                 ext: meta.ext,
-              })
+              } as never)
+              results[index] = await applyDownloadMeta(file, item, downloadByPath)
             }
           } catch {
             // 单文件元数据读取失败：既有条目兜底保留（保守合并场景不被误剔）

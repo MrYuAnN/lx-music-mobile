@@ -1,6 +1,7 @@
 
 import { saveLyric, saveMusicUrl } from '@/utils/data'
 import { updateListMusics } from '@/core/list'
+import { updateLocalMusicMeta } from '@/core/localMusic'
 import {
   buildLyricInfo,
   getCachedLyricInfo,
@@ -102,8 +103,8 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
   }
 
   try {
-    return await getOnlineOtherSourceMusicUrlByLocal(musicInfo, isRefresh).then(({ url, quality, isFromCache }) => {
-      if (!isFromCache) void saveMusicUrl(musicInfo, quality, url)
+    return await getOnlineOtherSourceMusicUrlByLocal(musicInfo, isRefresh).then(({ url, quality, isFromCache, expire }) => {
+      if (!isFromCache) void saveMusicUrl(musicInfo, quality, url, expire)
       return url
     })
   } catch {}
@@ -112,9 +113,9 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
 
   onToggleSource()
   return getOtherSourceByLocal(musicInfo, async(otherSource) => {
-    return getOnlineOtherSourceMusicUrl({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(({ url, quality: targetQuality, musicInfo: targetMusicInfo, isFromCache }) => {
+    return getOnlineOtherSourceMusicUrl({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(({ url, quality: targetQuality, musicInfo: targetMusicInfo, isFromCache, expire }) => {
       // saveLyric(musicInfo, data.lyricInfo)
-      if (!isFromCache) void saveMusicUrl(targetMusicInfo, targetQuality, url)
+      if (!isFromCache) void saveMusicUrl(targetMusicInfo, targetQuality, url, expire)
 
       // TODO: save url ?
       return url
@@ -133,6 +134,12 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
     let pic = await readPic(musicInfo.meta.filePath).catch(() => null)
     if (pic) {
       if (pic.startsWith('/')) pic = `file://${pic}`
+      // 内嵌封面命中也回写（走查反馈：列表项只读 meta.picUrl，不回写=列表恒无封面）；
+      // file:// 直读磁盘，回写后列表/播放页零网络
+      if (musicInfo.meta.picUrl != pic) {
+        musicInfo.meta.picUrl = pic
+        void updateLocalMusicMeta(musicInfo.id, { picUrl: pic })
+      }
       return pic
     }
 
@@ -148,8 +155,20 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
   onToggleSource()
   return getOtherSourceByLocal(musicInfo, async(otherSource) => {
     return getOnlineOtherSourcePicUrl({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(({ url, musicInfo: targetMusicInfo, isFromCache }) => {
-      if (listId) {
+      // 匹配成功顺带补全缺失元数据（走查反馈：无 tag 裸文件歌手/专辑恒空）——
+      // 只补空不覆盖：文件 tag/文件名解析已有值优先，防在线错配污染
+      if (!musicInfo.singer && targetMusicInfo.singer) musicInfo.singer = targetMusicInfo.singer
+      if (!musicInfo.meta.albumName && targetMusicInfo.meta.albumName) musicInfo.meta.albumName = targetMusicInfo.meta.albumName
+      if (musicInfo.source == 'local') {
+        // 裸文件：回写进本地音乐列表存储（updateListMusics 写歌单存储，本地页读不到——走查反馈）
+        console.warn('[local] pic backfill hit:', musicInfo.id, url.slice(0, 48)) // 排查插桩（结案即删）
         musicInfo.meta.picUrl = url
+        void updateLocalMusicMeta(musicInfo.id, {
+          picUrl: url,
+          singer: musicInfo.singer,
+          albumName: musicInfo.meta.albumName,
+        })
+      } else if (listId) {
         void updateListMusics([{ id: listId, musicInfo }])
       }
 

@@ -250,6 +250,7 @@ export default ({ componentId }: { componentId: string }) => {
                           }
                           renderItem={({ item, index }) => (
                             <ListItem
+qualityOverride={item.meta._qualitys}
                               item={item}
                               index={index}
                               rowInfo={{ rowNum: undefined, rowWidth: '100%' }}
