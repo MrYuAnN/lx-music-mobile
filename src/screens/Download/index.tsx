@@ -11,7 +11,7 @@ import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
-import SwipeDeleteRow from '@/components/common/SwipeDeleteRow'
+import SwipeDeleteRow, { closeOpenSwipeRow } from '@/components/common/SwipeDeleteRow'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -280,6 +280,7 @@ export default ({ componentId }: { componentId: string }) => {
                 style={styles.list}
                 contentContainerStyle={{ paddingTop: headerTotal + chipsHeight, paddingBottom: bottomInset + (editMode ? EDIT_BAR_HEIGHT : 0) }}
                 onScroll={handleScroll}
+                onScrollBeginDrag={() => { closeOpenSwipeRow() }}
                 scrollEventThrottle={16}
                 data={completedItems}
                 keyExtractor={({ task }) => task.id}
@@ -329,6 +330,7 @@ export default ({ componentId }: { componentId: string }) => {
                 style={styles.list}
                 contentContainerStyle={{ paddingTop: headerTotal + chipsHeight, paddingBottom: bottomInset + (editMode ? EDIT_BAR_HEIGHT : 0) }}
                 onScroll={handleScroll}
+                onScrollBeginDrag={() => { closeOpenSwipeRow() }}
                 scrollEventThrottle={16}
                 data={filtered}
                 keyExtractor={task => task.id}

@@ -1,23 +1,38 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
-import { StyleSheet, Text, TouchableOpacity } from 'react-native'
-import ReAnimatedSwipeable, { type SwipeableMethods } from 'react-native-gesture-handler/ReanimatedSwipeable'
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import { Gesture, GestureDetector } from 'react-native-gesture-handler'
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
 import { hapticImpactLight } from '@/utils/haptic'
+import { useTheme } from '@/store/theme/hook'
+
 export interface SwipeDeleteRowType {
   close: () => void
 }
 
+const SWIPE_OPEN_WIDTH = 72
+// 横向激活阈值：位移超过才算左滑意图
+const PAN_OFFSET_X = 12
+// 纵向让位阈值：垂直位移超过即手势立即失败、让位列表滚动（2026-10-29 真机反馈：RNGH
+// ReanimatedSwipeable 的 pan 与列表滚动抢事件导致滚动卡顿/点击失效——改项目自建手势
+// 显式声明激活/失败方向，与 ListItem 拖拽手势同款写法）
+const FAIL_OFFSET_Y = 8
+
 // 模块级单开互斥：同屏多行同时只开一条（开新行时收起上一条）
-let openRow: SwipeableMethods | null = null
+let openRowClose: (() => void) | null = null
+
+/** 滚动开始时调用：收起展开行（宿主 onScrollBeginDrag 接线；iOS 同款：滚动即收起） */
+export const closeOpenSwipeRow = () => {
+  try { openRowClose?.() } catch {}
+  openRowClose = null
+}
 
 /**
- * 左滑删除行容器（2026-10-29 ①-1 定稿：左滑露红色删除钮点击删，非 full-swipe 直删——
- * HIG swipe actions：destructive 红色样式，full-swipe 有误触风险）。
- * 下载管理与本地音乐页共用。契约（审查 S-8）：
- * - 零高度/边距增量（不破坏宿主 getItemLayout offset 口径）；
- * - children 透传不感知行内容；删除钮文案与回调宿主注入；
- * - 手势横向激活自动让位垂直滚动（RNGH Swipeable 内置判定）+ 开行触觉反馈；
- * - swipeEnabled 默认 false，宿主显式开启（S7 防手势泄漏）；批量模式宿主传 false 互斥。
+ * 左滑删除行容器（2026-10-29 ①-1 定稿：左滑露红色删除钮点击删，非 full-swipe 直删）。
+ * 下载管理与本地音乐页共用。实现=项目自建 Gesture.Pan（横向激活/纵向让位/触觉反馈/
+ * 单开互斥），删除钮垫在内容下层、内容不透明底色遮挡（真机反馈两轮：透明行红钮常透、
+ * 内容层横向布局压塌行宽——本结构下内容层只做平移不做布局方向）。
+ * swipeEnabled 默认 false，宿主显式开启；批量模式宿主传 false 互斥（含自动收起）。
  */
 const SwipeDeleteRow = forwardRef<SwipeDeleteRowType, {
   swipeEnabled?: boolean
@@ -25,60 +40,84 @@ const SwipeDeleteRow = forwardRef<SwipeDeleteRowType, {
   onDelete: () => void
   children: React.ReactNode
 }>(({ swipeEnabled = false, deleteLabel, onDelete, children }, ref) => {
-  const swipeableRef = useRef<SwipeableMethods>(null)
+  const theme = useTheme()
+  const translateX = useSharedValue(0)
+  const startX = useSharedValue(0)
+  // 单开互斥登记（JS 线程回调，runOnJS(true) 见 pan）
+  const closeSelfRef = useRef(() => {
+    translateX.value = withTiming(0, { duration: 150 })
+  })
 
   useImperativeHandle(ref, () => ({
-    close: () => { swipeableRef.current?.close() },
+    close: () => { closeSelfRef.current() },
   }))
 
-  // 批量互斥（swipeEnabled→false）时收起已展开行：手势已禁、展开态红色删除钮残留=批量模式中的
-  // 漏网单删入口（代码轮 S-2 修复）；卸载时清模块级 openRow 悬垂引用
+  // 批量互斥（swipeEnabled→false）时收起已展开行；卸载时清模块级登记（代码轮 S-2 同源）
   useEffect(() => {
     if (swipeEnabled) return
-    try { swipeableRef.current?.close() } catch {}
-    if (openRow == swipeableRef.current) openRow = null
+    closeSelfRef.current()
+    if (openRowClose == closeSelfRef.current) openRowClose = null
   }, [swipeEnabled])
 
   useEffect(() => () => {
-    if (openRow == swipeableRef.current) openRow = null
+    if (openRowClose == closeSelfRef.current) openRowClose = null
   }, [])
 
-  const handleDelete = () => {
-    if (openRow == swipeableRef.current) openRow = null
-    swipeableRef.current?.close()
-    onDelete()
-  }
+  const pan = Gesture.Pan()
+    .enabled(swipeEnabled)
+    .runOnJS(true)
+    .activeOffsetX([-PAN_OFFSET_X, PAN_OFFSET_X])
+    .failOffsetY([-FAIL_OFFSET_Y, FAIL_OFFSET_Y])
+    .onStart(() => {
+      startX.value = translateX.value
+    })
+    .onUpdate((e) => {
+      // 仅允许左滑开（0 ~ -72），右滑归零
+      translateX.value = Math.max(Math.min(startX.value + e.translationX, 0), -SWIPE_OPEN_WIDTH)
+    })
+    .onEnd((e) => {
+      const shouldOpen = translateX.value < -SWIPE_OPEN_WIDTH / 2 || (e.velocityX < -500 && translateX.value < 0)
+      translateX.value = withTiming(shouldOpen ? -SWIPE_OPEN_WIDTH : 0, { duration: 150 })
+      if (shouldOpen) {
+        hapticImpactLight()
+        // 单开互斥：收起上一条再登记当前
+        try { openRowClose?.() } catch {}
+        openRowClose = closeSelfRef.current
+      }
+    })
+
+  const contentStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }))
 
   return (
-    <ReAnimatedSwipeable
-      ref={swipeableRef}
-      enabled={swipeEnabled}
-      friction={2}
-      rightThreshold={40}
-      overshootRight={false}
-      renderRightActions={() => (
-        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.6} onPress={handleDelete}>
+    <View style={{ width: '100%' }}>
+      {/* 删除钮垫在内容下层：内容层不透明底色遮挡（与页面同源 token），左滑平移露出 */}
+      <View style={[StyleSheet.absoluteFill, styles.deleteUnderlay]}>
+        <TouchableOpacity style={styles.deleteBtn} activeOpacity={0.6} onPress={() => {
+          closeSelfRef.current()
+          if (openRowClose == closeSelfRef.current) openRowClose = null
+          onDelete()
+        }}>
           <Text style={styles.deleteText}>{deleteLabel}</Text>
         </TouchableOpacity>
-      )}
-      onSwipeableWillOpen={() => {
-        hapticImpactLight()
-        // 单开互斥：收起上一条再登记当前（审查①-1 交互一致性）
-        try { openRow?.close() } catch {}
-        openRow = swipeableRef.current
-      }}
-      onSwipeableClose={() => {
-        if (openRow == swipeableRef.current) openRow = null
-      }}
-    >
-      {children}
-    </ReAnimatedSwipeable>
+      </View>
+      <GestureDetector gesture={pan}>
+        <Animated.View style={[contentStyle, { width: '100%', backgroundColor: theme['c-content-background'] }]}>
+          {children}
+        </Animated.View>
+      </GestureDetector>
+    </View>
   )
 })
 
 const styles = StyleSheet.create({
+  deleteUnderlay: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
   deleteBtn: {
-    width: 72,
+    width: SWIPE_OPEN_WIDTH,
     height: '100%',
     alignItems: 'center',
     justifyContent: 'center',
