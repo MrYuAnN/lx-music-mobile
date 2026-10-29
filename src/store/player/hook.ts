@@ -41,6 +41,19 @@ export const usePlayInfo = () => {
   return value
 }
 
+export const useActualQuality = () => {
+  const [value, update] = useState(state.actualQuality)
+
+  useEffect(() => {
+    global.state_event.on('actualQualityChanged', update)
+    return () => {
+      global.state_event.off('actualQualityChanged', update)
+    }
+  }, [])
+
+  return value
+}
+
 export const useStatusText = () => {
   const [value, update] = useState(state.statusText)
 

@@ -3,8 +3,9 @@ import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import CheckSheet, { type CheckSheetType, type CheckSheetItem } from '@/components/common/CheckSheet'
 import { useI18n } from '@/lang'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
-import { qualityLabel } from '@/utils/music'
+import { qualityLabel, qualityLabelMarked } from '@/utils/music'
 import { addDownloadTask } from '@/core/download'
+import { action as downloadedAction } from '@/store/downloaded'
 import { toast } from '@/utils/tools'
 import settingState from '@/store/setting/state'
 
@@ -36,7 +37,12 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
       // 默认档不在可用集（如账号/源差异）时落到最高可用档
       const selected = available.includes(fallback) ? fallback : available[0]
       setValue(selected)
-      setOptions(available.map(q => ({ action: q, label: qualityLabel(q, t) })))
+      // 已下载档标记（2026-10-29 题1 拍板2，单源 getDownloadedQuality）：点它 toast 已存在，选未下载档=换档重下
+      const downloadedQuality = downloadedAction.getDownloadedQuality(musicInfo.source, musicInfo.id)
+      setOptions(available.map(q => ({
+        action: q,
+        label: qualityLabelMarked(q, downloadedQuality, t),
+      })))
       setVisible(true)
       requestAnimationFrame(() => {
         sheetRef.current?.show()

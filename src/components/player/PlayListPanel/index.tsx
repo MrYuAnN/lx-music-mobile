@@ -4,12 +4,14 @@ import { Animated, FlatList, PanResponder, TouchableOpacity, View, type LayoutCh
 import Popup, { type PopupType } from '@/components/common/Popup'
 import Text from '@/components/common/Text'
 import Image from '@/components/common/Image'
-import QualityTag, { getOnlineQualitys } from '@/components/common/QualityTag'
+import QualityTag from '@/components/common/QualityTag'
+import { getOnlineQualitys, toOnlineIdentity } from '@/utils/music'
 import { Icon } from '@/components/common/Icon'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { usePlayMusicInfo } from '@/store/player/hook'
 import playerState from '@/store/player/state'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { playListById } from '@/core/player/player'
 import { getOrderedPlayList, moveQueueItem } from '@/core/player/queue'
 import { createStyle } from '@/utils/tools'
@@ -27,9 +29,11 @@ export interface PlayListPanelType {
   show: () => void
 }
 
-const PlayListItem = memo(({ item, active, onPress, onArmDrag, onReleaseDrag }: {
+const PlayListItem = memo(({ item, active, downloaded = false, onPress, onArmDrag, onReleaseDrag }: {
   item: LX.Music.MusicInfo
   active: boolean
+  /** 已下载标记（2026-10-29 标记重做 D4 全量覆盖）：副行右端锚定，与主列表行同构 */
+  downloaded?: boolean
   onPress: () => void
   onArmDrag: () => void
   onReleaseDrag: () => void
@@ -46,7 +50,17 @@ const PlayListItem = memo(({ item, active, onPress, onArmDrag, onReleaseDrag }: 
             <QualityTag qualitys={getOnlineQualitys(item)} />
             {
               item.singer
-                ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{item.singer}</Text>
+                ? <Text numberOfLines={1} style={styles.sublineText} size={12} color={theme['c-font-label']}>{item.singer}</Text>
+                : null
+            }
+            {
+              downloaded
+                ? (
+                    // wrapper View 承载右锚+间距（审查 I-3）：Svg 的 padding Android 端不可靠
+                    <View style={styles.downloadedBadge}>
+                      <Icon name="check-circle" size={ICON_SIZE.inline} color={theme['c-primary']} />
+                    </View>
+                  )
                 : null
             }
           </View>
@@ -68,6 +82,8 @@ interface DragInfo {
   singer: string
   /** 抓取时快照（拖拽换位后 index 不再对应原行） */
   qualitys: LX.Music._MusicQualityType | undefined
+  /** 抓取时快照：浮层是行的视觉替身，标记同显（对齐 Mylist 拖拽浮层先例，审查 I-4） */
+  downloaded: boolean
 }
 
 export default forwardRef<PlayListPanelType>((_, ref) => {
@@ -79,6 +95,11 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   const [list, setList] = useState<LX.Music.MusicInfo[]>([])
   // 当前播放曲（面板打开期间跟随切歌高亮）
   const playMusicInfo = usePlayMusicInfo()
+  // 已下载标记数据源（标记重做 D4；容器层单点订阅——审查 I-5 防 renderItem 闭包断链），
+  // ref 镜像供 panResponder 首帧闭包取实时集合（grant 快照浮层用）
+  const downloadedSet = useDownloadedSet()
+  const downloadedSetRef = useRef(downloadedSet)
+  downloadedSetRef.current = downloadedSet
 
   const listDataRef = useRef<LX.Music.MusicInfo[]>([])
   const listLayoutRef = useRef({ height: 0 })
@@ -133,6 +154,11 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
         name: item.name,
         singer: item.singer,
         qualitys: getOnlineQualitys(item),
+        // 下载曲 local 形态按原曲在线身份判勾（题3 归一口径，代码审查 I-2-a）
+        downloaded: (() => {
+          const identity = toOnlineIdentity(item)
+          return downloadedSetRef.current.has(downloadedAction.getDownloadedKey(identity.source, identity.id))
+        })(),
       })
     },
     onPanResponderMove: (_, g) => {
@@ -228,18 +254,23 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   // 队列不可见（下载列表/临时榜单缓存丢失）与无队列两种空态区分，避免「正在播放却提示暂无播放列表」的矛盾
   const isPlaying = !!playMusicInfo.musicInfo
 
-  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
-    <PlayListItem
-      item={item}
-      active={!!playMusicInfo.musicInfo && playMusicInfo.musicInfo.id == item.id}
-      onPress={() => { handlePress(item) }}
-      onArmDrag={() => { dragStateRef.current.pressIndex = index }}
-      onReleaseDrag={() => {
-        if (!dragStateRef.current.active) dragStateRef.current.pressIndex = -1
-      }}
-    />
+  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
+    // 下载曲 local 形态按原曲在线身份判勾（题3 归一口径，代码审查 I-2-a）
+    const identity = toOnlineIdentity(item)
+    return (
+      <PlayListItem
+        item={item}
+        active={!!playMusicInfo.musicInfo && playMusicInfo.musicInfo.id == item.id}
+        downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))}
+        onPress={() => { handlePress(item) }}
+        onArmDrag={() => { dragStateRef.current.pressIndex = index }}
+        onReleaseDrag={() => {
+          if (!dragStateRef.current.active) dragStateRef.current.pressIndex = -1
+        }}
+      />
+    )
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ), [playMusicInfo.musicInfo, handlePress])
+  }, [playMusicInfo.musicInfo, handlePress, downloadedSet])
 
   const handleLayout = useCallback(({ nativeEvent }: LayoutChangeEvent) => {
     listLayoutRef.current.height = nativeEvent.layout.height
@@ -282,7 +313,16 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
                                   <QualityTag qualitys={drag.qualitys} />
                                   {
                                     drag.singer
-                                      ? <Text numberOfLines={1} size={12} color={theme['c-font-label']}>{drag.singer}</Text>
+                                      ? <Text numberOfLines={1} style={styles.sublineText} size={12} color={theme['c-font-label']}>{drag.singer}</Text>
+                                      : null
+                                  }
+                                  {
+                                    drag.downloaded
+                                      ? (
+                                          <View style={styles.downloadedBadge}>
+                                            <Icon name="check-circle" size={ICON_SIZE.inline} color={theme['c-primary']} />
+                                          </View>
+                                        )
                                       : null
                                   }
                                 </View>
@@ -342,6 +382,16 @@ const styles = createStyle({
   itemSubline: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  // 歌手文本可收缩（主列表 sublineText 同构）：防长歌手挤出右锚标记
+  sublineText: {
+    flexShrink: 1,
+  },
+  // 副行右端锚定（标记重做 D2 同构）：wrapper View 承载（审查 I-3，Svg padding Android 不可靠），
+  // auto margin 钉右缘，paddingLeft 防省略号贴勾
+  downloadedBadge: {
+    marginLeft: 'auto',
+    paddingLeft: SPACING.s4,
   },
   itemGrip: {
     width: 40,

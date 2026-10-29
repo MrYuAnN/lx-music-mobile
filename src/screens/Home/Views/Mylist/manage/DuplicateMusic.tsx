@@ -13,6 +13,8 @@ import { useUnmounted } from '@/utils/hooks'
 import { playList } from '@/core/player/player'
 import { useI18n } from '@/lang'
 import { handleRemove } from '../MusicList/listAction'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
+import { toOnlineIdentity } from '@/utils/music'
 import Button from '@/components/common/Button'
 import { SPACING } from '@/config/spacing'
 
@@ -40,9 +42,11 @@ const Empty = () => {
   )
 }
 
-const ListItem = memo(({ info, index, onRemove, onPlay, selectedList, onPress }: {
+const ListItem = memo(({ info, index, downloaded = false, onRemove, onPlay, selectedList, onPress }: {
   info: DuplicateMusicItem
   index: number
+  /** 已下载标记（2026-10-29 标记重做 D4）：副行右端锚定，与主列表行同构 */
+  downloaded?: boolean
   selectedList: DuplicateMusicItem[]
   onPlay: (info: DuplicateMusicItem) => void
   onRemove: (idx: number) => void
@@ -59,7 +63,7 @@ const ListItem = memo(({ info, index, onRemove, onPlay, selectedList, onPress }:
       <TouchableOpacity style={styles.listItemInfo} onPress={() => { onPress(info) }}>
         <Text color={theme['c-font']} size={14} numberOfLines={1}>{info.musicInfo.name}</Text>
         <View style={styles.listItemAlbum}>
-          <Text color={theme['c-font']} size={12} numberOfLines={1}>
+          <Text style={styles.listItemSublineText} color={theme['c-font']} size={12} numberOfLines={1}>
             {info.musicInfo.singer}
             {
               info.musicInfo.meta.albumName ? (
@@ -67,6 +71,16 @@ const ListItem = memo(({ info, index, onRemove, onPlay, selectedList, onPress }:
               ) : null
             }
           </Text>
+          {
+            downloaded
+              ? (
+                  // wrapper View 承载右锚+间距（审查 I-3）：Svg 的 padding Android 端不可靠
+                  <View style={styles.downloadedBadge}>
+                    <Icon name="check-circle" size={ICON_SIZE.inline} color={theme['c-primary']} />
+                  </View>
+                )
+              : null
+          }
         </View>
       </TouchableOpacity>
       <View style={styles.listItemLabel}>
@@ -86,6 +100,7 @@ const ListItem = memo(({ info, index, onRemove, onPlay, selectedList, onPress }:
 }, (prevProps, nextProps) => {
   return prevProps.info === nextProps.info &&
   prevProps.index === nextProps.index &&
+  prevProps.downloaded === nextProps.downloaded &&
   nextProps.selectedList.includes(nextProps.info) == prevProps.selectedList.includes(nextProps.info)
 })
 
@@ -112,6 +127,8 @@ const List = ({ listId }: { listId: string }) => {
   const [selectedList, setSelectedList] = useState<DuplicateMusicItem[]>([])
   const dataRef = useRef<[DuplicateMusicItem[], DuplicateMusicItem[]]>([[], []])
   const isUnmountedRef = useUnmounted()
+  // 已下载标记数据源（容器层单点订阅，审查 I-5）
+  const downloadedSet = useDownloadedSet()
 
   const handleFilterList = useCallback(() => {
     if (isUnmountedRef.current) return
@@ -178,8 +195,18 @@ const List = ({ listId }: { listId: string }) => {
   useEffect(handleFilterList, [handleFilterList])
 
   const renderItem = useCallback(({ item, index }: { item: DuplicateMusicItem, index: number }) => {
-    return <ListItem info={item} index={index} onPlay={handlePlay} onRemove={handleRemovePress} selectedList={selectedList} onPress={handleSelect} />
-  }, [handlePlay, handleRemovePress, handleSelect, selectedList])
+    // 下载曲 local 形态按原曲在线身份判勾（题3 归一口径，代码审查 I-2-a）
+    const identity = toOnlineIdentity(item.musicInfo)
+    return <ListItem
+      info={item}
+      index={index}
+      downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))}
+      onPlay={handlePlay}
+      onRemove={handleRemovePress}
+      selectedList={selectedList}
+      onPress={handleSelect}
+    />
+  }, [handlePlay, handleRemovePress, handleSelect, selectedList, downloadedSet])
   const getkey = useCallback<NonNullable<FlatListProps['keyExtractor']>>(item => item.id, [])
   const getItemLayout = useCallback<NonNullable<FlatListProps['getItemLayout']>>((data, index) => {
     return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
@@ -306,6 +333,15 @@ const styles = createStyle({
   listItemAlbum: {
     flexDirection: 'row',
     marginTop: SPACING.s4,
+  },
+  // 歌手文本可收缩：防长歌手挤出右锚标记（主列表 sublineText 同构）
+  listItemSublineText: {
+    flexShrink: 1,
+  },
+  // 已下载标记副行右端锚定（标记重做 D2 同构）：wrapper View 承载（审查 I-3）
+  downloadedBadge: {
+    marginLeft: 'auto',
+    paddingLeft: SPACING.s4,
   },
   listItemLabel: {
     flex: 0,

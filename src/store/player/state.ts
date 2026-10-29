@@ -16,6 +16,9 @@ export interface InitState {
   playInfo: LX.Player.PlayInfo
   musicInfo: LX.Player.MusicInfo
 
+  /** 实际播放档（2026-10-29 题1 拍板4）：本地优先命中=下载档、在线=回退链落地档；null=未落地（UI 回退全局设置档）。换歌/停止重置 */
+  actualQuality: LX.Quality | null
+
   isPlay: boolean
   volume: number
   playRate: number
@@ -64,6 +67,7 @@ const state: InitState = {
   },
 
   isPlay: false,
+  actualQuality: null,
   volume: 1,
   playRate: 1,
   statusText: '',

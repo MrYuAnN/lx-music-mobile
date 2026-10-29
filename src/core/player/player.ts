@@ -3,6 +3,7 @@ import {
   setStatusText,
 } from '@/core/player/playStatus'
 import playerState from '@/store/player/state'
+import playerActions from '@/store/player/action'
 import settingState from '@/store/setting/state'
 import {
   getList,
@@ -74,13 +75,13 @@ const diffCurrentMusicInfo = (curMusicInfo: LX.Music.MusicInfo | LX.Download.Lis
 }
 
 let cancelDelayRetry: (() => void) | null = null
-const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, allowReload = false): Promise<string | null> => {
+const delayRetry = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, allowReload = false, onQualityResolved?: (meta: { quality: LX.Quality, isLocal: boolean }) => void): Promise<string | null> => {
   // if (cancelDelayRetry) cancelDelayRetry()
   return new Promise<string | null>((resolve, reject) => {
     const time = getRandom(2, 6)
     setStatusText(global.i18n.t('player__getting_url_delay_retry', { time }))
     const tiemout = setTimeout(() => {
-      getMusicPlayUrl(musicInfo, isRefresh, true, allowReload).then((result) => {
+      getMusicPlayUrl(musicInfo, isRefresh, true, allowReload, onQualityResolved).then((result) => {
         cancelDelayRetry = null
         resolve(result)
       }).catch(async(err: any) => {
@@ -102,9 +103,7 @@ const isRequestStale = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, al
     ? musicInfo.id != playerState.playMusicInfo.musicInfo?.id
     : diffCurrentMusicInfo(musicInfo)
 }
-const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false, allowReload = false): Promise<string | null> => {
-  // this.musicInfo.url = await getMusicPlayUrl(targetSong, type)
-  console.warn('[play] getMusicPlayUrl entry:', ('progress' in musicInfo ? musicInfo.metadata.musicInfo.name : musicInfo.name)) // 排查插桩（疑案结案即删）
+const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false, isRetryed = false, allowReload = false, onQualityResolved?: (meta: { quality: LX.Quality, isLocal: boolean }) => void): Promise<string | null> => {
   setStatusText(global.i18n.t('player__getting_url'))
   addLoadTimeout()
 
@@ -115,10 +114,12 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
     musicInfo: toggleMusicInfo,
     isRefresh,
     allowToggleSource: false,
+    onQualityResolved,
   }) : Promise.reject(new Error('not found'))).catch(async() => {
     return getMusicUrl({
       musicInfo,
       isRefresh,
+      onQualityResolved,
       onToggleSource(mInfo) {
         if (isRequestStale(musicInfo, allowReload)) return
         setStatusText(global.i18n.t('toggle_source_try'))
@@ -134,9 +135,9 @@ const getMusicPlayUrl = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListIt
       isRequestStale(musicInfo, allowReload) ||
       err.message == requestMsg.cancelRequest) return null
 
-    if (err.message == requestMsg.tooManyRequests) return delayRetry(musicInfo, isRefresh, allowReload)
+    if (err.message == requestMsg.tooManyRequests) return delayRetry(musicInfo, isRefresh, allowReload, onQualityResolved)
 
-    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true, allowReload)
+    if (!isRetryed) return getMusicPlayUrl(musicInfo, isRefresh, true, allowReload, onQualityResolved)
 
     throw err
   })
@@ -159,7 +160,11 @@ const startMusicUrlLoad = (
   // 会话序号：同曲并发取链（连续切档/暂停态在途×切档）时区分先后——过期回包（已有更新发起）
   // 不落地，清理只归最新会话（防旧会话 finally 清掉新会话的守卫与挂死超时兜底）
   const sessionId = ++loadSessionSeq
-  void getMusicPlayUrl(musicInfo, isRefresh, false, options.allowReload).then((url) => {
+  void getMusicPlayUrl(musicInfo, isRefresh, false, options.allowReload, (meta) => {
+    // 实际播放档落 store（2026-10-29 题1 拍板4）：过期会话不落地（与 url 丢弃同口径）
+    if (sessionId !== loadSessionSeq) return
+    playerActions.setActualQuality(meta.quality)
+  }).then((url) => {
     if (!url) return
     if (sessionId !== loadSessionSeq) return
     options.onLoaded(url)
@@ -358,13 +363,6 @@ export const playList = async(listId: string, index: number) => {
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   setPlayMusicInfo(listId, getList(listId)[index])
-  // 排查插桩（疑案结案即删）：播放器实际入队对象取证
-  {
-    const resolved = getList(listId)[index]
-    if (resolved && !('progress' in resolved)) {
-      console.warn('[play] playList resolve:', listId, index, resolved.name, '->', (resolved.meta as LX.Music.MusicInfoMeta_local).filePath ?? '')
-    }
-  }
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
   await handlePlay()
@@ -696,6 +694,8 @@ export const pause = async() => {
  */
 export const stop = async() => {
   await setStop()
+  // 停止态清空实际播放档（2026-10-29 题1 拍板4）：防残留旧档显示
+  playerActions.setActualQuality(null)
   setTimeout(() => {
     global.app_event.stop()
   })

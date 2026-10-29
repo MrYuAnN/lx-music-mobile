@@ -39,12 +39,20 @@ export const setPic = (datas: {
  */
 
 
-export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSource = true, onToggleSource = () => {} }: {
+/** 取链质量回传（2026-10-29 题1 拍板4）：quality=缓存请求档或回退链落地档，isLocal=是否本地文件
+ * （当前消费仅 quality；isLocal 预留播放页「本地文件在播」标识，勿因暂无消费删除） */
+export interface MusicUrlQualityMeta {
+  quality: LX.Quality
+  isLocal: boolean
+}
+
+export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSource = true, onToggleSource = () => {}, onQualityResolved }: {
   musicInfo: LX.Music.MusicInfoOnline
   quality?: LX.Quality
   isRefresh: boolean
   allowToggleSource?: boolean
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  onQualityResolved?: (meta: MusicUrlQualityMeta) => void
 }): Promise<string> => {
   // if (!musicInfo._types[type]) {
   //   // 兼容旧版酷我源搜索列表过滤128k音质的bug
@@ -54,11 +62,15 @@ export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSou
   // }
   const targetQuality = quality ?? getPlayQuality(settingState.setting['player.playQuality'], musicInfo)
   const cachedUrl = await getStoreMusicUrl(musicInfo, targetQuality)
-  if (cachedUrl && !isRefresh) return cachedUrl
+  if (cachedUrl && !isRefresh) {
+    onQualityResolved?.({ quality: targetQuality, isLocal: false })
+    return cachedUrl
+  }
 
-  return handleGetOnlineMusicUrl({ musicInfo, quality, onToggleSource, isRefresh, allowToggleSource }).then(({ url, quality: targetQuality, musicInfo: targetMusicInfo, isFromCache, expire }) => {
-    if (targetMusicInfo.id != musicInfo.id && !isFromCache) void saveMusicUrl(targetMusicInfo, targetQuality, url, expire)
-    void saveMusicUrl(musicInfo, targetQuality, url, expire)
+  return handleGetOnlineMusicUrl({ musicInfo, quality, onToggleSource, isRefresh, allowToggleSource }).then(({ url, quality: finalQuality, musicInfo: targetMusicInfo, isFromCache, expire }) => {
+    if (targetMusicInfo.id != musicInfo.id && !isFromCache) void saveMusicUrl(targetMusicInfo, finalQuality, url, expire)
+    void saveMusicUrl(musicInfo, finalQuality, url, expire)
+    onQualityResolved?.({ quality: finalQuality, isLocal: false })
     return url
   })
 }

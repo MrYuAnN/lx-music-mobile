@@ -21,7 +21,7 @@ const PlayPrevBtn = () => {
 
   return (
     <TouchableOpacity style={styles.cotrolBtn} activeOpacity={0.5} onPress={handlePlayPrev}>
-      <Icon name='prevMusic' color={theme['c-button-font']} size={ICON_SIZE.control} />
+      <Icon name='prevMusic' weight='light' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }
@@ -31,7 +31,7 @@ const PlayNextBtn = () => {
 
   return (
     <TouchableOpacity style={styles.cotrolBtn} activeOpacity={0.5} onPress={handlePlayNext}>
-      <Icon name='nextMusic' color={theme['c-button-font']} size={ICON_SIZE.control} />
+      <Icon name='nextMusic' weight='light' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }
@@ -45,7 +45,8 @@ const TogglePlayBtn = () => {
       hapticImpactLight()
       togglePlay()
     }}>
-      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} size={ICON_SIZE.control} />
+      // 播放条三键 light 细线（走查反馈 2026-10-29：regular 三角太粗犷）
+      <Icon name={isPlay ? 'pause' : 'play'} weight='light' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )
 }

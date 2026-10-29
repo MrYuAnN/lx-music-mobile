@@ -302,9 +302,10 @@ export default ({ componentId }: { componentId: string }) => {
     exitEditMode()
   }, [exitEditMode])
 
-  // 平铺行公共渲染（两 tab 共用；左滑+勾选+统一行，分组形态走菜单删除——S13 范围声明）
+  // 平铺行公共渲染（两 tab 共用；左滑+勾选+统一行，分组形态走菜单删除——S13 范围声明）。
+  // 行内不传 downloaded：已下载 tab 行行皆已下载，逐行再标是零信息量冗余，与下载管理页
+  // 聚合页判据统一（标记重做 I-2 拍板 b，2026-10-29）
   const renderFlatRow = useCallback(({ item, index }: { item: LX.Music.MusicInfoLocal, index: number }) => {
-    const isDownloaded = view == 'downloaded'
     return (
       <SwipeDeleteRow swipeEnabled={!editMode} deleteLabel={t('local_music_delete')} onDelete={() => { handleSwipeDelete(item.id) }}>
         <View style={styles.rowWrap}>
@@ -326,11 +327,12 @@ export default ({ componentId }: { componentId: string }) => {
               showIndex={false}
               showCover
               showSource={false}
-              showInterval={false}
-              showSublineInterval
+              // 时长行尾独立显示（2026-10-29 走查拍板）：与全应用列表行结构统一，去 MX-1 降级路径
+              showInterval
+              // 下载曲回填档显示（2026-10-29 题1 拍板5）：裸文件无 _qualitys 自然降级无标签
+              qualityOverride={item.meta._qualitys}
               isLiked={likedSet.has(item.id)}
               onLikePress={editMode ? undefined : toggleLike}
-              downloaded={isDownloaded}
               onPress={() => {
                 if (editMode) {
                   toggleSelected(item.id)
@@ -345,7 +347,7 @@ export default ({ componentId }: { componentId: string }) => {
         </View>
       </SwipeDeleteRow>
     )
-  }, [view, editMode, selectedIds, likedSet, toggleLike, handleSwipeDelete, toggleSelected, handleSongPress, t, theme])
+  }, [editMode, selectedIds, likedSet, toggleLike, handleSwipeDelete, toggleSelected, handleSongPress, t, theme])
 
   const headerRight = showAuthGuide
     ? null

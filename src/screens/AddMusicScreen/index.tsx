@@ -20,6 +20,8 @@ import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useMyList } from '@/store/list/hook'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
+import { toOnlineIdentity } from '@/utils/music'
 import { useWindowSize } from '@/utils/hooks'
 import { pop } from '@/navigation'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
@@ -69,6 +71,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const localMusicList = useLocalMusicList()
   const windowSize = useWindowSize()
   const lists = useMyList()
+  const downloadedSet = useDownloadedSet()
 
   const scrollY = useRef(new Animated.Value(0)).current
   const handleScroll = useMemo(() => Animated.event(
@@ -384,22 +387,27 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       : null
   }, [status, source, keyword, theme, t, handleRetry])
 
-  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
-    <ListItem
-      item={item}
-      index={index}
-      rowInfo={rowInfo}
-      selectedList={pickSelected}
-      showIndex={false}
-      showCover
-      showSource={source != 'search' && source != 'local'}
-      // 时长/专辑恒显（治理批 P7-b/c）
-      showInterval={true}
-      onPress={handlePress}
-      addAction={handleAddAction}
-      added={addedIds.has(item.id)}
-    />
-  ), [rowInfo, pickSelected, source, handlePress, handleAddAction, addedIds])
+  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
+    // 下载曲以 local 形态出现在 local chip 时按原曲在线身份判勾、裸本地不标（题3 归一口径，代码审查 I-2-a）
+    const identity = toOnlineIdentity(item)
+    return (
+      <ListItem
+        item={item}
+        index={index}
+        rowInfo={rowInfo}
+        selectedList={pickSelected}
+        showIndex={false}
+        showCover
+        showSource={source != 'search' && source != 'local'}
+        // 时长/专辑恒显（治理批 P7-b/c）；download 来源 chip 行行皆已下载，聚合页判据不标（标记重做 I-2 拍板 b 同型）
+        showInterval={true}
+        downloaded={source != 'download' && downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))}
+        onPress={handlePress}
+        addAction={handleAddAction}
+        added={addedIds.has(item.id)}
+      />
+    )
+  }, [rowInfo, pickSelected, source, handlePress, handleAddAction, addedIds, downloadedSet])
 
   const keyExtractor = useCallback((item: LX.Music.MusicInfo) => item.id, [])
   const getItemLayout = useCallback((_data: ArrayLike<LX.Music.MusicInfo> | null | undefined, index: number) => (

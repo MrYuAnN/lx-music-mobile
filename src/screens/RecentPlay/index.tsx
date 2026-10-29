@@ -16,6 +16,8 @@ import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
+import { toOnlineIdentity } from '@/utils/music'
 import { LIST_IDS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 
@@ -32,6 +34,7 @@ export default ({ componentId }: { componentId: string }) => {
   // 底部穿行契约（2026-10-20）：列表延伸到屏底，让位保证末行可滚出迷你条
   const bottomInset = usePlayerBarBottomInset()
   const [list, setList] = useState<RecentPlayItem[]>(() => [...getRecentPlayList()])
+  const downloadedSet = useDownloadedSet()
   // 广播同步（新批问题1）：空表时整表采纳（initRecentPlay 初值灌入）；其后保序替换命中行并移除已删行，
   // 新增不插入（浏览期不重排约定不变，仅豁免封面回写与删除的行内容同步）
   useEffect(() => {
@@ -119,23 +122,28 @@ export default ({ componentId }: { componentId: string }) => {
         data={list}
         keyExtractor={item => `${item.musicInfo.source}__${item.musicInfo.id}`}
         getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-        renderItem={({ item, index }) => (
-          <ListItem
-            item={item.musicInfo}
-            index={index}
-            rowInfo={{ rowNum: undefined, rowWidth: '100%' }}
-            selectedList={[]}
-            showIndex={false}
-            showCover
-            showSource={false}
-            showInterval
-            isLiked={likedSet.has(item.musicInfo.id)}
-            onLikePress={toggleLike}
-            onPress={(_, pressIndex) => { void handlePlay(pressIndex) }}
-            onLongPress={(pressedItem, pressIndex) => { showMenu(pressedItem, pressIndex) }}
-            onShowMenu={showMenu}
-          />
-        )}
+        renderItem={({ item, index }) => {
+          // 下载曲以 local 形态入最近播放时按原曲在线身份判勾（题3 归一口径，代码审查 I-2-a）
+          const identity = toOnlineIdentity(item.musicInfo)
+          return (
+            <ListItem
+              item={item.musicInfo}
+              index={index}
+              rowInfo={{ rowNum: undefined, rowWidth: '100%' }}
+              selectedList={[]}
+              showIndex={false}
+              showCover
+              showSource={false}
+              showInterval
+              isLiked={likedSet.has(item.musicInfo.id)}
+              downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))}
+              onLikePress={toggleLike}
+              onPress={(_, pressIndex) => { void handlePlay(pressIndex) }}
+              onLongPress={(pressedItem, pressIndex) => { showMenu(pressedItem, pressIndex) }}
+              onShowMenu={showMenu}
+            />
+          )
+        }}
         ListEmptyComponent={EmptyList}
         showsVerticalScrollIndicator={false}
       />

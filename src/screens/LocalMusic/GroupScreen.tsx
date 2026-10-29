@@ -81,8 +81,8 @@ qualityOverride={item.meta._qualitys}
             showIndex={false}
             showCover
             showSource={false}
-            showInterval={false}
-            showSublineInterval
+            // 时长行尾独立显示（2026-10-29 走查拍板）：与全应用列表行结构统一
+            showInterval
             isLiked={likedSet.has(item.id)}
             onLikePress={toggleLike}
             onPress={(_, pressIndex) => { handlePlay(list[pressIndex], list) }}

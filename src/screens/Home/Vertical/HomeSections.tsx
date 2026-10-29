@@ -25,6 +25,7 @@ import { SPACING } from '@/config/spacing'
 import { hapticImpactLight } from '@/utils/haptic'
 import { prefetchAmbientColor } from '@/utils/ambientColor'
 import { useSettingValue } from '@/store/setting/hook'
+import { useNavActiveId } from '@/store/common/hook'
 import { existsFile } from '@/utils/fs'
 import { setDefaultCover } from '@/core/defaultCover'
 import { queueCoverGen, syncShelfCovers, isCurrentLayoutPic } from '@/utils/playlistCoverGen'
@@ -159,12 +160,15 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
     void playList(LIST_IDS.LOVE, 0)
   }
 
-  // 四功能入口（本地/下载/排行榜/歌单广场）全网仅此一处调用点，首页一键直达底线维持
-  const navItems: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, action: () => void }> = [
+  // 四功能入口（本地/下载/排行榜/歌单广场）全网仅此一处调用点，首页一键直达底线维持。
+  // 图标对齐 NAV_MENUS 单源（2026-10-29 审查 I-6：trophy→leaderboard）；navMode 下
+  // 排行榜/歌单广场为 pane 切换，选中项用 fill 实心（拍板5 同规则接入，与横屏侧栏一致）
+  const navActiveId = useNavActiveId()
+  const navItems: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, iconActive?: string, action: () => void }> = [
     { id: 'nav_local_music', icon: 'folder-music', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLocalMusicScreen(componentId) } },
     { id: 'nav_download', icon: 'download-2', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushDownloadScreen(componentId) } },
-    { id: 'nav_top', icon: 'trophy', action: () => { if (navMode) { setNavActiveId('nav_top'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
-    { id: 'nav_songlist', icon: 'album', action: () => { if (navMode) { setNavActiveId('nav_songlist'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushSongListScreen(componentId) } },
+    { id: 'nav_top', icon: 'leaderboard', iconActive: 'ranking-fill', action: () => { if (navMode) { setNavActiveId('nav_top'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
+    { id: 'nav_songlist', icon: 'album', iconActive: 'vinyl-record-fill', action: () => { if (navMode) { setNavActiveId('nav_songlist'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushSongListScreen(componentId) } },
   ]
 
   return (
@@ -193,9 +197,9 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
       <View style={{ ...styles.hubDivider, backgroundColor: theme['c-border-background'] }} />
       <View style={styles.entryRow}>
         {
-          navItems.map(({ id, icon, action }) => (
+          navItems.map(({ id, icon, iconActive, action }) => (
             <TouchableOpacity key={id} style={styles.entryItem} activeOpacity={0.6} onPress={action}>
-              <Icon name={icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
+              <Icon name={navMode && iconActive && navActiveId == id ? iconActive : icon} size={ICON_SIZE.tile} color={theme['c-primary']} />
               <Text style={styles.entryLabel} size={13} color={theme['c-font']} numberOfLines={1}>{t(id)}</Text>
             </TouchableOpacity>
           ))

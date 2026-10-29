@@ -5,7 +5,8 @@ import { useSharedValue } from 'react-native-reanimated'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import Image from '@/components/common/Image'
-import QualityTag, { getOnlineQualitys, getTintBackground } from '@/components/common/QualityTag'
+import QualityTag, { getTintBackground } from '@/components/common/QualityTag'
+import { getOnlineQualitys, toOnlineIdentity } from '@/utils/music'
 import DotsVertical from '@/components/common/DotsVertical'
 import { useTheme } from '@/store/theme/hook'
 import { useAssertApiSupport } from '@/store/common/hook'
@@ -34,8 +35,9 @@ const PRESSED_BACKGROUND = {
 
 // 全应用唯一歌曲行（问题 1 拍板收敛）：leading 槽（序号 26 / 封面 40×40 r6 / 播放中 play-outline）
 // + 主列两行（歌名 15 / [音质+来源标签] 歌手·专辑 12）+ 尾部（时长 12 + 红心 + 竖三点）。
-// local 行降级：无 _qualitys 不渲染标签、无 picUrl 走 icon 占位、时长可进副行（showSublineInterval）
-export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, showSublineInterval, activeIndex = -1, isLiked = false, qualityOverride, downloaded = false, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
+// local 行降级：无 _qualitys 不渲染标签（qualityOverride 显式传入）、无 picUrl 走 icon 占位；
+// 时长恒行尾独立显示（2026-10-29 走查拍板统一，showSublineInterval 降级路径已删）
+export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, activeIndex = -1, isLiked = false, qualityOverride, downloaded = false, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
   item: LX.Music.MusicInfo
   index: number
   rowInfo: RowInfo
@@ -46,12 +48,11 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   showCover: boolean
   showSource: boolean
   showInterval: boolean
-  showSublineInterval?: boolean
   activeIndex?: number
   isLiked?: boolean
   /** 显式音质标签（下载管理已完成行按实际下载档显示） */
   qualityOverride?: LX.Music._MusicQualityType
-  /** 已下载角标（2026-10-29 ①-4：歌单/搜索/排行榜/收藏统一标记，对标 Apple Music⭕↓/Spotify；
+  /** 已下载标记（2026-10-29 重做定稿：check-circle 副行右端锚定，有/无不位移；对标网易云已下载=勾。
    * memo comparator 已入比较项，宿主从 useDownloadedSet 取值传入） */
   downloaded?: boolean
   onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
@@ -178,7 +179,6 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   let subline = item.singer || t('singer_unknown')
   // 专辑副行恒显（2026-10-22 治理批 P7-c：删 list.isShowAlbumName 开关，全局恒显）
   if (item.meta?.albumName) subline += ` · ${item.meta.albumName}`
-  if (showSublineInterval && item.interval) subline += ` · ${item.interval}`
 
   const rowElement = (
     <View style={{ ...styles.listItem, width: rowInfo.rowWidth, height: ITEM_HEIGHT, backgroundColor: isSelected ? theme['c-primary-background-hover'] : pressed ? PRESSED_BACKGROUND[theme.isDark ? 'dark' : 'light'] : 'rgba(0,0,0,0)', opacity: isSupported ? 1 : 0.5 }}>
@@ -221,14 +221,23 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
             : null
         }
         <View style={styles.info}>
-          <Text size={15} style={styles.title} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
-          <View style={styles.sublineRow}>
+          <View style={styles.titleRow}>
+            <Text size={15} style={styles.title} color={active ? theme['c-primary-font'] : theme['c-font']} numberOfLines={1}>{item.name}</Text>
             {
               downloaded
-                ? <Icon name="download-2" size={ICON_SIZE.inline} color={theme['c-primary']} style={styles.downloadedBadge} />
+                ? (
+                    // 已下载勾随曲名行尾（走查反馈 2026-10-29：副行右锚与时长/红心垂直相邻挤成一团，
+                    // 移曲名后离行尾三元素；对标 Apple Music 曲名旁下载标）；wrapper 防 Svg padding Android 端不可靠
+                    <View style={styles.downloadedBadge}>
+                      <Icon name="check" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+                    </View>
+                  )
                 : null
             }
-            <QualityTag qualitys={qualitys} source={item.source} showSource={showSource} />
+          </View>
+          <View style={styles.sublineRow}>
+            {/* 来源角标按在线身份（2026-10-29 题3：下载曲不标 local，显示原曲来源；裸本地文件原样） */}
+            <QualityTag qualitys={qualitys} source={toOnlineIdentity(item).source} showSource={showSource} />
             <Text size={12} style={styles.sublineText} color={active ? theme['c-primary-alpha-200'] : theme['c-font-label']} numberOfLines={1}>{subline}</Text>
           </View>
         </View>
@@ -276,7 +285,6 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
     prevProps.showCover === nextProps.showCover &&
     prevProps.showSource === nextProps.showSource &&
     prevProps.showInterval === nextProps.showInterval &&
-    prevProps.showSublineInterval === nextProps.showSublineInterval &&
     prevProps.isLiked === nextProps.isLiked &&
     prevProps.qualityOverride === nextProps.qualityOverride &&
     prevProps.downloaded === nextProps.downloaded &&
@@ -355,8 +363,15 @@ const styles = createStyle({
     alignItems: 'center',
     marginTop: SPACING.s2,
   },
+  // 副行右端锚定（2026-10-29 标记重做 D2）：wrapper View 承载（审查 I-3，Svg padding Android 不可靠），
+  // auto margin 吸收剩余宽度把勾钉在右缘，有/无标记均不移动标签与歌手起点；paddingLeft 防省略号贴勾（审查 S-3）
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   downloadedBadge: {
-    marginRight: SPACING.s4,
+    marginLeft: SPACING.s6,
+    justifyContent: 'center',
   },
   sublineText: {
     flexGrow: 0,

@@ -98,8 +98,6 @@ export default () => {
         // console.log(this.retryNum)
         if (playerState.playMusicInfo.musicInfo !== musicInfo) return
         retryNum++
-        // 排查插桩（走查反馈②④，疑案结案即删）：原生层播放报错→在线重取的时间线锚点
-        console.warn('[play] native playback error, refresh url, retry:', retryNum)
         setMusicUrl(playerState.playMusicInfo.musicInfo, true)
         setStatusText(global.i18n.t('player__refresh_url'))
       })

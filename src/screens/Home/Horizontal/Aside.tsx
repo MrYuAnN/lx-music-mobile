@@ -77,9 +77,11 @@ const Header = () => {
 
 type IdType = InitState['navActiveId'] | 'nav_exit'
 
-const MenuItem = ({ id, icon, onPress }: {
+const MenuItem = ({ id, icon, iconActive, onPress }: {
   id: IdType
   icon: string
+  /** 选中态实心图标（2026-10-29 图标库换代拍板5：选中=fill），缺省回退 icon */
+  iconActive?: string
   onPress: (id: IdType) => void
 }) => {
   // const t = useI18n()
@@ -89,7 +91,7 @@ const MenuItem = ({ id, icon, onPress }: {
   return activeId == id
     ? <View style={styles.menuItem}>
         <View style={styles.iconContent}>
-          <Icon name={icon} size={ICON_SIZE.list} color={theme['c-primary-font-active']} />
+          <Icon name={iconActive ?? icon} size={ICON_SIZE.list} color={theme['c-primary-font-active']} />
         </View>
         {/* <Text style={styles.text} size={14} color={theme['c-primary-font']}>{t(id)}</Text> */}
       </View>
@@ -128,7 +130,7 @@ export default memo(() => {
       <Header />
       <ScrollView style={styles.menus} showsVerticalScrollIndicator={false}>
         <View style={styles.list}>
-          {NAV_MENUS.map(menu => <MenuItem key={menu.id} id={menu.id} icon={menu.icon} onPress={handlePress} />)}
+          {NAV_MENUS.map(menu => <MenuItem key={menu.id} id={menu.id} icon={menu.icon} iconActive={'iconActive' in menu ? menu.iconActive : undefined} onPress={handlePress} />)}
         </View>
       </ScrollView>
       {

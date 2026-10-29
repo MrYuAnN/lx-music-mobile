@@ -5,6 +5,7 @@ import { searchListMusic } from './listAction'
 import { toast, getRowInfo } from '@/utils/tools'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
+import { toOnlineIdentity } from '@/utils/music'
 import { useI18n } from '@/lang'
 import listState from '@/store/list/state'
 
@@ -116,7 +117,11 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
       showSource={false}
       // 时长/专辑恒显（治理批 P7-b/c）
       showInterval={true}
-      downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
+      downloaded={(() => {
+        // 下载曲 local 条目按在线身份判角标（2026-10-29 题3 存量兜底）
+        const identity = toOnlineIdentity(item)
+        return downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))
+      })()}
       onPress={info => { onScrollToInfo(info) }}
     />
   ), [onScrollToInfo, downloadedSet])

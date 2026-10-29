@@ -15,14 +15,13 @@ import { apis } from '@/utils/musicSdk/api-source'
 
 const getOtherSourcePromises = new Map()
 export const existTimeExp = /\[\d{1,2}:.*\d{1,4}\]/
-const otherSourceCache = new Map<LX.Music.MusicInfo | LX.Download.ListItem, LX.Music.MusicInfoOnline[]>()
+const otherSourceCache = new Map<string, LX.Music.MusicInfoOnline[]>()
 
 export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false): Promise<LX.Music.MusicInfoOnline[]> => {
   // if (!isRefresh) {
   //   const cachedInfo = await getOtherSourceFromStore(musicInfo.id)
   //   if (cachedInfo.length) return cachedInfo
   // }
-  if (otherSourceCache.has(musicInfo)) return otherSourceCache.get(musicInfo)!
   let key: string
   let searchMusicInfo: {
     name: string
@@ -31,8 +30,11 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
     albumName: string
     interval: string
   }
+  // key 纳入搜索词维度（审查 C-1a）：getOtherSourceByLocal 的拆分匹配（歌名-歌手拆分/互换/
+  // 文件名拆分）展开原对象后 source/id 不变，若 key 仅含二者，同曲换词重搜会被首词缓存短路，
+  // 拆分匹配链整体失效
   if ('progress' in musicInfo) {
-    key = `local_${musicInfo.id}`
+    key = `local_${musicInfo.id}_${musicInfo.metadata.musicInfo.name}|${musicInfo.metadata.musicInfo.singer}`
     searchMusicInfo = {
       name: musicInfo.metadata.musicInfo.name,
       singer: musicInfo.metadata.musicInfo.singer,
@@ -41,7 +43,7 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
       interval: musicInfo.metadata.musicInfo.interval ?? '',
     }
   } else {
-    key = `${musicInfo.source}_${musicInfo.id}`
+    key = `${musicInfo.source}_${musicInfo.id}_${musicInfo.name}|${musicInfo.singer}`
     searchMusicInfo = {
       name: musicInfo.name,
       singer: musicInfo.singer,
@@ -50,6 +52,10 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
       interval: musicInfo.interval ?? '',
     }
   }
+  // 缓存按歌曲+搜索词 key（修走查反馈疑案：原按对象引用缓存永不命中——播放链每次重建 musicInfo
+  // 实例，同曲反复全源重搜触发搜索接口限频空结果）。空结果不入缓存：换词拆分匹配需要真实重搜，
+  // 同词重复调用由 promises 去重兜底；isRefresh 强制跳过缓存读写（原为死参数，审查 C-1a）
+  if (!isRefresh && otherSourceCache.has(key)) return otherSourceCache.get(key)!
   if (getOtherSourcePromises.has(key)) return getOtherSourcePromises.get(key)
 
   const promise = new Promise<LX.Music.MusicInfoOnline[]>((resolve, reject) => {
@@ -58,9 +64,9 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
       reject(new Error('find music timeout'))
     }, 12_000)
     findMusic(searchMusicInfo).then((otherSource) => {
-      if (otherSourceCache.size > 10) otherSourceCache.clear()
+      if (otherSourceCache.size > 30) otherSourceCache.clear()
       const source = otherSource.map(toNewMusicInfo) as LX.Music.MusicInfoOnline[]
-      otherSourceCache.set(musicInfo, source)
+      if (source.length) otherSourceCache.set(key, source)
       resolve(source)
     }).catch(reject).finally(() => {
       if (timeout) BackgroundTimer.clearTimeout(timeout)

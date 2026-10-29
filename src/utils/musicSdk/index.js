@@ -60,15 +60,38 @@ export const init = () => {
 export const searchMusic = async({ name, singer, source: s, limit = 25 }) => {
   const trimStr = str => typeof str == 'string' ? str.trim() : str
   const musicName = trimStr(name)
-  const tasks = []
   const excludeSource = ['xm']
-  for (const source of sources.sources) {
-    // 注意：跨源搜索/匹配/歌词/封面=SDK 直连免费面（方案 §六），范围独立于 /config 取链开启集——
-    // 摘源摘的是「链」，源搜索能力仍在（取链面由换源层 assertApiSupport 收敛，见 core/music/utils.ts:255）
-    if (!sources[source.id].musicSearch || source.id == s || excludeSource.includes(source.id)) continue
-    tasks.push(sources[source.id].musicSearch.search(`${musicName} ${singer || ''}`.trim(), 1, limit).catch(_ => null))
+  // 任务存惰性 thunk：push 不发起请求，按批调用才真正发出——修前 push 即激活 promise，
+  // 「分批」只延迟收集已在途的响应，对请求发起时序零作用（审查 C-1b）
+  const buildTasks = () => {
+    const tasks = []
+    for (const source of sources.sources) {
+      // 注意：跨源搜索/匹配/歌词/封面=SDK 直连免费面（方案 §六），范围独立于 /config 取链开启集——
+      // 摘源摘的是「链」，源搜索能力仍在（取链面由换源层 assertApiSupport 收敛，见 core/music/utils.ts:255）
+      if (!sources[source.id].musicSearch || source.id == s || excludeSource.includes(source.id)) continue
+      tasks.push(() => sources[source.id].musicSearch.search(`${musicName} ${singer || ''}`.trim(), 1, limit).catch(() => null))
+    }
+    return tasks
   }
-  return (await Promise.all(tasks)).filter(s => s)
+  // 分批并发（走查反馈：五源同时并发搜索触发接口限频空结果）+全空重试一轮：
+  // 重试必须重建任务重新发起（复用已 settle 的 promise 结果必然相同）；预算守卫——首轮已耗超
+  // 7s 放弃重试，防叠加上层 12s 匹配超时被截断（审查 C-1b）
+  const runBatched = async() => {
+    const tasks = buildTasks()
+    const out = []
+    for (let i = 0; i < tasks.length; i += 2) {
+      out.push(...await Promise.all(tasks.slice(i, i + 2).map(run => run())))
+      if (i + 2 < tasks.length) await new Promise(resolve => setTimeout(resolve, 400))
+    }
+    return out.filter(Boolean)
+  }
+  const startedAt = Date.now()
+  let results = await runBatched()
+  if (!results.length && Date.now() - startedAt < 7_000) {
+    await new Promise(resolve => setTimeout(resolve, 1500))
+    results = await runBatched()
+  }
+  return results
 }
 
 export const findMusic = async(musicInfo) => {

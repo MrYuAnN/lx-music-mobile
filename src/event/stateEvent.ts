@@ -64,6 +64,10 @@ export class StateEvent extends Event {
     this.emit('playStateChanged', state)
   }
 
+  actualQualityChanged(quality: PlayerState['actualQuality']) {
+    this.emit('actualQualityChanged', quality)
+  }
+
   playProgressChanged(progress: PlayerState['progress']) {
     this.emit('playProgressChanged', progress)
   }

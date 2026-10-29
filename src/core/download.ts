@@ -3,7 +3,7 @@ import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import settingState from '@/store/setting/state'
 import { getMusicUrl, getLyricInfo } from '@/core/music/online'
-import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, stat, externalStorageDirectoryPath } from '@/utils/fs'
+import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath } from '@/utils/fs'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
 import { throttle } from '@/utils/common'
@@ -161,8 +161,6 @@ const runDownload = async(task: LX.Download.ListItem) => new Promise<void>((reso
     // .tmp → 成品（重下载同名场景先清目标）
     await unlink(task.metadata.filePath).catch(() => {})
     await moveFile(tmpPath, task.metadata.filePath)
-    const info = await stat(task.metadata.filePath).catch(() => null)
-    console.warn('[download] moved:', task.metadata.filePath, info?.size ?? -1, 'bytes') // 排查插桩（疑案结案即删）
   }).then(() => { resolve() }).catch(reject)
 })
 
@@ -464,6 +462,7 @@ export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.Musi
 }
 
 const getTaskId = (musicInfo: LX.Music.MusicInfoOnline) => `download__${musicInfo.source}__${musicInfo.id}`
+export { getTaskId }
 
 /**
  * 进页复核（走查反馈②④）：外部删除（系统清理/误删）会让完成任务仍标「已完成」，点播静默走在线
@@ -475,8 +474,6 @@ export const revalidateCompletedFiles = async(): Promise<boolean> => {
   if (!(await isStorageGranted())) return false
   let changed = false
   for (const task of downloadList) {
-    // 排查插桩（疑案结案即删）：任务级元数据串位取证
-    console.warn('[download] task check:', task.status, task.metadata.musicInfo.name, '->', task.metadata.filePath)
     if (task.status != 'completed' || !task.metadata.filePath) continue
     if (!(await existsFile(task.metadata.filePath))) {
       task.status = 'error'
@@ -493,7 +490,8 @@ export const revalidateCompletedFiles = async(): Promise<boolean> => {
  * 文件在位即返回本地路径——秒开+离线可播；未命中/文件缺失返回空串走在线。
  * 缺失时顺手修正已下载集合去角标（审查 S-5；lazy require 防与 store 循环 import）
  */
-export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<string> => {
+/** 实际播放档回传元数据（2026-10-29 题1 拍板4）：本地优先命中=下载档，在线=落地档 */
+export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<{ path: string, quality: LX.Quality } | null> => {
   await initDownloadList()
   // 遍历全部 completed 同 id 任务（代码轮 S-12 口径对齐：与三态判定 S10 同构，防首条
   // 文件缺失即走在线漏检第二条在位文件）；全部 miss 才标记去角标
@@ -501,12 +499,12 @@ export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnlin
   let missingPath = ''
   for (const task of tasks) {
     if (!task.metadata.filePath) continue
-    if (await existsFile(task.metadata.filePath)) return task.metadata.filePath
+    if (await existsFile(task.metadata.filePath)) return { path: task.metadata.filePath, quality: task.metadata.quality }
     missingPath = task.metadata.filePath
   }
   if (missingPath) {
     require('@/store/downloaded/action').markDownloadedMissing(musicInfo.source, musicInfo.id, missingPath)
   }
-  return ''
+  return null
 }
 

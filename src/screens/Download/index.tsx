@@ -262,8 +262,6 @@ export default ({ componentId }: { componentId: string }) => {
   }, [])
 
   const handleCompletedPress = useCallback((musicInfo: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => {
-    // 排查插桩（疑案结案即删）：核对点击目标与实际入队目标
-    console.warn('[play] tap download row:', musicInfo.name, 'index:', list.findIndex(m => m.id == musicInfo.id), 'of', list.length)
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
       const index = list.findIndex(m => m.id == musicInfo.id)
       if (index > -1) void playList(LIST_IDS.TEMP, index)

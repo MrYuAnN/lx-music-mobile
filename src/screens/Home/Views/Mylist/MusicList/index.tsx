@@ -16,6 +16,7 @@ import List, { type ListType } from './List'
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } from '@/components/MusicMultiAddModal'
 import { createStyle, toast } from '@/utils/tools'
+import { toOnlineIdentity } from '@/utils/music'
 import { Animated, type LayoutChangeEvent, View } from 'react-native'
 import MultipleModeBar, { type SelectMode, type MultipleModeBarType } from './MultipleModeBar'
 import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
@@ -338,8 +339,10 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onEditMetadata={handleEditMetadata}
         onToggleSource={info => { if (!guardWritableList(info.listId)) return; musicToggleModalRef.current?.show(info) }}
         onDownload={info => {
-          if (info.musicInfo.source == 'local') return
-          downloadQualityModalRef.current?.show(info.musicInfo)
+          // 下载曲 local 条目按在线身份弹选档（2026-10-29 题3：菜单下载项已随身份归一可见）
+          const identity = toOnlineIdentity(info.musicInfo)
+          if (identity.source == 'local') return
+          downloadQualityModalRef.current?.show(identity)
         }}
       />
       <DownloadQualityModal ref={downloadQualityModalRef} />

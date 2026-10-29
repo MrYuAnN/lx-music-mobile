@@ -45,7 +45,7 @@ const TogglePlayBtn = ({ size }: { size: number }) => {
       hapticImpactLight()
       togglePlay()
     }}>
-      <Icon name={isPlay ? 'pause' : 'play'} color={theme['c-button-font']} size={size * 0.7} />
+      <Icon name={isPlay ? 'pause' : 'play-fill'} color={theme['c-button-font']} size={size * 0.7} />
     </TouchableOpacity>
   )
 }

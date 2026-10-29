@@ -18,6 +18,7 @@ import type { Position } from './ListMenu'
 import type { SelectMode } from './MultipleModeBar'
 import { useActiveListId, useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
+import { toOnlineIdentity } from '@/utils/music'
 import { useTheme } from '@/store/theme/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 import { useDragReorder } from './useDragReorder'
@@ -494,7 +495,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         showInterval={true}
         activeIndex={activeViewIndex}
         isLiked={likedSet.has(item.id)}
-        downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
+        downloaded={(() => {
+          // 下载曲 local 条目按在线身份判角标（2026-10-29 题3 存量兜底）
+          const identity = toOnlineIdentity(item)
+          return downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))
+        })()}
         onLikePress={toggleLike}
         onPress={handlePress}
         onLongPress={dragEnabled ? handleLongPressQuiet : handleLongPress}
@@ -563,7 +568,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
                   showInterval={true}
                   activeIndex={-1}
                   isLiked={likedSet.has(drag.dragItem.id)}
-                  downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(drag.dragItem.source, drag.dragItem.id))}
+                  downloaded={(() => {
+                    // 同上行：下载曲 local 条目按在线身份判角标（题3 存量兜底）
+                    const identity = toOnlineIdentity(drag.dragItem)
+                    return downloadedSet.has(downloadedAction.getDownloadedKey(identity.source, identity.id))
+                  })()}
                   onPress={() => {}}
                 />
               </ReAnimated.View>

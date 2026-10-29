@@ -133,6 +133,14 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
   4. 网关 realip 落地（审查 C-1）：观测法脚本 `deploy/edge-allow-update.sh`（详见 §6）——allow/realip 同源自动生成；**DEPLOY.md §3/§6 原定「EdgeOne API 拉取」口径作废**（免费套餐源站防护停用无 API，2026-10-27 拍板观测法）。
 - 部署形态：`/root/shiyin/apiserver/`（compose+config），fork 仓独立演进（上游 merge 用）。
 
+## 5.5 tx CDN 域名健康巡检（**2026-10-29 上线**，装机走查 #1 发现 ws.stream.music.qq.com NXDOMAIN 后建）
+
+- **事件**：QQ 已下线老 CDN 域名 `ws.stream.music.qq.com`（DNS NXDOMAIN）——服务端取 vkey 正常（/url 全 200）但拼出的播放 URL 域名不存在 → App 永远缓冲 → url 缓存过期 → 切歌。§八#2「维护接力风险」首例实锤。
+- **处置**：VPS `cdn_list` 已更新为三现行域名（isure.stream.qqmusic.qq.com / aqqmusic.tc.qq.com / dl.stream.qqmusic.qq.com，同 vkey 实测全 206 不绑域）+ fork 仓模板同步（`2fa8a0c`）。
+- **巡检机制**（`/root/shiyin/tx-cdn-health.sh`，cron `*/30`）：逐域名 DNS+HTTP 假参数 Range 探测（假文件名+假 vkey，404/403/2xx=活）→ 连续 2 次失败自动从 cdn_list 剔除+Server酱/TG 告警（复用 notify.env，1h 节流）→ 恢复自动加回；剔除/恢复触发 compose restart apiserver（秒级窗口）。cdn_list 仅剩 1 个时不剔（兜底+强告警）。
+- **风控纪律（脚本头注释在案，勿破坏）**：①永不调用 QQ 账号态接口（u.y.qq.com 取 vkey 等）——探测零账号交互；②音量 30min×3 域名×100B，低于真实用户一分钟播放流量（播放器 seek 即 Range 请求形态）。
+- **遗留**：vkey 缓存中存有旧域名 URL——换域名后需清 Redis `shiyin:url:tx_*`（2026-10-29 已手动清）；脚本剔除/恢复时自动重启容器但**不清 vkey 缓存**，若剔除后播放仍异常先查此缓存。
+
 ## 6. EdgeOne 回源白名单自动更新（防线 2 运维项；**2026-10-27 拍板改观测法**）
 
 - **拍板背景**：EdgeOne 免费套餐 2025-10 已停用「源站防护」——回源网段无公开列表、无 API（`DescribeOriginProtection` 体系付费专属；官方对免费版的推荐替代=回源鉴权头/mTLS）。**2026-10-27 用户拍板：观测法自建**（免费；业界主流=CDN 厂商公开网段+自动拉取如 Cloudflare /ips，本产品偏离业界的原因=厂商免费档不提供数据源；后续升付费可无缝切换官方 API 数据源）。

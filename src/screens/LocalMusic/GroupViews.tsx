@@ -59,8 +59,8 @@ qualityOverride={item.meta._qualitys}
     showIndex={false}
     showCover
     showSource={false}
-    showInterval={false}
-    showSublineInterval
+    // 时长行尾独立显示（2026-10-29 走查拍板）：与全应用列表行结构统一
+    showInterval
     isLiked={actions.isLiked(item.id)}
     onLikePress={actions.onLikePress}
     onPress={(_, pressIndex) => { actions.onSongPress(list[pressIndex], list) }}

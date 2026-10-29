@@ -4,6 +4,7 @@ import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position 
 import { existsFile } from '@/utils/fs'
 import { isReadonlyList } from './listAction'
 import { handleDislike } from '@/components/OnlineList/listAction'
+import { toOnlineIdentity } from '@/utils/music'
 
 export interface SelectInfo {
   musicInfo: LX.Music.MusicInfo
@@ -61,17 +62,20 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
 
   const handleSetMenu = (musicInfo: LX.Music.MusicInfo, listId: string) => {
     let edit_metadata = false
-    const isLocal = musicInfo.source == 'local'
+    // 在线身份归一（2026-10-29 题3）：下载曲（local+onlineInfo）按原曲在线身份给在线能力菜单
+    // （下载/换源），不标本地；「编辑元数据」仍按本地文件实体判定（下载曲文件同样可编辑）
+    const isBareLocal = toOnlineIdentity(musicInfo).source == 'local'
+    const isLocalFile = musicInfo.source == 'local'
     // 收藏歌单只读（拍板 #2，审查 A5）：隐藏一切写当前歌单的入口（移动/移位/换源/删除/
     // 元数据编辑）；「添加到」写目标歌单合法保留；handler 层另有守卫防多选旁路
     const readonly = isReadonlyList(listId)
     const menu: ActionSheetItem[] = [
       { action: 'play', label: t('play'), icon: 'play' },
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },
-      ...(isLocal ? [] : [{ action: 'download', label: t('download_action'), icon: 'download-2' }]),
+      ...(isBareLocal ? [] : [{ action: 'download', label: t('download_action'), icon: 'download-2' }]),
       { action: 'add', label: t('add_to'), icon: 'add-to' },
       ...(readonly ? [] : [{ action: 'move', label: t('move_to'), icon: 'move-to' }]),
-      ...(isLocal && !readonly ? [{ action: 'editMetadata', disabled: !edit_metadata, label: t('edit_metadata'), icon: 'edit-metadata' }] : []),
+      ...(isLocalFile && !readonly ? [{ action: 'editMetadata', disabled: !edit_metadata, label: t('edit_metadata'), icon: 'edit-metadata' }] : []),
       // 「调整位置」入口移除（歌单页拖拽排序批）：排序改行长按拖拽，本菜单不再承担（方案 playlist-drag-reorder §三.4）
       ...(readonly ? [] : [
         { action: 'toggleSource', label: t('toggle_source'), icon: 'toggle-source' },
@@ -85,7 +89,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
       ...(readonly ? [] : [{ action: 'remove', label: t('delete'), icon: 'trash', destructive: true }]),
     ]
     setMenus(menu)
-    if (isLocal && !readonly) {
+    if (isLocalFile && !readonly) {
       void hasEditMetadata(musicInfo).then((_edit_metadata) => {
         const editIdx = menu.findIndex(m => m.action == 'editMetadata')
         if (editIdx > -1 && edit_metadata != _edit_metadata) {

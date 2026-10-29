@@ -6,6 +6,7 @@ import {
   getMusicUrl as getOnlineMusicUrl,
   getPicUrl as getOnlinePicUrl,
   getLyricInfo as getOnlineLyricInfo,
+  type MusicUrlQualityMeta,
 } from './online'
 import {
   getMusicUrl as getDownloadMusicUrl,
@@ -27,26 +28,31 @@ export const getMusicUrl = async({
   isRefresh = false,
   onToggleSource,
   allowToggleSource,
+  onQualityResolved,
 }: {
   musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
   isRefresh?: boolean
   quality?: LX.Quality
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
   allowToggleSource?: boolean
+  onQualityResolved?: (meta: MusicUrlQualityMeta) => void
 }): Promise<string> => {
   if ('progress' in musicInfo) {
-    return getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
+    return getDownloadMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource, onQualityResolved })
   } else if (musicInfo.source == 'local') {
-    return getLocalMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource })
+    return getLocalMusicUrl({ musicInfo, isRefresh, onToggleSource, allowToggleSource, onQualityResolved })
   } else {
     // 本地优先（走查反馈②，网易云/QQ 已下载歌曲同款）：完成下载表 source+id 精确命中且文件在位
     // 即播本地文件——秒开+离线可播，播放身份保持在线原曲（评论/音质/封面链路零感知）；
     // 切档重链（isRefresh=true）不 substitute，保证切档按新档在线播放
     if (!isRefresh) {
-      const localPath = await getCompletedDownloadPath(musicInfo)
-      if (localPath) return toLocalFileUrl(localPath)
+      const local = await getCompletedDownloadPath(musicInfo)
+      if (local) {
+        onQualityResolved?.({ quality: local.quality, isLocal: true })
+        return toLocalFileUrl(local.path)
+      }
     }
-    return getOnlineMusicUrl({ musicInfo, isRefresh, quality, onToggleSource, allowToggleSource })
+    return getOnlineMusicUrl({ musicInfo, isRefresh, quality, onToggleSource, allowToggleSource, onQualityResolved })
   }
 }
 

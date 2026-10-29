@@ -445,6 +445,8 @@
   "setting_download_concurrency": "Simultaneous downloads",
   "setting_download_allow_mobile_network": "Download over mobile network",
   "download_waiting_wifi": "Waiting for Wi-Fi",
+  "download_status_downloading": "Downloading",
+  "download_mark_downloaded": "Downloaded",
   "download_no_storage_permission": "Storage permission denied",
   "download_no_available_quality": "No available audio quality",
   "download_file_missing": "File missing, tap retry to re-download",

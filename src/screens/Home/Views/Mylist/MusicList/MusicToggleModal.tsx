@@ -15,6 +15,7 @@ import { toNewMusicInfo } from '@/utils'
 import { handleShowMusicSourceDetail, handleToggleSource } from './listAction'
 import { BorderRadius, BorderWidths } from '@/theme'
 import playerState from '@/store/player/state'
+import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playNext } from '@/core/player/player'
@@ -73,8 +74,10 @@ const Empty = ({ loading, error, onReload }: { loading: boolean, error: boolean,
   )
 }
 
-const ListItem = memo(({ info, onPlay, onOpenDetail }: {
+const ListItem = memo(({ info, downloaded = false, onPlay, onOpenDetail }: {
   info: LX.Music.MusicInfoOnline
+  /** 已下载标记（2026-10-29 标记重做 D4）：副行右端锚定，与主列表行同构（换到已下载源可走本地优先） */
+  downloaded?: boolean
   onPlay: (info: LX.Music.MusicInfoOnline) => void
   onOpenDetail: (info: LX.Music.MusicInfoOnline) => void
 }) => {
@@ -88,7 +91,7 @@ const ListItem = memo(({ info, onPlay, onOpenDetail }: {
       <View style={styles.listItemInfo}>
         <Text color={theme['c-font']} size={14} numberOfLines={1}>{info.name}</Text>
         <View style={styles.listItemAlbum}>
-          <Text color={theme['c-font']} size={12} numberOfLines={1}>
+          <Text style={styles.listItemSublineText} color={theme['c-font']} size={12} numberOfLines={1}>
             {info.singer}
             {
               info.meta.albumName ? (
@@ -96,6 +99,16 @@ const ListItem = memo(({ info, onPlay, onOpenDetail }: {
               ) : null
             }
           </Text>
+          {
+            downloaded
+              ? (
+                  // wrapper View 承载右锚+间距（审查 I-3）：Svg 的 padding Android 端不可靠
+                  <View style={styles.downloadedBadge}>
+                    <Icon name="check-circle" size={ICON_SIZE.inline} color={theme['c-primary']} />
+                  </View>
+                )
+              : null
+          }
         </View>
       </View>
       <View style={styles.listItemLabel}>
@@ -113,7 +126,8 @@ const ListItem = memo(({ info, onPlay, onOpenDetail }: {
     </View>
   )
 }, (prevProps, nextProps) => {
-  return prevProps.info === nextProps.info
+  return prevProps.info === nextProps.info &&
+    prevProps.downloaded === nextProps.downloaded
 })
 
 const List = ({ source, lists, onPlay }: {
@@ -122,6 +136,8 @@ const List = ({ source, lists, onPlay }: {
   onPlay: (info: LX.Music.MusicInfoOnline) => void
 }) => {
   const [list, setList] = useState<LX.Music.MusicInfoOnline[]>([])
+  // 已下载标记数据源（容器层单点订阅，审查 I-5）
+  const downloadedSet = useDownloadedSet()
   const isFirstRef = useRef(true)
   useEffect(() => {
     if (isFirstRef.current) {
@@ -139,8 +155,8 @@ const List = ({ source, lists, onPlay }: {
   }, [])
 
   const renderItem = useCallback(({ item }: { item: LX.Music.MusicInfoOnline, index: number }) => {
-    return <ListItem info={item} onPlay={onPlay} onOpenDetail={openDetail} />
-  }, [onPlay, openDetail])
+    return <ListItem info={item} downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))} onPlay={onPlay} onOpenDetail={openDetail} />
+  }, [onPlay, openDetail, downloadedSet])
   const getkey = useCallback<NonNullable<FlatListProps['keyExtractor']>>(item => item.id, [])
   const getItemLayout = useCallback<NonNullable<FlatListProps['getItemLayout']>>((data, index) => {
     return { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
@@ -465,6 +481,15 @@ const styles = createStyle({
   listItemAlbum: {
     flexDirection: 'row',
     marginTop: SPACING.s4,
+  },
+  // 歌手文本可收缩：防长歌手挤出右锚标记（主列表 sublineText 同构）
+  listItemSublineText: {
+    flexShrink: 1,
+  },
+  // 已下载标记副行右端锚定（标记重做 D2 同构）：wrapper View 承载（审查 I-3）
+  downloadedBadge: {
+    marginLeft: 'auto',
+    paddingLeft: SPACING.s4,
   },
   listItemLabel: {
     flex: 0,

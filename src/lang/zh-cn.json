@@ -445,6 +445,8 @@
   "setting_download_concurrency": "同时下载数",
   "setting_download_allow_mobile_network": "移动网络下载",
   "download_waiting_wifi": "等待 Wi-Fi",
+  "download_status_downloading": "下载中",
+  "download_mark_downloaded": "已下载",
   "download_no_storage_permission": "无存储权限",
   "download_no_available_quality": "无可用音质",
   "download_file_missing": "文件已丢失，可重试重新下载",

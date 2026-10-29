@@ -15,12 +15,11 @@ import {
 } from './utils'
 import { getLocalFilePath, toLocalFileUrl } from '@/utils/music'
 import { readLyric, readPic } from '@/utils/localMediaMetadata'
-import { stat } from '@/utils/fs'
-import { getMusicUrl as getOnlineMusicUrl } from './online'
+import { stat, privateStorageDirectoryPath, mkdir, downloadFile, copyFile, existsFile } from '@/utils/fs'
+import { getMusicUrl as getOnlineMusicUrl, type MusicUrlQualityMeta } from './online'
 
 const getOtherSourceByLocal = async<T>(musicInfo: LX.Music.MusicInfoLocal, handler: (infos: LX.Music.MusicInfoOnline[]) => Promise<T>) => {
-  let result: LX.Music.MusicInfoOnline[] = []
-  result = await getOtherSource(musicInfo)
+  let result = await getOtherSource(musicInfo)
   if (result.length) try { return await handler(result) } catch {}
   if (musicInfo.name.includes('-')) {
     const [name, singer] = musicInfo.name.split('-').map(val => val.trim())
@@ -68,23 +67,21 @@ const getOtherSourceByLocal = async<T>(musicInfo: LX.Music.MusicInfoLocal, handl
   throw new Error('source not found')
 }
 
-export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = true, onToggleSource = () => {} }: {
+export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = true, onToggleSource = () => {}, onQualityResolved }: {
   musicInfo: LX.Music.MusicInfoLocal
   isRefresh: boolean
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
   allowToggleSource?: boolean
+  onQualityResolved?: (meta: MusicUrlQualityMeta) => void
 }): Promise<string> => {
   if (!isRefresh) {
     const path = await getLocalFilePath(musicInfo)
     if (path) {
-      // 排查插桩（走查反馈②④，疑案结案即删）：下载曲快路径命中必经此，观察原生层是否再报错；
-      // name+path 同打——区分「整个对象被换」与「对象内路径被改」
-      if (musicInfo.meta.onlineInfo) console.warn('[play] local fast path:', musicInfo.name, path)
+      // 实际播放档（2026-10-29 题1）：本地文件档=回填单档（下载曲），裸文件无档不上报（UI 回退全局档）
+      const localQuality = Object.keys(musicInfo.meta._qualitys ?? {})[0] as LX.Quality | undefined
+      if (localQuality) onQualityResolved?.({ quality: localQuality, isLocal: true })
       return toLocalFileUrl(path)
     }
-    // 排查插桩（走查反馈②④，疑案结案即删）：仅下载曲 miss 是异常路径线索——
-    // 扫描本地曲文件被删/改名属正常兜底场景，不打印防刷屏（审查 S 批量）
-    if (musicInfo.meta.onlineInfo) console.warn('[play] local file miss:', musicInfo.meta.filePath)
   }
 
   // 下载曲（走查反馈②③）：优先按原曲身份在线取链——同曲直取快于按名换源搜索；
@@ -96,6 +93,7 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
         isRefresh,
         onToggleSource,
         allowToggleSource,
+        onQualityResolved,
       })
     } catch (err) {
       console.warn('[play] onlineInfo direct fetch failed:', (err as Error).message) // 与上插桩同生命周期
@@ -105,6 +103,7 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
   try {
     return await getOnlineOtherSourceMusicUrlByLocal(musicInfo, isRefresh).then(({ url, quality, isFromCache, expire }) => {
       if (!isFromCache) void saveMusicUrl(musicInfo, quality, url, expire)
+      onQualityResolved?.({ quality, isLocal: false })
       return url
     })
   } catch {}
@@ -130,17 +129,33 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
   skipFilePic?: boolean
   onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
 }): Promise<string> => {
+  // noCover 负缓存（走查反馈：无封面曲反复全源匹配触发限频）：置位后跳过在线匹配，isRefresh 强制重配
+  if (!isRefresh && musicInfo.meta.noCover) return ''
   if (!isRefresh && !skipFilePic) {
     let pic = await readPic(musicInfo.meta.filePath).catch(() => null)
     if (pic) {
       if (pic.startsWith('/')) pic = `file://${pic}`
       // 内嵌封面命中也回写（走查反馈：列表项只读 meta.picUrl，不回写=列表恒无封面）；
       // file:// 直读磁盘，回写后列表/播放页零网络
-      if (musicInfo.meta.picUrl != pic) {
-        musicInfo.meta.picUrl = pic
-        void updateLocalMusicMeta(musicInfo.id, { picUrl: pic })
+      // readPic 提取图存 CacheDir 且每次冷启动被 clearPicCache 清空——直接回写临时路径
+      // 会在重启后失效变默认图（走查反馈疑案根因）。回写前复制进持久 cover_cache
+      let persisted = pic
+      try {
+        const dir = `${privateStorageDirectoryPath}/cover_cache`
+        await mkdir(dir).catch(() => {})
+        const srcPath = pic.replace(/^file:\/\//, '')
+        const path = `${dir}/${musicInfo.id}.jpg`
+        if (!(await existsFile(path))) await copyFile(srcPath, path)
+        persisted = `file://${path}`
+      } catch { /* 复制失败兜底原路径（本会话内仍有效） */ }
+      if (musicInfo.meta.picUrl != persisted) {
+        musicInfo.meta.picUrl = persisted
+        void updateLocalMusicMeta(musicInfo.id, { picUrl: persisted, noCover: false })
+      } else if (musicInfo.meta.noCover) {
+        musicInfo.meta.noCover = false
+        void updateLocalMusicMeta(musicInfo.id, { noCover: false })
       }
-      return pic
+      return persisted
     }
 
     if (musicInfo.meta.picUrl) return musicInfo.meta.picUrl
@@ -154,17 +169,33 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
 
   onToggleSource()
   return getOtherSourceByLocal(musicInfo, async(otherSource) => {
-    return getOnlineOtherSourcePicUrl({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(({ url, musicInfo: targetMusicInfo, isFromCache }) => {
+    return getOnlineOtherSourcePicUrl({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(async({ url, musicInfo: targetMusicInfo, isFromCache }) => {
       // 匹配成功顺带补全缺失元数据（走查反馈：无 tag 裸文件歌手/专辑恒空）——
       // 只补空不覆盖：文件 tag/文件名解析已有值优先，防在线错配污染
       if (!musicInfo.singer && targetMusicInfo.singer) musicInfo.singer = targetMusicInfo.singer
       if (!musicInfo.meta.albumName && targetMusicInfo.meta.albumName) musicInfo.meta.albumName = targetMusicInfo.meta.albumName
+
+      // 匹配到的图床 URL 有时效（走查反馈：回写 URL 过期后列表变默认图）——下载进本地缓存目录
+      // 回写 file:// 永久有效（与下载曲 sidecar 同哲学：素材落盘、展示直读）；下载失败兜底原 URL
+      let picUrl = url
+      if (musicInfo.source == 'local') {
+        try {
+          const dir = `${privateStorageDirectoryPath}/cover_cache`
+          await mkdir(dir).catch(() => {})
+          const path = `${dir}/${musicInfo.id}.jpg`
+          const res = await downloadFile(url, path, {
+            connectionTimeout: 15000,
+            readTimeout: 15000,
+          }).promise
+          if (res.statusCode < 400) picUrl = `file://${path}`
+        } catch { /* 缓存下载失败兜底回写原 URL（过期后重匹配自愈） */ }
+      }
+
       if (musicInfo.source == 'local') {
         // 裸文件：回写进本地音乐列表存储（updateListMusics 写歌单存储，本地页读不到——走查反馈）
-        console.warn('[local] pic backfill hit:', musicInfo.id, url.slice(0, 48)) // 排查插桩（结案即删）
-        musicInfo.meta.picUrl = url
+        musicInfo.meta.picUrl = picUrl
         void updateLocalMusicMeta(musicInfo.id, {
-          picUrl: url,
+          picUrl,
           singer: musicInfo.singer,
           albumName: musicInfo.meta.albumName,
         })
@@ -172,8 +203,16 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
         void updateListMusics([{ id: listId, musicInfo }])
       }
 
-      return url
+      return picUrl
     })
+  }).catch((err: Error) => {
+    // noCover 负缓存闭环（审查 I-B2 补全）：仅「匹配链确认无结果」（source not found）置位持久化，
+    // 超时/网络错误不置位（下次可重试）；置位后入口短路防反复全源重搜，isRefresh 强制重配
+    if (err?.message == 'source not found' && !musicInfo.meta.noCover) {
+      musicInfo.meta.noCover = true
+      void updateLocalMusicMeta(musicInfo.id, { noCover: true })
+    }
+    throw err
   })
 }
 
@@ -249,7 +288,9 @@ export const getLyricInfo = async({ musicInfo, isRefresh, skipFileLyric, onToggl
     if (rawlrcInfo) return buildLyricInfo(rawlrcInfo)
 
     const lyricInfo = await getCachedLyricInfo(musicInfo)
-    if (lyricInfo?.lyric) return buildLyricInfo(lyricInfo)
+    // 缓存存在即命中（含「确认无歌词」的空歌词缓存——纯音乐是无歌词的正常状态非失败，
+    // 命中后不再触发匹配搜索，走查反馈 2026-10-29 拍板）
+    if (lyricInfo) return buildLyricInfo(lyricInfo)
   }
 
   try {
@@ -261,14 +302,30 @@ export const getLyricInfo = async({ musicInfo, isRefresh, skipFileLyric, onToggl
   } catch {}
 
   onToggleSource()
-  return getOtherSourceByLocal(musicInfo, async(otherSource) => {
-    return getOnlineOtherSourceLyricInfo({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(async({ lyricInfo, musicInfo: targetMusicInfo, isFromCache }) => {
-      void saveLyric(musicInfo, lyricInfo)
+  try {
+    return await getOtherSourceByLocal(musicInfo, async(otherSource) => {
+      return getOnlineOtherSourceLyricInfo({ musicInfos: [...otherSource], onToggleSource, isRefresh }).then(async({ lyricInfo, musicInfo: targetMusicInfo, isFromCache }) => {
+        void saveLyric(musicInfo, lyricInfo)
 
-      if (isFromCache) return buildLyricInfo(lyricInfo)
-      void saveLyric(targetMusicInfo, lyricInfo)
+        if (isFromCache) return buildLyricInfo(lyricInfo)
+        void saveLyric(targetMusicInfo, lyricInfo)
 
-      return buildLyricInfo(lyricInfo)
+        return buildLyricInfo(lyricInfo)
+      })
     })
-  })
+  } catch (err) {
+    // 仅「两轮匹配确认无结果」（source not found，纯音乐等）落空歌词缓存——正常状态非失败，
+    // 后续读取直接命中缓存不再触发搜索（走查反馈 2026-10-29 拍板）；isRefresh 可强制重配。
+    // 超时/网络等瞬时失败不缓存（审查 I-B1）：一次抖动固化永久无歌词不可自愈，抛出走失败态下次重试
+    if ((err as Error)?.message != 'source not found') throw err
+    const empty: LX.Player.LyricInfo = {
+      lyric: '',
+      tlyric: null,
+      rlyric: null,
+      lxlyric: null,
+      rawlrcInfo: { lyric: '', tlyric: null, rlyric: null, lxlyric: null },
+    }
+    void saveLyric(musicInfo, empty)
+    return buildLyricInfo(empty)
+  }
 }

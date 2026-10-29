@@ -42,6 +42,9 @@ export interface LocalMusicItem {
   onlineInfo?: LX.Music.MusicInfoOnline
   // 下载实际档（单档布尔形态，供 ListItem qualityOverride 点亮音质标签）
   _qualitys?: LX.Music._MusicQualityType
+  // 封面匹配失败标记（走查反馈：无可用封面置位后跳过封面匹配，isRefresh 强制；
+  // 歌词走「空歌词缓存」语义不用标记——无歌词是正常状态）
+  noCover?: boolean
 }
 
 let localMusicList: LocalMusicItem[] = []
@@ -71,16 +74,14 @@ export const toLocalMusicItem = (filePath: string, meta: {
 /** 本地歌曲转播放/收藏用的 MusicInfoLocal */
 // 匹配回写持久化（走查反馈：裸文件播放匹配到封面/歌手后，原 updateListMusics 写歌单存储
 // 对本地页无效——本地页列表在 localMusicList 私有存储，需本接口落盘）
-export const updateLocalMusicMeta = (id: string, patch: Partial<Pick<LocalMusicItem, 'picUrl' | 'singer' | 'albumName'>>): boolean => {
+export const updateLocalMusicMeta = (id: string, patch: Partial<Pick<LocalMusicItem, 'picUrl' | 'singer' | 'albumName' | 'noCover'>>): boolean => {
   const index = localMusicList.findIndex(m => m.id == id)
   if (index < 0) {
-    console.warn('[localMusic] meta update miss:', id) // 排查插桩（走查反馈回填疑案，结案即删）
     return false
   }
   localMusicList[index] = { ...localMusicList[index], ...patch }
   saveLocalMusicList()
   notifyUpdated() // 列表实时刷新（走查反馈：不应重进页面才可见）
-  console.warn('[localMusic] meta updated:', id, String(patch.picUrl).slice(0, 48)) // 排查插桩（结案即删）
   return true
 }
 

@@ -13,10 +13,20 @@ export const getLocalFilePath = async(musicInfo: LX.Music.MusicInfoLocal): Promi
  * content:// 等已有 scheme 的输入原样返回 */
 export const toLocalFileUrl = (path: string) => path.startsWith('/') ? `file://${path}` : path
 
-/** online 行音质元数据提取（local 无 _qualitys 返回 undefined）；统一行/PlayListPanel/下载引擎共用。
- * meta 可选链防御（2026-10-20 真机崩溃：外部源数据存在 meta 缺失条目，如聚合/异常解析结果） */
+/** online 行音质元数据提取；统一行/PlayListPanel/下载引擎共用。
+ * meta 可选链防御（2026-10-20 真机崩溃：外部源数据存在 meta 缺失条目，如聚合/异常解析结果）。
+ * 下载曲 local 条目（2026-10-29 题3）：回填档 → 原曲在线档（存量歌单条目无回填时兜底）；
+ * 裸本地文件仍 undefined（无音质概念，行降级） */
 export const getOnlineQualitys = (item: LX.Music.MusicInfo): LX.Music._MusicQualityType | undefined => {
-  return item.source == 'local' ? undefined : item.meta?._qualitys
+  if (item.source != 'local') return item.meta?._qualitys
+  return item.meta?._qualitys ?? item.meta.onlineInfo?.meta?._qualitys
+}
+
+/** 在线身份归一（2026-10-29 题3 定稿）：本 app 下载曲（local+onlineInfo）按原曲在线身份呈现/入队——
+ * 下载是歌曲属性非身份（Spotify/AM/QQ/网易云一致模型）；裸本地文件原样返回。
+ * 歌单行角标/音质判定、下载槽三态判定 key 统一经此取数（禁用 meta.songId——本地场景被覆写为路径） */
+export const toOnlineIdentity = (item: LX.Music.MusicInfo): LX.Music.MusicInfo => {
+  return item.source == 'local' && item.meta.onlineInfo ? item.meta.onlineInfo : item
 }
 
 // 音质档位归一单源（列表标签色/文案与设置页/选项文案共用，防双处维护漂移）：
@@ -40,4 +50,9 @@ export const qualityTier = (quality: LX.Quality): QualityTierKey => {
 
 export const qualityLabel = (quality: LX.Quality, t: ReturnType<typeof useI18n>) => {
   return t(qualityTier(quality))
+}
+
+/** 音质文案+已下载标记单源（2026-10-29 审查 S-3）：音质面板/下载弹窗两处共用防漂移 */
+export const qualityLabelMarked = (quality: LX.Quality, downloadedQuality: LX.Quality | undefined, t: ReturnType<typeof useI18n>) => {
+  return quality == downloadedQuality ? `${qualityLabel(quality, t)} · ${t('download_mark_downloaded')}` : qualityLabel(quality, t)
 }

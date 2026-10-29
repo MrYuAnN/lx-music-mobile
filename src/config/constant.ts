@@ -134,14 +134,16 @@ export const storageDataPrefixOld = {
 
 export const NAV_MENUS = [
   // 首页总览项（2026-10-23 全应用统一治理拍板 #3，iPad AM 侧栏含 Home 项同构）：横屏 IA 与竖屏
-  // hub 同构，补全最近播放/快捷入口可达性
-  { id: 'nav_home', icon: 'home' },
-  { id: 'nav_search', icon: 'search-2' },
-  { id: 'nav_songlist', icon: 'album' },
-  { id: 'nav_top', icon: 'leaderboard' },
-  { id: 'nav_love', icon: 'love' },
+  // hub 同构，补全最近播放/快捷入口可达性。
+  // 选中态双图标（2026-10-29 图标库换代拍板5，对标 Apple Music/Spotify 导航选中=fill）：
+  // iconActive 为 fill 实心名，消费方（横屏 Aside / 竖屏 hub）选中项渲染之，缺省回退 icon
+  { id: 'nav_home', icon: 'home', iconActive: 'house-fill' },
+  { id: 'nav_search', icon: 'search-2', iconActive: 'magnifying-glass-fill' },
+  { id: 'nav_songlist', icon: 'album', iconActive: 'vinyl-record-fill' },
+  { id: 'nav_top', icon: 'leaderboard', iconActive: 'ranking-fill' },
+  { id: 'nav_love', icon: 'love', iconActive: 'love-fill' },
   // { id: 'download', icon: 'download-2' },
-  { id: 'nav_setting', icon: 'setting' },
+  { id: 'nav_setting', icon: 'setting', iconActive: 'gear-six-fill' },
 ] as const
 
 export type NAV_ID_Type = typeof NAV_MENUS[number]['id']

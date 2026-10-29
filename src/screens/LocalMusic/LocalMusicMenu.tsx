@@ -51,10 +51,11 @@ export default forwardRef<LocalMusicMenuType>((_, ref) => {
         break
       }
       case 'playLater':
-        addTempPlayList([{ listId: '', musicInfo: item }])
+        // 下载曲按原曲在线身份入队（2026-10-29 题3 定稿：下载是属性非身份，歌单/稍后播放存歌不存文件）
+        addTempPlayList([{ listId: '', musicInfo: item.meta.onlineInfo ?? item }])
         break
       case 'add':
-        listMusicAddRef.current?.show({ musicInfo: item, listId: '', isMove: false })
+        listMusicAddRef.current?.show({ musicInfo: item.meta.onlineInfo ?? item, listId: '', isMove: false })
         break
       case 'delete': {
         const downloaded = isAppDownloadedPath(item.meta.filePath)
