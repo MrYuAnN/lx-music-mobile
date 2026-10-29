@@ -59,8 +59,8 @@ const kw = {
     })
   },
 
-  getMusicUrl(songInfo, type) {
-    return apis('kw').getMusicUrl(songInfo, type)
+  getMusicUrl(songInfo, type, isRefresh) {
+    return apis('kw').getMusicUrl(songInfo, type, isRefresh)
   },
 
   getMusicInfo(songInfo) {

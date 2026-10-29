@@ -15,8 +15,8 @@ const wy = {
   songList,
   hotSearch,
   comment,
-  getMusicUrl(songInfo, type) {
-    return apis('wy').getMusicUrl(songInfo, type)
+  getMusicUrl(songInfo, type, isRefresh) {
+    return apis('wy').getMusicUrl(songInfo, type, isRefresh)
   },
   getLyric(songInfo) {
     return getLyric(songInfo.songmid)

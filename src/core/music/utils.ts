@@ -156,6 +156,7 @@ export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: LX.Music.Mus
   url: string
   quality: LX.Quality
   isFromCache: boolean
+  expire?: number
 }> => {
   if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
 
@@ -166,13 +167,13 @@ export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: LX.Music.Mus
 
   let reqPromise
   try {
-    reqPromise = apis('local').getMusicUrl(toOldMusicInfo(musicInfo), null).promise
+    reqPromise = apis('local').getMusicUrl(toOldMusicInfo(musicInfo), null, isRefresh).promise
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
 
-  return reqPromise.then(({ url }: { url: string }) => {
-    return { url, quality, isFromCache: false }
+  return reqPromise.then(({ url, expire }: { url: string, expire?: number }) => {
+    return { url, quality, isFromCache: false, expire }
   })
 }
 
@@ -243,6 +244,7 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
   musicInfo: LX.Music.MusicInfoOnline
   quality: LX.Quality
   isFromCache: boolean
+  expire?: number
 }> => {
   if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
 
@@ -267,14 +269,14 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
 
   let reqPromise
   try {
-    reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), itemQuality).promise
+    reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), itemQuality, isRefresh).promise
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
   // retryedSource.includes(musicInfo.source)
   // eslint-disable-next-line @typescript-eslint/promise-function-async
-  return reqPromise.then(({ url, type }: { url: string, type: LX.Quality }) => {
-    return { musicInfo, url, quality: type, isFromCache: false }
+  return reqPromise.then(({ url, type, expire }: { url: string, type: LX.Quality, expire?: number }) => {
+    return { musicInfo, url, quality: type, isFromCache: false, expire }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
     // 注册失败直接终止（审查 S-5）：换源再试同样过不了 ensureAuth，白耗 5 轮退避
@@ -298,6 +300,7 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
   musicInfo: LX.Music.MusicInfoOnline
   quality: LX.Quality
   isFromCache: boolean
+  expire?: number
 }> => {
   if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
   // console.log(musicInfo.source)
@@ -305,12 +308,12 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
 
   let reqPromise
   try {
-    reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), targetQuality).promise
+    reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), targetQuality, isRefresh).promise
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
-  return reqPromise.then(({ url, type }: { url: string, type: LX.Quality }) => {
-    return { musicInfo, url, quality: type, isFromCache: false }
+  return reqPromise.then(({ url, type, expire }: { url: string, type: LX.Quality, expire?: number }) => {
+    return { musicInfo, url, quality: type, isFromCache: false, expire }
   }).catch(async(err: any) => {
     console.log(err)
     if (!allowToggleSource || err.message == requestMsg.tooManyRequests) throw err

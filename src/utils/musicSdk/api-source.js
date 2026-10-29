@@ -6,17 +6,17 @@
 import { getShiyinMusicUrl } from '@/core/shiyin/client'
 
 const shiyinApis = (source) => ({
-  getMusicUrl(songInfo, type) {
-    return getShiyinMusicUrl(source, songInfo, type)
+  getMusicUrl(songInfo, type, isRefresh) {
+    return getShiyinMusicUrl(source, songInfo, type, isRefresh)
   },
 })
 
 const localApis = {
-  getMusicUrl(songInfo, type) {
+  getMusicUrl(songInfo, type, isRefresh) {
     if (songInfo.source == 'local' || !songInfo.songmid) {
       return { promise: Promise.reject(new Error('source not found')), cancelHttp() {} }
     }
-    return getShiyinMusicUrl(songInfo.source, songInfo, type)
+    return getShiyinMusicUrl(songInfo.source, songInfo, type, isRefresh)
   },
   getLyric(songInfo) {
     if (songInfo.source == 'local' || !songInfo.songmid) {

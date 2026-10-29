@@ -25,12 +25,17 @@ interface UrlResponse {
   code: number
   url?: string
   message?: string
+  /** 链接绝对过期时刻（秒级 unix，2026-10-29 服务端 S3 下发）；缺省时调用方按本地兜底 TTL 存 */
+  expire?: number
 }
 
-const requestUrl = (auth: { token: string, deviceSecret: string, deviceId: string }, source: string, songId: string, quality: string) => {
+const requestUrl = (auth: { token: string, deviceSecret: string, deviceId: string }, source: string, songId: string, quality: string, refresh = false) => {
   const path = `/url/${source}/${songId}/${quality}`
+  // 签名基串仅含 path（服务端验签用 request.url.path 不含 query，2026-10-29 实证），
+  // refresh=1 走 query 不参与签名
+  const url = refresh ? `${SHIYIN_BASE_URL}${path}?refresh=1` : `${SHIYIN_BASE_URL}${path}`
   const ts = String(Math.trunc(Date.now() / 1000))
-  return httpFetch(`${SHIYIN_BASE_URL}${path}`, {
+  return httpFetch(url, {
     headers: {
       Authorization: `Bearer ${auth.token}`,
       'X-Device-Id': auth.deviceId,
@@ -41,8 +46,8 @@ const requestUrl = (auth: { token: string, deviceSecret: string, deviceId: strin
   })
 }
 
-export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>, quality: string | null): {
-  promise: Promise<{ url: string, type: LX.Quality }>
+export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>, quality: string | null, isRefresh = false): {
+  promise: Promise<{ url: string, type: LX.Quality, expire?: number }>
   cancelHttp: () => void
 } => {
   const targetQuality = (quality ?? '128k') as LX.Quality
@@ -55,12 +60,12 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
     if (getShiyinSources()[source] == null) throw new Error(requestMsg.unachievable)
 
     const auth = await ensureAuth()
-    let resp = await (request = requestUrl(auth, source, songId, targetQuality)).promise
+    let resp = await (request = requestUrl(auth, source, songId, targetQuality, isRefresh)).promise
 
     if (resp.statusCode == 401) {
       // token 失效：强刷重注册后重放一次（ensureAuth 内含退避，终止即 throw）
       const nextAuth = await ensureAuth(true)
-      resp = await (request = requestUrl(nextAuth, source, songId, targetQuality)).promise
+      resp = await (request = requestUrl(nextAuth, source, songId, targetQuality, isRefresh)).promise
     }
 
     const body = resp.body as unknown as UrlResponse
@@ -68,7 +73,7 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
       case 200:
         // 服务端 /url 契约恒按请求档返回或报错（上游 getUrl 无降档，审查 I-C 核实），
         // 回填请求档即实际档
-        if (body.url) return { url: body.url, type: targetQuality }
+        if (body.url) return { url: body.url, type: targetQuality, expire: body.expire }
         throw new Error(requestMsg.fail)
       case 403:
         // 摘源（cookie 失效自动摘/开关关闭）：不自动重试，立即重拉 /config 收敛本地源集

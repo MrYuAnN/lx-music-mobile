@@ -353,8 +353,24 @@ export const hasMusicUrlByMusic = async(musicInfo: LX.Music.MusicInfo) => {
 export const clearMusicUrlByMusic = async(musicInfo: LX.Music.MusicInfo) => {
   await removeDataMultiple(qualitys.map(q => `${storageDataPrefix.musicUrl}${musicInfo.id}_${q}`))
 }
-export const getMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality) => getData<string>(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`).then((url) => url ?? '')
-export const saveMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality, url: string) => saveData(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`, url)
+// URL 缓存本地兜底 TTL：服务端 expire 未下发（异常路径）时的保守时效（2026-10-29 审查 I-C 缺省语义）
+const MUSIC_URL_LOCAL_TTL = 10 * 60
+// 过期判定时钟宽限：覆盖 NTP 级偏差；残余由播放失败强刷自愈（审查 S13）
+const MUSIC_URL_EXPIRE_GRACE = 60
+/** 读直链缓存：存储值 {url, expire}。旧格式纯字符串/异构/已过期（含宽限）一律返回空串视同
+ *  缓存 miss——过期校验单点下沉本层（2026-10-29 审查 C1 修订），online/utils 各读点天然全覆盖 */
+export const getMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality) => {
+  const raw = await getData<{ url?: string, expire?: number }>(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`)
+  if (!raw || typeof raw != 'object') return ''
+  if (typeof raw.url != 'string' || !raw.url || typeof raw.expire != 'number') return ''
+  if (raw.expire < Math.trunc(Date.now() / 1000) + MUSIC_URL_EXPIRE_GRACE) return ''
+  return raw.url
+}
+/** 写直链缓存：expire=服务端下发的绝对过期时刻（秒级 unix）；缺省按本地兜底 TTL */
+export const saveMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality, url: string, expire?: number) => saveData(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`, {
+  url,
+  expire: expire ?? (Math.trunc(Date.now() / 1000) + MUSIC_URL_LOCAL_TTL),
+})
 export const clearMusicUrl = async(keys?: string[]) => {
   if (!keys) keys = (await getAllKeys()).filter(key => key.startsWith(storageDataPrefix.musicUrl))
   await removeDataMultiple(keys)
