@@ -63,6 +63,9 @@ export const searchMusic = async({ name, singer, source: s, limit = 25 }) => {
   const tasks = []
   const excludeSource = ['xm']
   for (const source of sources.sources) {
+    // 直连化（批1 走查反馈）：跨源匹配范围收敛到 /config 开启集（qualityList 即收敛集）——
+    // 未开启源的结果到了取链层也会被 assertApiSupport 过滤，提前收敛省无效搜索
+    if (global.lx.qualityList[source.id] == null) continue
     if (!sources[source.id].musicSearch || source.id == s || excludeSource.includes(source.id)) continue
     tasks.push(sources[source.id].musicSearch.search(`${musicName} ${singer || ''}`.trim(), 1, limit).catch(_ => null))
   }
