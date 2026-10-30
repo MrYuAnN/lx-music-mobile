@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import { readDir, existsFile, extname, externalStorageDirectoryPath, stat, unlink } from '@/utils/fs'
-import { readMetadata } from '@/utils/localMediaMetadata'
+import { readMetadata, writePic } from '@/utils/localMediaMetadata'
 import { toMD5 } from '@/utils/tools'
 import { getDownloadListSnapshot, initDownloadList, DOWNLOAD_DIR, removeDownloadTaskByPath } from '@/core/download'
 
@@ -243,9 +243,65 @@ const buildDownloadTaskMap = async(): Promise<Map<string, SY.Download.ListItem>>
   return map
 }
 
-const applyDownloadMeta = async(file: { path: string, size: number }, item: LocalMusicItem, map: Map<string, SY.Download.ListItem>): Promise<LocalMusicItem> => {
+// 音质档位推导（2026-10-30 语义放宽拍板：推导作用于全部本地歌——文件规格落在产品档内才标，
+// 可靠子集=flac/ape/mp3 CBR 近似；VBR/ogg/wav/非标码率不标，诚实降级）——flac 按 24bit 细分、
+// ape 直认、mp3 按码率分档（本 App 下载仅 128k/320k 两档）
+const deriveQualityFromHeader = (meta: { ext?: string, bitrate?: string, type?: string }): string | null => {
+  const ext = (meta.ext || '').toLowerCase()
+  if (ext == 'flac') return /24/i.test(meta.type || '') ? 'flac24bit' : 'flac'
+  if (ext == 'ape') return 'ape'
+  if (ext == 'mp3') {
+    const rate = parseInt(meta.bitrate || '0', 10) || 0
+    return rate >= 300 ? '320k' : rate >= 96 ? '128k' : null
+  }
+  return null
+}
+
+// 孤儿恢复（2026-10-30 元数据绑定定稿）：任务记录已失（如卸载重装）但旁车封面在——
+// 封面回填 + 一次性嵌入文件本体（嵌入后随文件走，不再依赖旁车与任务记录）；
+// 身份从下载命名格式「歌手 - 歌名」解析回填（旁车存在=本 App 下载产物的强信号）；
+// 音质从音频头推导（缺档才推导，推导结果随列表落盘）。doneList 防重复嵌入
+// （嵌入后 size 变化，下轮非增量重读时身份/音质在此处重新补齐，不丢失）
+const recoverOrphanCover = async(
+  file: { path: string, size: number },
+  item: LocalMusicItem,
+  meta?: { bitrate?: string, ext?: string, type?: string },
+): Promise<LocalMusicItem> => {
+  // 封面与音质齐备才短路（装机反馈：存量条目可能只有其一，缺哪样补哪样）
+  if (item.picUrl && item._qualitys) return item
+  const dir = file.path.slice(0, file.path.lastIndexOf('/'))
+  const fileName = file.path.slice(file.path.lastIndexOf('/') + 1)
+  const coverPath = `${dir}/.${fileName}.cover.jpg`
+  try {
+    if (!(await existsFile(coverPath))) return item
+    const doneList = await getData<string[]>(storageDataPrefix.localOrphanEmbedDone) ?? []
+    let result = { ...item, picUrl: `file://${coverPath}` }
+    const parsed = /^(.*) - (.*)$/.exec(fileName.slice(0, fileName.lastIndexOf('.')))
+    if (parsed) result = { ...result, singer: parsed[1].trim(), name: parsed[2].trim() }
+    if (!result._qualitys) {
+      try {
+        const info = meta ?? await readMetadata(file.path)
+        const quality = info ? deriveQualityFromHeader(info) : null
+        if (quality) result = { ...result, _qualitys: { [quality]: true } }
+      } catch { /* 音质推导失败不阻塞恢复 */ }
+    }
+    if (!doneList.includes(file.path)) {
+      await writePic(file.path, coverPath)
+      await saveData(storageDataPrefix.localOrphanEmbedDone, [...doneList, file.path])
+    }
+    return result
+  } catch { /* 恢复失败不影响条目 */ }
+  return item
+}
+
+const applyDownloadMeta = async(
+  file: { path: string, size: number },
+  item: LocalMusicItem,
+  map: Map<string, SY.Download.ListItem>,
+  meta?: { bitrate?: string, ext?: string, type?: string },
+): Promise<LocalMusicItem> => {
   const task = map.get(file.path)
-  if (!task) return item
+  if (!task) return recoverOrphanCover(file, item, meta)
   const mi = task.metadata.musicInfo
   // 只补空不覆盖：第三方已写的 tag 优先，防错配污染
   const enriched: LocalMusicItem = {
@@ -274,6 +330,7 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
   if (isScanning) return { failedDirs: [] }
   setScanning(true)
   try {
+    const qualityDerivePass = !!(await getData(storageDataPrefix.localQualityDerivePass))
     const dirs = getScanDirs()
     // 扫描期间列表只读快照（require-atomic-updates：避免跨 await 基于过期值重赋）
     const prevList = localMusicList
@@ -302,7 +359,21 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
         // 首次补全前已存在的存量也能被覆盖到）
         const existing = byPath.get(file.path)
         if (existing && existing.size == file.size) {
-          results[index] = downloadByPath.size ? await applyDownloadMeta(file, existing, downloadByPath) : existing
+          // 存量补推导（2026-10-30 语义放宽拍板）：上线前扫描的无档条目一次性读头补齐；
+          // 完成标记置位后不再为不可归档文件重复读（VBR/ogg/wav 长期无档属预期）
+          let enriched = existing
+          if (!enriched._qualitys && !qualityDerivePass) {
+            try {
+              const m2 = await readMetadata(file.path)
+              const quality = m2 ? deriveQualityFromHeader(m2) : null
+              if (quality) enriched = { ...enriched, _qualitys: { [quality]: true } }
+            } catch { /* 读取失败留待标记位终结 */ }
+          }
+          // 任务表为空（如卸载重装）也须走孤儿旁车恢复（装机反馈：原 guard 使恢复不可达，
+          // 无主下载文件永远无封面/歌手）
+          results[index] = downloadByPath.size
+            ? await applyDownloadMeta(file, enriched, downloadByPath)
+            : await recoverOrphanCover(file, enriched)
         } else {
           try {
             const meta = await readMetadata(file.path)
@@ -316,7 +387,13 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
                 size: meta.size,
                 ext: meta.ext,
               } as never)
-              results[index] = await applyDownloadMeta(file, item, downloadByPath)
+              // 规格推导（2026-10-30 语义放宽拍板）：全部本地歌缺档即推导，落在产品档内才标；
+              // 下载档回填（applyDownloadMeta 任务分支）随后覆盖为权威值
+              if (!item._qualitys) {
+                const quality = deriveQualityFromHeader(meta)
+                if (quality) item._qualitys = { [quality]: true }
+              }
+              results[index] = await applyDownloadMeta(file, item, downloadByPath, meta)
             }
           } catch {
             // 单文件元数据读取失败：既有条目兜底保留（保守合并场景不被误剔）
@@ -340,6 +417,8 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
     // eslint-disable-next-line require-atomic-updates -- isScanning 重入保护下仅本协程写 localMusicList
     localMusicList = [...merged.values()]
     saveLocalMusicList()
+    // 存量补推导完成置位（2026-10-30 语义放宽拍板）：本扫描已对所有无档存量条目做过一次性读头
+    if (!qualityDerivePass) void saveData(storageDataPrefix.localQualityDerivePass, '1')
     notifyUpdated()
     return { failedDirs }
   } finally {

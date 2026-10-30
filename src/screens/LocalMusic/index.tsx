@@ -336,7 +336,8 @@ export default ({ componentId }: { componentId: string }) => {
               showSource={false}
               // 时长行尾独立显示（2026-10-29 走查拍板）：与全应用列表行结构统一，去 MX-1 降级路径
               showInterval
-              // 下载曲回填档显示（2026-10-29 题1 拍板5）：裸文件无 _qualitys 自然降级无标签
+              // 音质标签（2026-10-30 语义放宽拍板，推翻 10-29 题1 拍板5「裸文件降级无标签」）：
+              // 全部本地歌可标——扫描时文件规格落在产品档内即推导（可靠子集，VBR/ogg/wav 不标）
               qualityOverride={item.meta._qualitys}
               isLiked={likedSet.has(item.id)}
               onLikePress={editMode ? undefined : toggleLike}
@@ -377,7 +378,7 @@ export default ({ componentId }: { componentId: string }) => {
             // 常态仅重扫直钮（话题①定稿：⋮ 单项菜单反模式退役——34dp 触发器宽致菜单项裁字
             // 的双 bug 一并消除）；批量编辑入口改列表行长按
             <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.6} onPress={handleRescan}>
-              <Icon name="arrows-clockwise" size={ICON_SIZE.nav} color={theme['c-font-label']} />
+              <Icon name="arrow-clockwise" size={ICON_SIZE.navAction} color={theme['c-font-label']} />
             </TouchableOpacity>
           )
 
@@ -453,7 +454,9 @@ export default ({ componentId }: { componentId: string }) => {
                 {!showAuthGuide && (
                   <View
                     style={{ ...styles.subHeader, top: headerTotal, overflow: 'hidden' }}
-                    onLayout={(e) => { const h = e.nativeEvent.layout.height; setSubHeaderHeight(prev => Math.max(prev, h)) }}
+                    // 直接跟随实测高度（Search/AddMusic 同款）：Math.max 会锁存「其他音乐」tab
+                    // 两行 chips 的大高度，切回「已下载」后列表 paddingTop 偏大留出一行空隙
+                    onLayout={(e) => { setSubHeaderHeight(e.nativeEvent.layout.height) }}
                   >
                     <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { opacity: subHeaderFade }]}>
                       <GlassSurface style={StyleSheet.absoluteFill} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />

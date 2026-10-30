@@ -6,6 +6,7 @@ import { getMusicUrl, getLyricInfo } from '@/core/music/online'
 import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath } from '@/utils/fs'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
+import { writeMetadata as lmWriteMetadata, writePic as lmWritePic } from '@/utils/localMediaMetadata'
 import { throttle } from '@/utils/common'
 import { toast } from '@/utils/tools'
 
@@ -58,6 +59,40 @@ const notifyProgress = throttle((taskId: string) => {
 /** 任务列表快照（管理页初始渲染用，后续经 downloadStateChanged 订阅更新） */
 export const getDownloadListSnapshot = (): SY.Download.ListItem[] => [...downloadList]
 
+// 标签嵌入（2026-10-30 元数据绑定定稿）：下载完成把原曲身份+内嵌封面写进文件本体——
+// 元数据与文件绑定（卸载/换机/任意播放器均在），旁车仅作展示加速。尽力而为：失败仅
+// 记日志不影响完成态（任务记录仍在，重新下载即可重写）
+const embedTaskTags = async(task: SY.Download.ListItem): Promise<void> => {
+  const { musicInfo, filePath } = task.metadata
+  const dir = filePath.slice(0, filePath.lastIndexOf('/'))
+  const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
+  try {
+    await lmWriteMetadata(filePath, {
+      name: musicInfo.name,
+      singer: musicInfo.singer,
+      albumName: musicInfo.meta.albumName || '',
+    }, false)
+  } catch (err) {
+    console.warn('[download] embed tags failed:', (err as Error)?.message)
+  }
+  try {
+    const coverPath = `${dir}/.${fileName}.cover.jpg`
+    if (await existsFile(coverPath)) await lmWritePic(filePath, coverPath)
+  } catch (err) {
+    console.warn('[download] embed cover failed:', (err as Error)?.message)
+  }
+}
+
+// 存量迁移（2026-10-30 元数据绑定定稿）：标签嵌入上线前完成的下载一次性补写（后台静默）
+const migrateEmbedTags = async(): Promise<void> => {
+  if (await getData(storageDataPrefix.localTagEmbedMigrationDone)) return
+  for (const task of downloadList) {
+    if (task.status != 'completed') continue
+    await embedTaskTags(task)
+  }
+  await saveData(storageDataPrefix.localTagEmbedMigrationDone, '1')
+}
+
 /**
  * 启动恢复任务表（幂等）：进程死时 run→waiting；清理无主 .tmp（S⑨）；
  * 不自动 pump 续跑（避免启动后台静默流量，进管理页或新任务触发调度）
@@ -81,6 +116,9 @@ export const initDownloadList = async(): Promise<void> => {
       }
     } catch {}
     global.state_event.downloadStateChanged([...downloadList])
+    void migrateEmbedTags().catch(err => {
+      console.warn('embed tags migration failed', err)
+    })
   })()
   return initPromise
 }
@@ -280,6 +318,8 @@ const startTask = async(task: SY.Download.ListItem) => {
   toast(global.i18n.t('download_task_completed', { name: task.metadata.musicInfo.name }))
   notifyChanged()
   pump()
+  // 标签嵌入（2026-10-30 元数据绑定定稿）：完成态后写文件本体，失败不影响下载结果
+  void embedTaskTags(task)
 }
 
 /** 并发调度（N=download.maxConcurrency；status 同步占位防双拾，跳过 Wi-Fi 挂起任务） */

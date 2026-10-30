@@ -119,8 +119,11 @@ const EXTRA_NAMES = [
   { names: ['gear-six-fill'], p: 'gear-six', fillShape: true },
   { names: ['play-fill'], p: 'play', fillShape: true },
   // 重扫直钮（2026-10-30 话题①定稿：⋮ 单项菜单退役改直接图标钮）。旧名 available_updates 已
-  // 迁移同形 arrows-clockwise，此处按拍板4 以 Phosphor 原名新增语义消费名，两键并存有意保留
+  // 迁移同形 arrows-clockwise（ChoosePath 页仍消费）
   { names: ['arrows-clockwise'], p: 'arrows-clockwise' },
+  // 重扫钮精化（2026-10-30 走查：双箭头笔画密显粗糙，换单箭头对标 SF arrow.clockwise /
+  // Material refresh 的业界 refresh 主流形态）
+  { names: ['arrow-clockwise'], p: 'arrow-clockwise' },
 ]
 
 // ---------- 读取 selection.json 校验映射覆盖（断言 a：全量覆盖/显式 SKIP） ----------

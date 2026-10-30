@@ -3,6 +3,7 @@ import { Animated, AppState, StyleSheet, TouchableOpacity, View } from 'react-na
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
+import Image from '@/components/common/Image'
 import ActionSheet, { type ActionSheetType, type ActionSheetItem } from '@/components/common/ActionSheet'
 import CategoryChips from '@/components/common/CategoryChips'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
@@ -351,6 +352,7 @@ export default ({ componentId }: { componentId: string }) => {
                       // 原始值 props 驱动重渲染：引擎原地改 task 对象、memo 浅比较不再冻结（审查 C4）
                       id={item.id}
                       name={item.metadata.musicInfo.name}
+                      picUrl={item.metadata.musicInfo.meta.picUrl}
                       status={item.status}
                       progress={item.progress}
                       statusText={item.statusText}
@@ -430,9 +432,10 @@ const handleTaskAction = (task: SY.Download.ListItem) => {
 
 // 进行中（含已暂停）/排队中/失败 行（68 高：封面占位 + 歌名 + 状态副行 [+ 进度条] + 操作钮）；
 // 原始值 props（审查 C4）
-const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode = false, selected = false, onToggleSelected, onAction, onMenu, onLongPress }: {
+const TaskRow = memo(({ id, name, picUrl, status, progress, statusText, speed, editMode = false, selected = false, onToggleSelected, onAction, onMenu, onLongPress }: {
   id: string
   name: string
+  picUrl?: string | null
   status: SY.Download.DownloadTaskStatus
   progress: number
   statusText: string
@@ -481,9 +484,8 @@ const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode 
         onPress={editMode ? () => { onToggleSelected?.(id) } : undefined}
         onLongPress={onLongPress}
       >
-      <View style={{ ...styles.taskPic, backgroundColor: theme['c-border-background'] }}>
-        <Icon name="music" size={ICON_SIZE.list} color={theme['c-font-label']} />
-      </View>
+      {/* 无 picUrl/加载失败由 Image 内部回退统一音符占位（与统一行同款兜底） */}
+      <Image url={picUrl} style={styles.taskPic} />
       <View style={styles.taskInfo}>
         <Text size={15} numberOfLines={1}>{name}</Text>
         <Text

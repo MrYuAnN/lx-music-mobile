@@ -18,6 +18,7 @@ export const ICON_SIZE = {
   chevron: 16, // 行内方向指示（进入/展开箭头）
   inline: 18, // 行内小操作键（更多/关闭/播放模式/点赞等）
   list: 20, // 列表行图标（菜单项/侧栏导航/空态）
+  navAction: 22, // 页头动作键（刷新/新增等直钮，比导航档收敛一档——重扫钮精化 2026-10-30）
   control: 24, // 播放控制键（迷你条/播放页次级键）
   nav: 26, // 页头导航图标（首页搜索/设置圆钮、二级页返回键）
   emphasis: 26, // 行内强调图标（我喜欢的音乐、页标题标识）
@@ -99,6 +100,12 @@ export const storageDataPrefix = {
   ignoringBatteryOptimizationTipEnable: '@ignoring_battery_optimization_tip_enable',
   // 电池优化「去设置」失败冷却（2026-10-30 弹窗批）：时间戳 ms，冷却期内不再弹（7 天）
   batteryOptimizationCooldownUntil: '@battery_optimization_cooldown_until',
+  // 标签嵌入迁移完成标记（2026-10-30 元数据绑定定稿）：存量下载一次性补写文件标签
+  localTagEmbedMigrationDone: '@local_tag_embed_migration_done',
+  // 孤儿旁车封面已嵌入清单（2026-10-30 元数据绑定定稿）：JSON 数组，防重扫重复嵌入
+  localOrphanEmbedDone: '@local_orphan_embed_done',
+  // 音质推导存量补齐完成标记（2026-10-30 语义放宽拍板）：首轮扫描一次性补推导
+  localQualityDerivePass: '@local_quality_derive_pass',
 
   searchHistoryList: '@search_history_list',
   listUpdateInfo: '@list_update_info',
