@@ -19,7 +19,9 @@ const state: InitState = {
   },
 }
 
-// 初始构建=全能力集；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建（批1 阶段2）。
+// 初始=空集起步（2026-10-30 拍板：能力边界=服务端配置面，模块加载早于 /config，全能力预置
+// 会在首启瞬时窗口暴露未配置源）；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建
+// （批1 阶段2）。
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of musicSdk.sources) {
@@ -31,7 +33,6 @@ const buildSources = (enabled?: string[]) => {
   // 空开启集=全源不可用（边界①）：不补聚合位
   if (state.sources.length) state.sources.push('all')
 }
-buildSources()
 
 export const rebuildSources = (enabled: string[]) => {
   buildSources(enabled)

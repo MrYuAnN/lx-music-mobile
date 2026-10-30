@@ -40,8 +40,9 @@ const state: InitState = {
   maxPages: {},
 }
 
-// 初始构建=全能力集（模块加载早于 /config）；/config 广播后 rebuildSources 按
-// 「开启集 ∩ 能力位」重建（批1 阶段2）。listInfos/maxPages 旧源条目保留（切回源数据不丢）。
+// 初始=空集起步（2026-10-30 拍板：能力边界=服务端配置面——模块加载早于 /config，原全能力
+// 预置会在首启瞬时窗口对未配置源发搜索）；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」
+// 重建（批1 阶段2）。listInfos/maxPages 旧源条目保留（切回源数据不丢）。
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of music.sources) {
@@ -63,8 +64,6 @@ const buildSources = (enabled?: string[]) => {
   // 空开启集=全源不可用（边界①）：不补聚合位，四页出提示态
   if (state.sources.length) state.sources.push('all')
 }
-buildSources()
-state.source = state.sources[0] ?? 'kw'
 
 export const rebuildSources = (enabled: string[]) => {
   buildSources(enabled)

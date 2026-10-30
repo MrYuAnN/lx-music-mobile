@@ -45,8 +45,9 @@ const state: InitState = {
   },
 }
 
-// 初始构建=全能力集；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建（批1 阶段2）。
-// boards 由 getBoardsList 按需填充，无需预建。
+// 初始=空集起步（2026-10-30 拍板：能力边界=服务端配置面，模块加载早于 /config，全能力预置
+// 会在首启瞬时窗口暴露未配置源）；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建
+// （批1 阶段2）。boards 由 getBoardsList 按需填充，无需预建。
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of music.sources) {
@@ -55,7 +56,6 @@ const buildSources = (enabled?: string[]) => {
     state.sources.push(source.id as SY.OnlineSource)
   }
 }
-buildSources()
 
 export const rebuildSources = (enabled: string[]) => {
   buildSources(enabled)

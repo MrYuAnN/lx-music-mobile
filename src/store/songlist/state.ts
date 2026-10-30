@@ -113,8 +113,10 @@ const state: InitState = {
 }
 
 
-// 初始构建=全能力集；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建（批1 阶段2）。
-// sortList 为各源静态数据，按能力位建齐不随开启集删减（选中源被摘时仍可回显）。
+// 初始=空集起步（2026-10-30 拍板：能力边界=服务端配置面，模块加载早于 /config，全能力预置
+// 会在首启瞬时窗口暴露未配置源）；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建
+// （批1 阶段2）。sortList 为各源静态数据，按能力位建齐不随开启集删减（选中源被摘时仍可回显），
+// 随首次广播一并建齐。
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of music.sources) {
@@ -125,10 +127,6 @@ const buildSources = (enabled?: string[]) => {
     state.sources.push(source.id as Source)
   }
 }
-buildSources()
-// 首项跟随（批1 阶段2）：初始源=构建集首项（替换 'kw' 硬编码）
-state.listInfo.source = state.sources[0] ?? 'kw'
-state.listDetailInfo.source = state.sources[0] ?? 'kw'
 
 export const rebuildSources = (enabled: string[]) => {
   buildSources(enabled)

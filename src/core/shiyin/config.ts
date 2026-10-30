@@ -1,7 +1,10 @@
 // 拾音直连 /config 客户端（批1 直连换心；方案 doc/plans/self-hosted-music-server.md §四）
 // SWR 语义：有本地缓存→缓存即时生效+后台刷新（有变化才广播 sourcesUpdated）；
-// 无缓存→等网络（8s 上限）→默认集兜底（与灰度开启集同源 kw/tx/wy）。TTL 24h：
-// 超期缓存降级为「先试网络再兜底」，仍可放行。
+// 无缓存→等网络（8s 上限）→空集兜底（2026-10-30 拍板修订：能力边界=服务端配置面，
+// 快照式默认集会过期失真——server 只开 tx 时旧默认集 kw/tx/wy 搜出不可播源；空集走
+// 「全源不可用」提示态+下方自愈重拉链。闸门立即放行=「无缓存不等网络」属 F-1 实施后
+// 目标态，现行无缓存路径仍 await 网络 8s 上限——审查 I-3 挂起窗口归 F-1 统一收口）。
+// TTL 24h：超期缓存降级为「先试网络再退回空缓存仍放行」。
 // /url 遇 403 source_disabled 时由 client 调 refreshShiyinConfig 立即重拉。
 import { httpFetch } from '@/utils/request'
 import { getData, saveData } from '@/plugins/storage'
@@ -11,13 +14,6 @@ export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 
 export interface ShiyinSourceInfo {
   qualitys: SY.Quality[]
-}
-
-// 默认集（=服务端灰度开启集 kw/tx/wy 同源；含确定顺序供「首项跟随」语义成立）
-export const SHIYIN_DEFAULT_SOURCES: Record<string, ShiyinSourceInfo> = {
-  kw: { qualitys: ['128k', '320k', 'flac', 'flac24bit'] },
-  tx: { qualitys: ['128k', '320k', 'flac', 'flac24bit'] },
-  wy: { qualitys: ['128k', '320k', 'flac', 'flac24bit'] },
 }
 
 const CONFIG_CACHE_KEY = storageDataPrefix.shiyinConfig
@@ -124,7 +120,7 @@ export const fetchShiyinConfig = async(): Promise<void> => {
 export const initShiyinConfigClient = async(): Promise<boolean> => {
   const cached = await getData<CachedConfig>(CONFIG_CACHE_KEY)
   // 空集缓存同放行（审查 S-7，随 I-E 自愈口径）：冷启动与运行时空集语义一致——
-  // 提示态+自愈定时链兜底，不再降级默认集逐曲 403；无缓存断网仍默认集兜底（初始可用性优先）
+  // 提示态+自愈定时链兜底；无缓存断网同落空集（2026-10-30 拍板修订，原「默认集兜底」退役）
   if (cached?.sources) {
     applySources(cached.sources)
     if (Date.now() - cached.fetchedAt > CACHE_TTL) {
@@ -139,7 +135,8 @@ export const initShiyinConfigClient = async(): Promise<boolean> => {
     await fetchShiyinConfig()
     return true
   } catch {
-    applySources(SHIYIN_DEFAULT_SOURCES)
+    // 空集兜底（2026-10-30 拍板）：不写死快照源集；applySources 空集分支自挂自愈重拉链
+    applySources({})
     return true
   }
 }

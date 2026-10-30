@@ -18,8 +18,19 @@ export const clearListInfo: typeof searchMusicActions.clearListInfo = (source) =
 
 
 export const search = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
-  const listInfo = searchMusicState.listInfos[sourceId]!
   if (!text) return []
+  // 源集就绪闸门（2026-10-30 拍板：搜索面=服务端配置面）：闸门 resolve 晚于 sourcesUpdated
+  // 广播重建（init 先订阅后初始化），await 后 state.sources 必为已收敛集——根除首启瞬时窗口
+  // 对未配置源发搜索
+  await global.sy.apiInitPromise[0]
+  // 闸门后源 id 校验：提交瞬间的 id 可能是配置就绪前的默认/持久化值（清数据首启默认 'kw'
+  // vs server 仅 tx，重建后 listInfos 无该源条目，直接取即 TypeError 静默空结果）——重定向
+  // 生效集首项；空集（提示态已接管渲染）空返回
+  if (sourceId != 'all' && !searchMusicState.sources.includes(sourceId)) {
+    if (!searchMusicState.sources.length) return []
+    sourceId = searchMusicState.sources[0]
+  }
+  const listInfo = searchMusicState.listInfos[sourceId]!
   const key = `${page}__${text}`
   if (sourceId == 'all') {
     listInfo.key = key
