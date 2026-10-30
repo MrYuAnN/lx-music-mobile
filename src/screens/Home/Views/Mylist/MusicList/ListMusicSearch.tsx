@@ -9,12 +9,12 @@ import { toOnlineIdentity } from '@/utils/music'
 import { useI18n } from '@/lang'
 import listState from '@/store/list/state'
 
-type SearchTipListProps = _SearchTipListProps<LX.Music.MusicInfo>
+type SearchTipListProps = _SearchTipListProps<SY.Music.MusicInfo>
 interface ListMusicSearchProps {
-  onScrollToInfo: (info: LX.Music.MusicInfo) => void
+  onScrollToInfo: (info: SY.Music.MusicInfo) => void
   /** 匹配数据源取数（2026-10-20 参数化，方案 playlist-search-add-music §B3）：
    * Mylist 传本地歌单链路 getListMusics(activeListId)；SonglistDetail 传 songlistState.listDetailInfo.list 快照 */
-  getList: () => Promise<LX.List.ListMusics>
+  getList: () => Promise<SY.List.ListMusics>
   /** 数据变更事件订阅（mylistToggled/myListMusicUpdate）：本地歌单链路 true（缺省）；
    * store 快照链路（在线歌单）传 false——无对应全局事件，勿硬造订阅 */
   subscribeListEvents?: boolean
@@ -24,14 +24,14 @@ export interface ListMusicSearchType {
   hide: () => void
 }
 
-export const debounceSearchList = debounce((text: string, list: LX.List.ListMusics, callback: (list: LX.List.ListMusics) => void) => {
+export const debounceSearchList = debounce((text: string, list: SY.List.ListMusics, callback: (list: SY.List.ListMusics) => void) => {
   // console.log(reslutList)
   callback(searchListMusic(list, text))
 }, 200)
 
 
 export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScrollToInfo, getList, subscribeListEvents = true }, ref) => {
-  const searchTipListRef = useRef<SearchTipListType<LX.Music.MusicInfo>>(null)
+  const searchTipListRef = useRef<SearchTipListType<SY.Music.MusicInfo>>(null)
   const [visible, setVisible] = useState(false)
   // 调用序守卫：响应落地时序号不符即丢弃（切列表/重查后旧响应作废；替代原 activeListId 守卫，两链路通用）
   const seqRef = useRef(0)
@@ -106,7 +106,7 @@ export default forwardRef<ListMusicSearchType, ListMusicSearchProps>(({ onScroll
 
   // 定位结果行与歌单列表行同款（真机反馈 2026-10-20：统一行样式，替换原简行）
   const downloadedSet = useDownloadedSet()
-  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => (
+  const renderItem = useCallback(({ item, index }: { item: SY.Music.MusicInfo, index: number }) => (
     <ListItem
       item={item}
       index={index}

@@ -1,6 +1,6 @@
 
 interface InitState {
-  dislikeInfo: LX.Dislike.DislikeInfo
+  dislikeInfo: SY.Dislike.DislikeInfo
 }
 const state: InitState = {
   dislikeInfo: {

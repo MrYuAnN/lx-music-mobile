@@ -233,12 +233,12 @@ const List = ({ listId }: { listId: string }) => {
 }
 
 export interface ModalType {
-  show: (info: LX.List.MyListInfo) => void
+  show: (info: SY.List.MyListInfo) => void
 }
 const initInfo = {}
 
 const Modal = forwardRef<ModalType, {}>((props, ref) => {
-  const [info, setInfo] = useState<LX.List.MyListInfo>(initInfo as LX.List.MyListInfo)
+  const [info, setInfo] = useState<SY.List.MyListInfo>(initInfo as SY.List.MyListInfo)
   const dialogRef = useRef<DialogType>(null)
   useImperativeHandle(ref, () => ({
     show(info) {
@@ -271,7 +271,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
 })
 
 export interface DuplicateMusicType {
-  show: (info: LX.List.MyListInfo) => void
+  show: (info: SY.List.MyListInfo) => void
 }
 
 export default forwardRef<DuplicateMusicType, {}>((props, ref) => {

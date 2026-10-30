@@ -5,7 +5,7 @@ import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
 
 export default ({ musicInfo, isMove }: {
-  musicInfo: LX.Music.MusicInfo
+  musicInfo: SY.Music.MusicInfo
   isMove: boolean
 }) => {
   const theme = useTheme()

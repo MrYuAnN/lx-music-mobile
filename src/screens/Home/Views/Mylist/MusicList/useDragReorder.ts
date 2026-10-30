@@ -34,9 +34,9 @@ export interface UseDragReorderParams {
   scrollOffsetRef: React.MutableRefObject<number>
   viewportHeightRef: React.MutableRefObject<number>
   /** 松手落位：from/to 为重排前后索引（0-based），finalList 为会话副本终态（宿主转正+持久化） */
-  onSettle: (from: number, to: number, finalList: LX.List.ListMusics) => void
+  onSettle: (from: number, to: number, finalList: SY.List.ListMusics) => void
   /** 系统打断/外部事件中止：宿主恢复原列表渲染 */
-  onAbort: (originalList: LX.List.ListMusics) => void
+  onAbort: (originalList: SY.List.ListMusics) => void
 }
 
 export const useDragReorder = ({
@@ -48,8 +48,8 @@ export const useDragReorder = ({
   onAbort,
 }: UseDragReorderParams) => {
   const [dragging, setDragging] = useState(false)
-  const [dragItem, setDragItem] = useState<LX.Music.MusicInfo | null>(null)
-  const [sessionList, setSessionList] = useState<LX.List.ListMusics>([])
+  const [dragItem, setDragItem] = useState<SY.Music.MusicInfo | null>(null)
+  const [sessionList, setSessionList] = useState<SY.List.ListMusics>([])
   const phaseRef = useRef<'idle' | 'dragging'>('idle')
   const sourceIndexRef = useRef(0)
   const currentIndexRef = useRef(0)
@@ -57,8 +57,8 @@ export const useDragReorder = ({
   const grabOffsetRef = useRef(0)
   const listTopRef = useRef(0)
   const pointerYRef = useRef(0)
-  const originalListRef = useRef<LX.List.ListMusics>([])
-  const sessionListRef = useRef<LX.List.ListMusics>([])
+  const originalListRef = useRef<SY.List.ListMusics>([])
+  const sessionListRef = useRef<SY.List.ListMusics>([])
   const rafRef = useRef(0)
   const lastRafTsRef = useRef(0)
   const overlayY = useSharedValue(0)
@@ -124,7 +124,7 @@ export const useDragReorder = ({
   }, [viewportHeightRef, autoScrollStep, stopAutoScroll])
 
   // 拖拽启动：宿主传当前列表快照作会话副本起点 + measureInWindow 实测列表视口屏内 top
-  const startDrag = useCallback((index: number, item: LX.Music.MusicInfo, absoluteY: number, listTop: number, currentList: LX.List.ListMusics) => {
+  const startDrag = useCallback((index: number, item: SY.Music.MusicInfo, absoluteY: number, listTop: number, currentList: SY.List.ListMusics) => {
     originalListRef.current = currentList
     sessionListRef.current = currentList
     setSessionList(currentList)

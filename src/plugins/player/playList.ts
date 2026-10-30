@@ -5,7 +5,7 @@ import { defaultUrl } from '@/config'
 import playerState from '@/store/player/state'
 
 
-const list: LX.Player.Track[] = []
+const list: SY.Player.Track[] = []
 
 const defaultUserAgent = 'Mozilla/5.0 (Linux; Android 10; Pixel 3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/79.0.3945.79 Mobile Safari/537.36'
 const httpRxp = /^(https?:\/\/.+|\/.+)/
@@ -15,7 +15,7 @@ export const state = {
   prevDuration: -1,
 }
 
-const formatMusicInfo = (musicInfo: LX.Player.PlayMusic) => {
+const formatMusicInfo = (musicInfo: SY.Player.PlayMusic) => {
   return 'progress' in musicInfo ? {
     id: musicInfo.id,
     pic: musicInfo.metadata.musicInfo.meta.picUrl,
@@ -42,9 +42,9 @@ const cleanUndefined = <T extends object>(obj: T): T => {
   return result as T
 }
 
-const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'], duration?: LX.Player.Track['duration']): LX.Player.Track[] => {
+const buildTracks = (musicInfo: SY.Player.PlayMusic, url?: SY.Player.Track['url'], duration?: SY.Player.Track['duration']): SY.Player.Track[] => {
   const mInfo = formatMusicInfo(musicInfo)
-  const track = [] as LX.Player.Track[]
+  const track = [] as SY.Player.Track[]
   const album = mInfo.album || undefined
   // 通知封面恒开（2026-10-21 设置页瘦身：业界默认开无开关）
   const artwork = mInfo.pic && httpRxp.test(mInfo.pic) ? mInfo.pic : undefined
@@ -76,7 +76,7 @@ const buildTracks = (musicInfo: LX.Player.PlayMusic, url?: LX.Player.Track['url'
   return track
   // console.log('buildTrack', musicInfo.name, url)
 }
-// const buildTrack = (musicInfo: LX.Player.PlayMusic, url: LX.Player.Track['url'], duration?: LX.Player.Track['duration']): LX.Player.Track => {
+// const buildTrack = (musicInfo: SY.Player.PlayMusic, url: SY.Player.Track['url'], duration?: SY.Player.Track['duration']): SY.Player.Track => {
 //   const mInfo = formatMusicInfo(musicInfo)
 // //   const album = mInfo.album || undefined
 //   // 通知封面恒开（2026-10-21 设置页瘦身：业界默认开无开关）
@@ -120,7 +120,7 @@ export const getCurrentTrack = async() => {
   return currentTrackIndex == null ? undefined : list[currentTrackIndex]
 }
 
-export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: boolean, force = false) => {
+export const updateMetaData = async(musicInfo: SY.Player.MusicInfo, isPlay: boolean, force = false) => {
   if (!force && isPlay == state.isPlaying) {
     const duration = await TrackPlayer.getProgress().then(p => p.duration)
     if (state.prevDuration != duration) {
@@ -139,16 +139,20 @@ export const updateMetaData = async(musicInfo: LX.Player.MusicInfo, isPlay: bool
   }
 }
 
-export const initTrackInfo = async(musicInfo: LX.Player.PlayMusic, mInfo: LX.Player.MusicInfo) => {
+export const initTrackInfo = async(musicInfo: SY.Player.PlayMusic, mInfo: SY.Player.MusicInfo) => {
   const tracks = buildTracks(musicInfo)
   await TrackPlayer.add(tracks).then(() => list.push(...tracks))
-  const queue = await TrackPlayer.getQueue() as LX.Player.Track[]
-  await TrackPlayer.skip(queue.findIndex(t => t.id == tracks[0].id))
+  const queue = await TrackPlayer.getQueue() as SY.Player.Track[]
+  // skip(-1) 防御（2026-10-30 话题②审查 S-1）：findIndex 未命中时 skip 会 reject 且无 catch。
+  // 注意此处装载的是 //default 占位 track，直写 playerTrackId 不解除 isTempId 守卫属预期
+  // ——正式 url track 的解守卫走 handlePlayMusic（首播竞态主修复点）
+  const skipIndex = queue.findIndex(t => t.id == tracks[0].id)
+  if (skipIndex >= 0) await TrackPlayer.skip(skipIndex)
   delayUpdateMusicInfo(mInfo)
 }
 
 
-const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
+const handlePlayMusic = async(musicInfo: SY.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
 // console.log(tracks, time)
   const tracks = buildTracks(musicInfo, url)
   const track = tracks[0]
@@ -158,17 +162,23 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
   // add 的异常被本函数调用方的 catch 兜住（播放静默失败但不闪退）；勿改用 load——其协程
   // 无异常兜底，同一 NPE 会变成主线程 FATAL 闪退
   await TrackPlayer.add(tracks).then(() => list.push(...tracks))
-  const queue = await TrackPlayer.getQueue() as LX.Player.Track[]
+  const queue = await TrackPlayer.getQueue() as SY.Player.Track[]
   const skipIndex = queue.findIndex(t => t.id == track.id)
-  if (skipIndex >= 0) await TrackPlayer.skip(skipIndex)
+  if (skipIndex >= 0) {
+    await TrackPlayer.skip(skipIndex)
+    // 首播状态竞态修复（2026-10-30 话题②）：skip 目标 JS 侧已知，同步直写 playerTrackId，
+    // 不等 track-changed 异步回包——回包慢于 Playing 事件时守卫 isTempId('') 会把状态事件
+    // 整批丢弃，UI 永卡「获取中」（守卫侧旁路自愈见 service.ts）
+    global.sy.playerTrackId = track.id
+  }
 
   // 队列已清空重建，新 track 恒为 index 0；恢复场景（restorePlayInfo）与暂停态切档（pauseAfterLoad，
   // 独立参数勿复用 restorePlayInfo 全局标志——其会被消费清空）装载后暂停待用户续播
   if (!isTempTrack(track.id as string)) {
     if (time) await TrackPlayer.seekTo(time)
-    if (global.lx.restorePlayInfo) {
+    if (global.sy.restorePlayInfo) {
       await TrackPlayer.pause()
-      global.lx.restorePlayInfo = null
+      global.sy.restorePlayInfo = null
     } else if (pauseAfterLoad) {
       await TrackPlayer.pause()
     } else {
@@ -178,7 +188,7 @@ const handlePlayMusic = async(musicInfo: LX.Player.PlayMusic, url: string, time:
 }
 let playPromise = Promise.resolve()
 let actionId = Math.random()
-export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
+export const playMusic = (musicInfo: SY.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
   const id = actionId = Math.random()
   void playPromise.finally(() => {
     if (id != actionId) return
@@ -191,7 +201,33 @@ export const playMusic = (musicInfo: LX.Player.PlayMusic, url: string, time: num
 // let musicId = null
 // let duration = 0
 let prevArtwork: string | undefined
-const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
+// 队列空守卫（走查 C-2 单点收口）：deep-link 首播 add 装载失败（RN 0.86+fork 已知 NPE，见
+// handlePlayMusic 注释）或 reset 后原生队列为空时，updateNowPlayingMetadata 会命中 fork
+// QueuedAudioPlayer.replaceItem(0) 越界主线程崩溃——getActiveTrackIndex 真值判定，空队列跳过。
+// 逐行歌词高频通道缓存判定（审查采纳项）：500ms 内复用空队列结论，省一次桥调用
+let lastQueueCheckAt = 0
+let lastQueueEmpty = false
+export const safeUpdateNowPlayingMetadata = async(metadata: {
+  title?: string
+  artist?: string
+  album?: string
+  artwork?: string
+  duration?: number
+}) => {
+  const now = Date.now()
+  // 只缓存「空→跳过」方向（代码审查 I-2）：「非空→放行」的结论不缓存——窗口内队列被清
+  // （reset/装载失败）时放行会命中 fork replaceItem(0) 越界崩溃（C-2 实证点），
+  // 守卫是唯一防线（patch 兜底未落），非空每次真查，仅高频歌词通道多一次桥调用
+  if (lastQueueEmpty && now - lastQueueCheckAt <= 500) return
+  if (now - lastQueueCheckAt > 500 || !lastQueueEmpty) {
+    lastQueueCheckAt = now
+    const activeTrackIndex = await TrackPlayer.getActiveTrackIndex()
+    lastQueueEmpty = activeTrackIndex == null || activeTrackIndex < 0
+  }
+  if (lastQueueEmpty) return
+  return TrackPlayer.updateNowPlayingMetadata(metadata)
+}
+const updateMetaInfo = async(mInfo: SY.Player.MusicInfo) => {
   // const mInfo = formatMusicInfo(musicInfo)
   // console.log('+++++updateMusicPic+++++', track.artwork, track.duration)
 
@@ -219,7 +255,7 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
   }
   // N2 换装：updateNowPlayingMetadata 双参（playing）为 lyswhut 扩展，fork 单参；
   // AVRCP 独立 lyric 通道随 fork 缺失退役（拍板：等价实现走 updateNowPlayingTitles 文本行）
-  await TrackPlayer.updateNowPlayingMetadata({
+  await safeUpdateNowPlayingMetadata({
     title,
     artist,
     album: mInfo.album ?? undefined,
@@ -232,13 +268,13 @@ const updateMetaInfo = async(mInfo: LX.Player.MusicInfo) => {
 // 解决快速切歌导致的通知栏歌曲信息与当前播放歌曲对不上的问题
 const debounceUpdateMetaInfoTools = {
   updateMetaPromise: Promise.resolve(),
-  musicInfo: null as LX.Player.MusicInfo | null,
-  debounce(fn: (musicInfo: LX.Player.MusicInfo) => void | Promise<void>) {
+  musicInfo: null as SY.Player.MusicInfo | null,
+  debounce(fn: (musicInfo: SY.Player.MusicInfo) => void | Promise<void>) {
     // let delayTimer = null
     let isDelayRun = false
     let timer: number | null = null
-    let _musicInfo: LX.Player.MusicInfo | null = null
-    return (musicInfo: LX.Player.MusicInfo) => {
+    let _musicInfo: SY.Player.MusicInfo | null = null
+    return (musicInfo: SY.Player.MusicInfo) => {
       // console.log('debounceUpdateMetaInfoTools', musicInfo)
       if (timer) {
         BackgroundTimer.clearTimeout(timer)
@@ -269,7 +305,7 @@ const debounceUpdateMetaInfoTools = {
     }
   },
   init() {
-    return this.debounce(async(musicInfo: LX.Player.MusicInfo) => {
+    return this.debounce(async(musicInfo: SY.Player.MusicInfo) => {
       this.musicInfo = musicInfo
       return this.updateMetaPromise.then(() => {
         // console.log('run')

@@ -22,7 +22,7 @@ export interface LocalMusicGroupProps {
   /** 专辑名/歌手名（页头标题） */
   value: string
   /** 该聚合下的歌曲（push passProps 快照；实时派生改造后已不传，契约兼容保留） */
-  list?: LX.Music.MusicInfoLocal[]
+  list?: SY.Music.MusicInfoLocal[]
 }
 
 /** 列表实时派生（2026-10-29 ③ 审查 I-G 定稿）：passProps 是静态快照，主列表删除后二级屏
@@ -53,7 +53,7 @@ export default ({ componentId, type, value }: LocalMusicGroupProps) => {
   // native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2 同款），模块级构造防重挂
   const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 
-  const handlePlay = useCallback((item: LX.Music.MusicInfoLocal, playList_: LX.Music.MusicInfoLocal[]) => {
+  const handlePlay = useCallback((item: SY.Music.MusicInfoLocal, playList_: SY.Music.MusicInfoLocal[]) => {
     // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, playList_).then(() => {
       const index = playList_.findIndex(m => m.id == item.id)
@@ -86,8 +86,8 @@ qualityOverride={item.meta._qualitys}
             isLiked={likedSet.has(item.id)}
             onLikePress={toggleLike}
             onPress={(_, pressIndex) => { handlePlay(list[pressIndex], list) }}
-            onLongPress={pressedItem => { menuRef.current?.show(pressedItem as LX.Music.MusicInfoLocal, list) }}
-            onShowMenu={itemInfo => { menuRef.current?.show(itemInfo as LX.Music.MusicInfoLocal, list) }}
+            onLongPress={pressedItem => { menuRef.current?.show(pressedItem as SY.Music.MusicInfoLocal, list) }}
+            onShowMenu={itemInfo => { menuRef.current?.show(itemInfo as SY.Music.MusicInfoLocal, list) }}
           />
         )}
         showsVerticalScrollIndicator={false}

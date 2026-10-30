@@ -2,7 +2,7 @@ import state, { type InitState } from './state'
 
 
 export default {
-  setUserLists(userList: LX.List.UserListInfo[]) {
+  setUserLists(userList: SY.List.UserListInfo[]) {
     state.userList = userList
     state.allList = [state.defaultList, state.loveList, ...state.userList]
 
@@ -25,13 +25,13 @@ export default {
 
 
 // Other code such as selectors can use the imported `RootState` type
-// export const defaultList = (state: LX.State) => state.userList.defaultList
-// export const loveList = (state: LX.State) => state.userList.loveList
-// export const userList = (state: LX.State) => state.userList.userList
+// export const defaultList = (state: SY.State) => state.userList.defaultList
+// export const loveList = (state: SY.State) => state.userList.loveList
+// export const userList = (state: SY.State) => state.userList.userList
 // export const selectAllList = createSelector(defaultList, loveList, userList, (defaultList, loveList, userList) => {
 //   return [defaultList, loveList, ...userList]
 // })
 
-// export const selectActiveListId = (state: LX.State) => state.userList.activeListId
+// export const selectActiveListId = (state: SY.State) => state.userList.activeListId
 
 // export default slice.reducer

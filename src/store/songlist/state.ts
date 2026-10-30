@@ -6,24 +6,24 @@ export declare interface SortInfo {
   id: string
 }
 
-export declare interface TagInfoItem<T extends LX.OnlineSource = LX.OnlineSource> {
+export declare interface TagInfoItem<T extends SY.OnlineSource = SY.OnlineSource> {
   parent_id: string
   parent_name: string
   id: string
   name: string
   source: T
 }
-export declare interface TagInfoTypeItem<T extends LX.OnlineSource = LX.OnlineSource> {
+export declare interface TagInfoTypeItem<T extends SY.OnlineSource = SY.OnlineSource> {
   name: string
   list: Array<TagInfoItem<T>>
 }
-export declare interface TagInfo<Source extends LX.OnlineSource = LX.OnlineSource> {
+export declare interface TagInfo<Source extends SY.OnlineSource = SY.OnlineSource> {
   tags: Array<TagInfoTypeItem<Source>>
   hotTag: Array<TagInfoItem<Source>>
   source: Source
 }
 
-type Tags = Partial<Record<LX.OnlineSource, TagInfo>>
+type Tags = Partial<Record<SY.OnlineSource, TagInfo>>
 
 export declare interface ListInfoItem {
   play_count?: string
@@ -34,7 +34,7 @@ export declare interface ListInfoItem {
   img?: string
   // grade: basic.favorcnt / 10,
   desc?: string
-  source: LX.OnlineSource
+  source: SY.OnlineSource
   total?: string
 }
 export declare interface ListInfo {
@@ -44,14 +44,14 @@ export declare interface ListInfo {
   limit: number
   maxPage: number
   key: string | null
-  source: LX.OnlineSource
+  source: SY.OnlineSource
   tagId: string
   sortId: string
 }
 
 export declare interface ListDetailInfo {
-  list: LX.Music.MusicInfoOnline[]
-  source: LX.OnlineSource
+  list: SY.Music.MusicInfoOnline[]
+  source: SY.OnlineSource
   // desc: string | null
   total: number
   page: number
@@ -73,7 +73,7 @@ export declare interface ListDetailInfo {
 //   source: '',
 // })
 
-export type Source = LX.OnlineSource
+export type Source = SY.OnlineSource
 export interface InitState {
   sources: Source[]
   sortList: Partial<Record<Source, SortInfo[]>>

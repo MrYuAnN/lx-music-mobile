@@ -6,8 +6,8 @@ import { PlaylistGridCreateCard, PlaylistGridScrollView } from '@/components/com
 // 两列网格（2026-10-21 拍板，与添加歌曲页「其他歌单」同构）：容器/列宽归 PlaylistGridScrollView 单源
 // （审查 S-1 再收编），本文件只保留收藏歌单只读过滤与行渲染
 export default ({ musicInfo, onPress }: {
-  musicInfo: LX.Music.MusicInfo
-  onPress: (listInfo: LX.List.MyListInfo) => void
+  musicInfo: SY.Music.MusicInfo
+  onPress: (listInfo: SY.List.MyListInfo) => void
 }) => {
   // 收藏歌单只读（拍板 #2，审查 C2）：目标列表过滤，源头不可达
   const allList = useMyList().filter(l => !isListContentReadonly(l.id))

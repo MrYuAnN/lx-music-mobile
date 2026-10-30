@@ -35,7 +35,7 @@ let isInited = false
 export default async() => {
   if (isInited) return handlePushedHomeScreen
   bootLog('Initing...')
-  commonActions.setFontSize(global.lx.fontSize)
+  commonActions.setFontSize(global.sy.fontSize)
   bootLog('Font size changed.')
   const setting = await initSetting()
   bootLog('Setting inited.')

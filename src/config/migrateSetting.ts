@@ -1,7 +1,7 @@
 import { compareVer } from '@/utils'
 import defaultSetting from '@/config/defaultSetting'
 
-export default (setting: any): Partial<LX.AppSetting> => {
+export default (setting: any): Partial<SY.AppSetting> => {
   setting = { ...setting }
 
   // 迁移 v1 之前的配置
@@ -55,7 +55,7 @@ const equalsRgba = (a: [number, number, number, number], b: [number, number, num
 
 const OLD_PLAYED_COLOR: [number, number, number, number] = [250, 35, 59, 1]
 
-export const migrateDesktopLyricStyle = (setting: LX.AppSetting): void => {
+export const migrateDesktopLyricStyle = (setting: SY.AppSetting): void => {
   const played = parseRgba(setting['desktopLyric.style.lyricPlayedColor'] ?? '')
   if (played && equalsRgba(played, OLD_PLAYED_COLOR)) {
     setting['desktopLyric.style.lyricPlayedColor'] = defaultSetting['desktopLyric.style.lyricPlayedColor']
@@ -67,7 +67,7 @@ export const migrateDesktopLyricStyle = (setting: LX.AppSetting): void => {
 // 时代的手选封面，补标冻结位防自动轨覆盖。不可后置：合并后新键必有默认值、缺键信息丢失，且
 // 自动轨写回后的稳态 (lovePic=产物, custom=false) 与手选不可分，后置会在二次启动误标冻结、
 // 自动轨静默失效（三席代码审查 C-1）。键只在迁移首启补写、其后随全量 setting 落盘，天然一次性
-export const migrateLovePicCustom = (setting: Partial<LX.AppSetting> | null): void => {
+export const migrateLovePicCustom = (setting: Partial<SY.AppSetting> | null): void => {
   if (setting && setting['list.lovePic'] && !('list.lovePicCustom' in setting)) {
     setting['list.lovePicCustom'] = true
   }

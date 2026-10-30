@@ -16,20 +16,20 @@ import listState from '@/store/list/state'
 // 扫描职责归本地曲库 backlog）；「导入」与所在歌单无关（handleImport 不消费 listInfo）且设置→备份
 // 与恢复已有同款入口，属重复错位项。
 export interface ListManageMenuType {
-  show: (listInfo: LX.List.MyListInfo) => void
+  show: (listInfo: SY.List.MyListInfo) => void
 }
 
 interface Props {
-  onAddMusic: (listInfo: LX.List.MyListInfo) => void
-  onCloneLocal: (listInfo: LX.List.UserListInfo) => void
-  onRename: (listInfo: LX.List.UserListInfo) => void
+  onAddMusic: (listInfo: SY.List.MyListInfo) => void
+  onCloneLocal: (listInfo: SY.List.UserListInfo) => void
+  onRename: (listInfo: SY.List.UserListInfo) => void
   onEditLoveCover: () => void
   onEditDefaultCover: () => void
-  onSort: (listInfo: LX.List.MyListInfo) => void
-  onDuplicateMusic: (listInfo: LX.List.MyListInfo) => void
-  onExport: (listInfo: LX.List.MyListInfo, index: number) => void
-  onSync: (listInfo: LX.List.UserListInfo) => void
-  onRemove: (listInfo: LX.List.UserListInfo) => void
+  onSort: (listInfo: SY.List.MyListInfo) => void
+  onDuplicateMusic: (listInfo: SY.List.MyListInfo) => void
+  onExport: (listInfo: SY.List.MyListInfo, index: number) => void
+  onSync: (listInfo: SY.List.UserListInfo) => void
+  onRemove: (listInfo: SY.List.UserListInfo) => void
 }
 
 // 导入落点传 -1=追加末尾（原抽屉菜单传行内 index 锚定，歌单页无行上下文）
@@ -38,7 +38,7 @@ const MENU_POSITION = -1
 export default forwardRef<ListManageMenuType, Props>((props, ref) => {
   const t = useI18n()
   const menuRef = useRef<ActionSheetType>(null)
-  const listInfoRef = useRef<LX.List.MyListInfo | null>(null)
+  const listInfoRef = useRef<SY.List.MyListInfo | null>(null)
   const [menus, setMenus] = useState<ActionSheetItem[]>([])
   const [visible, setVisible] = useState(false)
 
@@ -56,7 +56,7 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
     },
   }))
 
-  const handleSetMenu = (listInfo: LX.List.MyListInfo) => {
+  const handleSetMenu = (listInfo: SY.List.MyListInfo) => {
     if (listInfo.id == LIST_IDS.DEFAULT || listInfo.id == LIST_IDS.LOVE) {
       const menus: ActionSheetItem[] = [
         { action: 'add_music', label: t('list_manage_add_music'), icon: 'add-music', badge: t('badge_new') },
@@ -77,7 +77,7 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
       setMenus(menus)
       return
     }
-    const userList = listInfo as LX.List.UserListInfo
+    const userList = listInfo as SY.List.UserListInfo
     const notFetching = !listState.fetchingListStatus[listInfo.id]
     if (userList.source) {
       setMenus([
@@ -109,10 +109,10 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
         props.onAddMusic(listInfo)
         break
       case 'clone_local':
-        props.onCloneLocal(listInfo as LX.List.UserListInfo)
+        props.onCloneLocal(listInfo as SY.List.UserListInfo)
         break
       case 'rename':
-        props.onRename(listInfo as LX.List.UserListInfo)
+        props.onRename(listInfo as SY.List.UserListInfo)
         break
       case 'edit_love_cover':
         props.onEditLoveCover()
@@ -130,10 +130,10 @@ export default forwardRef<ListManageMenuType, Props>((props, ref) => {
         props.onExport(listInfo, MENU_POSITION)
         break
       case 'sync':
-        props.onSync(listInfo as LX.List.UserListInfo)
+        props.onSync(listInfo as SY.List.UserListInfo)
         break
       case 'remove':
-        props.onRemove(listInfo as LX.List.UserListInfo)
+        props.onRemove(listInfo as SY.List.UserListInfo)
         break
       default:
         break

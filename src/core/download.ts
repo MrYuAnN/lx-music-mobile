@@ -12,13 +12,13 @@ import { toast } from '@/utils/tools'
 // 下载引擎（multifix 问题 4）：并发 N 队列、自建音质回退链、RNFS 写公共 Music/拾音/、
 // 成功判定=音频+歌词+封面全部成功（走查拍板 10-23，任一失败标错可重试；RNFS 对 HTTP 4xx
 // 也 resolve，音频/封面均需状态码自检）+ scanFile 入库尽力而为；任务模型复用
-// LX.Download.ListItem，持久化 @download_list。暂停=中断保留 .tmp，继续=从头重下
+// SY.Download.ListItem，持久化 @download_list。暂停=中断保留 .tmp，继续=从头重下
 // （RNFS Android 无断点续传，方案期核实拍板）。
 
 // 自建下载回退链（不复用缺 ape 的 getPlayQuality，架构师 I3）
 const DOWNLOAD_QUALITY_CHAIN = ['flac24bit', 'flac', 'ape', '320k', '128k'] as const
 
-const QUALITY_EXT: Record<(typeof DOWNLOAD_QUALITY_CHAIN)[number], LX.Download.FileExt> = {
+const QUALITY_EXT: Record<(typeof DOWNLOAD_QUALITY_CHAIN)[number], SY.Download.FileExt> = {
   flac24bit: 'flac',
   flac: 'flac',
   ape: 'ape',
@@ -29,7 +29,7 @@ const QUALITY_EXT: Record<(typeof DOWNLOAD_QUALITY_CHAIN)[number], LX.Download.F
 // 写入公共 Music/拾音/（scanFile 入系统媒体库后天然被本地音乐白名单扫描到）
 export const DOWNLOAD_DIR = `${externalStorageDirectoryPath}/Music/拾音`
 
-let downloadList: LX.Download.ListItem[] = []
+let downloadList: SY.Download.ListItem[] = []
 const runningJobs = new Map<string, number>()
 // 关闭移动网络下载且当前非 Wi-Fi 的任务 id（不参与调度，联网后 revalidate 恢复）
 const wifiWaitingIds = new Set<string>()
@@ -56,7 +56,7 @@ const notifyProgress = throttle((taskId: string) => {
 }, 500)
 
 /** 任务列表快照（管理页初始渲染用，后续经 downloadStateChanged 订阅更新） */
-export const getDownloadListSnapshot = (): LX.Download.ListItem[] => [...downloadList]
+export const getDownloadListSnapshot = (): SY.Download.ListItem[] => [...downloadList]
 
 /**
  * 启动恢复任务表（幂等）：进程死时 run→waiting；清理无主 .tmp（S⑨）；
@@ -66,7 +66,7 @@ export const initDownloadList = async(): Promise<void> => {
   if (initPromise) return initPromise
   initPromise = (async() => {
     try {
-      const saved = await getData<LX.Download.ListItem[]>(storageDataPrefix.downloadList)
+      const saved = await getData<SY.Download.ListItem[]>(storageDataPrefix.downloadList)
       if (saved?.length) {
         downloadList = saved.map(task => task.status == 'run' ? { ...task, status: 'waiting', speed: '' } : task)
       }
@@ -85,16 +85,16 @@ export const initDownloadList = async(): Promise<void> => {
   return initPromise
 }
 
-const buildFileName = (musicInfo: LX.Music.MusicInfoOnline, ext: LX.Download.FileExt) => {
+const buildFileName = (musicInfo: SY.Music.MusicInfoOnline, ext: SY.Download.FileExt) => {
   const raw = musicInfo.singer ? `${musicInfo.singer} - ${musicInfo.name}` : musicInfo.name
   return `${raw.replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
 }
 
 /** 目标音质向下回退链探测（_qualitys 有档才探测；URL 过期由调用方 isRefresh 重取） */
-const resolveDownloadUrl = async(musicInfo: LX.Music.MusicInfoOnline, isRefresh = false, qualityOverride?: LX.Quality): Promise<{
+const resolveDownloadUrl = async(musicInfo: SY.Music.MusicInfoOnline, isRefresh = false, qualityOverride?: SY.Quality): Promise<{
   url: string
-  quality: LX.Quality
-  ext: LX.Download.FileExt
+  quality: SY.Quality
+  ext: SY.Download.FileExt
 }> => {
   // 目标档：任务指定档（弹窗选择/重新下载原档）优先，缺省回退下载设置档（2026-10-29 走查反馈：
   // 下载入口统一弹音质选择，设置档退化为弹窗默认选中）
@@ -113,7 +113,7 @@ const resolveDownloadUrl = async(musicInfo: LX.Music.MusicInfoOnline, isRefresh 
 }
 
 /** 解析结果落任务元数据（重试降档时同步回写，保证标签/文件名与内容一致——审查 I6） */
-const applyResolved = (task: LX.Download.ListItem, resolved: { url: string, quality: LX.Quality, ext: LX.Download.FileExt }) => {
+const applyResolved = (task: SY.Download.ListItem, resolved: { url: string, quality: SY.Quality, ext: SY.Download.FileExt }) => {
   task.metadata.url = resolved.url
   task.metadata.quality = resolved.quality
   task.metadata.ext = resolved.ext
@@ -126,7 +126,7 @@ const formatSpeed = (bytesPerSec: number) => {
   return `${Math.max(1, Math.round(bytesPerSec / 1024))}KB/s`
 }
 
-const runDownload = async(task: LX.Download.ListItem) => new Promise<void>((resolve, reject) => {
+const runDownload = async(task: SY.Download.ListItem) => new Promise<void>((resolve, reject) => {
   const tmpPath = `${task.metadata.filePath}.tmp`
   const job = downloadFile(task.metadata.url!, tmpPath, {
     connectionTimeout: 15000,
@@ -165,7 +165,7 @@ const runDownload = async(task: LX.Download.ListItem) => new Promise<void>((reso
 })
 
 /** URL 过期重试（isRefresh 强制刷新一次；中止直接上抛由 startTask 统一收尾——审查 C1） */
-const runDownloadWithRefresh = async(task: LX.Download.ListItem) => {
+const runDownloadWithRefresh = async(task: SY.Download.ListItem) => {
   try {
     await runDownload(task)
   } catch (err) {
@@ -185,7 +185,7 @@ const runDownloadWithRefresh = async(task: LX.Download.ListItem) => {
  * ——审查 S③ 的「不拖住完成态」顾虑由 15s 超时封顶）：歌词取失败/封面下载失败即上抛标错可重试；
  * 内容本身为空（无歌词/无封面）不算失败；scanFile 为系统入库动作失败不影响素材完整性
  */
-const postProcess = async(task: LX.Download.ListItem) => {
+const postProcess = async(task: SY.Download.ListItem) => {
   const { musicInfo, filePath } = task.metadata
   const baseName = filePath.replace(/\.[^.]+$/, '')
   // 失败文案指明环节（走查拍板：人话报错，替代裸 HTTP 码）
@@ -214,7 +214,7 @@ const postProcess = async(task: LX.Download.ListItem) => {
   } catch {}
 }
 
-const startTask = async(task: LX.Download.ListItem) => {
+const startTask = async(task: SY.Download.ListItem) => {
   // 同步段防重入 + run 占位（审查 C3）：isWifi await 窗口内 pump 不会再次拾起
   if (task.status != 'waiting') return
   task.status = 'run'
@@ -317,7 +317,7 @@ export const revalidateWifiWaiting = async() => {
  * （审查 I-F：回退链下请求档≠落地档，仅按落地档判定会造成换档误判重复重下循环）；
  * 判定遍历全部 completed 同 id 任务（S10，filter 多条共存先例）
  */
-export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, quality?: LX.Quality): Promise<LX.Download.AddDownloadResult> => {
+export const addDownloadTask = async(musicInfo: SY.Music.MusicInfoOnline, quality?: SY.Quality): Promise<SY.Download.AddDownloadResult> => {
   await initDownloadList()
   const taskId = getTaskId(musicInfo)
   const requestedQuality = quality ?? settingState.setting['download.quality']
@@ -336,7 +336,7 @@ export const addDownloadTask = async(musicInfo: LX.Music.MusicInfoOnline, qualit
   const granted = await isStorageGranted()
   // 去重检查置于 grant await 之后（审查 S9）：与 push 之间无 await，并发双入口不会双入队
   if (downloadList.some(t => t.id == taskId)) return { status: 'exists' }
-  const task: LX.Download.ListItem = {
+  const task: SY.Download.ListItem = {
     id: taskId,
     isComplate: false,
     status: granted ? 'waiting' : 'error',
@@ -400,7 +400,7 @@ export const resumeDownloadTask = (id: string) => {
 /** 删除：登记中止令牌 + 中断 + unlink 文件（成品含同名 .lrc）+ 清记录 */
 /** 删除任务文件族：音频/.tmp/.lrc + cover sidecar（.文件名.cover.jpg，postProcess 保存）。
  * 失败可见（warn 不吞）——走查反馈：换档重下后旧档文件族残留被本地扫描重复发现 */
-const removeTaskFiles = async(task: LX.Download.ListItem) => {
+const removeTaskFiles = async(task: SY.Download.ListItem) => {
   const { filePath } = task.metadata
   if (!filePath) return
   const baseName = filePath.replace(/\.[^.]+$/, '')
@@ -442,7 +442,7 @@ export const removeDownloadTaskByPath = async(filePath: string): Promise<boolean
 
 /** 已完成任务 → 可播放的 MusicInfoLocal（meta.filePath 指向下载文件，走 local 播放分流，蓝本 §5.6）；
  * 保留原曲 picUrl 与在线身份（走查反馈①③：封面即时显示，评论/切档按原曲取链） */
-export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.MusicInfoLocal => {
+export const toDownloadedMusicInfo = (task: SY.Download.ListItem): SY.Music.MusicInfoLocal => {
   const musicInfo = task.metadata.musicInfo
   return {
     id: musicInfo.id,
@@ -461,7 +461,7 @@ export const toDownloadedMusicInfo = (task: LX.Download.ListItem): LX.Music.Musi
   }
 }
 
-const getTaskId = (musicInfo: LX.Music.MusicInfoOnline) => `download__${musicInfo.source}__${musicInfo.id}`
+const getTaskId = (musicInfo: SY.Music.MusicInfoOnline) => `download__${musicInfo.source}__${musicInfo.id}`
 export { getTaskId }
 
 /**
@@ -491,7 +491,7 @@ export const revalidateCompletedFiles = async(): Promise<boolean> => {
  * 缺失时顺手修正已下载集合去角标（审查 S-5；lazy require 防与 store 循环 import）
  */
 /** 实际播放档回传元数据（2026-10-29 题1 拍板4）：本地优先命中=下载档，在线=落地档 */
-export const getCompletedDownloadPath = async(musicInfo: LX.Music.MusicInfoOnline): Promise<{ path: string, quality: LX.Quality } | null> => {
+export const getCompletedDownloadPath = async(musicInfo: SY.Music.MusicInfoOnline): Promise<{ path: string, quality: SY.Quality } | null> => {
   await initDownloadList()
   // 遍历全部 completed 同 id 任务（代码轮 S-12 口径对齐：与三态判定 S10 同构，防首条
   // 文件缺失即走在线漏检第二条在位文件）；全部 miss 才标记去角标

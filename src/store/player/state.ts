@@ -3,29 +3,29 @@ export interface InitState {
     /**
      * 当前播放歌曲的列表 id
      */
-    musicInfo: LX.Player.PlayMusicInfo['musicInfo'] | null
+    musicInfo: SY.Player.PlayMusicInfo['musicInfo'] | null
     /**
      * 当前播放歌曲的列表 id
      */
-    listId: LX.Player.PlayMusicInfo['listId'] | null
+    listId: SY.Player.PlayMusicInfo['listId'] | null
     /**
      * 是否属于 “稍后播放”
      */
     isTempPlay: boolean
   }
-  playInfo: LX.Player.PlayInfo
-  musicInfo: LX.Player.MusicInfo
+  playInfo: SY.Player.PlayInfo
+  musicInfo: SY.Player.MusicInfo
 
   /** 实际播放档（2026-10-29 题1 拍板4）：本地优先命中=下载档、在线=回退链落地档；null=未落地（UI 回退全局设置档）。换歌/停止重置 */
-  actualQuality: LX.Quality | null
+  actualQuality: SY.Quality | null
 
   isPlay: boolean
   volume: number
   playRate: number
   statusText: string
 
-  playedList: LX.Player.PlayMusicInfo[]
-  tempPlayList: LX.Player.PlayMusicInfo[]
+  playedList: SY.Player.PlayMusicInfo[]
+  tempPlayList: SY.Player.PlayMusicInfo[]
 
   loadErrorPicUrl: string
 

@@ -9,11 +9,11 @@ export type { ListInfoItem } from '@/store/songlist/state'
 export type SearchListInfo = Omit<ListInfo, 'source' | 'maxPage'>
 
 
-interface ListInfos extends Partial<Record<LX.OnlineSource, SearchListInfo>> {
+interface ListInfos extends Partial<Record<SY.OnlineSource, SearchListInfo>> {
   'all': SearchListInfo
 }
 
-export type Source = LX.OnlineSource | 'all'
+export type Source = SY.OnlineSource | 'all'
 
 export interface InitState {
   searchText: string
@@ -41,17 +41,17 @@ const state: InitState = {
   maxPages: {},
 }
 
-export const maxPages: Partial<Record<LX.OnlineSource, number>> = {}
+export const maxPages: Partial<Record<SY.OnlineSource, number>> = {}
 // 初始构建=全能力集；/config 广播后 rebuildSources 按「开启集 ∩ 能力位」重建（批1 阶段2）。
 // maxPages 为模块级独立导出，rebuild 显式补键（既有键保留）。
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of music.sources) {
-    if (!music[source.id as LX.OnlineSource]?.songList?.search) continue
+    if (!music[source.id as SY.OnlineSource]?.songList?.search) continue
     if (enabled != null && !enabled.includes(source.id)) continue
-    state.sources.push(source.id as LX.OnlineSource)
-    if (!state.listInfos[source.id as LX.OnlineSource]) {
-      state.listInfos[source.id as LX.OnlineSource] = {
+    state.sources.push(source.id as SY.OnlineSource)
+    if (!state.listInfos[source.id as SY.OnlineSource]) {
+      state.listInfos[source.id as SY.OnlineSource] = {
         page: 1,
         limit: 18,
         total: 0,
@@ -61,7 +61,7 @@ const buildSources = (enabled?: string[]) => {
         sortId: '',
       }
     }
-    if (maxPages[source.id as LX.OnlineSource] == null) maxPages[source.id as LX.OnlineSource] = 0
+    if (maxPages[source.id as SY.OnlineSource] == null) maxPages[source.id as SY.OnlineSource] = 0
   }
   // 空开启集=全源不可用（边界①）：不补聚合位
   if (state.sources.length) state.sources.push('all')

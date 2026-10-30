@@ -31,23 +31,23 @@ const useAnimatedScroll = (scrollYAnimated?: Animated.Value) => {
 export interface MusicGroup {
   name: string
   singer?: string
-  list: LX.Music.MusicInfoLocal[]
+  list: SY.Music.MusicInfoLocal[]
 }
 
 // 行内公共渲染参数（红心/菜单/播放行为由父层注入，视图只管布局）
 export interface GroupViewActions {
   isLiked: (id: string) => boolean
-  onLikePress: (item: LX.Music.MusicInfo, isLiked: boolean) => void
-  onSongPress: (item: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => void
-  onShowMenu: (item: LX.Music.MusicInfo, list: LX.Music.MusicInfoLocal[]) => void
+  onLikePress: (item: SY.Music.MusicInfo, isLiked: boolean) => void
+  onSongPress: (item: SY.Music.MusicInfoLocal, list: SY.Music.MusicInfoLocal[]) => void
+  onShowMenu: (item: SY.Music.MusicInfo, list: SY.Music.MusicInfoLocal[]) => void
 }
 
 const songRowInfo = { rowNum: undefined, rowWidth: '100%' } as const
 
 const SongRow = memo(({ item, index, list, actions }: {
-  item: LX.Music.MusicInfoLocal
+  item: SY.Music.MusicInfoLocal
   index: number
-  list: LX.Music.MusicInfoLocal[]
+  list: SY.Music.MusicInfoLocal[]
   actions: GroupViewActions
 }) => (
   <ListItem
@@ -71,7 +71,7 @@ qualityOverride={item.meta._qualitys}
 
 // 文件夹视图：按父目录分组 section（组头=目录名）
 export const FolderSectionList = ({ folders, actions, scrollYAnimated, contentPaddingTop }: {
-  folders: Array<{ key: string, name: string, data: LX.Music.MusicInfoLocal[] }>
+  folders: Array<{ key: string, name: string, data: SY.Music.MusicInfoLocal[] }>
   actions: GroupViewActions
   /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传不挂 onScroll */
   scrollYAnimated?: Animated.Value
@@ -188,7 +188,8 @@ export const ArtistList = ({ artists, onGroupPress, scrollYAnimated, contentPadd
 
 // 歌手聚合口径（优化师 S2）：多歌手字段按常见分隔符拆分去重，一曲可入多桶
 export const splitSingers = (singer: string): string[] => {
-  return singer.split(/[/\\、,，;；&]/).map(s => s.trim()).filter(Boolean)
+  // 存量数据兜底（闪退修复 2026-10-30）：早期扫描可能已把 singer=undefined 落盘
+  return (singer || '').split(/[/\\、,，;；&]/).map(s => s.trim()).filter(Boolean)
 }
 
 const styles = createStyle({

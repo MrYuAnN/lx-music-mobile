@@ -8,7 +8,7 @@ import CategoryChips from '@/components/common/CategoryChips'
 import Card from './Card'
 import styles from './style'
 
-type Align_Type = LX.AppSetting['playDetail.style.align']
+type Align_Type = SY.AppSetting['playDetail.style.align']
 
 const ALIGN_LIST = [
   'left',

@@ -20,13 +20,13 @@ import leaderboardState, { type BoardItem } from '@/store/leaderboard/state'
 // 数据获取单链在本组件（父层免守卫）：切源拿到榜单后经 onSourceChange 上交父级应用第一榜。
 // 榜单量级 ≤50，ScrollView+map 对齐 BoardsList/List.tsx 现状模式。
 export interface ShowInfo {
-  source: LX.OnlineSource
+  source: SY.OnlineSource
   activeId: string
 }
 
 export interface BoardPickerSheetProps {
-  onBoundSelect: (source: LX.OnlineSource, id: string, name: string) => void
-  onSourceChange: (source: LX.OnlineSource, board: BoardItem) => void
+  onBoundSelect: (source: SY.OnlineSource, id: string, name: string) => void
+  onSourceChange: (source: SY.OnlineSource, board: BoardItem) => void
   onPlay: (listId: string) => void
   onCollect: (listId: string, name: string) => void
 }
@@ -50,15 +50,15 @@ export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoun
   const sheetRef = useRef<SheetBaseType>(null)
   const listMenuRef = useRef<ListMenuType>(null)
   const sourceSeqRef = useRef(0)
-  const boardsSourceRef = useRef<LX.OnlineSource>('kw')
+  const boardsSourceRef = useRef<SY.OnlineSource>('kw')
   // 上次成功拉取的榜单数据（三席审查 S-B）：失败回滚时列表一并恢复，不再停留清空态
-  const lastGoodBoardsRef = useRef<{ source: LX.OnlineSource, list: BoardItem[] } | null>(null)
+  const lastGoodBoardsRef = useRef<{ source: SY.OnlineSource, list: BoardItem[] } | null>(null)
   // source=chips 选中态（目标源）；boards 恒与 boardsSourceRef 成对更新
-  const [source, setSource] = useState<LX.OnlineSource>('kw')
+  const [source, setSource] = useState<SY.OnlineSource>('kw')
   const [boards, setBoards] = useState<BoardItem[]>([])
   const [activeId, setActiveId] = useState('')
 
-  const applyBoards = (targetSource: LX.OnlineSource, list: BoardItem[]) => {
+  const applyBoards = (targetSource: SY.OnlineSource, list: BoardItem[]) => {
     boardsSourceRef.current = targetSource
     lastGoodBoardsRef.current = { source: targetSource, list }
     setBoards(list)
@@ -90,7 +90,7 @@ export default forwardRef<BoardPickerSheetType, BoardPickerSheetProps>(({ onBoun
     },
   }), [t])
 
-  const handleSourcePress = (nextSource: LX.OnlineSource) => {
+  const handleSourcePress = (nextSource: SY.OnlineSource) => {
     if (nextSource == source) return
     const seq = ++sourceSeqRef.current
     setSource(nextSource)

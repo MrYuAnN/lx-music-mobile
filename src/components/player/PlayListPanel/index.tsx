@@ -30,7 +30,7 @@ export interface PlayListPanelType {
 }
 
 const PlayListItem = memo(({ item, active, downloaded = false, onPress, onArmDrag, onReleaseDrag }: {
-  item: LX.Music.MusicInfo
+  item: SY.Music.MusicInfo
   active: boolean
   /** 已下载标记（2026-10-29 标记重做 D4 全量覆盖）：副行右端锚定，与主列表行同构 */
   downloaded?: boolean
@@ -81,7 +81,7 @@ interface DragInfo {
   name: string
   singer: string
   /** 抓取时快照（拖拽换位后 index 不再对应原行） */
-  qualitys: LX.Music._MusicQualityType | undefined
+  qualitys: SY.Music._MusicQualityType | undefined
   /** 抓取时快照：浮层是行的视觉替身，标记同显（对齐 Mylist 拖拽浮层先例，审查 I-4） */
   downloaded: boolean
 }
@@ -90,9 +90,9 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   const t = useI18n()
   const theme = useTheme()
   const popupRef = useRef<PopupType>(null)
-  const listRef = useRef<FlatList<LX.Music.MusicInfo>>(null)
+  const listRef = useRef<FlatList<SY.Music.MusicInfo>>(null)
   const [visible, setVisible] = useState(false)
-  const [list, setList] = useState<LX.Music.MusicInfo[]>([])
+  const [list, setList] = useState<SY.Music.MusicInfo[]>([])
   // 当前播放曲（面板打开期间跟随切歌高亮）
   const playMusicInfo = usePlayMusicInfo()
   // 已下载标记数据源（标记重做 D4；容器层单点订阅——审查 I-5 防 renderItem 闭包断链），
@@ -101,7 +101,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   const downloadedSetRef = useRef(downloadedSet)
   downloadedSetRef.current = downloadedSet
 
-  const listDataRef = useRef<LX.Music.MusicInfo[]>([])
+  const listDataRef = useRef<SY.Music.MusicInfo[]>([])
   const listLayoutRef = useRef({ height: 0 })
   const scrollOffsetRef = useRef(0)
   // 拖拽手柄仲裁：onTouchStart 预登记按手柄的行号，移动时容器据此接管
@@ -210,7 +210,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
 
   const refreshList = () => {
     const listId = playerState.playInfo.playerListId
-    const nextList = listId ? (getOrderedPlayList(listId) as LX.Music.MusicInfo[]) : []
+    const nextList = listId ? (getOrderedPlayList(listId) as SY.Music.MusicInfo[]) : []
     listDataRef.current = nextList
     setList(nextList)
   }
@@ -220,7 +220,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
     const musicInfo = playerState.playMusicInfo.musicInfo
     const listId = playerState.playInfo.playerListId
     if (!musicInfo || !listId) return
-    const ordered = getOrderedPlayList(listId) as LX.Music.MusicInfo[]
+    const ordered = getOrderedPlayList(listId) as SY.Music.MusicInfo[]
     const idx = ordered.findIndex(m => m.id == musicInfo.id)
     if (idx > 0) {
       requestAnimationFrame(() => {
@@ -245,7 +245,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
     },
   }))
 
-  const handlePress = useCallback((item: LX.Music.MusicInfo) => {
+  const handlePress = useCallback((item: SY.Music.MusicInfo) => {
     const listId = playerState.playInfo.playerListId
     if (!listId) return
     void playListById(listId, item.id)
@@ -254,7 +254,7 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   // 队列不可见（下载列表/临时榜单缓存丢失）与无队列两种空态区分，避免「正在播放却提示暂无播放列表」的矛盾
   const isPlaying = !!playMusicInfo.musicInfo
 
-  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: SY.Music.MusicInfo, index: number }) => {
     // 下载曲 local 形态按原曲在线身份判勾（题3 归一口径，代码审查 I-2-a）
     const identity = toOnlineIdentity(item)
     return (

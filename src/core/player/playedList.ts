@@ -5,7 +5,7 @@ import playerActions from '@/store/player/action'
  * 将歌曲添加到已播放列表
  * @param playMusicInfo playMusicInfo对象
  */
-export const addPlayedList = (playMusicInfo: LX.Player.PlayMusicInfo) => {
+export const addPlayedList = (playMusicInfo: SY.Player.PlayMusicInfo) => {
   playerActions.addPlayedList(playMusicInfo)
 }
 /**

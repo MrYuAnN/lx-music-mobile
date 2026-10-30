@@ -27,12 +27,12 @@ interface GlobalData {
     isRegisteredService: boolean
     isIniting: boolean
   }
-  restorePlayInfo: LX.Player.SavedPlayInfo | null
+  restorePlayInfo: SY.Player.SavedPlayInfo | null
   isScreenKeepAwake: boolean
   isPlayedStop: boolean
   playerTrackId: string
 
-  qualityList: LX.QualityList
+  qualityList: SY.QualityList
   apiInitPromise: [Promise<boolean>, boolean, (success: boolean) => void]
 
   jumpMyListPosition: boolean
@@ -58,7 +58,7 @@ interface GlobalData {
 
 declare global {
   var isDev: boolean
-  var lx: GlobalData
+  var sy: GlobalData
   var i18n: I18n
   var app_event: AppEventTypes
   var list_event: ListEventTypes

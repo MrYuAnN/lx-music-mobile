@@ -11,7 +11,7 @@ import { cleanListCoverFiles } from '@/utils/playlistCoverGen'
 // 在线歌单落临时队列的队列 id（收藏态判定与主胶囊播放态判定共用，Header 同款）
 export const getListId = (id: string, source: Source) => `${source}__${id}`
 
-export const handlePlay = async(id: string, source: Source, list?: LX.Music.MusicInfoOnline[], index = 0) => {
+export const handlePlay = async(id: string, source: Source, list?: SY.Music.MusicInfoOnline[], index = 0) => {
   const listId = getListId(id, source)
   let isPlayingList = false
   // console.log(list)
@@ -72,10 +72,10 @@ export const handleCollect = async(id: string, source: Source, name: string, pic
 // 取消收藏（已收藏态点红心 / 本地克隆详情页红心 / 我的歌单 ⋮「取消收藏」共用）：
 // 确认后删除本地克隆歌单——与我的歌单删除同链（removeUserList）。
 // 返回是否实际取消——调用方据此决定删除当前查看的列表后返回上一屏（真机反馈轮 5）
-export const handleUncollect = (targetList: LX.List.UserListInfo) => {
+export const handleUncollect = (targetList: SY.List.UserListInfo) => {
   return confirmDialog({
     message: global.i18n.t('list_uncollect_tip', { name: targetList.name }),
-    confirmButtonText: global.i18n.t('list_remove_tip_button'),
+    confirmButtonText: global.i18n.t('dialog_delete'),
   }).then(isRemove => {
     if (!isRemove) return false
     // 乐观返回 true（pop 先行，业界通行）；失败兜底 toast + listEvent.checkListExist 防落空（二轮审查 S-2）

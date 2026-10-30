@@ -4,11 +4,11 @@ import { deduplicationList, toNewMusicInfo } from '@/utils'
 
 
 export interface SearchResult {
-  list: LX.Music.MusicInfoOnline[]
+  list: SY.Music.MusicInfoOnline[]
   allPage: number
   limit: number
   total: number
-  source: LX.OnlineSource
+  source: SY.OnlineSource
 }
 
 
@@ -18,7 +18,7 @@ export interface SearchResult {
  * @param keyword 搜索关键词
  * @returns 排序后的列表
  */
-const handleSortList = (list: LX.Music.MusicInfoOnline[], keyword: string) => {
+const handleSortList = (list: SY.Music.MusicInfoOnline[], keyword: string) => {
   let arr: any[] = []
   for (const item of list) {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
@@ -31,11 +31,11 @@ const handleSortList = (list: LX.Music.MusicInfoOnline[], keyword: string) => {
 }
 
 
-const setLists = (results: SearchResult[], page: number, text: string): LX.Music.MusicInfoOnline[] => {
+const setLists = (results: SearchResult[], page: number, text: string): SY.Music.MusicInfoOnline[] => {
   let pages = []
   let totals = []
   let limit = 0
-  let list = [] as LX.Music.MusicInfoOnline[]
+  let list = [] as SY.Music.MusicInfoOnline[]
   for (const source of results) {
     state.maxPages[source.source] = source.allPage
     limit = Math.max(source.limit, limit)
@@ -44,7 +44,7 @@ const setLists = (results: SearchResult[], page: number, text: string): LX.Music
     pages.push(source.allPage)
     totals.push(source.total)
   }
-  list = handleSortList(list.map(s => toNewMusicInfo(s) as LX.Music.MusicInfoOnline), text)
+  list = handleSortList(list.map(s => toNewMusicInfo(s) as SY.Music.MusicInfoOnline), text)
   let listInfo = state.listInfos.all
   listInfo.maxPage = Math.max(0, ...pages)
   const total = Math.max(0, ...totals)
@@ -58,10 +58,10 @@ const setLists = (results: SearchResult[], page: number, text: string): LX.Music
   return listInfo.list
 }
 
-const setList = (datas: SearchResult, page: number, text: string): LX.Music.MusicInfoOnline[] => {
+const setList = (datas: SearchResult, page: number, text: string): SY.Music.MusicInfoOnline[] => {
   // console.log(datas.source, datas.list)
   let listInfo = state.listInfos[datas.source]!
-  const list = datas.list.map(s => toNewMusicInfo(s) as LX.Music.MusicInfoOnline)
+  const list = datas.list.map(s => toNewMusicInfo(s) as SY.Music.MusicInfoOnline)
   listInfo.list = deduplicationList(page == 1 ? list : [...listInfo.list, ...list])
   if (page == 1 || (datas.total && datas.list.length)) listInfo.total = datas.total
   else listInfo.total = datas.limit * page

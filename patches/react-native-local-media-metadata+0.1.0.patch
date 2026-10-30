@@ -1,0 +1,40 @@
+diff --git a/android/src/main/java/com/localmediametadata/AsyncTask.java b/android/src/main/java/com/localmediametadata/AsyncTask.java
+index 6ba3c20f..78033118 100644
+--- a/android/src/main/java/com/localmediametadata/AsyncTask.java
++++ b/android/src/main/java/com/localmediametadata/AsyncTask.java
+@@ -25,7 +25,11 @@ public class AsyncTask {
+         try {
+           Object result = callable.call();
+           handler.post(() -> callback.onComplete(result));
+-        } catch (Exception e) {
++        } catch (Throwable e) {
++          // patched (shiyin): catch Throwable, not just Exception — jaudiotagger can throw
++          // Error-level failures (StackOverflowError/OutOfMemoryError) on malformed or
++          // truncated audio files; an uncaught Error on this executor thread kills the
++          // whole process. Convert to a rejection so the JS side can skip the file.
+           handler.post(() -> callback.onComplete((Object) e));
+           Log.e("TaskRunner", "execute error:");
+           e.printStackTrace();
+@@ -42,8 +46,9 @@ public class AsyncTask {
+     try {
+       taskRunner.executeAsync(callable, (Object result) -> {
+         taskRunner.shutdown();
+-        if (result instanceof Exception) {
+-          promise.reject("-1", ((Exception) result).getMessage());
++        if (result instanceof Throwable) {
++          // patched (shiyin): reject on any Throwable (see executeAsync note)
++          promise.reject("-1", result.toString());
+         } else promise.resolve(result);
+       });
+     } catch (Exception err) {
+@@ -20,7 +20,9 @@ public class MetadataCallable {
+     public WritableMap call() {
+       try {
+         return Metadata.readMetadata(this.context, this.filePath);
+-      } catch (Exception err) {
++      } catch (Throwable err) {
++        // patched (shiyin): catch Throwable (incl. StackOverflowError/OOM from jaudiotagger
++        // on malformed files) — return null = skip file, matching JS-side null semantics
+         Log.e("ReadMetadata", "Read Metadata Error:");
+         err.printStackTrace();
+         return null;

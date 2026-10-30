@@ -1,12 +1,13 @@
 // 拾音直连鉴权客户端（批1 直连换心；方案 doc/plans/self-hosted-music-server.md §四）
 // 批1 联调形态：dev key 首绑登记制（服务端 modules.shiyin.dev_test_key，批2 激活链上线时
 // 本文件 DEV_TEST_KEY 与 /register 调用整体替换为 receipt 注册流程，列批2 交付清单）。
-// token/device_secret 批1 存普通 storage（批2 迁安全存储）；device_id=uuid 首装持久化
-// （临时形态，批2 切 SDK 指纹+服务端清理批1 设备记录）。
+// token/device_secret 批1 存普通 storage（批2 迁安全存储）；device_id 已切 SSAID+盐哈希稳定
+// 源（走查反馈批，对齐净屏 activation-sdk：后端仅见哈希；uuid 持久化为 SSAID 不可得兜底）。
 import { sha256 } from 'js-sha256'
 import { httpFetch } from '@/utils/request'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
+import { getAndroidId } from '@/utils/nativeModules/utils'
 import { SHIYIN_BASE_URL } from './config'
 
 // 批1 联调 dev key（批2 删：换 receipt 注册）
@@ -42,6 +43,12 @@ export const getDeviceId = async(): Promise<string> => {
   // single-flight（审查 I-D）：并发首调共享同一 promise，防双 uuid 双注册占席位
   if (deviceIdInFlight) return deviceIdInFlight
   const flight = (async() => {
+    // 稳定源优先（走查反馈批：uuid 存储态卸载即失→dev 席位爆/权益丢）：SSAID 同签名键
+    // 卸载重装稳定；送出前 SHA-256+盐哈希（对齐净屏 activation-sdk 2026-09 拍板：后端仅见
+    // 哈希不暴露原始硬件标识，盐=平台注册产品盐）；SSAID 不可得（空串）退化首装 uuid
+    // 持久化兜底（净屏同款回退）
+    const androidId = await getAndroidId()
+    if (androidId) return sha256.hex(androidId + 'shiyin-device-v1')
     let deviceId = await getData<string>(DEVICE_ID_KEY)
     if (!deviceId) {
       deviceId = genDeviceId()

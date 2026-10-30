@@ -38,7 +38,7 @@ import PlaylistCover from '@/components/common/PlaylistCover'
 // 尺寸仍脱离 scaleSize 体系（其 3.1 上限在高密度屏压缩尺寸导致比例失真），直接用 dp 值
 // （间距走 SPACING 单源；图标走 ICON_SIZE 语义 token；文字沿用 Text 组件 setSpText 保留用户字号设置）。
 
-const isCollectList = (info: LX.List.MyListInfo): boolean => {
+const isCollectList = (info: SY.List.MyListInfo): boolean => {
   return 'source' in info ? !!info.source : false
 }
 
@@ -61,7 +61,7 @@ const openList = (id: string) => {
 // pending 去重防同帧重复请求，失败静默保留渐变占位、下次进首页自动重试（core/songlist 自带会话级缓存）
 const pendingListPics = new Set<string>()
 const failedListPics = new Set<string>()
-const ensureListPic = async(item: LX.List.UserListInfo) => {
+const ensureListPic = async(item: SY.List.UserListInfo) => {
   // 失败会话级退避（代码审查 S-3）：失败 id 本会话不再重试防反复无效请求，冷启动重置恢复「下次进首页重试」语义
   if (item.pic || failedListPics.has(item.id) || !item.source || !item.sourceListId) return
   if (pendingListPics.has(item.id)) return
@@ -274,7 +274,7 @@ const SHELF_ITEM_STEP = 96 // 封面 84 + gap 12，调整卡宽/间距需同步
 const DRAG_ACTIVATION_MS = 400
 
 const PlaylistShelf = ({ lists, getCount, onOpen }: {
-  lists: LX.List.MyListInfo[]
+  lists: SY.List.MyListInfo[]
   getCount: (id: string) => number
   onOpen: (id: string) => void
 }) => {
@@ -317,7 +317,7 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
   // 消首次进入的采样色闪变（真机反馈 2026-10-17）
   useEffect(() => {
     lists.forEach(list => {
-      const pic = (list as LX.List.UserListInfo).pic
+      const pic = (list as SY.List.UserListInfo).pic
       if (pic) prefetchAmbientColor(pic)
     })
   }, [lists])
@@ -421,7 +421,7 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
   // 已知副作用（三席审查 S-I 备案）：回填成功触发 list_update → lists 变化，若拖拽激活中会走外部变化路径取消拖拽（降级回落）
   useEffect(() => {
     lists.forEach(item => {
-      if (isCollectList(item)) void ensureListPic(item as LX.List.UserListInfo)
+      if (isCollectList(item)) void ensureListPic(item as SY.List.UserListInfo)
     })
   }, [lists])
 
@@ -453,7 +453,7 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
             const dragging = dragOrigin === i
             const collect = isCollectList(item)
             // 默认歌单封面（2026-10-18 拍板纳入）：pic 走 setting 单键，其余列表读条目
-            const shelfPic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as LX.List.UserListInfo).pic
+            const shelfPic = item.id == LIST_IDS.DEFAULT ? defaultPic : (item as SY.List.UserListInfo).pic
             return (
               <Animated.View
                 key={item.id}
@@ -485,7 +485,7 @@ const PlaylistShelf = ({ lists, getCount, onOpen }: {
                     }
                     {
                       collect
-                        ? <Text style={styles.shelfSrcBadge} size={9} color="#FFFFFF">{t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message) || (item as LX.List.UserListInfo).source}</Text>
+                        ? <Text style={styles.shelfSrcBadge} size={9} color="#FFFFFF">{t(`source_short_${(item as SY.List.UserListInfo).source}` as keyof Message) || (item as SY.List.UserListInfo).source}</Text>
                         : null
                     }
                   </View>

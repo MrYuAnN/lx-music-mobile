@@ -7,7 +7,7 @@ export const setShouldUseDarkColors = (shouldUseDarkColors: boolean) => {
   themeActions.setShouldUseDarkColors(shouldUseDarkColors)
 }
 
-export const applyTheme = (theme: LX.Theme) => {
+export const applyTheme = (theme: SY.Theme) => {
   themeActions.setTheme(theme)
 }
 

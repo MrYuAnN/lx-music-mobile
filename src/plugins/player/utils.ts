@@ -1,6 +1,6 @@
 import TrackPlayer, { Capability, Event, RepeatMode, State } from 'react-native-track-player'
 import BackgroundTimer from 'react-native-background-timer'
-import { playMusic as handlePlayMusic } from './playList'
+import { playMusic as handlePlayMusic, safeUpdateNowPlayingMetadata } from './playList'
 import { existsFile, moveFile, privateStorageDirectoryPath, temporaryDirectoryPath } from '@/utils/fs'
 import { toast } from '@/utils/tools'
 // import { PlayerMusicInfo } from '@/store/modules/player/playInfo'
@@ -10,11 +10,11 @@ export { useBufferProgress } from './hook'
 
 const emptyIdRxp = /\/\/default$/
 const tempIdRxp = /\/\/default$|\/\/default\/\/restorePlay$/
-export const isEmpty = (trackId = global.lx.playerTrackId) => {
+export const isEmpty = (trackId = global.sy.playerTrackId) => {
   // console.log(trackId)
   return !trackId || emptyIdRxp.test(trackId)
 }
-export const isTempId = (trackId = global.lx.playerTrackId) => !trackId || tempIdRxp.test(trackId)
+export const isTempId = (trackId = global.sy.playerTrackId) => !trackId || tempIdRxp.test(trackId)
 
 // export const replacePlayTrack = async(newTrack, oldTrack) => {
 //   console.log('replaceTrack')
@@ -106,15 +106,15 @@ export const isTempId = (trackId = global.lx.playerTrackId) => !trackId || tempI
 //   },
 // }
 
-const playMusic = ((fn: (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => void, delay = 800) => {
+const playMusic = ((fn: (musicInfo: SY.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => void, delay = 800) => {
   let delayTimer: number | null = null
   let isDelayRun = false
   let timer: number | null = null
-  let _musicInfo: LX.Player.PlayMusic | null = null
+  let _musicInfo: SY.Player.PlayMusic | null = null
   let _url = ''
   let _time = 0
   let _pauseAfterLoad: boolean | undefined
-  return (musicInfo: LX.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
+  return (musicInfo: SY.Player.PlayMusic, url: string, time: number, pauseAfterLoad?: boolean) => {
     _musicInfo = musicInfo
     _url = url
     _time = time
@@ -154,7 +154,7 @@ const playMusic = ((fn: (musicInfo: LX.Player.PlayMusic, url: string, time: numb
   handlePlayMusic(musicInfo, url, time, pauseAfterLoad)
 })
 
-export const setResource = (musicInfo: LX.Player.PlayMusic, url: string, duration?: number, pauseAfterLoad?: boolean) => {
+export const setResource = (musicInfo: SY.Player.PlayMusic, url: string, duration?: number, pauseAfterLoad?: boolean) => {
   playMusic(musicInfo, url, duration ?? 0, pauseAfterLoad)
 }
 
@@ -185,11 +185,12 @@ export interface NowPlayingTitles {
 // N2 换装：lyswhut fork 的 updateNowPlayingTitles（含 AVRCP lyric 独立通道）退役，
 // 拍板等价实现——逐行文本经 updateNowPlayingMetadata 更新（不传 artwork，避免重载图片）。
 // lyric-only 调用（整首歌词通道，fork 无对应概念已退役）直接短路：
-// 全 undefined 透传会让 native 用空元数据 replaceItem 污染播放器当前 item（审查 A-I1）
+// 全 undefined 透传会让 native 用空元数据 replaceItem 污染播放器当前 item（审查 A-I1）；
+// 空队列崩溃走 playList.safeUpdateNowPlayingMetadata 单点守卫（走查 C-2）
 export const updateNowPlayingTitles = async(titles: NowPlayingTitles) => {
   // console.log('set playing titles', titles)
   if (titles.title == null && titles.artist == null && titles.album == null) return
-  return TrackPlayer.updateNowPlayingMetadata({
+  return safeUpdateNowPlayingMetadata({
     title: titles.title,
     artist: titles.artist,
     album: titles.album,
@@ -217,10 +218,10 @@ export const migratePlayerCache = async() => {
 }
 
 export const destroy = async() => {
-  if (global.lx.playerStatus.isIniting || !global.lx.playerStatus.isInitialized) return
+  if (global.sy.playerStatus.isIniting || !global.sy.playerStatus.isInitialized) return
   // N2 换装：fork（v4 基线）移除 destroy()，以 reset() 等价替代（停止播放+清队列）
   await TrackPlayer.reset()
-  global.lx.playerStatus.isInitialized = false
+  global.sy.playerStatus.isInitialized = false
 }
 
 type PlayStatus = 'None' | 'Ready' | 'Playing' | 'Paused' | 'Stopped' | 'Buffering' | 'Connecting'

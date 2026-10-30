@@ -25,7 +25,7 @@ export class AppEvent extends Event {
   /**
    * 我的列表更新
    */
-  mylistUpdated(lists: Array<LX.List.MyDefaultListInfo | LX.List.MyLoveListInfo | LX.List.UserListInfo>) {
+  mylistUpdated(lists: Array<SY.List.MyDefaultListInfo | SY.List.MyLoveListInfo | SY.List.UserListInfo>) {
     this.emit('mylistUpdated', lists)
   }
 
@@ -153,7 +153,7 @@ export class AppEvent extends Event {
   }
 
   // 列表里的音乐信息改变事件
-  musicInfoUpdate(musicInfo: LX.Music.MusicInfo) {
+  musicInfoUpdate(musicInfo: SY.Music.MusicInfo) {
     this.emit('musicInfoUpdate', musicInfo)
   }
 
@@ -173,7 +173,7 @@ export class AppEvent extends Event {
     if (commonState.navActiveId == 'nav_love') {
       this.emit('jumpListPosition')
     } else {
-      global.lx.jumpMyListPosition = true
+      global.sy.jumpMyListPosition = true
       setNavActiveId('nav_love')
       setTimeout(() => {
         this.emit('jumpListPosition')

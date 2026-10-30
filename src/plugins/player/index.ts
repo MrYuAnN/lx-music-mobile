@@ -23,8 +23,8 @@ const initial = async({ volume, playRate, cacheSize }: {
   playRate: number
   cacheSize: number
 }) => {
-  if (global.lx.playerStatus.isIniting || global.lx.playerStatus.isInitialized) return
-  global.lx.playerStatus.isIniting = true
+  if (global.sy.playerStatus.isIniting || global.sy.playerStatus.isInitialized) return
+  global.sy.playerStatus.isIniting = true
   console.log('Cache Size', cacheSize * 1024)
   await migratePlayerCache()
   // N2 换装 lovegaoshi fork（v4.1.1 基线）：
@@ -36,8 +36,8 @@ const initial = async({ volume, playRate, cacheSize }: {
     waitForBuffer: true,
     autoUpdateMetadata: false,
   })
-  global.lx.playerStatus.isInitialized = true
-  global.lx.playerStatus.isIniting = false
+  global.sy.playerStatus.isInitialized = true
+  global.sy.playerStatus.isIniting = false
   await updateOptions()
   await setVolume(volume)
   await setPlaybackRate(playRate)
@@ -45,7 +45,7 @@ const initial = async({ volume, playRate, cacheSize }: {
 }
 
 
-const isInitialized = () => global.lx.playerStatus.isInitialized
+const isInitialized = () => global.sy.playerStatus.isInitialized
 
 
 export {

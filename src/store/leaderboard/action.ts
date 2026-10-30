@@ -1,7 +1,7 @@
 import state, { type Source, type Board, type ListDetailInfo } from './state'
 
 export default {
-  setBoard(board: Board, source: LX.OnlineSource) {
+  setBoard(board: Board, source: SY.OnlineSource) {
     state.boards[source] = board
   },
   setListDetailInfo(source: Source, id: string) {

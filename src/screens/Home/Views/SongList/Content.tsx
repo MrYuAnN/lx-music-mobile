@@ -98,6 +98,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
   }
 
   const handleSelectTag = (name: string, id: string) => {
+    if (!songlistState.sources.length) return
     if (id == infoRef.current.tagId) return
     updateInfo({ tagId: id, tagName: name })
     setListInfo(infoRef.current.source, id, infoRef.current.sortId)
@@ -105,6 +106,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
   }
 
   const handleSelectSort = (id: string) => {
+    if (!songlistState.sources.length) return
     if (id == infoRef.current.sortId) return
     updateInfo({ sortId: id })
     setListInfo(infoRef.current.source, infoRef.current.tagId, id)
@@ -137,8 +139,10 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
   }
 
   // getTags 单链：seq 在入口统一递增（缓存命中同样作废在途旧源响应——三席审查 I-2）；
-  // 网络分支先行清空热门行/分组（切源窗口不残留旧源标签可点，拍板 4「未就绪仅默认 chip」——三席审查 I-1）
+  // 网络分支先行清空热门行/分组（切源窗口不残留旧源标签可点，拍板 4「未就绪仅默认 chip」——三席审查 I-1）；
+  // 空源期守卫（复审 R2-v3）：tip 态下重试/确保标签入口禁发请求
   const loadTags = (source: Source) => {
+    if (!songlistState.sources.length) return
     const seq = ++tagsSeqRef.current
     const cached = songlistState.tags[source]
     if (cached) {
@@ -169,8 +173,11 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
         sortId = songlistState.sortList[source]?.[0]?.id ?? ''
         void saveSongListSetting({ source, sortId })
       }
+      // 空源期（边界①）：先写绑定（持久化值，恢复分支消费）再短路加载——不发任何请求，
+      // 页面走 SourcesOfflineTip（走查 F-2/F-3：占位源对摘源发请求报 unknown 的根治）
       infoRef.current = { source, sortId, tagId, tagName }
       setInfoState(infoRef.current)
+      if (!songlistState.sources.length) return
       initList()
       void loadTags(source)
     })
@@ -181,10 +188,18 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
       const sources = songlistState.sources
       const wasEmpty = prevSourcesEmpty
       prevSourcesEmpty = !sources.length
-      // 空集→非空恢复（审查 I-F）：重渲染后按当前参数补拉
+      // 空集→非空恢复（审查 I-F）：重渲染后按当前参数补拉。
+      // 恢复分支摘源守卫（复审 R2-v3）：190 行 return 短路了 191-198 既有摘源重绑，
+      // 绑定源已被摘时须在本分支先改绑首项再补拉+补标签，否则恢复时刻对被摘源发请求重演 unknown
       if (wasEmpty && sources.length) {
+        if (!sources.includes(infoRef.current.source)) {
+          const next = sources[0]
+          const sortId = songlistState.sortList[next]?.[0]?.id ?? ''
+          updateInfo({ source: next, sortId, tagId: '', tagName: '' })
+        }
         requestAnimationFrame(() => {
           initList()
+          void loadTags(infoRef.current.source)
         })
         return
       }

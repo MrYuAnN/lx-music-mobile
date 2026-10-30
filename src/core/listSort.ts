@@ -27,7 +27,7 @@ export interface ListSortState {
 /** CheckSheet 选即生效动作编码（ListMusicSort 单组 12 项） */
 export type ListSortAction = 'custom' | 'random' | `${ListSortField}_${ListSortOrder}`
 
-const getIntv = (musicInfo: LX.Music.MusicInfo) => {
+const getIntv = (musicInfo: SY.Music.MusicInfo) => {
   if (!musicInfo.interval) return 0
   let intvArr = musicInfo.interval.split(':')
   let intv = 0
@@ -43,7 +43,7 @@ const getIntv = (musicInfo: LX.Music.MusicInfo) => {
  * 排序歌曲比较器（自 manage/utils 迁入：core 不反向依赖 screens；原物理重排唯一消费方
  * ListMusicSort 已迁 CheckSheet，此处服务视图排序与随机序生成）
  */
-export const sortListMusicInfo = (list: LX.Music.MusicInfo[], sortType: 'up' | 'down' | 'random', fieldName: ListSortField, localeId: string) => {
+export const sortListMusicInfo = (list: SY.Music.MusicInfo[], sortType: 'up' | 'down' | 'random', fieldName: ListSortField, localeId: string) => {
   localeId = localeId.replaceAll('_', '-')
   switch (sortType) {
     case 'random':
@@ -134,7 +134,7 @@ export const getListCustomOrder = async(listId: string): Promise<string[] | null
 }
 
 /** 视图排序纯函数（渲染层用）：物理序不动，返回排序后的新数组 */
-export const applySortView = (list: LX.List.ListMusics, state: ListSortState | null): LX.List.ListMusics => {
+export const applySortView = (list: SY.List.ListMusics, state: ListSortState | null): SY.List.ListMusics => {
   if (!state) return list
   if (state.type == 'random') {
     if (!state.randomOrder?.length) return list

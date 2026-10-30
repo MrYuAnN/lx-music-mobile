@@ -1,7 +1,7 @@
 import { SPLIT_CHAR } from '@/config/constant'
 import { getDislikeListRules } from './data'
 
-const dislikeInfo: LX.Dislike.DislikeInfo = {
+const dislikeInfo: SY.Dislike.DislikeInfo = {
   names: new Set(),
   musicNames: new Set(),
   singerNames: new Set(),
@@ -57,7 +57,7 @@ const updateDislikeInfo = (rules: string) => {
   dislikeInfo.rules = Array.from(new Set(list)).join('\n')
 }
 
-export const addDislikeInfo = async(infos: LX.Dislike.DislikeMusicInfo[]) => {
+export const addDislikeInfo = async(infos: SY.Dislike.DislikeMusicInfo[]) => {
   const lines = infos.map(info => buildRuleLine(info.name, info.singer)).filter((line): line is string => line != null)
   if (!lines.length) return dislikeInfo
   updateDislikeInfo(dislikeInfo.rules + '\n' + lines.join('\n'))

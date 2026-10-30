@@ -64,7 +64,7 @@ export const useTimeInfo = () => {
   // 懒初始化读真实计时态（审查 S-3，与 useTimeoutExitTimeInfo I-E 修复同构）：硬编码空值会让
   // 「激活态」首帧按钮文案/播完停止勾选闪变，paint 后才被订阅校正
   const [exitTimeInfo, setExitTimeInfo] = useState(() => {
-    const isPlayedStop = global.lx.isPlayedStop
+    const isPlayedStop = global.sy.isPlayedStop
     if (getTimeoutExitTime() < 0) {
       return {
         cancelText: isPlayedStop ? t('timeout_exit_btn_wait_cancel') : '',

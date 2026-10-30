@@ -11,7 +11,7 @@ import musicSdk from '@/utils/musicSdk'
  */
 export const setListDetailInfo = (id: string) => {
   clearListDetail()
-  const [source] = id.split('__') as [LX.OnlineSource, string]
+  const [source] = id.split('__') as [SY.OnlineSource, string]
   leaderboardActions.setListDetailInfo(source, id)
 }
 export const setListDetail = (result: ListDetailInfo, id: string, page: number) => {
@@ -22,7 +22,7 @@ export const clearListDetail = () => {
   leaderboardActions.clearListDetail()
 }
 
-const setBoard = (board: Board, source: LX.OnlineSource) => {
+const setBoard = (board: Board, source: SY.OnlineSource) => {
   leaderboardActions.setBoard(board, source)
 }
 
@@ -32,8 +32,8 @@ type CacheValue = Map<string, PageCache | ListDetailInfo['list']>
 const cache = new Map<string, CacheValue>()
 const LIST_LOAD_LIMIT = 30
 
-export const getBoardsList = async(source: LX.OnlineSource) => {
-  // const source = (await getLeaderboardSetting()).source as LX.OnlineSource
+export const getBoardsList = async(source: SY.OnlineSource) => {
+  // const source = (await getLeaderboardSetting()).source as SY.OnlineSource
   if (leaderboardState.boards[source]) return leaderboardState.boards[source].list
   const board = await (musicSdk[source]?.leaderboard.getBoards() as Promise<Board>)
   setBoard(board, source)
@@ -47,13 +47,13 @@ export const getBoardsList = async(source: LX.OnlineSource) => {
  * @param page 页数
  * @returns
  */
-const getListLimit = async(source: LX.OnlineSource, bangId: string, page: number): Promise<ListDetailInfo> => {
+const getListLimit = async(source: SY.OnlineSource, bangId: string, page: number): Promise<ListDetailInfo> => {
   const listKey = `${source}__${bangId}`
   const prevPageKey = `${source}__${bangId}__${page - 1}`
   const tempListKey = `${source}__${bangId}__temp`
 
   let listCache = cache.get(listKey)!
-  if (!listCache) cache.set(listKey, listCache = new Map<string, PageCache | LX.Music.MusicInfoOnline[]>())
+  if (!listCache) cache.set(listKey, listCache = new Map<string, PageCache | SY.Music.MusicInfoOnline[]>())
   let sourcePage = 0
   {
     const prevPageData = listCache.get(prevPageKey) as PageCache
@@ -62,7 +62,7 @@ const getListLimit = async(source: LX.OnlineSource, bangId: string, page: number
 
   return musicSdk[source]?.leaderboard.getList(bangId, sourcePage + 1).then((result: ListDetailInfo) => {
     if (listCache !== cache.get(listKey)) return
-    result.list = deduplicationList(result.list.map(m => toNewMusicInfo(m)) as LX.Music.MusicInfoOnline[])
+    result.list = deduplicationList(result.list.map(m => toNewMusicInfo(m)) as SY.Music.MusicInfoOnline[])
     let p = page
     const tempList = listCache.get(tempListKey) as ListDetailInfo['list']
     if (tempList) {
@@ -107,13 +107,13 @@ const getListLimit = async(source: LX.OnlineSource, bangId: string, page: number
  */
 export const getListDetail = async(id: string, page: number, isRefresh = false): Promise<ListDetailInfo> => {
   // console.log(tabId)
-  const [source, bangId] = id.split('__') as [LX.OnlineSource, string]
+  const [source, bangId] = id.split('__') as [SY.OnlineSource, string]
   const listKey = `${source}__${bangId}`
   const pageKey = `${source}__${bangId}__${page}`
 
   let listCache = cache.get(listKey)
   if (!listCache || isRefresh) {
-    cache.set(listKey, listCache = new Map<string, PageCache | LX.Music.MusicInfoOnline[]>())
+    cache.set(listKey, listCache = new Map<string, PageCache | SY.Music.MusicInfoOnline[]>())
   }
 
   let pageCache = listCache.get(pageKey) as PageCache
@@ -128,13 +128,13 @@ export const getListDetail = async(id: string, page: number, isRefresh = false):
  * @param isRefresh 是否跳过缓存
  * @returns
  */
-export const getListDetailAll = async(id: string, isRefresh = false): Promise<LX.Music.MusicInfoOnline[]> => {
-  const [source, bangId] = id.split('__') as [LX.OnlineSource, string]
+export const getListDetailAll = async(id: string, isRefresh = false): Promise<SY.Music.MusicInfoOnline[]> => {
+  const [source, bangId] = id.split('__') as [SY.OnlineSource, string]
   // console.log(tabId)
   const listKey = `${source}__${bangId}`
   let listCache = cache.get(listKey)!
   if (!listCache || isRefresh) {
-    cache.set(listKey, listCache = new Map<string, PageCache | LX.Music.MusicInfoOnline[]>())
+    cache.set(listKey, listCache = new Map<string, PageCache | SY.Music.MusicInfoOnline[]>())
   }
 
   const loadData = async(page: number): Promise<ListDetailInfo> => {
@@ -147,7 +147,7 @@ export const getListDetailAll = async(id: string, isRefresh = false): Promise<LX
     if (result.total <= result.limit) return result.list
 
     let maxPage = Math.ceil(result.total / result.limit)
-    const loadDetail = async(loadPage = 2): Promise<LX.Music.MusicInfoOnline[]> => {
+    const loadDetail = async(loadPage = 2): Promise<SY.Music.MusicInfoOnline[]> => {
       return loadPage == maxPage
         ? loadData(loadPage).then(result => result.list)
         // eslint-disable-next-line @typescript-eslint/promise-function-async

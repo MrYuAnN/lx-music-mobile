@@ -7,8 +7,6 @@ import CategoryChips from '@/components/common/CategoryChips'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { SPACING } from '@/config/spacing'
-import DotsVertical from '@/components/common/DotsVertical'
-import DorpDownMenu from '@/components/common/DorpDownMenu'
 import PageContent from '@/components/PageContent'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
@@ -18,7 +16,7 @@ import { Icon } from '@/components/common/Icon'
 
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { FolderSectionList, AlbumGrid, ArtistList, splitSingers, type MusicGroup, type GroupViewActions } from './GroupViews'
-import { storageDataPrefix, LIST_IDS, SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { storageDataPrefix, LIST_IDS, SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -30,6 +28,7 @@ import { useSettingValue } from '@/store/setting/hook'
 import { pushLocalMusicGroupScreen } from '@/navigation/navigation'
 import { confirmDialog, createStyle, toast } from '@/utils/tools'
 import { ensureStoragePermission, isStorageGranted } from '@/utils/permissions'
+import { useBackHandler } from '@/utils/hooks/useBackHandler'
 
 // 顶部两 tab（2026-10-29 话题③定稿）：已下载（本 App 下载产物，路径前缀判定）/ 其他音乐（外部扫描）
 type ViewId = 'downloaded' | 'other'
@@ -121,8 +120,8 @@ export default ({ componentId }: { componentId: string }) => {
 
   // 两 tab 二分（③-1：路径前缀带分隔符边界，审查 C-1）
   const { downloadedInfos, otherInfos } = useMemo(() => {
-    const downloaded: LX.Music.MusicInfoLocal[] = []
-    const other: LX.Music.MusicInfoLocal[] = []
+    const downloaded: SY.Music.MusicInfoLocal[] = []
+    const other: SY.Music.MusicInfoLocal[] = []
     for (const info of musicInfos) {
       (isAppDownloadedPath(info.meta.filePath) ? downloaded : other).push(info)
     }
@@ -137,18 +136,22 @@ export default ({ componentId }: { componentId: string }) => {
     return activeInfos.filter(item => item.name.toLowerCase().includes(kw) || item.singer.toLowerCase().includes(kw))
   }, [activeInfos, keyword])
 
-  // 编辑批量（③-3）：仅平铺形态开放（分组形态无行概念，审查 S13 范围声明）
-  const editAvailable = view == 'downloaded' || subView == 'list'
-
   const exitEditMode = useCallback(() => {
     setEditMode(false)
     setSelectedIds(new Set())
   }, [])
 
-  const toggleEditMode = useCallback(() => {
-    if (editMode) exitEditMode()
-    else setEditMode(true)
-  }, [editMode, exitEditMode])
+  // Android 返回键先退编辑再退页（2026-10-30 话题①定稿，Material 选择模式惯例）
+  useBackHandler(useCallback(() => {
+    if (!editMode) return false
+    exitEditMode()
+    return true
+  }, [editMode, exitEditMode]))
+
+  // 长按进编辑（2026-10-30 话题①定稿；封装与 Download 页 enterEditMode 对齐，审查 S-6）
+  const enterEditMode = useCallback(() => {
+    setEditMode(true)
+  }, [])
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -184,12 +187,14 @@ export default ({ componentId }: { componentId: string }) => {
       title: t('local_music_delete'),
       message: t(view == 'other' ? 'local_music_delete_multi_tip' : 'local_music_delete_multi_tip_downloaded', { num: selectedIds.size }),
     })) return
-    const { failed } = await removeLocalMusics([...selectedIds])
+    // 编辑期间扫描刷新可能移除行（审查 S-3）：批量执行前与现存列表交集过滤
+    const validIds = [...selectedIds].filter(id => filteredRef.current.some(m => m.id == id))
+    const { failed } = await removeLocalMusics(validIds)
     toast(global.i18n.t(failed ? 'local_music_delete_failed' : 'local_music_deleted'))
     exitEditMode()
   }, [selectedIds, view, t, exitEditMode])
 
-  const handleSongPress = useCallback((item: LX.Music.MusicInfoLocal, playList_: LX.Music.MusicInfoLocal[]) => {
+  const handleSongPress = useCallback((item: SY.Music.MusicInfoLocal, playList_: SY.Music.MusicInfoLocal[]) => {
     // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, playList_).then(() => {
       const index = playList_.findIndex(m => m.id == item.id)
@@ -203,7 +208,7 @@ export default ({ componentId }: { componentId: string }) => {
   filteredRef.current = filtered
 
   const folders = useMemo(() => {
-    const map = new Map<string, LX.Music.MusicInfoLocal[]>()
+    const map = new Map<string, SY.Music.MusicInfoLocal[]>()
     for (const item of filtered) {
       const dir = item.meta.filePath.replace(/\/[^/]+$/, '') || '/'
       const bucket = map.get(dir)
@@ -261,10 +266,12 @@ export default ({ componentId }: { componentId: string }) => {
   }, [handleScan, startWatchAuth])
 
   const handleGoSettings = useCallback(() => {
-    // 直跳本应用「所有文件访问权限」开关页（图 2 流程，原生 startActivity 带 package），
-    // 模块缺失/无此 action（含 API<30）时兜底应用信息页
+    // 直跳本应用「所有文件访问权限」开关页（原生 startActivity 带 package；ROM 拦截时原生侧
+    // 二级兜底全局管理页）。JS 侧 reject/模块缺失兜底应用信息页 + 中性文案引导手动路径
+    // （审查 S-5：模块缺失时「直达开关页」技术不可达，分级兜底）
     const open = NativeModules.DownloadSupport?.openAllFilesAccessSettings?.()
     void (open ?? Promise.reject(new Error('DownloadSupport unavailable'))).catch(async() => {
+      toast(global.i18n.t('storage_permission_manual_guide'), 'long')
       return Linking.openSettings().catch(() => {})
     })
   }, [])
@@ -278,7 +285,7 @@ export default ({ componentId }: { componentId: string }) => {
     isLiked: id => likedSet.has(id),
     onLikePress: toggleLike,
     onSongPress: handleSongPress,
-    onShowMenu: (item, viewList) => { menuRef.current?.show(item as LX.Music.MusicInfoLocal, viewList) },
+    onShowMenu: (item, viewList) => { menuRef.current?.show(item as SY.Music.MusicInfoLocal, viewList) },
   }), [likedSet, toggleLike, handleSongPress])
 
   const chips = useMemo(() => ([
@@ -305,7 +312,7 @@ export default ({ componentId }: { componentId: string }) => {
   // 平铺行公共渲染（两 tab 共用；左滑+勾选+统一行，分组形态走菜单删除——S13 范围声明）。
   // 行内不传 downloaded：已下载 tab 行行皆已下载，逐行再标是零信息量冗余，与下载管理页
   // 聚合页判据统一（标记重做 I-2 拍板 b，2026-10-29）
-  const renderFlatRow = useCallback(({ item, index }: { item: LX.Music.MusicInfoLocal, index: number }) => {
+  const renderFlatRow = useCallback(({ item, index }: { item: SY.Music.MusicInfoLocal, index: number }) => {
     return (
       <SwipeDeleteRow swipeEnabled={!editMode} deleteLabel={t('local_music_delete')} onDelete={() => { handleSwipeDelete(item.id) }}>
         <View style={styles.rowWrap}>
@@ -340,43 +347,38 @@ export default ({ componentId }: { componentId: string }) => {
                 }
                 handleSongPress(filteredRef.current[index], filteredRef.current)
               }}
-              onLongPress={editMode ? undefined : pressedItem => { menuRef.current?.show(pressedItem as LX.Music.MusicInfoLocal, filteredRef.current) }}
-              onShowMenu={editMode ? undefined : itemInfo => { menuRef.current?.show(itemInfo as LX.Music.MusicInfoLocal, filteredRef.current) }}
+              // 长按进编辑（2026-10-30 话题①定稿）；单曲菜单收敛到行内 ⋮（onShowMenu）
+              onLongPress={editMode ? undefined : enterEditMode}
+              onShowMenu={editMode ? undefined : itemInfo => { menuRef.current?.show(itemInfo as SY.Music.MusicInfoLocal, filteredRef.current) }}
             />
           </View>
         </View>
       </SwipeDeleteRow>
     )
-  }, [editMode, selectedIds, likedSet, toggleLike, handleSwipeDelete, toggleSelected, handleSongPress, t, theme])
+  }, [editMode, selectedIds, likedSet, toggleLike, handleSwipeDelete, toggleSelected, handleSongPress, enterEditMode, t, theme])
 
+  // editMode 分支先于 scanning（代码审查 S-1）：扫描中可长按进编辑，取消出口必须可达
   const headerRight = showAuthGuide
     ? null
-    : scanning
+    : editMode
       ? (
-          <Text style={{ ...styles.scanLabel, color: theme['c-font-label'] }} numberOfLines={1}>
-            {scanningLabel}
-          </Text>
+          // 编辑态顶栏仅「取消」（2026-10-30 话题①定稿/审查 S-4），重扫编辑态隐藏防误触
+          <TouchableOpacity style={styles.editBtn} activeOpacity={0.6} onPress={exitEditMode}>
+            <Text size={14} color={theme['c-primary-font']}>{t('cancel')}</Text>
+          </TouchableOpacity>
         )
-      : editAvailable && filtered.length > 0
+      : scanning
         ? (
-            // 编辑钮与 ⋮ 并排同显（代码轮 I-5 修复：重新扫描入口不被互斥顶替，③-1「⋮ 保留」定稿）
-            <View style={styles.headerActions}>
-              <DorpDownMenu menus={[{ label: t('local_music_rescan'), action: 'rescan' }]} onPress={handleRescan}>
-                <View style={styles.headerDots}>
-                  <DotsVertical color={theme['c-font-label']} />
-                </View>
-              </DorpDownMenu>
-              <TouchableOpacity style={styles.editBtn} activeOpacity={0.6} onPress={toggleEditMode}>
-                <Text size={14} color={theme['c-primary-font']}>{t(editMode ? 'cancel' : 'download_edit')}</Text>
-              </TouchableOpacity>
-            </View>
+            <Text style={{ ...styles.scanLabel, color: theme['c-font-label'] }} numberOfLines={1}>
+              {scanningLabel}
+            </Text>
           )
         : (
-            <DorpDownMenu menus={[{ label: t('local_music_rescan'), action: 'rescan' }]} onPress={handleRescan}>
-              <View style={styles.headerDots}>
-                <DotsVertical color={theme['c-font-label']} />
-              </View>
-            </DorpDownMenu>
+            // 常态仅重扫直钮（话题①定稿：⋮ 单项菜单反模式退役——34dp 触发器宽致菜单项裁字
+            // 的双 bug 一并消除）；批量编辑入口改列表行长按
+            <TouchableOpacity style={styles.headerIconBtn} activeOpacity={0.6} onPress={handleRescan}>
+              <Icon name="arrows-clockwise" size={ICON_SIZE.nav} color={theme['c-font-label']} />
+            </TouchableOpacity>
           )
 
   return (
@@ -586,15 +588,11 @@ const styles = createStyle({
   list: {
     flex: 1,
   },
-  headerDots: {
-    width: 34,
+  headerIconBtn: {
+    width: 40,
     height: 40,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   editBtn: {
     paddingHorizontal: SPACING.s12,

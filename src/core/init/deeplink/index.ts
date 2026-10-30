@@ -4,13 +4,14 @@ import { handleMusicAction } from './musicAction'
 import { handlePlayerAction, type PlayerAction } from './playerAction'
 import { handleSonglistAction } from './songlistAction'
 import { extname, stat } from '@/utils/fs'
-import { handleFileMusicAction, handleFileLXMCAction } from './fileAction'
+import { handleFileMusicAction, handleListFileAction } from './fileAction'
 
 
 const handleLinkAction = async(link: string) => {
   // console.log(link)
   const [url, search] = link.split('?')
-  const [type, action, ...paths] = url.replace('lxmusic://', '').split('/')
+  // 双轨（2026-10-30 去lx批）：shiyin:// 主 + lxmusic:// 兼容别名，内部归一化路由
+  const [type, action, ...paths] = url.replace(/^(?:shiyin|lxmusic):\/\//, '').split('/')
   const params: {
     paths: string[]
     data?: string
@@ -46,8 +47,9 @@ const handleFileAction = async(link: string) => {
   // console.log(file)
   switch (extname(file.name)) {
     case 'json':
+    case 'shiyin':
     case 'lxmc':
-      await handleFileLXMCAction(file)
+      await handleListFileAction(file)
       break
     case 'ogg':
     case 'flac':
@@ -67,7 +69,7 @@ const handleFileAction = async(link: string) => {
 
 
 const runLinkAction = async(link: string) => {
-  if (link.startsWith('lxmusic://')) {
+  if (/^(?:shiyin|lxmusic):\/\//.test(link)) {
     try {
       await handleLinkAction(link)
     } catch (err: any) {

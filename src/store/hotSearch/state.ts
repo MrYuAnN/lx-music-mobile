@@ -2,7 +2,7 @@ import musicSdk from '@/utils/musicSdk'
 
 // import { deduplicationList } from '@common/utils/renderer'
 
-export declare type Source = LX.OnlineSource | 'all'
+export declare type Source = SY.OnlineSource | 'all'
 
 type SourceLists = Partial<Record<Source, string[]>>
 
@@ -23,10 +23,10 @@ const state: InitState = {
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of musicSdk.sources) {
-    if (!musicSdk[source.id as LX.OnlineSource]?.hotSearch) continue
+    if (!musicSdk[source.id as SY.OnlineSource]?.hotSearch) continue
     if (enabled != null && !enabled.includes(source.id)) continue
-    state.sources.push(source.id as LX.OnlineSource)
-    if (!state.sourceList[source.id as LX.OnlineSource]) state.sourceList[source.id as LX.OnlineSource] = []
+    state.sources.push(source.id as SY.OnlineSource)
+    if (!state.sourceList[source.id as SY.OnlineSource]) state.sourceList[source.id as SY.OnlineSource] = []
   }
   // 空开启集=全源不可用（边界①）：不补聚合位
   if (state.sources.length) state.sources.push('all')

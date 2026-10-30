@@ -1,10 +1,10 @@
-declare namespace LX {
+declare namespace SY {
   namespace List {
     interface UserListInfo {
       id: string
       name: string
-      // list: LX.Music.MusicInfo[]
-      source?: LX.OnlineSource
+      // list: SY.Music.MusicInfo[]
+      source?: SY.OnlineSource
       sourceListId?: string
       // 收藏歌单封面（2026-10-16）：收藏/懒加载补齐时落库，缺失回退渐变占位
       pic?: string
@@ -20,19 +20,19 @@ declare namespace LX {
     interface MyDefaultListInfo {
       id: 'default'
       name: string
-      // list: LX.Music.MusicInfo[]
+      // list: SY.Music.MusicInfo[]
     }
 
     interface MyLoveListInfo {
       id: 'love'
       name: string
-      // list: LX.Music.MusicInfo[]
+      // list: SY.Music.MusicInfo[]
     }
 
     interface MyTempListInfo {
       id: 'temp'
       name: '临时列表'
-      // list: LX.Music.MusicInfo[]
+      // list: SY.Music.MusicInfo[]
       // TODO: save default lists info
       meta: {
         id?: string
@@ -62,11 +62,11 @@ declare namespace LX {
       data: Partial<MyAllList>
     } | {
       type: 'downloadList'
-      data: LX.Download.ListItem[]
+      data: SY.Download.ListItem[]
     }
 
 
-    type ListActionDataOverwrite = MakeOptional<LX.List.ListDataFull, 'tempList'>
+    type ListActionDataOverwrite = MakeOptional<SY.List.ListDataFull, 'tempList'>
     interface ListActionAdd {
       position: number
       listInfos: UserListInfo[]
@@ -96,7 +96,7 @@ declare namespace LX {
 
     type ListActionMusicUpdate = Array<{
       id: string
-      musicInfo: LX.Music.MusicInfo
+      musicInfo: SY.Music.MusicInfo
     }>
 
     interface ListActionMusicUpdatePosition {
@@ -107,31 +107,31 @@ declare namespace LX {
 
     interface ListActionMusicOverwrite {
       listId: string
-      musicInfos: LX.Music.MusicInfo[]
+      musicInfos: SY.Music.MusicInfo[]
     }
 
     type ListActionMusicClear = string[]
 
     interface MyDefaultListInfoFull extends MyDefaultListInfo {
-      list: LX.Music.MusicInfo[]
+      list: SY.Music.MusicInfo[]
     }
     interface MyLoveListInfoFull extends MyLoveListInfo {
-      list: LX.Music.MusicInfo[]
+      list: SY.Music.MusicInfo[]
     }
     interface UserListInfoFull extends UserListInfo {
-      list: LX.Music.MusicInfo[]
+      list: SY.Music.MusicInfo[]
     }
     interface MyTempListInfoFull extends MyTempListInfo {
-      list: LX.Music.MusicInfo[]
+      list: SY.Music.MusicInfo[]
     }
 
     interface ListDataFull {
-      defaultList: LX.Music.MusicInfo[]
-      loveList: LX.Music.MusicInfo[]
+      defaultList: SY.Music.MusicInfo[]
+      loveList: SY.Music.MusicInfo[]
       userList: UserListInfoFull[]
-      tempList: LX.Music.MusicInfo[]
+      tempList: SY.Music.MusicInfo[]
     }
 
-    type ListMusics = LX.Music.MusicInfo[]
+    type ListMusics = SY.Music.MusicInfo[]
   }
 }

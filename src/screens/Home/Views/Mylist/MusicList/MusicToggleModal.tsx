@@ -21,11 +21,11 @@ import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playNext } from '@/core/player/player'
 import { SPACING } from '@/config/spacing'
 
-type FlatListProps = _FlatListProps<LX.Music.MusicInfoOnline>
+type FlatListProps = _FlatListProps<SY.Music.MusicInfoOnline>
 const ITEM_HEIGHT = scaleSizeH(56)
 
 
-const Tabs = <T extends LX.OnlineSource>({ list, source, onChangeSource }: {
+const Tabs = <T extends SY.OnlineSource>({ list, source, onChangeSource }: {
   list: T[]
   source: T | ''
   onChangeSource: (source: T) => void
@@ -75,11 +75,11 @@ const Empty = ({ loading, error, onReload }: { loading: boolean, error: boolean,
 }
 
 const ListItem = memo(({ info, downloaded = false, onPlay, onOpenDetail }: {
-  info: LX.Music.MusicInfoOnline
+  info: SY.Music.MusicInfoOnline
   /** 已下载标记（2026-10-29 标记重做 D4）：副行右端锚定，与主列表行同构（换到已下载源可走本地优先） */
   downloaded?: boolean
-  onPlay: (info: LX.Music.MusicInfoOnline) => void
-  onOpenDetail: (info: LX.Music.MusicInfoOnline) => void
+  onPlay: (info: SY.Music.MusicInfoOnline) => void
+  onOpenDetail: (info: SY.Music.MusicInfoOnline) => void
 }) => {
   const theme = useTheme()
 
@@ -131,30 +131,30 @@ const ListItem = memo(({ info, downloaded = false, onPlay, onOpenDetail }: {
 })
 
 const List = ({ source, lists, onPlay }: {
-  source: LX.OnlineSource | ''
-  lists: Partial<Record<LX.OnlineSource, LX.Music.MusicInfoOnline[]>>
-  onPlay: (info: LX.Music.MusicInfoOnline) => void
+  source: SY.OnlineSource | ''
+  lists: Partial<Record<SY.OnlineSource, SY.Music.MusicInfoOnline[]>>
+  onPlay: (info: SY.Music.MusicInfoOnline) => void
 }) => {
-  const [list, setList] = useState<LX.Music.MusicInfoOnline[]>([])
+  const [list, setList] = useState<SY.Music.MusicInfoOnline[]>([])
   // 已下载标记数据源（容器层单点订阅，审查 I-5）
   const downloadedSet = useDownloadedSet()
   const isFirstRef = useRef(true)
   useEffect(() => {
     if (isFirstRef.current) {
-      setList(lists[source as LX.OnlineSource] ?? [])
+      setList(lists[source as SY.OnlineSource] ?? [])
       isFirstRef.current = false
       return
     }
     requestAnimationFrame(() => {
-      setList(lists[source as LX.OnlineSource] ?? [])
+      setList(lists[source as SY.OnlineSource] ?? [])
     })
   }, [lists, source])
 
-  const openDetail = useCallback((musicInfo: LX.Music.MusicInfoOnline) => {
+  const openDetail = useCallback((musicInfo: SY.Music.MusicInfoOnline) => {
     void handleShowMusicSourceDetail(musicInfo)
   }, [])
 
-  const renderItem = useCallback(({ item }: { item: LX.Music.MusicInfoOnline, index: number }) => {
+  const renderItem = useCallback(({ item }: { item: SY.Music.MusicInfoOnline, index: number }) => {
     return <ListItem info={item} downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))} onPlay={onPlay} onOpenDetail={openDetail} />
   }, [onPlay, openDetail, downloadedSet])
   const getkey = useCallback<NonNullable<FlatListProps['keyExtractor']>>(item => item.id, [])
@@ -178,7 +178,7 @@ const List = ({ source, lists, onPlay }: {
   )
 }
 
-const SourceDetail = ({ info, onConfirm, toggleSource }: { info: LX.Music.MusicInfo, onConfirm: (info: LX.Music.MusicInfoOnline) => void, toggleSource: LX.Music.MusicInfoOnline | null }) => {
+const SourceDetail = ({ info, onConfirm, toggleSource }: { info: SY.Music.MusicInfo, onConfirm: (info: SY.Music.MusicInfoOnline) => void, toggleSource: SY.Music.MusicInfoOnline | null }) => {
   const theme = useTheme()
   const isHorizontalMode = useHorizontalMode()
   const t = useI18n()
@@ -313,17 +313,17 @@ const initInfo = {}
 const Modal = forwardRef<ModalType, {}>((props, ref) => {
   const infoRef = useRef<SelectInfo>(initInfo as SelectInfo)
   const [sourceInfo, setSourceInfo] = useState<{
-    sourceInfo: LX.OnlineSource[]
-    lists: Partial<Record<LX.OnlineSource, LX.Music.MusicInfoOnline[]>>
+    sourceInfo: SY.OnlineSource[]
+    lists: Partial<Record<SY.OnlineSource, SY.Music.MusicInfoOnline[]>>
     loading: boolean
     error: boolean
   }>({ sourceInfo: [], lists: {}, loading: false, error: false })
-  const [source, setSource] = useState<LX.OnlineSource | ''>('')
+  const [source, setSource] = useState<SY.OnlineSource | ''>('')
   const dialogRef = useRef<DialogType>(null)
   const isUnmountedRef = useUnmounted()
-  const [toggleSource, setToggleSource] = useState<LX.Music.MusicInfoOnline | null>(null)
+  const [toggleSource, setToggleSource] = useState<SY.Music.MusicInfoOnline | null>(null)
 
-  const handlePlay = useCallback((musicInfo: LX.Music.MusicInfoOnline) => {
+  const handlePlay = useCallback((musicInfo: SY.Music.MusicInfoOnline) => {
     setToggleSource(musicInfo)
     const isPlaying = !!playerState.playMusicInfo.musicInfo
     addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
@@ -336,13 +336,13 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
       name: selectInfo.musicInfo.name,
       singer: selectInfo.musicInfo.singer,
       source: '',
-    }).then((result: Array<{ source: LX.OnlineSource, list: LX.Music.MusicInfoOnline[] }>) => {
+    }).then((result: Array<{ source: SY.OnlineSource, list: SY.Music.MusicInfoOnline[] }>) => {
       if (isUnmountedRef.current) return
-      const tags: LX.OnlineSource[] = []
-      const lists: Partial<Record<LX.OnlineSource, LX.Music.MusicInfoOnline[]>> = {}
+      const tags: SY.OnlineSource[] = []
+      const lists: Partial<Record<SY.OnlineSource, SY.Music.MusicInfoOnline[]>> = {}
       for (const s of result) {
         tags.push(s.source)
-        lists[s.source] = s.list.map(s => toNewMusicInfo(s) as LX.Music.MusicInfoOnline)
+        lists[s.source] = s.list.map(s => toNewMusicInfo(s) as SY.Music.MusicInfoOnline)
       }
       setSourceInfo({ sourceInfo: tags, lists, loading: false, error: false })
       if (tags.length) setSource(tags[0])
@@ -362,7 +362,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
     },
   }))
 
-  const confirmToggleSource = useCallback(async(musicInfo: LX.Music.MusicInfoOnline) => {
+  const confirmToggleSource = useCallback(async(musicInfo: SY.Music.MusicInfoOnline) => {
     const isClose = await handleToggleSource(infoRef.current.listId, infoRef.current.musicInfo, musicInfo)
     if (isClose) dialogRef.current?.setVisible(false)
   }, [])
@@ -393,7 +393,7 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
 })
 
 export interface SelectInfo {
-  musicInfo: LX.Music.MusicInfo
+  musicInfo: SY.Music.MusicInfo
   listId: string
 }
 export interface MusicToggleModalType {

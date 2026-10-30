@@ -4,9 +4,8 @@ import { createStyle } from '@/utils/tools'
 import { type ComponentProps, memo, useCallback, useEffect, useMemo, useState } from 'react'
 import { View, type ViewProps, StyleSheet, Image as FastImage } from 'react-native'
 // import FastImage, { type FastImageProps } from 'react-native-fast-image'
-import Text from './Text'
+import { Icon } from './Icon'
 import { useLayout } from '@/utils/hooks'
-import { SPACING } from '@/config/spacing'
 
 // export type { OnLoadEvent } from 'react-native-fast-image'
 
@@ -29,17 +28,12 @@ const EmptyPic = memo(({ style, nativeID }: { style: ImageProps['style'], native
   const size = width * 0.36
 
   return (
-    <View style={StyleSheet.compose({ ...styles.emptyPic, backgroundColor: theme['c-primary-light-900-alpha-200'], gap: size * 0.1 }, style)} onLayout={onLayout} nativeID={nativeID}>
+    <View style={StyleSheet.compose({ ...styles.emptyPic, backgroundColor: theme['c-primary-light-900-alpha-200'] }, style)} onLayout={onLayout} nativeID={nativeID}>
       {
-        // 首渲染 width 尚未测量（恒 0）：fontSize=0 的 Text 在 RN 0.86 Fabric 布局校验下
-        // 直接崩溃（TextAttributeProps require(fontSize>0)），测量就绪前不挂文字
+        // 测量就绪前 width=0 跳过挂载（与旧文字方案同口径）；音符占位=无封面业界共识
+        // （Spotify/Apple Music 同款形态，2026-10-30 话题③去 lx 品牌化拍板）
         size > 0
-          ? (
-              <>
-                <Text size={size} color={theme['c-primary-light-400-alpha-200']}>L</Text>
-                <Text size={size} color={theme['c-primary-light-400-alpha-200']} style={styles.text}>X</Text>
-              </>
-            )
+          ? <Icon name="music" size={size} color={theme['c-primary-light-400-alpha-200']} />
           : null
       }
     </View>
@@ -99,8 +93,5 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  text: {
-    paddingLeft: SPACING.s2,
   },
 })

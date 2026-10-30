@@ -1,11 +1,11 @@
-declare namespace LX {
+declare namespace SY {
   namespace Music {
     interface MusicQualityType { // {"type": "128k", size: "3.56M"}
-      type: LX.Quality
+      type: SY.Quality
       size: string | null
     }
     interface MusicQualityTypeKg { // {"type": "128k", size: "3.56M"}
-      type: LX.Quality
+      type: SY.Quality
       size: string | null
       hash: string
     }
@@ -40,7 +40,7 @@ declare namespace LX {
     }
 
 
-    interface MusicInfoBase<S = LX.Source> {
+    interface MusicInfoBase<S = SY.Source> {
       id: string
       name: string // 歌曲名
       singer: string // 艺术家名

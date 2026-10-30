@@ -21,8 +21,8 @@ import { addHistoryWord } from '@/core/search/search'
 
 
 interface SearchInfo {
-  temp_source: LX.OnlineSource
-  source: LX.OnlineSource | 'all'
+  temp_source: SY.OnlineSource
+  source: SY.OnlineSource | 'all'
   searchType: 'music' | 'songlist'
 }
 

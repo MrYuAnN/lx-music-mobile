@@ -1,11 +1,11 @@
 import ChoosePath, { type ChoosePathType } from '@/components/common/ChoosePath'
-import { LXM_FILE_EXT_RXP } from '@/config/constant'
+import { LIST_FILE_EXT_RXP } from '@/config/constant'
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
 import { handleExportList, handleImportList } from './actions'
 
 export interface SelectInfo {
-  // listInfo: LX.List.MyListInfo
-  // selectedList: LX.Music.MusicInfo[]
+  // listInfo: SY.List.MyListInfo
+  // selectedList: SY.Music.MusicInfo[]
   // index: number
   // listId: string
   // single: boolean
@@ -14,11 +14,11 @@ export interface SelectInfo {
 const initSelectInfo = {}
 
 // export interface ListImportExportProps {
-//   // onRename: (listInfo: LX.List.UserListInfo) => void
+//   // onRename: (listInfo: SY.List.UserListInfo) => void
 //   // onImport: (index: number) => void
-//   // onExport: (listInfo: LX.List.MyListInfo) => void
-//   // onSync: (listInfo: LX.List.UserListInfo) => void
-//   // onRemove: (listInfo: LX.List.MyListInfo) => void
+//   // onExport: (listInfo: SY.List.MyListInfo) => void
+//   // onSync: (listInfo: SY.List.UserListInfo) => void
+//   // onRemove: (listInfo: SY.List.MyListInfo) => void
 // }
 export interface ListImportExportType {
   import: () => void
@@ -38,7 +38,7 @@ export default forwardRef<ListImportExportType, {}>((props, ref) => {
         choosePathRef.current?.show({
           title: global.i18n.t('list_import_part_desc'),
           dirOnly: false,
-          filter: LXM_FILE_EXT_RXP,
+          filter: LIST_FILE_EXT_RXP,
         })
       } else {
         setVisible(true)
@@ -46,7 +46,7 @@ export default forwardRef<ListImportExportType, {}>((props, ref) => {
           choosePathRef.current?.show({
             title: global.i18n.t('list_import_part_desc'),
             dirOnly: false,
-            filter: LXM_FILE_EXT_RXP,
+            filter: LIST_FILE_EXT_RXP,
           })
         })
       }
@@ -57,7 +57,7 @@ export default forwardRef<ListImportExportType, {}>((props, ref) => {
         choosePathRef.current?.show({
           title: global.i18n.t('list_export_part_desc'),
           dirOnly: true,
-          filter: LXM_FILE_EXT_RXP,
+          filter: LIST_FILE_EXT_RXP,
         })
       } else {
         setVisible(true)
@@ -65,7 +65,7 @@ export default forwardRef<ListImportExportType, {}>((props, ref) => {
           choosePathRef.current?.show({
             title: global.i18n.t('list_export_part_desc'),
             dirOnly: true,
-            filter: LXM_FILE_EXT_RXP,
+            filter: LIST_FILE_EXT_RXP,
           })
         })
       }

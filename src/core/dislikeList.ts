@@ -1,7 +1,7 @@
 import { action } from '@/store/dislikeList'
 
 
-export const addDislikeInfo = async(infos: LX.Dislike.DislikeMusicInfo[]) => {
+export const addDislikeInfo = async(infos: SY.Dislike.DislikeMusicInfo[]) => {
   await global.dislike_event.dislike_music_add(infos)
 }
 
@@ -14,13 +14,13 @@ export const clearDislikeInfo = async() => {
 }
 
 
-export const hasDislike = (info: LX.Music.MusicInfo | LX.Download.ListItem | null) => {
+export const hasDislike = (info: SY.Music.MusicInfo | SY.Download.ListItem | null) => {
   if (!info) return false
   return action.hasDislike(info)
 }
 
 
-export const setDislikeInfo = (info: LX.Dislike.DislikeInfo) => {
+export const setDislikeInfo = (info: SY.Dislike.DislikeInfo) => {
   action.setDislikeInfo(info)
 }
 

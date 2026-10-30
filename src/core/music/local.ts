@@ -18,7 +18,7 @@ import { readLyric, readPic } from '@/utils/localMediaMetadata'
 import { stat, privateStorageDirectoryPath, mkdir, downloadFile, copyFile, existsFile } from '@/utils/fs'
 import { getMusicUrl as getOnlineMusicUrl, type MusicUrlQualityMeta } from './online'
 
-const getOtherSourceByLocal = async<T>(musicInfo: LX.Music.MusicInfoLocal, handler: (infos: LX.Music.MusicInfoOnline[]) => Promise<T>) => {
+const getOtherSourceByLocal = async<T>(musicInfo: SY.Music.MusicInfoLocal, handler: (infos: SY.Music.MusicInfoOnline[]) => Promise<T>) => {
   let result = await getOtherSource(musicInfo)
   if (result.length) try { return await handler(result) } catch {}
   if (musicInfo.name.includes('-')) {
@@ -68,9 +68,9 @@ const getOtherSourceByLocal = async<T>(musicInfo: LX.Music.MusicInfoLocal, handl
 }
 
 export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = true, onToggleSource = () => {}, onQualityResolved }: {
-  musicInfo: LX.Music.MusicInfoLocal
+  musicInfo: SY.Music.MusicInfoLocal
   isRefresh: boolean
-  onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  onToggleSource?: (musicInfo?: SY.Music.MusicInfoOnline) => void
   allowToggleSource?: boolean
   onQualityResolved?: (meta: MusicUrlQualityMeta) => void
 }): Promise<string> => {
@@ -78,7 +78,7 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
     const path = await getLocalFilePath(musicInfo)
     if (path) {
       // 实际播放档（2026-10-29 题1）：本地文件档=回填单档（下载曲），裸文件无档不上报（UI 回退全局档）
-      const localQuality = Object.keys(musicInfo.meta._qualitys ?? {})[0] as LX.Quality | undefined
+      const localQuality = Object.keys(musicInfo.meta._qualitys ?? {})[0] as SY.Quality | undefined
       if (localQuality) onQualityResolved?.({ quality: localQuality, isLocal: true })
       return toLocalFileUrl(path)
     }
@@ -123,11 +123,11 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
 }
 
 export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onToggleSource = () => {} }: {
-  musicInfo: LX.Music.MusicInfoLocal
+  musicInfo: SY.Music.MusicInfoLocal
   listId?: string | null
   isRefresh: boolean
   skipFilePic?: boolean
-  onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  onToggleSource?: (musicInfo?: SY.Music.MusicInfoOnline) => void
 }): Promise<string> => {
   // noCover 负缓存（走查反馈：无封面曲反复全源匹配触发限频）：置位后跳过在线匹配，isRefresh 强制重配
   if (!isRefresh && musicInfo.meta.noCover) return ''
@@ -216,7 +216,7 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, skipFilePic, onTo
   })
 }
 
-export const parseLyric = (lrc: string): LX.Music.LyricInfo => {
+export const parseLyric = (lrc: string): SY.Music.LyricInfo => {
   const verifyAwlrc = (lrc: string) => {
     return /(?:^|\s*)\[\d+:\d+(?:\.\d+)]<\d+,\d+>.+$/m.test(lrc)
   }
@@ -244,7 +244,7 @@ export const parseLyric = (lrc: string): LX.Music.LyricInfo => {
   const tagRxp = /(?:^|\n\s*)\[awlrc:([^\]]+)]/i
   const lrcRxp = /^(lrc|awlrc|tlrc|rlrc):([^,]+)$/i
   const parse = (content: string) => {
-    const lyricInfo: Partial<LX.Music.LyricInfo> = {}
+    const lyricInfo: Partial<SY.Music.LyricInfo> = {}
     const lrcs = content.trim().split(',')
     for (const lrc of lrcs) {
       const result = lrcRxp.exec(lrc.trim())
@@ -257,7 +257,7 @@ export const parseLyric = (lrc: string): LX.Music.LyricInfo => {
     }
     return lyricInfo
   }
-  let parsedInfo: Partial<LX.Music.LyricInfo> = {}
+  let parsedInfo: Partial<SY.Music.LyricInfo> = {}
   let lyric = lrc.replace(tagRxp, (_: string, p1: string) => {
     parsedInfo = parse(p1)
     return ''
@@ -271,11 +271,11 @@ const getMusicFileLyric = async(filePath: string) => {
   return parseLyric(lyric)
 }
 export const getLyricInfo = async({ musicInfo, isRefresh, skipFileLyric, onToggleSource = () => {} }: {
-  musicInfo: LX.Music.MusicInfoLocal
+  musicInfo: SY.Music.MusicInfoLocal
   skipFileLyric?: boolean
   isRefresh: boolean
-  onToggleSource?: (musicInfo?: LX.Music.MusicInfoOnline) => void
-}): Promise<LX.Player.LyricInfo> => {
+  onToggleSource?: (musicInfo?: SY.Music.MusicInfoOnline) => void
+}): Promise<SY.Player.LyricInfo> => {
   if (!isRefresh && !skipFileLyric) {
     // const lyricInfo = await getCachedLyricInfo(musicInfo)
     // if (lyricInfo?.rawlrcInfo.lyric && lyricInfo.lyric != lyricInfo.rawlrcInfo.lyric) {
@@ -318,7 +318,7 @@ export const getLyricInfo = async({ musicInfo, isRefresh, skipFileLyric, onToggl
     // 后续读取直接命中缓存不再触发搜索（走查反馈 2026-10-29 拍板）；isRefresh 可强制重配。
     // 超时/网络等瞬时失败不缓存（审查 I-B1）：一次抖动固化永久无歌词不可自愈，抛出走失败态下次重试
     if ((err as Error)?.message != 'source not found') throw err
-    const empty: LX.Player.LyricInfo = {
+    const empty: SY.Player.LyricInfo = {
       lyric: '',
       tlyric: null,
       rlyric: null,

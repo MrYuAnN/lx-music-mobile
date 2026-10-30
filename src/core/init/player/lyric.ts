@@ -22,7 +22,7 @@ const updateRemoteLyric = async(lrc?: string) => {
   }
 }
 
-export default async(setting: LX.AppSetting) => {
+export default async(setting: SY.AppSetting) => {
   await initLyricPlayer()
   await Promise.all([
     setPlaybackRate(setting['player.playbackRate']),

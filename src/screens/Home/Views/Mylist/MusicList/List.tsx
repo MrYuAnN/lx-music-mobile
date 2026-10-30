@@ -23,14 +23,14 @@ import { useTheme } from '@/store/theme/hook'
 import { hapticImpactLight } from '@/utils/haptic'
 import { useDragReorder } from './useDragReorder'
 
-type FlatListType = FlatListProps<LX.Music.MusicInfo>
+type FlatListType = FlatListProps<SY.Music.MusicInfo>
 
 // native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（QQ 式渐显 D2），模块级构造防重挂；
 // as typeof FlatList 回填泛型（createAnimatedComponent 擦除类型参数）
 const AnimatedFlatList = Animated.createAnimatedComponent(FlatList) as unknown as typeof FlatList
 
 export interface ListProps {
-  onShowMenu: (musicInfo: LX.Music.MusicInfo, index: number, position: Position) => void
+  onShowMenu: (musicInfo: SY.Music.MusicInfo, index: number, position: Position) => void
   onMuiltSelectMode: () => void
   onSelectAll: (isAll: boolean) => void
   header?: React.ReactElement
@@ -48,8 +48,8 @@ export interface ListType {
   setIsMultiSelectMode: (isMultiSelectMode: boolean) => void
   setSelectMode: (mode: SelectMode) => void
   selectAll: (isAll: boolean) => void
-  getSelectedList: () => LX.List.ListMusics
-  scrollToInfo: (info: LX.Music.MusicInfo) => void
+  getSelectedList: () => SY.List.ListMusics
+  scrollToInfo: (info: SY.Music.MusicInfo) => void
   scrollToTop: () => void
 }
 
@@ -74,11 +74,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const bottomInset = usePlayerBarBottomInset()
   const flatListRef = useRef<FlatList>(null)
   const listWrapperRef = useRef<View>(null)
-  const [currentList, setListState] = useState<LX.List.ListMusics>([])
+  const [currentList, setListState] = useState<SY.List.ListMusics>([])
   // 拖拽会话与落位转正的数据同步点：state 写入必须同步 ref（拖拽启动快照/落位回调取实时列表，
   // 防回调闭包 stale——方案 §三.3）
-  const currentListRef = useRef<LX.List.ListMusics>([])
-  const setList = useCallback((list: LX.List.ListMusics) => {
+  const currentListRef = useRef<SY.List.ListMusics>([])
+  const setList = useCallback((list: SY.List.ListMusics) => {
     currentListRef.current = list
     setListState(list)
   }, [])
@@ -91,7 +91,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     prevSelectIndexRef.current = -1
   }, [sortState])
   const viewList = useMemo(() => applySortView(currentList, sortState), [currentList, sortState])
-  const viewListRef = useRef<LX.List.ListMusics>([])
+  const viewListRef = useRef<SY.List.ListMusics>([])
   viewListRef.current = viewList
   const physicalIndexById = useMemo(() => new Map(currentList.map((m, i) => [m.id, i])), [currentList])
   const viewIndexById = useMemo(() => new Map(viewList.map((m, i) => [m.id, i])), [viewList])
@@ -113,8 +113,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const isMultiSelectModeRef = useRef(false)
   const selectModeRef = useRef<SelectMode>('single')
   const prevSelectIndexRef = useRef(-1)
-  const [selectedList, setSelectedList] = useState<LX.List.ListMusics>([])
-  const selectedListRef = useRef<LX.List.ListMusics>([])
+  const [selectedList, setSelectedList] = useState<SY.List.ListMusics>([])
+  const selectedListRef = useRef<SY.List.ListMusics>([])
   const currentListIdRef = useRef('')
   const waitJumpListPositionRef = useRef(false)
   const rowInfo = useRef(getRowInfo())
@@ -132,7 +132,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
       selectModeRef.current = mode
     },
     selectAll(isAll) {
-      let list: LX.List.ListMusics
+      let list: SY.List.ListMusics
       if (isAll) {
         // 视图序（批2#8 审查 I-2）：与区间多选同口径「所见即所选」，稍后播放/导出入队序=所见序
         list = [...viewList]
@@ -248,8 +248,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         }
       })
     }
-    if (global.lx.jumpMyListPosition) {
-      global.lx.jumpMyListPosition = false
+    if (global.sy.jumpMyListPosition) {
+      global.sy.jumpMyListPosition = false
       if (playerState.playMusicInfo.listId) {
         waitJumpListPositionRef.current = true
         updateList(playerState.playMusicInfo.listId)
@@ -289,14 +289,14 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     void playList(listState.activeListId, physicalIndex)
   }
 
-  const handleUpdateSelectedList = (newList: LX.List.ListMusics) => {
+  const handleUpdateSelectedList = (newList: SY.List.ListMusics) => {
     if (selectedListRef.current.length && newList.length == currentList.length) onSelectAll(true)
     else if (selectedListRef.current.length == currentList.length) onSelectAll(false)
     selectedListRef.current = newList
     setSelectedList(newList)
   }
-  const handleSelect = (item: LX.Music.MusicInfo, pressIndex: number) => {
-    let newList: LX.List.ListMusics
+  const handleSelect = (item: SY.Music.MusicInfo, pressIndex: number) => {
+    let newList: SY.List.ListMusics
     if (selectModeRef.current == 'single') {
       prevSelectIndexRef.current = pressIndex
       const index = selectedListRef.current.indexOf(item)
@@ -328,11 +328,11 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     handleUpdateSelectedList(newList)
   }
 
-  const handlePress = (item: LX.Music.MusicInfo, index: number) => {
-    // console.log(global.lx.homePagerIdle)
+  const handlePress = (item: SY.Music.MusicInfo, index: number) => {
+    // console.log(global.sy.homePagerIdle)
     requestAnimationFrame(() => {
-      // console.log(global.lx.homePagerIdle)
-      if (!global.lx.homePagerIdle) return
+      // console.log(global.sy.homePagerIdle)
+      if (!global.sy.homePagerIdle) return
       if (isMultiSelectModeRef.current) {
         handleSelect(item, index)
       } else {
@@ -341,7 +341,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     })
   }
 
-  const handleLongPress = (item: LX.Music.MusicInfo, index: number) => {
+  const handleLongPress = (item: SY.Music.MusicInfo, index: number) => {
     if (isMultiSelectModeRef.current) return
     hapticImpactLight()
     prevSelectIndexRef.current = index
@@ -349,7 +349,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     onMuiltSelectMode()
   }
   // 拖拽路径多选回调（方案 R2）：长按到点震动已在 ListItem 待命时完成，此处静默进多选防双震
-  const handleLongPressQuiet = (item: LX.Music.MusicInfo, index: number) => {
+  const handleLongPressQuiet = (item: SY.Music.MusicInfo, index: number) => {
     if (isMultiSelectModeRef.current) return
     prevSelectIndexRef.current = index
     handleUpdateSelectedList([item])
@@ -362,7 +362,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   // 物理自定义序，视图序下落位写物理会与渲染序错位；切「自定义顺序」恢复后可拖
   const singleColumn = (rowInfo.current.rowNum ?? 1) == 1
   const dragEnabled = canDrag && singleColumn && sortState == null
-  const handleDragSettle = useCallback((from: number, to: number, finalList: LX.List.ListMusics) => {
+  const handleDragSettle = useCallback((from: number, to: number, finalList: SY.List.ListMusics) => {
     setList(finalList)
     // 原位放回不落库（审查 PM-S1/优化 S-3：未移动不触发持久化+事件回环，iOS UITableView 同惯例）
     if (from == to) return
@@ -372,7 +372,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     // 持久化事件回环拉取与副本终态同序，memo+稳定 key 无闪变（方案 §五）
     void updateListMusicPosition(listState.activeListId, to, [moved.id])
   }, [setList])
-  const handleDragAbort = useCallback((originalList: LX.List.ListMusics) => {
+  const handleDragAbort = useCallback((originalList: SY.List.ListMusics) => {
     setList(originalList)
   }, [setList])
   // 拖拽启动：多选态守卫（dragEnabled 渲染级已含，此处防状态切换竞态）+ measureInWindow 实测
@@ -388,8 +388,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
     headerHeightRef,
     scrollOffsetRef,
     viewportHeightRef,
-    onSettle: useCallback((from: number, to: number, finalList: LX.List.ListMusics) => { onDragSettleRef.current(from, to, finalList) }, []),
-    onAbort: useCallback((originalList: LX.List.ListMusics) => { onDragAbortRef.current(originalList) }, []),
+    onSettle: useCallback((from: number, to: number, finalList: SY.List.ListMusics) => { onDragSettleRef.current(from, to, finalList) }, []),
+    onAbort: useCallback((originalList: SY.List.ListMusics) => { onDragAbortRef.current(originalList) }, []),
   })
   const dragRef = useRef(drag)
   dragRef.current = drag
@@ -397,7 +397,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   // measureInWindow 异步回调回读校验——拾起后一帧内松手时丢弃迟到的 startDrag，防幽灵会话软锁
   const dragAliveRef = useRef(false)
   dragRef.current = drag
-  const handleDragStart = useCallback((item: LX.Music.MusicInfo, index: number, absoluteY: number) => {
+  const handleDragStart = useCallback((item: SY.Music.MusicInfo, index: number, absoluteY: number) => {
     if (isMultiSelectModeRef.current) return
     dragAliveRef.current = true
     // 测列表 wrapper（与 FlatList 视口同框）：FlatList ref 不暴露 measureInWindow
@@ -472,7 +472,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
 
   // 菜单出口 index 换算（批2#8）：renderItem index 为视图序，菜单内「播放」走物理序 playList——
   // 出口统一转物理序，宿主（index.tsx/ListMenu）零改动
-  const handleShowMenu = useCallback((musicInfo: LX.Music.MusicInfo, index: number, position: Position) => {
+  const handleShowMenu = useCallback((musicInfo: SY.Music.MusicInfo, index: number, position: Position) => {
     const id = viewList[index]?.id
     const physicalIndex = (id != null ? physicalIndexById.get(id) : undefined) ?? index
     onShowMenu(musicInfo, physicalIndex, position)

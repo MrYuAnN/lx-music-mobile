@@ -26,10 +26,10 @@ export interface OnlineListProps {
   contentPaddingTop?: number
 }
 export interface OnlineListType {
-  setList: (list: LX.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
+  setList: (list: SY.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
   setStatus: (val: Status) => void
   /** 列表内搜索定位（转发内层 List，方案 §B3） */
-  scrollToInfo: (info: LX.Music.MusicInfo) => void
+  scrollToInfo: (info: SY.Music.MusicInfo) => void
 }
 
 export default forwardRef<OnlineListType, OnlineListProps>(({
@@ -80,7 +80,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
     listRef.current?.setIsMultiSelectMode(false)
   }
 
-  const showMenu = (musicInfo: LX.Music.MusicInfoOnline, index: number, position: Position) => {
+  const showMenu = (musicInfo: SY.Music.MusicInfoOnline, index: number, position: Position) => {
     listMenuRef.current?.show({
       musicInfo,
       list: listRef.current!.getList(),

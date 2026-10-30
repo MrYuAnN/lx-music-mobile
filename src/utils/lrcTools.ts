@@ -61,7 +61,7 @@ const parseLrcTimeLabel = (lrc: string) => {
   return linesSet
 }
 
-const buildAwlyric = (lrcData: LX.Music.LyricInfo) => {
+const buildAwlyric = (lrcData: SY.Music.LyricInfo) => {
   let lrc: string[] = []
   if (lrcData.lyric) {
     lrc.push(`lrc:${Buffer.from(lrcData.lyric.trim(), 'utf-8').toString('base64')}`)
@@ -78,7 +78,7 @@ const buildAwlyric = (lrcData: LX.Music.LyricInfo) => {
   return lrc.length ? `[awlrc:${lrc.join(',')}]` : ''
 }
 
-export const buildLyrics = (lrcData: LX.Music.LyricInfo, downloadAwlrc: boolean, downloadTlrc: boolean, downloadRlrc: boolean) => {
+export const buildLyrics = (lrcData: SY.Music.LyricInfo, downloadAwlrc: boolean, downloadTlrc: boolean, downloadRlrc: boolean) => {
   if (!lrcData.tlyric && !lrcData.rlyric && !lrcData.lxlyric) return lrcData.lyric
 
   const lrcTimeLabels = parseLrcTimeLabel(lrcData.lyric)

@@ -9,9 +9,9 @@ import { playNext } from '@/core/player/player'
 import { buildLocalMusicInfo, buildLocalMusicInfoByFilePath } from '@/screens/Home/Views/Mylist/manage/listAction'
 
 
-export const handleFileLXMCAction = async(file: FileType) => {
+export const handleListFileAction = async(file: FileType) => {
   if (!(await confirmDialog({
-    message: global.i18n.t('deep_link_file_lxmc_confirm_tip', { name: file.name }),
+    message: global.i18n.t('deep_link_file_import_confirm_tip', { name: file.name }),
   }))) return
 
   handleImportList(file.path)

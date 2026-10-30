@@ -23,7 +23,7 @@ export interface MusicListProps {
 }
 
 export interface MusicListType {
-  loadList: (source: LX.OnlineSource, listId: string) => void
+  loadList: (source: SY.OnlineSource, listId: string) => void
   /** 列表内搜索输入（顶栏融合式接线）：高度由本组件容器 onLayout 实测（复审 S-N1） */
   search: (keyword: string) => void
   /** 退出搜索（顶栏退出回调链）：隐藏定位浮层 */
@@ -42,7 +42,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
   const handleListLayout = useCallback((e: { nativeEvent: { layout: { height: number } } }) => {
     listHeightRef.current = e.nativeEvent.layout.height
   }, [])
-  const handleScrollToInfo = useCallback((musicInfo: LX.Music.MusicInfo) => {
+  const handleScrollToInfo = useCallback((musicInfo: SY.Music.MusicInfo) => {
     listRef.current?.scrollToInfo(musicInfo)
     onLocated?.()
   }, [onLocated])

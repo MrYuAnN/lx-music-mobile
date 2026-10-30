@@ -6,7 +6,7 @@ import List, { type ListType } from './components/List'
 const limit = 15
 
 export default ({ musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom }: {
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
   /** 顶栏族穿行化（毛玻璃全体系阶段三）：可选接线，未传零 diff */
   scrollYAnimated?: Animated.Value
@@ -16,7 +16,7 @@ export default ({ musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, 
   // const [isLoading, setIsLoading] = useState(false)
   const listRef = useRef<ListType>(null)
   const listInfo = useRef({ page: 1, total: 0, maxPage: 1, isEnd: false, isLoading: false, isLoadError: false })
-  const handleGetComment = async(musicInfo: LX.Music.MusicInfoOnline, page: number) => {
+  const handleGetComment = async(musicInfo: SY.Music.MusicInfoOnline, page: number) => {
     // setIsLoading(true)
     listInfo.current.isLoading = true
     return getHotComment(musicInfo, page, limit).then(commentInfo => {
@@ -70,7 +70,7 @@ export default ({ musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, 
     }).finally(updateStatus)
   }
 
-  const handleShowComment = (musicInfo: LX.Music.MusicInfoOnline) => {
+  const handleShowComment = (musicInfo: SY.Music.MusicInfoOnline) => {
     if (!musicInfo.id || !music[musicInfo.source].comment) return
     listInfo.current.page = 1
     listInfo.current.total = 0

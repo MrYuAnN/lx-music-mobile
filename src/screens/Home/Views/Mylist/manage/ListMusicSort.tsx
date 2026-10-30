@@ -14,13 +14,13 @@ const fieldNames = ['name', 'singer', 'album', 'time', 'source'] as const
 const orders = ['up', 'down'] as const
 
 export interface ListMusicSortType {
-  show: (listInfo: LX.List.MyListInfo) => void
+  show: (listInfo: SY.List.MyListInfo) => void
 }
 
 export default forwardRef<ListMusicSortType, {}>((props, ref) => {
   const t = useI18n()
   const sheetRef = useRef<CheckSheetType>(null)
-  const listInfoRef = useRef<LX.List.MyListInfo | null>(null)
+  const listInfoRef = useRef<SY.List.MyListInfo | null>(null)
   // listId 提 state（ref 变化不触发 hook 重订阅）：show 切列表时 value 回显跟随目标列表排序态
   const [listId, setListId] = useState('')
   const sortState = useListSortState(listId)

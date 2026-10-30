@@ -1,4 +1,4 @@
-const defaultSetting: LX.AppSetting = {
+const defaultSetting: SY.AppSetting = {
   version: '2.0',
   'common.langId': null,
   'common.sourceNameType': 'real',

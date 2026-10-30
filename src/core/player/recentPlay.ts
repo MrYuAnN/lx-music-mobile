@@ -9,15 +9,15 @@ export interface RecentPlayItem {
   /** 记录时间戳 */
   ts: number
   /** 完整歌曲信息快照（切歌时深拷贝，供最近播放列表直接播放/加歌单） */
-  musicInfo: LX.Music.MusicInfo
+  musicInfo: SY.Music.MusicInfo
 }
 
 let recentPlayList: RecentPlayItem[] = []
 let isInited = false
 
 /** 快照序列化：剥离换源上下文等非播放必需字段，控制落盘体积 */
-const serializeMusicInfo = (musicInfo: LX.Music.MusicInfo): LX.Music.MusicInfo => {
-  const clone = JSON.parse(JSON.stringify(musicInfo)) as LX.Music.MusicInfo
+const serializeMusicInfo = (musicInfo: SY.Music.MusicInfo): SY.Music.MusicInfo => {
+  const clone = JSON.parse(JSON.stringify(musicInfo)) as SY.Music.MusicInfo
   delete clone.meta.toggleMusicInfo
   return clone
 }
@@ -45,7 +45,7 @@ export const initRecentPlay = async() => {
 /**
  * 记录一次播放（按 音源+歌曲id 去重置顶，上限 MAX_RECENT_PLAY，节流持久化）
  */
-export const addRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
+export const addRecentPlay = (musicInfo: SY.Music.MusicInfo) => {
   const key = `${musicInfo.source}__${musicInfo.id}`
   const oldRow = recentPlayList.find(item => `${item.musicInfo.source}__${item.musicInfo.id}` == key)
   const snapshot = serializeMusicInfo(musicInfo)
@@ -65,14 +65,14 @@ export const addRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
  * 播放中封面拉取成功后回写快照：按 音源+id 匹配，不可变整条替换（保序，订阅方 memo 安全）；
  * 未命中（记录已删/换源歌不在列表）静默跳过
  */
-export const updateRecentPlayPic = (musicInfo: LX.Music.MusicInfo, url: string) => {
+export const updateRecentPlayPic = (musicInfo: SY.Music.MusicInfo, url: string) => {
   const key = `${musicInfo.source}__${musicInfo.id}`
   const index = recentPlayList.findIndex(item => `${item.musicInfo.source}__${item.musicInfo.id}` == key)
   if (index < 0) return
   const row = recentPlayList[index]
   if (row.musicInfo.meta.picUrl == url) return
-  const itemMusicInfo: LX.Music.MusicInfo = { ...row.musicInfo }
-  const meta: LX.Music.MusicInfo['meta'] = { ...itemMusicInfo.meta, picUrl: url }
+  const itemMusicInfo: SY.Music.MusicInfo = { ...row.musicInfo }
+  const meta: SY.Music.MusicInfo['meta'] = { ...itemMusicInfo.meta, picUrl: url }
   itemMusicInfo.meta = meta
   recentPlayList = [
     ...recentPlayList.slice(0, index),
@@ -84,7 +84,7 @@ export const updateRecentPlayPic = (musicInfo: LX.Music.MusicInfo, url: string) 
 }
 
 /** 删除单条播放记录（最近播放页行菜单） */
-export const removeRecentPlay = (musicInfo: LX.Music.MusicInfo) => {
+export const removeRecentPlay = (musicInfo: SY.Music.MusicInfo) => {
   const key = `${musicInfo.source}__${musicInfo.id}`
   recentPlayList = recentPlayList.filter(item => `${item.musicInfo.source}__${item.musicInfo.id}` != key)
   saveRecentPlayList(recentPlayList)

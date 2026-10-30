@@ -4,7 +4,7 @@ import { playList } from '@/core/player/player'
 import { getListDetail, getListDetailAll } from '@/core/songlist'
 import listState from '@/store/list/state'
 
-const getListPlayIndex = (list: LX.Music.MusicInfoOnline[], index?: number) => {
+const getListPlayIndex = (list: SY.Music.MusicInfoOnline[], index?: number) => {
   if (index == null) {
     index = 1
   } else {
@@ -14,7 +14,7 @@ const getListPlayIndex = (list: LX.Music.MusicInfoOnline[], index?: number) => {
   return index - 1
 }
 
-const playSongListDetail = async(source: LX.OnlineSource, link: string, playIndex?: number) => {
+const playSongListDetail = async(source: SY.OnlineSource, link: string, playIndex?: number) => {
   // console.log(source, link, playIndex)
   if (link == null) return
   let isPlayingList = false
@@ -34,7 +34,7 @@ const playSongListDetail = async(source: LX.OnlineSource, link: string, playInde
     await playList(LIST_IDS.TEMP, getListPlayIndex(list, playIndex))
   }
 }
-export const playSonglist = async(source: LX.OnlineSource, link: string, playIndex?: number) => {
+export const playSonglist = async(source: SY.OnlineSource, link: string, playIndex?: number) => {
   try {
     await playSongListDetail(source, link, playIndex)
   } catch (err) {

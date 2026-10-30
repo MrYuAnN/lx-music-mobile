@@ -21,7 +21,7 @@ if (process.versions == null) {
 // }
 
 
-global.lx = {
+global.sy = {
   fontSize: 1,
   playerStatus: {
     isInitialized: false,

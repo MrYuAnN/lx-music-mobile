@@ -54,12 +54,12 @@ export default ({ onChangeId }: {
   onChangeId: (id: SettingScreenIds) => void
 }) => {
   const flatListRef = useRef<FlatList>(null)
-  const [activeId, setActiveId] = useState(global.lx.settingActiveId)
+  const [activeId, setActiveId] = useState(global.sy.settingActiveId)
 
   const handleChangeId = (id: SettingScreenIds) => {
     onChangeId(id)
     setActiveId(id)
-    global.lx.settingActiveId = id
+    global.sy.settingActiveId = id
   }
 
   const renderItem: FlatListType['renderItem'] = ({ item, index }) => (

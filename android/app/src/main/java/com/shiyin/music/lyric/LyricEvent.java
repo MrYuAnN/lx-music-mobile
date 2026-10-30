@@ -1,0 +1,24 @@
+package com.shiyin.music.lyric;
+
+import androidx.annotation.Nullable;
+
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.WritableMap;
+import com.facebook.react.modules.core.DeviceEventManagerModule;
+
+public class LyricEvent {
+  final String SET_VIEW_POSITION = "set-position";
+  final String LYRIC_Line_PLAY = "lyric-line-play";
+  static final String LYRIC_TOOLBAR_ACTION = "lyric-toolbar-action";
+  static final String LYRIC_LOCK_CHANGED = "lyric-lock-changed";
+
+  private final ReactApplicationContext reactContext;
+  LyricEvent(ReactApplicationContext reactContext) { this.reactContext = reactContext; }
+
+  public void sendEvent(String eventName, @Nullable WritableMap params) {
+    // Log.d("Lyric", "senEvent: " + eventName);
+    reactContext
+      .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter.class)
+      .emit(eventName, params);
+  }
+}

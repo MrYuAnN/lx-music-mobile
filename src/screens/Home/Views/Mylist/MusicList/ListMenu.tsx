@@ -7,8 +7,8 @@ import { handleDislike } from '@/components/OnlineList/listAction'
 import { toOnlineIdentity } from '@/utils/music'
 
 export interface SelectInfo {
-  musicInfo: LX.Music.MusicInfo
-  selectedList: LX.Music.MusicInfo[]
+  musicInfo: SY.Music.MusicInfo
+  selectedList: SY.Music.MusicInfo[]
   index: number
   listId: string
   single: boolean
@@ -35,7 +35,7 @@ export type {
   Position,
 }
 
-const hasEditMetadata = async(musicInfo: LX.Music.MusicInfo) => {
+const hasEditMetadata = async(musicInfo: SY.Music.MusicInfo) => {
   if (musicInfo.source != 'local') return false
   return existsFile(musicInfo.meta.filePath)
 }
@@ -60,7 +60,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
     },
   }))
 
-  const handleSetMenu = (musicInfo: LX.Music.MusicInfo, listId: string) => {
+  const handleSetMenu = (musicInfo: SY.Music.MusicInfo, listId: string) => {
     let edit_metadata = false
     // 在线身份归一（2026-10-29 题3）：下载曲（local+onlineInfo）按原曲在线身份给在线能力菜单
     // （下载/换源），不标本地；「编辑元数据」仍按本地文件实体判定（下载曲文件同样可编辑）

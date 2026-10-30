@@ -7,7 +7,7 @@ import { useI18n } from '@/lang'
 import { addListMusics, moveListMusics } from '@/core/list'
 
 export interface SelectInfo {
-  musicInfo: LX.Music.MusicInfo | null
+  musicInfo: SY.Music.MusicInfo | null
   listId: string
   isMove: boolean
   // single: boolean
@@ -16,11 +16,11 @@ const initSelectInfo = {}
 
 export interface MusicAddModalProps {
   onAdded?: () => void
-  // onRename: (listInfo: LX.List.UserListInfo) => void
-  // onImport: (listInfo: LX.List.MyListInfo, index: number) => void
-  // onExport: (listInfo: LX.List.MyListInfo, index: number) => void
-  // onSync: (listInfo: LX.List.UserListInfo) => void
-  // onRemove: (listInfo: LX.List.UserListInfo) => void
+  // onRename: (listInfo: SY.List.UserListInfo) => void
+  // onImport: (listInfo: SY.List.MyListInfo, index: number) => void
+  // onExport: (listInfo: SY.List.MyListInfo, index: number) => void
+  // onSync: (listInfo: SY.List.UserListInfo) => void
+  // onRemove: (listInfo: SY.List.UserListInfo) => void
 }
 export interface MusicAddModalType {
   show: (info: SelectInfo) => void
@@ -47,7 +47,7 @@ export default forwardRef<MusicAddModalType, MusicAddModalProps>(({ onAdded }, r
     })
   }
 
-  const handleSelect = (listInfo: LX.List.MyListInfo) => {
+  const handleSelect = (listInfo: SY.List.MyListInfo) => {
     sheetRef.current?.setVisible(false)
     if (selectInfo.isMove) {
       void moveListMusics(selectInfo.listId, listInfo.id,

@@ -1,7 +1,7 @@
 import type { ImageSourcePropType } from 'react-native'
 
 declare global {
-  namespace LX {
+  namespace SY {
     interface ThemeColors {
       'c-000': string
       'c-050': string

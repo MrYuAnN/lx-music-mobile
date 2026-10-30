@@ -105,7 +105,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   }, [lists, activeListId])
 
   const isTempList = activeListId == LIST_IDS.TEMP
-  const isCollectList = !isTempList && !!(activeListInfo as LX.List.UserListInfo | undefined)?.source
+  const isCollectList = !isTempList && !!(activeListInfo as SY.List.UserListInfo | undefined)?.source
   // 拖拽排序基础开关（方案 playlist-drag-reorder §三.3）：可写列表（guardWritableList 同口径，
   // TEMP/默认/我喜欢/自建开放、收藏只读禁拖）+ 非多选态 + 非搜索态；单列约束在 List 内叠加（R1）
   const [searchActive, setSearchActive] = useState(false)
@@ -128,7 +128,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
   const musicCount = allMusicList.get(activeListId)?.length ?? 0
   // 拍板 #9：收藏=「{来源名} · 收藏于 x」（collectTime 存量缺失降级只显来源）；自建/内置=「n 首歌」
   const subtitle = useMemo(() => {
-    const info = activeListInfo as LX.List.UserListInfo | undefined
+    const info = activeListInfo as SY.List.UserListInfo | undefined
     if (isCollectList && info?.source) {
       const sourceName = global.i18n.t(`source_real_${info.source}` as never)
       return info.collectTime
@@ -170,7 +170,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
     listRef.current?.scrollToTop()
   }, [])
 
-  const showMenu = useCallback((musicInfo: LX.Music.MusicInfo, index: number, position: Position) => {
+  const showMenu = useCallback((musicInfo: SY.Music.MusicInfo, index: number, position: Position) => {
     listMenuRef.current?.show({
       musicInfo,
       index,
@@ -205,7 +205,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
     playlistTopBarRef.current?.exitSearch()
     return true
   }, [showBack]))
-  const handleScrollToInfo = useCallback((info: LX.Music.MusicInfo) => {
+  const handleScrollToInfo = useCallback((info: SY.Music.MusicInfo) => {
     listRef.current?.scrollToInfo(info)
     playlistTopBarRef.current?.exitSearch()
   }, [])
@@ -258,15 +258,15 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       title={currentListName}
       subtitle={subtitle}
       // 封面走 getListCoverPic 单源三态（LOVE/DEFAULT setting 单键，封面机制批）；null 归一 undefined
-      pic={getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as LX.List.UserListInfo | undefined) ?? undefined}
+      pic={getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as SY.List.UserListInfo | undefined) ?? undefined}
       // 收藏闭环（2026-10-18 拍板）：仅收藏克隆歌单显示实心红心，取消=确认后删本地克隆；
       // 自建/内置无红心（业界定式，管理走 ⋮）
       showCollectHeart={isCollectList}
       collected={isCollectList}
       onCollectToggle={isCollectList && activeListInfo ? () => {
-        void handleUncollect(activeListInfo as LX.List.UserListInfo).then(removed => {
+        void handleUncollect(activeListInfo as SY.List.UserListInfo).then(removed => {
           // 取消收藏的是当前查看的列表：返回上一屏（真机反馈轮 5，不落默认歌单页）
-          if (removed && (activeListInfo as LX.List.UserListInfo).id == activeListId) onBack?.()
+          if (removed && (activeListInfo as SY.List.UserListInfo).id == activeListId) onBack?.()
         })
       } : undefined}
       fetching={fetching}
@@ -316,7 +316,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         title={currentListName}
         progress={scrollY}
         // 封面三态与 MylistView ambientPic 同源（代码审查 S-B/S-1）：LOVE/DEFAULT 自定义封面也回白图标
-        onArtwork={!!getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as LX.List.UserListInfo | undefined)}
+        onArtwork={!!getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo as SY.List.UserListInfo | undefined)}
         entranceLocked={entranceLocked}
         showBack={showBack}
         onBack={onBack}

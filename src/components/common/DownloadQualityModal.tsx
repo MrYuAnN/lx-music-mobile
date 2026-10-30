@@ -11,7 +11,7 @@ import settingState from '@/store/setting/state'
 
 export interface DownloadQualityModalType {
   /** 弹音质选择并入队下载；defaultQuality 缺省=下载设置档 */
-  show: (musicInfo: LX.Music.MusicInfoOnline, defaultQuality?: LX.Quality) => void
+  show: (musicInfo: SY.Music.MusicInfoOnline, defaultQuality?: SY.Quality) => void
 }
 
 // 下载音质选择弹层（2026-10-29 走查反馈拍板：下载入口统一弹窗选档，设置档=默认预选；
@@ -22,12 +22,12 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
   const sheetRef = useRef<CheckSheetType>(null)
   const [visible, setVisible] = useState(false)
   const [options, setOptions] = useState<readonly CheckSheetItem[]>([])
-  const [value, setValue] = useState<LX.Quality>('128k')
-  const infoRef = useRef<LX.Music.MusicInfoOnline | null>(null)
+  const [value, setValue] = useState<SY.Quality>('128k')
+  const infoRef = useRef<SY.Music.MusicInfoOnline | null>(null)
 
   useImperativeHandle(ref, () => ({
     show(musicInfo, defaultQuality) {
-      const available = PLAY_QUALITY_LIST.filter(q => musicInfo.meta._qualitys[q] && global.lx.qualityList[musicInfo.source]?.includes(q))
+      const available = PLAY_QUALITY_LIST.filter(q => musicInfo.meta._qualitys[q] && global.sy.qualityList[musicInfo.source]?.includes(q))
       if (!available.length) {
         toast(global.i18n.t('download_no_available_quality'))
         return
@@ -56,7 +56,7 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
     if (!musicInfo) return
     // 三态 toast（2026-10-29 ①-3 定稿）：downloaded 带实际落地档（回退链下请求档≠落地档，
     // 审查 I-F），对标 Apple Music 显示实际已下载版本
-    void addDownloadTask(musicInfo, item.action as LX.Quality).then(({ status, downloadedQuality }) => {
+    void addDownloadTask(musicInfo, item.action as SY.Quality).then(({ status, downloadedQuality }) => {
       if (status == 'downloaded') {
         toast(global.i18n.t('download_done', { quality: qualityLabel(downloadedQuality ?? '128k', t) }))
       } else {

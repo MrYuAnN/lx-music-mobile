@@ -34,7 +34,7 @@ export type RootStackParamList = {
   [DOWNLOAD_SCREEN]: undefined
   [RECENT_PLAY_SCREEN]: undefined
   [LOCAL_MUSIC_SCREEN]: undefined
-  [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string, list: LX.Music.MusicInfoLocal[] }
+  [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string, list: SY.Music.MusicInfoLocal[] }
   [ADD_MUSIC_SCREEN]: { listId: string, listName: string }
   [DISLIKE_MANAGE_SCREEN]: undefined
   [ABOUT_SCREEN]: undefined

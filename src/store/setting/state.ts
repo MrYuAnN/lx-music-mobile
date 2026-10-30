@@ -2,7 +2,7 @@ import defaultSetting from '@/config/defaultSetting'
 
 
 interface InitState {
-  setting: LX.AppSetting
+  setting: SY.AppSetting
 }
 
 const state: InitState = {

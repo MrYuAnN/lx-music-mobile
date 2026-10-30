@@ -25,7 +25,7 @@ export function compareVer(currentVer: string, targetVer: string): -1 | 0 | 1 {
 }
 
 
-export const toNewMusicInfo = (oldMusicInfo: any): LX.Music.MusicInfo => {
+export const toNewMusicInfo = (oldMusicInfo: any): SY.Music.MusicInfo => {
   const meta: Record<string, any> = {
     songId: oldMusicInfo.songmid, // 歌曲ID，local为文件路径
     albumName: oldMusicInfo.albumName, // 歌曲专辑名称
@@ -37,7 +37,7 @@ export const toNewMusicInfo = (oldMusicInfo: any): LX.Music.MusicInfo => {
     singer: oldMusicInfo.singer,
     source: oldMusicInfo.source,
     interval: oldMusicInfo.interval,
-    meta: meta as LX.Music.MusicInfoOnline['meta'],
+    meta: meta as SY.Music.MusicInfoOnline['meta'],
   }
 
   if (oldMusicInfo.source == 'local') {
@@ -79,7 +79,7 @@ export const toNewMusicInfo = (oldMusicInfo: any): LX.Music.MusicInfo => {
   return newInfo
 }
 
-export const toOldMusicInfo = (minfo: LX.Music.MusicInfo): any => {
+export const toOldMusicInfo = (minfo: SY.Music.MusicInfo): any => {
   const oInfo: Record<string, any> = {
     name: minfo.name,
     singer: minfo.singer,
@@ -128,7 +128,7 @@ export const toOldMusicInfo = (minfo: LX.Music.MusicInfo): any => {
  * 修复2.0.0-dev.8之前的新列表数据音质
  * @param musicInfo
  */
-export const fixNewMusicInfoQuality = (musicInfo: LX.Music.MusicInfo) => {
+export const fixNewMusicInfoQuality = (musicInfo: SY.Music.MusicInfo) => {
   if (musicInfo.source == 'local') return musicInfo
 
   // @ts-expect-error
@@ -149,7 +149,7 @@ export const fixNewMusicInfoQuality = (musicInfo: LX.Music.MusicInfo) => {
 }
 
 
-export const filterMusicList = <T extends LX.Music.MusicInfo>(list: T[]): T[] => {
+export const filterMusicList = <T extends SY.Music.MusicInfo>(list: T[]): T[] => {
   const ids = new Set<string>()
   return list.filter(s => {
     if (!s.id || ids.has(s.id) || !s.name) return false
@@ -160,7 +160,7 @@ export const filterMusicList = <T extends LX.Music.MusicInfo>(list: T[]): T[] =>
 }
 
 
-export const deduplicationList = <T extends LX.Music.MusicInfo>(list: T[]): T[] => {
+export const deduplicationList = <T extends SY.Music.MusicInfo>(list: T[]): T[] => {
   const ids = new Set<string>()
   return list.filter(s => {
     if (ids.has(s.id)) return false

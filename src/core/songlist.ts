@@ -17,7 +17,7 @@ const LIST_LOAD_LIMIT = 30
  * @param source
  * @returns
  */
-export const getSortList = (source: LX.OnlineSource) => {
+export const getSortList = (source: SY.OnlineSource) => {
   return songlistState.sortList[source]!
 }
 
@@ -26,7 +26,7 @@ export const getSortList = (source: LX.OnlineSource) => {
  * @param source
  * @returns
  */
-export const getTags = async<T extends LX.OnlineSource>(source: T) => {
+export const getTags = async<T extends SY.OnlineSource>(source: T) => {
   if (songlistState.tags[source]) return songlistState.tags[source] as TagInfo<T>
   const info = await (musicSdk[source]?.songList.getTags() as Promise<TagInfo<T>>)
   songlistActions.setTags(info, source)
@@ -68,7 +68,7 @@ export const clearList = () => {
  * @param isRefresh 是否跳过缓存
  * @returns
  */
-export const getList = async(source: LX.OnlineSource, tabId: string, sortId: string, page: number, isRefresh = false): Promise<ListInfo> => {
+export const getList = async(source: SY.OnlineSource, tabId: string, sortId: string, page: number, isRefresh = false): Promise<ListInfo> => {
   let pageKey = `slist__${source}__${sortId}__${tabId}__${page}`
 
   let listCache = cache.get(pageKey) as ListInfo
@@ -93,7 +93,7 @@ export const getList = async(source: LX.OnlineSource, tabId: string, sortId: str
  * @param page 页数
  * @returns
  */
-const getListDetailLimit = async(source: LX.OnlineSource, id: string, page: number): Promise<ListDetailInfo> => {
+const getListDetailLimit = async(source: SY.OnlineSource, id: string, page: number): Promise<ListDetailInfo> => {
   const listKey = `sdetail__${source}__${id}`
   const prevPageKey = `sdetail__${source}__${id}__${page - 1}`
   const tempListKey = `sdetail__${source}__${id}__temp`
@@ -108,7 +108,7 @@ const getListDetailLimit = async(source: LX.OnlineSource, id: string, page: numb
 
   return musicSdk[source]?.songList.getListDetail(id, sourcePage + 1).then((result: ListDetailInfo) => {
     if (listCache !== cache.get(listKey)) return
-    result.list = deduplicationList(result.list.map(m => toNewMusicInfo(m)) as LX.Music.MusicInfoOnline[])
+    result.list = deduplicationList(result.list.map(m => toNewMusicInfo(m)) as SY.Music.MusicInfoOnline[])
     let p = page
     const tempList = listCache.get(tempListKey) as ListDetailInfo['list']
     if (tempList) {
@@ -170,7 +170,7 @@ export const clearListDetail = () => {
  * @param isRefresh 是否跳过缓存
  * @returns
  */
-export const getListDetail = async(id: string, source: LX.OnlineSource, page: number, isRefresh = false): Promise<ListDetailInfo> => {
+export const getListDetail = async(id: string, source: SY.OnlineSource, page: number, isRefresh = false): Promise<ListDetailInfo> => {
   const listKey = `sdetail__${source}__${id}`
   const pageKey = `sdetail__${source}__${id}__${page}`
 
@@ -192,7 +192,7 @@ export const getListDetail = async(id: string, source: LX.OnlineSource, page: nu
  * @param isRefresh 是否跳过缓存
  * @returns
  */
-export const getListDetailAll = async(source: LX.OnlineSource, id: string, isRefresh = false): Promise<LX.Music.MusicInfoOnline[]> => {
+export const getListDetailAll = async(source: SY.OnlineSource, id: string, isRefresh = false): Promise<SY.Music.MusicInfoOnline[]> => {
   // console.log(tabId)
   const listKey = `sdetail__${source}__${id}`
   let listCache = cache.get(listKey) as LimitDetailCache
@@ -210,7 +210,7 @@ export const getListDetailAll = async(source: LX.OnlineSource, id: string, isRef
     if (result.total <= result.limit) return result.list
 
     let maxPage = Math.ceil(result.total / result.limit)
-    const loadDetail = async(loadPage = 2): Promise<LX.Music.MusicInfoOnline[]> => {
+    const loadDetail = async(loadPage = 2): Promise<SY.Music.MusicInfoOnline[]> => {
       return loadPage == maxPage
         ? loadData(loadPage).then(result => result.list)
         // eslint-disable-next-line @typescript-eslint/promise-function-async

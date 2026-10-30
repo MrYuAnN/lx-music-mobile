@@ -4,17 +4,17 @@
 import { initShiyinConfigClient } from './shiyin/config'
 
 export const initShiyinConfig = async(): Promise<boolean> => {
-  if (global.lx.apiInitPromise[1]) {
-    global.lx.apiInitPromise[0] = new Promise(resolve => {
-      global.lx.apiInitPromise[1] = false
-      global.lx.apiInitPromise[2] = (result: boolean) => {
-        global.lx.apiInitPromise[1] = true
+  if (global.sy.apiInitPromise[1]) {
+    global.sy.apiInitPromise[0] = new Promise(resolve => {
+      global.sy.apiInitPromise[1] = false
+      global.sy.apiInitPromise[2] = (result: boolean) => {
+        global.sy.apiInitPromise[1] = true
         resolve(result)
       }
     })
   }
   const ok = await initShiyinConfigClient()
-  if (!global.lx.apiInitPromise[1]) global.lx.apiInitPromise[2](ok)
+  if (!global.sy.apiInitPromise[1]) global.sy.apiInitPromise[2](ok)
   return ok
 }
 

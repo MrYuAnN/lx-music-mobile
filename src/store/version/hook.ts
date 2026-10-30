@@ -57,7 +57,7 @@ export const useVersionInfoIgnoreVersionUpdated = () => {
 
 
 // export const useMusicList = () => {
-//   const [list, setList] = useState<LX.List.ListMusics>([])
+//   const [list, setList] = useState<SY.List.ListMusics>([])
 
 //   useEffect(() => {
 //     const handleToggle = (activeListId: string) => {

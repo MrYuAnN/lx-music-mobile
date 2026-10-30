@@ -19,7 +19,7 @@ const guardListWritable = (listId: string) => {
  * 覆盖全部列表数据
  * @param data
  */
-export const overwriteListFull = async(data: LX.List.ListActionDataOverwrite) => {
+export const overwriteListFull = async(data: SY.List.ListActionDataOverwrite) => {
   await global.list_event.list_data_overwrite(data)
 }
 
@@ -27,7 +27,7 @@ export const overwriteListFull = async(data: LX.List.ListActionDataOverwrite) =>
 /**
  * 添加用户列表
  */
-export const createUserList = async(position: number, listInfos: LX.List.UserListInfo[]) => {
+export const createUserList = async(position: number, listInfos: SY.List.UserListInfo[]) => {
   await global.list_event.list_create(position, listInfos)
 }
 
@@ -41,7 +41,7 @@ export const removeUserList = async(ids: string[]) => {
 /**
  * 更新用户列表
  */
-export const updateUserList = async(listInfos: LX.List.UserListInfo[]) => {
+export const updateUserList = async(listInfos: SY.List.UserListInfo[]) => {
   await global.list_event.list_update(listInfos)
 }
 
@@ -57,7 +57,7 @@ export const updateUserListPosition = async(position: number, ids: string[]) => 
  * 批量添加歌曲到列表
  */
 // 插入位置由底层 listMusicAdd 单点内定（治理批 P8：删 list.addMusicLocationType 设置）
-export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType) => {
+export const addListMusics = async(id: string, musicInfos: SY.Music.MusicInfo[], addMusicLocationType?: SY.AddMusicLocationType) => {
   if (!guardListWritable(id)) return
   await global.list_event.list_music_add(id, musicInfos, addMusicLocationType)
 }
@@ -65,7 +65,7 @@ export const addListMusics = async(id: string, musicInfos: LX.Music.MusicInfo[],
 /**
  * 跨列表批量移动歌曲
  */
-export const moveListMusics = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[]) => {
+export const moveListMusics = async(fromId: string, toId: string, musicInfos: SY.Music.MusicInfo[]) => {
   // 移动=从 from 移除 + 向 to 写入，双向守卫（审查 C2：仅守 from 时「移动到收藏歌单」旁路写入）
   if (!guardListWritable(fromId)) return
   if (!guardListWritable(toId)) return
@@ -83,7 +83,7 @@ export const removeListMusics = async(listId: string, ids: string[]) => {
 /**
  * 批量更新列表内歌曲
  */
-export const updateListMusics = async(infos: Array<{ id: string, musicInfo: LX.Music.MusicInfo }>) => {
+export const updateListMusics = async(infos: Array<{ id: string, musicInfo: SY.Music.MusicInfo }>) => {
   if (infos.some(info => isListContentReadonly(info.id))) {
     toast(global.i18n.t('list_readonly_tip'))
     return
@@ -102,7 +102,7 @@ export const updateListMusicPosition = async(listId: string, position: number, i
 /**
  * 覆盖列表内的歌曲
  */
-export const overwriteListMusics = async(listId: string, musicInfos: LX.Music.MusicInfo[]) => {
+export const overwriteListMusics = async(listId: string, musicInfos: SY.Music.MusicInfo[]) => {
   await global.list_event.list_music_overwrite(listId, musicInfos)
 }
 
@@ -122,7 +122,7 @@ export const clearListMusics = async(ids: string[]) => {
  * @param listInfo
  * @param musics
  */
-export const overwriteList = async(listInfoFull: LX.List.MyDefaultListInfoFull | LX.List.MyLoveListInfoFull | LX.List.UserListInfoFull) => {
+export const overwriteList = async(listInfoFull: SY.List.MyDefaultListInfoFull | SY.List.MyLoveListInfoFull | SY.List.UserListInfoFull) => {
   let userListInfo
   switch (listInfoFull.id) {
     case LIST_IDS.DEFAULT:
@@ -130,7 +130,7 @@ export const overwriteList = async(listInfoFull: LX.List.MyDefaultListInfoFull |
       break
 
     default:
-      userListInfo = listInfoFull as LX.List.UserListInfo
+      userListInfo = listInfoFull as SY.List.UserListInfo
       await updateUserList([
         {
           name: userListInfo.name,
@@ -152,8 +152,8 @@ export const overwriteList = async(listInfoFull: LX.List.MyDefaultListInfoFull |
 export const createList = async({ name, id = `userlist_${Date.now()}`, list = [], source, sourceListId, pic, picCustom, collectTime, position = -1 }: {
   name?: string
   id?: string
-  list?: LX.Music.MusicInfo[]
-  source?: LX.OnlineSource
+  list?: SY.Music.MusicInfo[]
+  source?: SY.OnlineSource
   sourceListId?: string
   pic?: string
   picCustom?: boolean
@@ -193,7 +193,7 @@ export const setActiveList = (id: string) => {
 /**
  * 设置歌曲列表
  */
-export const setUserList = (lists: LX.List.UserListInfo[]) => {
+export const setUserList = (lists: SY.List.UserListInfo[]) => {
   listAction.setUserLists(lists)
 }
 
@@ -202,7 +202,7 @@ export const setUserList = (lists: LX.List.UserListInfo[]) => {
  * @param id
  * @param list
  */
-export const setTempList = async(id: string, list: LX.Music.MusicInfo[]) => {
+export const setTempList = async(id: string, list: SY.Music.MusicInfo[]) => {
   await overwriteListMusics(LIST_IDS.TEMP, list)
   listAction.setTempListMeta({ id })
 }

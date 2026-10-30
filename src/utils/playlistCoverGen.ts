@@ -47,7 +47,7 @@ export const registerCoverCapture = (fn: CaptureFn | null) => {
   captureFn = fn
 }
 
-export const isOwnedListInfo = (info: LX.List.MyListInfo): boolean => {
+export const isOwnedListInfo = (info: SY.List.MyListInfo): boolean => {
   return isOwnedListId(info.id) && !('source' in info && !!info.source)
 }
 
@@ -228,11 +228,11 @@ export const queueCoverGen = (listId: string, force = false) => {
 // shelf 存在性补漏（pic 三态分流，方案 §2.1-4）：首页我的音乐区渲染时调用。
 // custom 轨（covers_custom，picCustom 条目）缺失时降级清 picCustom 回自动轨——
 // 备份恢复/换机悬空场景的自愈通道（三席代码审查 I1；写回走 writeBackPic 同款重读防护）
-export const syncShelfCovers = (lists: LX.List.MyListInfo[]): void => {
+export const syncShelfCovers = (lists: SY.List.MyListInfo[]): void => {
   for (const item of lists) {
     if (!isOwnedListInfo(item)) continue
     if (failedCovers.has(item.id) || emptyCoverLists.has(item.id)) continue
-    const userListInfo = item as LX.List.UserListInfo
+    const userListInfo = item as SY.List.UserListInfo
     const pic = userListInfo.pic
     if (!pic) {
       // 异常态（picCustom=true 而 pic 空，正常写路径不产生）：跳过防反复空转（审查 S7）

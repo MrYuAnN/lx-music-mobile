@@ -41,9 +41,9 @@ const importOldListData = async(lists: any[]) => {
   }
   const defaultList = allLists.shift()!.list
   const loveList = allLists.shift()!.list
-  await overwriteListFull({ defaultList, loveList, userList: allLists as LX.List.UserListInfoFull[] })
+  await overwriteListFull({ defaultList, loveList, userList: allLists as SY.List.UserListInfoFull[] })
 }
-const importNewListData = async(lists: Array<LX.List.MyDefaultListInfoFull | LX.List.MyLoveListInfoFull | LX.List.UserListInfoFull>) => {
+const importNewListData = async(lists: Array<SY.List.MyDefaultListInfoFull | SY.List.MyLoveListInfoFull | SY.List.UserListInfoFull>) => {
   const allLists = await getAllLists()
   for (const list of lists) {
     try {
@@ -55,9 +55,9 @@ const importNewListData = async(lists: Array<LX.List.MyDefaultListInfoFull | LX.
           name: list.name,
           id: list.id,
           list: filterMusicList(list.list).map(m => fixNewMusicInfoQuality(m)),
-          source: (list as LX.List.UserListInfoFull).source,
-          sourceListId: (list as LX.List.UserListInfoFull).sourceListId,
-          locationUpdateTime: (list as LX.List.UserListInfoFull).locationUpdateTime ?? null,
+          source: (list as SY.List.UserListInfoFull).source,
+          sourceListId: (list as SY.List.UserListInfoFull).sourceListId,
+          locationUpdateTime: (list as SY.List.UserListInfoFull).locationUpdateTime ?? null,
         }
         allLists.push(data)
       }
@@ -67,7 +67,7 @@ const importNewListData = async(lists: Array<LX.List.MyDefaultListInfoFull | LX.
   }
   const defaultList = allLists.shift()!.list
   const loveList = allLists.shift()!.list
-  await overwriteListFull({ defaultList, loveList, userList: allLists as LX.List.UserListInfoFull[] })
+  await overwriteListFull({ defaultList, loveList, userList: allLists as SY.List.UserListInfoFull[] })
 }
 
 /**
@@ -76,7 +76,7 @@ const importNewListData = async(lists: Array<LX.List.MyDefaultListInfoFull | LX.
  * @param position
  * @returns
  */
-export const handleImportListPart = async(listData: LX.ConfigFile.MyListInfoPart['data'], position: number = listState.userList.length) => {
+export const handleImportListPart = async(listData: SY.ConfigFile.MyListInfoPart['data'], position: number = listState.userList.length) => {
   const targetList = listState.allList.find(l => l.id === listData.id)
   if (targetList) {
     const confirm = await confirmDialog({
@@ -97,7 +97,7 @@ export const handleImportListPart = async(listData: LX.ConfigFile.MyListInfoPart
     }
     listData.id += `__${Date.now()}`
   }
-  const userList = listData as LX.List.UserListInfoFull
+  const userList = listData as SY.List.UserListInfoFull
   void createList({
     name: userList.name,
     id: userList.id,
@@ -133,7 +133,7 @@ const importPlayList = async(path: string) => {
   switch (configData.type) {
     case 'defautlList': // 兼容0.6.2及以前版本的列表数据
       if (!await showConfirm()) return true
-      await overwriteListMusics(LIST_IDS.DEFAULT, filterMusicList((configData.data as LX.List.MyDefaultListInfoFull).list.map(m => toNewMusicInfo(m))))
+      await overwriteListMusics(LIST_IDS.DEFAULT, filterMusicList((configData.data as SY.List.MyDefaultListInfoFull).list.map(m => toNewMusicInfo(m))))
       break
     case 'playList':
       if (!await showConfirm()) return true
@@ -148,7 +148,7 @@ const importPlayList = async(path: string) => {
     case 'allData':
       if (!await showConfirm()) return true
       // 兼容0.6.2及以前版本的列表数据
-      if (configData.defaultList) await overwriteListMusics(LIST_IDS.DEFAULT, filterMusicList((configData.defaultList as LX.List.MyDefaultListInfoFull).list.map(m => toNewMusicInfo(m))))
+      if (configData.defaultList) await overwriteListMusics(LIST_IDS.DEFAULT, filterMusicList((configData.defaultList as SY.List.MyDefaultListInfoFull).list.map(m => toNewMusicInfo(m))))
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       else await importOldListData(configData.playList)
       break
@@ -158,12 +158,12 @@ const importPlayList = async(path: string) => {
       await importNewListData(configData.playList)
       break
     case 'playListPart':
-      configData.data.list = filterMusicList((configData.data as LX.ConfigFile.MyListInfoPart['data']).list.map(m => toNewMusicInfo(m)))
+      configData.data.list = filterMusicList((configData.data as SY.ConfigFile.MyListInfoPart['data']).list.map(m => toNewMusicInfo(m)))
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       void handleImportListPart(configData.data)
       return true
     case 'playListPart_v2':
-      configData.data.list = filterMusicList((configData.data as LX.ConfigFile.MyListInfoPart['data']).list).map(m => fixNewMusicInfoQuality(m))
+      configData.data.list = filterMusicList((configData.data as SY.ConfigFile.MyListInfoPart['data']).list).map(m => fixNewMusicInfoQuality(m))
       // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       void handleImportListPart(configData.data)
       return true
@@ -192,7 +192,7 @@ const exportAllList = async(path: string) => {
   }))
 
   try {
-    await handleSaveFile(path + '/lx_list.lxmc', data)
+    await handleSaveFile(path + '/shiyin_list.shiyin', data)
   } catch (error: any) {
     log.error(error.stack)
   }

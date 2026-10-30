@@ -12,19 +12,19 @@ import { unlink } from '@/utils/fs'
 import { TEMP_FILE_PATH } from '@/utils/tools'
 // import { play, playList } from '../player/player'
 
-// const initPrevPlayInfo = async(appSetting: LX.AppSetting) => {
+// const initPrevPlayInfo = async(appSetting: SY.AppSetting) => {
 //   const info = await getPlayInfo()
-//   global.lx.restorePlayInfo = null
+//   global.sy.restorePlayInfo = null
 //   if (!info?.listId || info.index < 0) return
 //   const list = await getListMusics(info.listId)
 //   if (!list[info.index]) return
-//   global.lx.restorePlayInfo = info
+//   global.sy.restorePlayInfo = info
 //   await playList(info.listId, info.index)
 
 //   if (appSetting['player.startupAutoPlay']) setTimeout(play)
 // }
 
-export default async(appSetting: LX.AppSetting) => {
+export default async(appSetting: SY.AppSetting) => {
   // await Promise.all([
   // ]).catch(err => log.error(err))
   void musicSdkInit() // 初始化音乐sdk

@@ -13,14 +13,14 @@ import { confirmDialog, toast } from '@/utils/tools'
 // 本地歌曲行菜单（问题 3 §2.0：播放/下一首播放/收藏），本地音乐主页与聚合二级屏共用
 export interface LocalMusicMenuType {
   /** show(item, list)：list 为当前视图歌曲集（play 时注入临时列表） */
-  show: (musicInfo: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => void
+  show: (musicInfo: SY.Music.MusicInfoLocal, list: SY.Music.MusicInfoLocal[]) => void
 }
 
 export default forwardRef<LocalMusicMenuType>((_, ref) => {
   const t = useI18n()
   const menuRef = useRef<ActionSheetType>(null)
   const listMusicAddRef = useRef<MusicAddModalType>(null)
-  const selectedRef = useRef<{ item: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[] }>({ item: null as unknown as LX.Music.MusicInfoLocal, list: [] })
+  const selectedRef = useRef<{ item: SY.Music.MusicInfoLocal, list: SY.Music.MusicInfoLocal[] }>({ item: null as unknown as SY.Music.MusicInfoLocal, list: [] })
 
   useImperativeHandle(ref, () => ({
     show(musicInfo, list) {

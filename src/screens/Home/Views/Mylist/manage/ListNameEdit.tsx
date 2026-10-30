@@ -62,7 +62,7 @@ const NameInput = forwardRef<NameInputType, {}>((props, ref) => {
 
 export interface ListNameEditType {
   // 自建/收藏编辑：按 source 内部分流形态
-  show: (listInfo: LX.List.UserListInfo) => void
+  show: (listInfo: SY.List.UserListInfo) => void
   // 我喜欢封面编辑
   showLove: () => void
   // 默认歌单封面编辑（2026-10-18 拍板纳入封面机制）
@@ -76,7 +76,7 @@ export default forwardRef<ListNameEditType, {}>((props, ref) => {
   const theme = useTheme()
   const alertRef = useRef<ConfirmAlertType>(null)
   const nameInputRef = useRef<NameInputType>(null)
-  const selectedListInfo = useRef<LX.List.UserListInfo | null>(null)
+  const selectedListInfo = useRef<SY.List.UserListInfo | null>(null)
   const [visible, setVisible] = useState(false)
   const [mode, setMode] = useState<Mode>('user')
   // 选图临时 uri（仅预览，提交才落盘）

@@ -17,11 +17,11 @@ export const useSetting = () => {
   return setting
 }
 
-export const useSettingValue = <T extends keyof LX.AppSetting>(key: T): LX.AppSetting[T] => {
+export const useSettingValue = <T extends keyof SY.AppSetting>(key: T): SY.AppSetting[T] => {
   const [value, update] = useState(state.setting[key])
 
   useEffect(() => {
-    const handleUpdate = (keys: Array<keyof LX.AppSetting>) => {
+    const handleUpdate = (keys: Array<keyof SY.AppSetting>) => {
       if (!keys.includes(key)) return
       update(state.setting[key])
     }

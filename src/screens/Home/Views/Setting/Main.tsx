@@ -41,7 +41,7 @@ export interface MainType {
 }
 
 const Main = forwardRef<MainType, {}>((props, ref) => {
-  const [id, setId] = useState(global.lx.settingActiveId)
+  const [id, setId] = useState(global.sy.settingActiveId)
 
   useImperativeHandle(ref, () => ({
     setActiveId(id) {

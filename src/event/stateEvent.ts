@@ -18,7 +18,7 @@ import { type I18n } from '@/lang'
 // }
 
 export class StateEvent extends Event {
-  configUpdated(keys: Array<keyof LX.AppSetting>, setting: Partial<LX.AppSetting>) {
+  configUpdated(keys: Array<keyof SY.AppSetting>, setting: Partial<SY.AppSetting>) {
     this.emit('configUpdated', keys, setting)
   }
 
@@ -35,11 +35,11 @@ export class StateEvent extends Event {
   }
 
   // 直连化（批1 阶段3）：/config 下发的源集合变化时广播（替代退役的 apiSourceUpdated）
-  sourcesUpdated(sources: Record<string, { qualitys: LX.Quality[] }>) {
+  sourcesUpdated(sources: Record<string, { qualitys: SY.Quality[] }>) {
     this.emit('sourcesUpdated', sources)
   }
 
-  themeUpdated(theme: LX.ActiveTheme) {
+  themeUpdated(theme: SY.ActiveTheme) {
     this.emit('themeUpdated', theme)
   }
 
@@ -83,7 +83,7 @@ export class StateEvent extends Event {
   /**
    * 我的列表更新
    */
-  mylistUpdated(lists: Array<LX.List.MyDefaultListInfo | LX.List.MyLoveListInfo | LX.List.UserListInfo>) {
+  mylistUpdated(lists: Array<SY.List.MyDefaultListInfo | SY.List.MyLoveListInfo | SY.List.UserListInfo>) {
     this.emit('mylistUpdated', lists)
   }
 
@@ -148,7 +148,7 @@ export class StateEvent extends Event {
     this.emit('localMusicScanProgress', done, total)
   }
 
-  downloadStateChanged(list: LX.Download.ListItem[]) {
+  downloadStateChanged(list: SY.Download.ListItem[]) {
     this.emit('downloadStateChanged', list)
   }
 

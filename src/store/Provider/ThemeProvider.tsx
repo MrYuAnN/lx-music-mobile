@@ -9,7 +9,7 @@ export default memo(({ children }: {
   const [theme, setTheme] = useState(themeState.theme)
 
   useEffect(() => {
-    const handleUpdateTheme = (theme: LX.ActiveTheme) => {
+    const handleUpdateTheme = (theme: SY.ActiveTheme) => {
       requestAnimationFrame(() => {
         setTheme(theme)
       })

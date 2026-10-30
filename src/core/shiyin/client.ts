@@ -47,10 +47,10 @@ const requestUrl = (auth: { token: string, deviceSecret: string, deviceId: strin
 }
 
 export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>, quality: string | null, isRefresh = false): {
-  promise: Promise<{ url: string, type: LX.Quality, expire?: number }>
+  promise: Promise<{ url: string, type: SY.Quality, expire?: number }>
   cancelHttp: () => void
 } => {
-  const targetQuality = (quality ?? '128k') as LX.Quality
+  const targetQuality = (quality ?? '128k') as SY.Quality
   const songId = getSongId(source, songInfo)
   let request: ReturnType<typeof httpFetch> | null = null
 

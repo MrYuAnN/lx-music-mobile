@@ -68,7 +68,8 @@ const Header = () => {
   return (
     <View style={{ paddingTop: statusBarHeight }}>
       <View style={styles.header}>
-        <Icon name="logo" color={theme['c-primary-dark-100-alpha-300']} size={ICON_SIZE.nav} />
+        {/* 侧栏品牌位（2026-10-30 话题③）：上游 lx logo glyph 随图标库换代已成死引用，换音符标识 */}
+        <Icon name="music" color={theme['c-primary-dark-100-alpha-300']} size={ICON_SIZE.nav} />
         {/* <Text style={styles.headerText} size={16} color={theme['c-primary-dark-100-alpha-300']}>拾音</Text> */}
       </View>
     </View>
@@ -113,7 +114,7 @@ export default memo(() => {
       case 'nav_exit':
         void confirmDialog({
           message: global.i18n.t('exit_app_tip'),
-          confirmButtonText: global.i18n.t('list_remove_tip_button'),
+          confirmButtonText: global.i18n.t('dialog_exit'),
         }).then(isExit => {
           if (!isExit) return
           exitApp('Exit Btn')

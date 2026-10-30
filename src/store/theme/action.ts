@@ -3,7 +3,7 @@ import state from './state'
 
 
 export default {
-  setTheme(theme: LX.Theme) {
+  setTheme(theme: SY.Theme) {
     state.theme = buildActiveThemeColors(theme)
     // ThemeContext.displayName
     global.state_event.themeUpdated(state.theme)

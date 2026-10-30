@@ -7,7 +7,7 @@ import playerState from '@/store/player/state'
 const preloadMusicInfo = {
   isLoading: false,
   preProgress: 0,
-  info: null as LX.Player.PlayMusicInfo | null,
+  info: null as SY.Player.PlayMusicInfo | null,
 }
 const resetPreloadInfo = () => {
   preloadMusicInfo.preProgress = 0

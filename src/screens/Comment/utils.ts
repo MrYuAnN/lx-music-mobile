@@ -15,7 +15,7 @@ export interface Comment {
   reply: Comment[]
 }
 export interface CommentInfo {
-  source: LX.OnlineSource
+  source: SY.OnlineSource
   comments: Comment[]
   total: number
   page: number
@@ -23,7 +23,7 @@ export interface CommentInfo {
   maxPage: number
 }
 
-export const getNewComment = async(musicInfo: LX.Music.MusicInfoOnline, page: number, limit: number, retryNum = 0): Promise<CommentInfo> => {
+export const getNewComment = async(musicInfo: SY.Music.MusicInfoOnline, page: number, limit: number, retryNum = 0): Promise<CommentInfo> => {
   let resp
   try {
     resp = await (music[musicInfo.source].comment.getComment(toOldMusicInfo(musicInfo), page, limit) as Promise<CommentInfo>)
@@ -35,7 +35,7 @@ export const getNewComment = async(musicInfo: LX.Music.MusicInfoOnline, page: nu
   return resp
 }
 
-export const getHotComment = async(musicInfo: LX.Music.MusicInfoOnline, page: number, limit: number, retryNum = 0): Promise<CommentInfo> => {
+export const getHotComment = async(musicInfo: SY.Music.MusicInfoOnline, page: number, limit: number, retryNum = 0): Promise<CommentInfo> => {
   let resp
   try {
     resp = await (music[musicInfo.source].comment.getHotComment(toOldMusicInfo(musicInfo), page, limit) as Promise<CommentInfo>)

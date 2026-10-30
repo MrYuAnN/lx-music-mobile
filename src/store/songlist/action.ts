@@ -2,7 +2,7 @@ import type { TagInfo, ListDetailInfo, ListInfo, Source } from './state'
 import state from './state'
 
 export default {
-  setTags(tagInfo: TagInfo, source: LX.OnlineSource) {
+  setTags(tagInfo: TagInfo, source: SY.OnlineSource) {
     state.tags[source] = tagInfo
   },
   setListInfo(source: Source, tagId: string, sortId: string) {

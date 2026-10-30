@@ -43,7 +43,7 @@ const HeaderItem = ({ id, label, isActive, onPress }: {
 
 const HotCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom }: {
   activeId: ActiveId
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
@@ -62,7 +62,7 @@ const HotCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimat
 
 const NewCommentPage = memo(({ activeId, musicInfo, onUpdateTotal, scrollYAnimated, contentPaddingTop, contentPaddingBottom }: {
   activeId: ActiveId
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   onUpdateTotal: (total: number) => void
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
@@ -83,7 +83,7 @@ const TABS = [
   'hot',
   'new',
 ] as const
-const getMusicInfo = (musicInfo: LX.Player.PlayMusic | null) => {
+const getMusicInfo = (musicInfo: SY.Player.PlayMusic | null) => {
   if (!musicInfo) return null
   const info = 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo
   // 已下载曲（走查反馈③）：本地播放信息携带原曲在线身份，评论按原曲拉取（网易云/QQ 已下载曲评论同款）
@@ -94,7 +94,7 @@ export default memo(({ componentId }: {
 }) => {
   const pagerViewRef = useRef<PagerView>(null)
   const [activeId, setActiveId] = useState<ActiveId>('hot')
-  const [musicInfo, setMusicInfo] = useState<LX.Music.MusicInfo | null>(getMusicInfo(playerState.playMusicInfo.musicInfo))
+  const [musicInfo, setMusicInfo] = useState<SY.Music.MusicInfo | null>(getMusicInfo(playerState.playMusicInfo.musicInfo))
   const t = useI18n()
   const theme = useTheme()
   const [total, setTotal] = useState({ hot: 0, new: 0 })
@@ -190,10 +190,10 @@ export default memo(({ componentId }: {
           style={styles.pagerView}
         >
           <View collapsable={false} style={styles.pageStyle}>
-            <HotCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setHotTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
+            <HotCommentPage activeId={activeId} musicInfo={musicInfo as SY.Music.MusicInfoOnline} onUpdateTotal={setHotTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
           </View>
           <View collapsable={false} style={styles.pageStyle}>
-            <NewCommentPage activeId={activeId} musicInfo={musicInfo as LX.Music.MusicInfoOnline} onUpdateTotal={setNewTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
+            <NewCommentPage activeId={activeId} musicInfo={musicInfo as SY.Music.MusicInfoOnline} onUpdateTotal={setNewTotal} scrollYAnimated={scrollY} contentPaddingTop={listPaddingTop} contentPaddingBottom={navBarBottom} />
           </View>
         </PagerView>
         {/* 钉位子头后声明（RN 后声明者在上，终轮 C-1：tabHeader 漏移补齐）；渐显只包玻璃垫层，

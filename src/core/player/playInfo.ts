@@ -7,7 +7,7 @@ import { setProgress } from '@/core/player/progress'
 import { LIST_IDS } from '@/config/constant'
 
 
-export const setMusicInfo = (musicInfo: Partial<LX.Player.MusicInfo>) => {
+export const setMusicInfo = (musicInfo: Partial<SY.Player.MusicInfo>) => {
   playerActions.setMusicInfo(musicInfo)
 }
 
@@ -36,7 +36,7 @@ export const updatePlayIndex = () => {
 }
 
 
-export const getPlayIndex = (listId: string | null, musicInfo: LX.Download.ListItem | LX.Music.MusicInfo | null, isTempPlay: boolean): {
+export const getPlayIndex = (listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean): {
   playIndex: number
   playerPlayIndex: number
 } => {
@@ -86,7 +86,7 @@ export const resetPlayerMusicInfo = () => {
   })
 }
 
-const setPlayerMusicInfo = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem | null) => {
+const setPlayerMusicInfo = (musicInfo: SY.Music.MusicInfo | SY.Download.ListItem | null) => {
   if (musicInfo) {
     setMusicInfo('progress' in musicInfo ? {
       id: musicInfo.id,
@@ -120,7 +120,7 @@ const setPlayerMusicInfo = (musicInfo: LX.Music.MusicInfo | LX.Download.ListItem
  * @param musicInfo 歌曲信息
  * @param isTempPlay 是否临时播放
  */
-export const setPlayMusicInfo = (listId: string | null, musicInfo: LX.Download.ListItem | LX.Music.MusicInfo | null, isTempPlay: boolean = false) => {
+export const setPlayMusicInfo = (listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false) => {
   playerActions.setPlayMusicInfo(listId, musicInfo, isTempPlay)
   setPlayerMusicInfo(musicInfo)
 
@@ -131,7 +131,7 @@ export const setPlayMusicInfo = (listId: string | null, musicInfo: LX.Download.L
     setPlayListId(null)
   } else {
     // 最近播放记录（AM-2 移植；master 基线无本地音源，无需 local 分支）
-    addRecentPlay(musicInfo as LX.Music.MusicInfo)
+    addRecentPlay(musicInfo as SY.Music.MusicInfo)
     const { playIndex, playerPlayIndex } = getPlayIndex(listId, musicInfo, isTempPlay)
 
     playerActions.updatePlayIndex(playIndex, playerPlayIndex)
@@ -139,7 +139,7 @@ export const setPlayMusicInfo = (listId: string | null, musicInfo: LX.Download.L
   }
 }
 
-export const getList = (listId: string | null): LX.Music.MusicInfo[] | LX.Download.ListItem[] => {
+export const getList = (listId: string | null): SY.Music.MusicInfo[] | SY.Download.ListItem[] => {
   // return listId == LIST_ID_DOWNLOAD ? downloadList : getListMusicSync(listId)
   return listId == LIST_IDS.DOWNLOAD ? [] : getListMusicSync(listId)
 }

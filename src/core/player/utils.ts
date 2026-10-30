@@ -9,7 +9,7 @@ export const filterMusicList = ({ playedList, listId, list, playerMusicInfo, dis
   /**
    * 已播放列表
    */
-  playedList: LX.Player.PlayMusicInfo[] | readonly LX.Player.PlayMusicInfo[]
+  playedList: SY.Player.PlayMusicInfo[] | readonly SY.Player.PlayMusicInfo[]
   /**
    * 列表id
    */
@@ -17,7 +17,7 @@ export const filterMusicList = ({ playedList, listId, list, playerMusicInfo, dis
   /**
    * 播放列表
    */
-  list: Array<LX.Music.MusicInfo | LX.Download.ListItem>
+  list: Array<SY.Music.MusicInfo | SY.Download.ListItem>
   /**
    * 下载目录
    */
@@ -25,20 +25,20 @@ export const filterMusicList = ({ playedList, listId, list, playerMusicInfo, dis
   /**
    * 播放器内当前歌曲（`playInfo.playerPlayIndex`指向的歌曲）
    */
-  playerMusicInfo?: LX.Music.MusicInfo | LX.Download.ListItem
+  playerMusicInfo?: SY.Music.MusicInfo | SY.Download.ListItem
 
   /**
    * 不喜欢的歌曲名字列表
    */
-  dislikeInfo: Omit<LX.Dislike.DislikeInfo, 'rules'>
+  dislikeInfo: Omit<SY.Dislike.DislikeInfo, 'rules'>
 
   isNext: boolean
 }) => {
   let playerIndex = -1
 
-  let canPlayList: Array<LX.Music.MusicInfo | LX.Download.ListItem> = []
+  let canPlayList: Array<SY.Music.MusicInfo | SY.Download.ListItem> = []
   const filteredPlayedList = playedList.filter(pmInfo => pmInfo.listId == listId && !pmInfo.isTempPlay).map(({ musicInfo }) => musicInfo)
-  const hasDislike = (info: LX.Music.MusicInfo) => {
+  const hasDislike = (info: SY.Music.MusicInfo) => {
     const name = info.name?.replaceAll(SPLIT_CHAR.DISLIKE_NAME, SPLIT_CHAR.DISLIKE_NAME_ALIAS).toLocaleLowerCase().trim() ?? ''
     const singer = info.singer?.replaceAll(SPLIT_CHAR.DISLIKE_NAME, SPLIT_CHAR.DISLIKE_NAME_ALIAS).toLocaleLowerCase().trim() ?? ''
 
@@ -47,7 +47,7 @@ export const filterMusicList = ({ playedList, listId, list, playerMusicInfo, dis
   }
 
   let isDislike = false
-  const filteredList: Array<LX.Music.MusicInfo | LX.Download.ListItem> = list.filter(s => {
+  const filteredList: Array<SY.Music.MusicInfo | SY.Download.ListItem> = list.filter(s => {
     // if (!assertApiSupport(s.source)) return false
     if ('progress' in s) {
       if (!s.isComplate) return false
@@ -106,10 +106,10 @@ export const filterMusicList = ({ playedList, listId, list, playerMusicInfo, dis
  * 过滤列表中已播放的歌曲
  */
 export const filterList = async({ playedList, listId, list, playerMusicInfo, isNext }: {
-  playedList: LX.Player.PlayMusicInfo[] | readonly LX.Player.PlayMusicInfo[]
+  playedList: SY.Player.PlayMusicInfo[] | readonly SY.Player.PlayMusicInfo[]
   listId: string
-  list: Array<LX.Music.MusicInfo | LX.Download.ListItem>
-  playerMusicInfo?: LX.Music.MusicInfo | LX.Download.ListItem
+  list: Array<SY.Music.MusicInfo | SY.Download.ListItem>
+  playerMusicInfo?: SY.Music.MusicInfo | SY.Download.ListItem
   isNext: boolean
 }) => {
   // if (this.list.listName === null) return
@@ -118,7 +118,7 @@ export const filterList = async({ playedList, listId, list, playerMusicInfo, isN
     listId,
     list,
     playedList,
-    // savePath: global.lx.setting['download.savePath'],
+    // savePath: global.sy.setting['download.savePath'],
     playerMusicInfo,
     dislikeInfo: { names: state.dislikeInfo.names, musicNames: state.dislikeInfo.musicNames, singerNames: state.dislikeInfo.singerNames },
     isNext,

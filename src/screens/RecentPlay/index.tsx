@@ -72,7 +72,7 @@ export default ({ componentId }: { componentId: string }) => {
   ), [scrollY])
   const menuRef = useRef<ActionSheetType>(null)
   const listMusicAddRef = useRef<MusicAddModalType>(null)
-  const selectedRef = useRef<{ item: LX.Music.MusicInfo, index: number }>({ item: null as unknown as LX.Music.MusicInfo, index: -1 })
+  const selectedRef = useRef<{ item: SY.Music.MusicInfo, index: number }>({ item: null as unknown as SY.Music.MusicInfo, index: -1 })
 
   const handlePlay = useCallback(async(index: number) => {
     // 与搜索歌单试听同模式：最近播放列表注入临时列表播放
@@ -81,7 +81,7 @@ export default ({ componentId }: { componentId: string }) => {
     void playList(LIST_IDS.TEMP, index)
   }, [list])
 
-  const showMenu = useCallback((item: LX.Music.MusicInfo, index: number) => {
+  const showMenu = useCallback((item: SY.Music.MusicInfo, index: number) => {
     selectedRef.current = { item, index }
     menuRef.current?.show()
   }, [])

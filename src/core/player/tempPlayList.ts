@@ -7,7 +7,7 @@ import { playNext } from './player'
  * 添加歌曲到稍后播放列表
  * @param list 歌曲列表
  */
-export const addTempPlayList = (list: LX.Player.TempPlayListItem[]) => {
+export const addTempPlayList = (list: SY.Player.TempPlayListItem[]) => {
   playerActions.addTempPlayList(list)
   if (!playerState.playMusicInfo.musicInfo) void playNext()
 }

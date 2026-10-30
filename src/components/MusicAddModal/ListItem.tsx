@@ -3,9 +3,9 @@ import { toast } from '@/utils/tools'
 import { useMusicExistsList } from '@/store/list/hook'
 
 export default ({ listInfo, onPress, musicInfo, width }: {
-  listInfo: LX.List.MyListInfo
-  onPress: (listInfo: LX.List.MyListInfo) => void
-  musicInfo: LX.Music.MusicInfo
+  listInfo: SY.List.MyListInfo
+  onPress: (listInfo: SY.List.MyListInfo) => void
+  musicInfo: SY.Music.MusicInfo
   width: number
 }) => {
   const isExists = useMusicExistsList(listInfo, musicInfo)

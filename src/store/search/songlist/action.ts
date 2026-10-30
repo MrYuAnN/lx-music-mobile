@@ -7,7 +7,7 @@ export interface SearchResult {
   list: ListInfoItem[]
   limit: number
   total: number
-  source: LX.OnlineSource
+  source: SY.OnlineSource
 }
 
 
@@ -30,7 +30,7 @@ const handleSortList = (list: ListInfoItem[], keyword: string) => {
 }
 
 
-let maxTotals: Partial<Record<LX.OnlineSource, number>> = {
+let maxTotals: Partial<Record<SY.OnlineSource, number>> = {
 
 }
 const setLists = (results: SearchResult[], page: number, text: string): ListInfoItem[] => {

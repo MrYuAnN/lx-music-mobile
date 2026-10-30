@@ -9,7 +9,7 @@ export const getListCoverPic = (
   activeListId: string,
   lovePic: string | null,
   defaultPic: string | null,
-  activeListInfo?: LX.List.UserListInfo,
+  activeListInfo?: SY.List.UserListInfo,
 ): string | null => {
   if (activeListId == LIST_IDS.LOVE) return lovePic
   if (activeListId == LIST_IDS.DEFAULT) return defaultPic

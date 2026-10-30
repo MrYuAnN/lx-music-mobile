@@ -13,10 +13,10 @@ import { cleanListCoverFiles } from '@/utils/playlistCoverGen'
 
 // 删除歌单（确认→移除）：返回是否实际删除——调用方据此决定删除当前查看的列表后返回上一屏
 // （真机反馈轮 5：详情页删当前歌单不再落默认歌单页）
-export const handleRemove = (listInfo: LX.List.UserListInfo) => {
+export const handleRemove = (listInfo: SY.List.UserListInfo) => {
   return confirmDialog({
     message: global.i18n.t('list_remove_tip', { name: listInfo.name }),
-    confirmButtonText: global.i18n.t('list_remove_tip_button'),
+    confirmButtonText: global.i18n.t('dialog_delete'),
   }).then(isRemove => {
     if (!isRemove) return false
     // 乐观返回 true（pop 先行）；失败兜底 toast（二轮审查 S-2）
@@ -30,7 +30,7 @@ export const handleRemove = (listInfo: LX.List.UserListInfo) => {
 }
 
 
-const exportList = async(listInfo: LX.List.MyListInfo, path: string) => {
+const exportList = async(listInfo: SY.List.MyListInfo, path: string) => {
   const data = JSON.parse(JSON.stringify({
     type: 'playListPart_v2',
     data: {
@@ -39,12 +39,12 @@ const exportList = async(listInfo: LX.List.MyListInfo, path: string) => {
     },
   }))
   try {
-    await handleSaveFile(`${path}/lx_list_part_${filterFileName(listInfo.name)}.lxmc`, data)
+    await handleSaveFile(`${path}/shiyin_list_part_${filterFileName(listInfo.name)}.shiyin`, data)
   } catch (error: any) {
     log.error(error.stack)
   }
 }
-export const handleExport = (listInfo: LX.List.MyListInfo, path: string) => {
+export const handleExport = (listInfo: SY.List.MyListInfo, path: string) => {
   toast(global.i18n.t('setting_backup_part_export_list_tip_zip'))
   exportList(listInfo, path).then(() => {
     toast(global.i18n.t('setting_backup_part_export_list_tip_success'))
@@ -54,10 +54,10 @@ export const handleExport = (listInfo: LX.List.MyListInfo, path: string) => {
   })
 }
 
-export const handleSync = (listInfo: LX.List.UserListInfo) => {
+export const handleSync = (listInfo: SY.List.UserListInfo) => {
   void confirmDialog({
     message: global.i18n.t('list_sync_confirm_tip', { name: listInfo.name }),
-    confirmButtonText: global.i18n.t('list_remove_tip_button'),
+    confirmButtonText: global.i18n.t('dialog_update'),
   }).then(isSync => {
     if (!isSync) return
     void syncSourceList(listInfo).then(() => {
@@ -68,7 +68,7 @@ export const handleSync = (listInfo: LX.List.UserListInfo) => {
   })
 }
 
-export const buildLocalMusicInfoByFilePath = (file: FileType): LX.Music.MusicInfoLocal => {
+export const buildLocalMusicInfoByFilePath = (file: FileType): SY.Music.MusicInfoLocal => {
   const index = file.name.lastIndexOf('.')
   return {
     id: file.path,
@@ -85,7 +85,7 @@ export const buildLocalMusicInfoByFilePath = (file: FileType): LX.Music.MusicInf
     },
   }
 }
-export const buildLocalMusicInfo = (filePath: string, metadata: MusicMetadataFull): LX.Music.MusicInfoLocal => {
+export const buildLocalMusicInfo = (filePath: string, metadata: MusicMetadataFull): SY.Music.MusicInfoLocal => {
   return {
     id: filePath,
     name: metadata.name,

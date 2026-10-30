@@ -34,10 +34,10 @@ const TIER_COLORS: Record<QualityTierKey, QualityColorKey> = {
   quality_lossless: 'c-quality-sq',
   quality_lossless_24bit: 'c-quality-24bit',
 }
-const getQualityTagInfo = (qualitys?: LX.Music._MusicQualityType): { textKey: QualityTierKey, color: QualityColorKey } | null => {
+const getQualityTagInfo = (qualitys?: SY.Music._MusicQualityType): { textKey: QualityTierKey, color: QualityColorKey } | null => {
   if (!qualitys) return null
   // 布尔域判存用 ||（?? 对显式 false 不兜底）；档位归一单源 qualityTier（与 qualityLabel 共用）
-  let quality: LX.Quality | null = null
+  let quality: SY.Quality | null = null
   if (qualitys.flac24bit) quality = 'flac24bit'
   else if (qualitys.flac || qualitys.ape) quality = 'flac'
   else if (qualitys.wav) quality = 'wav'
@@ -59,7 +59,7 @@ export const getTintBackground = (color: string, alpha = '1F'): string => {
 }
 
 export default memo(({ qualitys, source, showSource }: {
-  qualitys?: LX.Music._MusicQualityType
+  qualitys?: SY.Music._MusicQualityType
   source?: string
   showSource?: boolean
 }) => {

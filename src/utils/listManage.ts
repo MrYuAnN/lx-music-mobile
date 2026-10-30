@@ -11,8 +11,8 @@ import {
 import { arrPush, arrPushByPosition, arrUnshift } from '@/utils/common'
 import { LIST_IDS } from '@/config/constant'
 
-export const userLists: LX.List.UserListInfo[] = []
-export const allMusicList = new Map<string, LX.Music.MusicInfo[]>()
+export const userLists: SY.List.UserListInfo[] = []
+export const allMusicList = new Map<string, SY.Music.MusicInfo[]>()
 
 // 收藏歌单内容只读判定（歌单页重构批①，拍板 #2/#4.1）：带 source 标记的歌单为收藏副本，
 // 内容只读；唯一合法写入方=同步（syncSourceList 走 overwriteListMusics，不经内容写函数守卫）。
@@ -21,12 +21,12 @@ export const isListContentReadonly = (listId: string) => {
   return userLists.find(l => l.id == listId)?.source != null
 }
 
-export const setUserLists = (lists: LX.List.UserListInfo[]) => {
+export const setUserLists = (lists: SY.List.UserListInfo[]) => {
   userLists.splice(0, userLists.length, ...lists)
   return userLists
 }
 
-export const setMusicList = (listId: string, musicList: LX.Music.MusicInfo[]): LX.Music.MusicInfo[] => {
+export const setMusicList = (listId: string, musicList: SY.Music.MusicInfo[]): SY.Music.MusicInfo[] => {
   allMusicList.set(listId, musicList)
   return musicList
 }
@@ -44,7 +44,7 @@ const createUserList = ({
   picCustom,
   collectTime,
   locationUpdateTime,
-}: LX.List.UserListInfo, position: number) => {
+}: SY.List.UserListInfo, position: number) => {
   if (position < 0 || position >= userLists.length) {
     userLists.push({
       name,
@@ -80,7 +80,7 @@ const updateList = ({
   collectTime,
   // meta,
   locationUpdateTime,
-}: LX.List.UserListInfo & { meta?: { id?: string } }) => {
+}: SY.List.UserListInfo & { meta?: { id?: string } }) => {
   let index
   switch (id) {
     case LIST_IDS.DEFAULT:
@@ -95,7 +95,7 @@ const updateList = ({
       // pic/collectTime/picCustom 仅在新值存在时覆盖（undefined 保旧）：导入/备份恢复等
       // overwrite 链路不带这几个字段，显式 undefined 会抹掉已落库值（审查 A1/I-2）
       const prev = userLists[index]
-      const merged: LX.List.UserListInfo = { ...prev, name, source, sourceListId, locationUpdateTime }
+      const merged: SY.List.UserListInfo = { ...prev, name, source, sourceListId, locationUpdateTime }
       if (pic != null) merged.pic = pic
       if (picCustom != null) merged.picCustom = picCustom
       if (collectTime != null) merged.collectTime = collectTime
@@ -112,7 +112,7 @@ const removeUserList = (id: string) => {
   // removeMusicList(id)
 }
 
-const overwriteUserList = (lists: LX.List.UserListInfo[]) => {
+const overwriteUserList = (lists: SY.List.UserListInfo[]) => {
   userLists.splice(0, userLists.length, ...lists)
 }
 
@@ -131,7 +131,7 @@ export const getUserLists = async() => {
 }
 
 
-export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }: MakeOptional<LX.List.ListDataFull, 'tempList'>): string[] => {
+export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }: MakeOptional<SY.List.ListDataFull, 'tempList'>): string[] => {
   const updatedListIds: string[] = []
   const newUserIds: string[] = []
   const newUserListInfos = userList.map(({ list, ...listInfo }) => {
@@ -166,7 +166,7 @@ export const listDataOverwrite = ({ defaultList, loveList, userList, tempList }:
 export const userListCreate = ({ name, id, source, sourceListId, pic, collectTime, position, locationUpdateTime }: {
   name: string
   id: string
-  source?: LX.OnlineSource
+  source?: SY.OnlineSource
   sourceListId?: string
   pic?: string
   collectTime?: number
@@ -174,7 +174,7 @@ export const userListCreate = ({ name, id, source, sourceListId, pic, collectTim
   locationUpdateTime: number | null
 }) => {
   if (userLists.some(item => item.id == id)) return
-  const newList: LX.List.UserListInfo = {
+  const newList: SY.List.UserListInfo = {
     name,
     id,
     source,
@@ -200,7 +200,7 @@ export const userListsRemove = (ids: string[]) => {
   return changedIds
 }
 
-export const userListsUpdate = (listInfos: LX.List.UserListInfo[]) => {
+export const userListsUpdate = (listInfos: SY.List.UserListInfo[]) => {
   for (const info of listInfos) {
     updateList(info)
   }
@@ -211,10 +211,10 @@ export const userListsUpdatePosition = (position: number, ids: string[]) => {
 
   // console.log(position, ids)
 
-  const updateLists: LX.List.UserListInfo[] = []
+  const updateLists: SY.List.UserListInfo[] = []
 
   // const targetItem = list[position]
-  const map = new Map<string, LX.List.UserListInfo>()
+  const map = new Map<string, SY.List.UserListInfo>()
   for (const item of newUserLists) map.set(item.id, item)
   for (const id of ids) {
     const listInfo = map.get(id)!
@@ -236,19 +236,19 @@ export const getListMusicSync = (id: string | null) => {
  * 获取列表内的歌曲
  * @param listId
  */
-export const getListMusics = async(listId: string): Promise<LX.Music.MusicInfo[]> => {
+export const getListMusics = async(listId: string): Promise<SY.Music.MusicInfo[]> => {
   if (!listId) return []
   if (allMusicList.has(listId)) return allMusicList.get(listId)!
   const list = await getListMusicsFromStore(listId)
   return setMusicList(listId, list)
 }
 
-export const listMusicOverwrite = async(listId: string, musicInfos: LX.Music.MusicInfo[]): Promise<string[]> => {
+export const listMusicOverwrite = async(listId: string, musicInfos: SY.Music.MusicInfo[]): Promise<string[]> => {
   setMusicList(listId, musicInfos)
   return [listId]
 }
 
-export const listMusicAdd = async(id: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType): Promise<string[]> => {
+export const listMusicAdd = async(id: string, musicInfos: SY.Music.MusicInfo[], addMusicLocationType?: SY.AddMusicLocationType): Promise<string[]> => {
   const targetList = await getListMusics(id)
 
   const listSet = new Set<string>()
@@ -290,7 +290,7 @@ export const listMusicRemove = async(listId: string, ids: string[]): Promise<str
   return [listId]
 }
 
-export const listMusicMove = async(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[]): Promise<string[]> => {
+export const listMusicMove = async(fromId: string, toId: string, musicInfos: SY.Music.MusicInfo[]): Promise<string[]> => {
   // 移动落点恒末尾（P8 拍板：move 无「新歌」语义）
   return [
     ...await listMusicRemove(fromId, musicInfos.map(musicInfo => musicInfo.id)),
@@ -298,14 +298,14 @@ export const listMusicMove = async(fromId: string, toId: string, musicInfos: LX.
   ]
 }
 
-export const listMusicUpdateInfo = async(musicInfos: LX.List.ListActionMusicUpdate): Promise<string[]> => {
+export const listMusicUpdateInfo = async(musicInfos: SY.List.ListActionMusicUpdate): Promise<string[]> => {
   const updateListIds = new Set<string>()
   for (const { id, musicInfo } of musicInfos) {
     const targetList = await getListMusics(id)
     if (!targetList.length) continue
     const index = targetList.findIndex(l => l.id == musicInfo.id)
     if (index < 0) continue
-    const info: LX.Music.MusicInfo = { ...targetList[index] }
+    const info: SY.Music.MusicInfo = { ...targetList[index] }
     Object.assign(info, {
       name: musicInfo.name,
       singer: musicInfo.singer,
@@ -335,8 +335,8 @@ export const listMusicUpdatePosition = async(listId: string, position: number, i
   // console.time('ts')
 
   // const list = createSortedList(targetList, position, ids)
-  const infos: LX.Music.MusicInfo[] = []
-  const map = new Map<string, LX.Music.MusicInfo>()
+  const infos: SY.Music.MusicInfo[] = []
+  const map = new Map<string, SY.Music.MusicInfo>()
   for (const item of targetList) map.set(item.id, item)
   for (const id of ids) {
     infos.push(map.get(id)!)

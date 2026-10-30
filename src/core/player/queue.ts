@@ -17,7 +17,7 @@ interface QueueState {
 let queueState: QueueState | null = null
 
 // 同步覆盖层与源列表：显式重排→重置；增删→裁剪/追加。单次遍历构建投影。
-const syncQueue = (listId: string, list: Array<LX.Music.MusicInfo | LX.Download.ListItem>) => {
+const syncQueue = (listId: string, list: Array<SY.Music.MusicInfo | SY.Download.ListItem>) => {
   const sourceIds = list.map(m => m.id)
   if (!queueState || queueState.listId != listId) {
     queueState = { listId, order: sourceIds, sourceSnapshot: sourceIds }
@@ -46,13 +46,13 @@ const syncQueue = (listId: string, list: Array<LX.Music.MusicInfo | LX.Download.
 }
 
 // 按队列覆盖顺序返回播放列表（listId 为 null/下载列表时直接空表）
-export const getOrderedPlayList = (listId: string | null): Array<LX.Music.MusicInfo | LX.Download.ListItem> => {
+export const getOrderedPlayList = (listId: string | null): Array<SY.Music.MusicInfo | SY.Download.ListItem> => {
   const list = getList(listId)
   if (!list.length) return list
   syncQueue(listId!, list)
   if (!queueState) return list
   const map = new Map(list.map(m => [m.id, m]))
-  const ordered: Array<LX.Music.MusicInfo | LX.Download.ListItem> = []
+  const ordered: Array<SY.Music.MusicInfo | SY.Download.ListItem> = []
   for (const id of queueState.order) {
     const item = map.get(id)
     if (item != null) ordered.push(item)

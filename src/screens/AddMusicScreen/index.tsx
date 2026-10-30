@@ -87,13 +87,13 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const [keyword, setKeyword] = useState('')
   // 音源筛选（真机反馈 2026-10-20：对齐搜索页前缀筛选交互）：页内 state 不写全局
   // searchMusicState（审查 I4 教训），初始取全局当前源（聚合回退 kw）
-  const [musicSource, setMusicSource] = useState<LX.OnlineSource>(() => (searchMusicState.source == 'all' ? 'kw' : searchMusicState.source))
-  const [list, setList] = useState<LX.Music.MusicInfo[]>([])
+  const [musicSource, setMusicSource] = useState<SY.OnlineSource>(() => (searchMusicState.source == 'all' ? 'kw' : searchMusicState.source))
+  const [list, setList] = useState<SY.Music.MusicInfo[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
   // list 来源二级子态：null=歌单列表态；非空=选歌态（点行勾选，底部加入）
   const [pickList, setPickList] = useState<{ id: string, name: string } | null>(null)
-  const [pickSelected, setPickSelected] = useState<LX.Music.MusicInfo[]>([])
+  const [pickSelected, setPickSelected] = useState<SY.Music.MusicInfo[]>([])
 
   // 歌单网格数据（读语义：排除目标歌单自身，收藏歌单可选——复核 S-a 口径）
   const pickLists = useMemo(() => lists.filter(l => l.id != listId), [lists, listId])
@@ -104,7 +104,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const searchPageRef = useRef(1)
   const searchKeywordRef = useRef('')
   const sourceRef = useRef<Source>('search')
-  const musicSourceRef = useRef<LX.OnlineSource>(musicSource)
+  const musicSourceRef = useRef<SY.OnlineSource>(musicSource)
   const pickSeqRef = useRef(0)
   const isUnmountedRef = useRef(false)
 
@@ -135,7 +135,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     if (page == 1) searchPageRef.current = 1
     const seq = searchSeqRef.current = searchSeqRef.current + 1
     setStatus('loading')
-    void (musicSdk[musicSourceRef.current]?.musicSearch.search(text, page, SEARCH_LIMIT) as Promise<{ list: LX.Music.MusicInfoOnline[] }> ?? Promise.reject(new Error('source not found: ' + musicSourceRef.current)))
+    void (musicSdk[musicSourceRef.current]?.musicSearch.search(text, page, SEARCH_LIMIT) as Promise<{ list: SY.Music.MusicInfoOnline[] }> ?? Promise.reject(new Error('source not found: ' + musicSourceRef.current)))
       .then(result => {
         if (isUnmountedRef.current || seq != searchSeqRef.current) return
         // musicSdk 原始对象无顶层 id（上游设计：入歌单前必须过 toNewMusicInfo 派生 id 与 meta.qualitys）——
@@ -176,7 +176,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
 
   const handleSourcePick = useCallback(({ action }: { action: string }) => {
     if (action == musicSourceRef.current) return
-    const next = action as LX.OnlineSource
+    const next = action as SY.OnlineSource
     setMusicSource(next)
     musicSourceRef.current = next
     // 换源重搜：有词立即以新源重发第 1 页
@@ -192,7 +192,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       // 边界②：当前选中源已被摘→重置首项（空集=边界①保持上一有效值）
       const sources = searchMusicState.sources
       if (sources.length && !sources.includes(musicSourceRef.current)) {
-        const next = sources[0] as LX.OnlineSource
+        const next = sources[0] as SY.OnlineSource
         musicSourceRef.current = next
         setMusicSource(next)
         if (searchKeywordRef.current.trim()) runSearch(searchKeywordRef.current.trim(), 1)
@@ -240,7 +240,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
 
   // 添加到目标歌单（沿用 addMusicLocationType 设置与既有 toast 文案）；
   // 已存在于目标歌单的条目过滤（代码审查 I-8），全已存在时静默返回
-  const handleAdd = useCallback((musicInfos: LX.Music.MusicInfo[]) => {
+  const handleAdd = useCallback((musicInfos: SY.Music.MusicInfo[]) => {
     const pending = musicInfos.filter(m => !addedIds.has(m.id))
     if (!pending.length) return
     // 插入位置内定（治理批 P8）
@@ -256,14 +256,14 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     })
   }, [listId, addedIds, t])
 
-  const handleAddAction = useCallback((musicInfo: LX.Music.MusicInfo) => {
+  const handleAddAction = useCallback((musicInfo: SY.Music.MusicInfo) => {
     if (addedIds.has(musicInfo.id)) return
     handleAdd([musicInfo])
   }, [addedIds, handleAdd])
 
   // 预览播放：临时队列只收与所点条目同类型（在线/local）的条目（审查 I-11 拍板：过滤同类消除 meta 错位）；
   // local 来源整源勾选态（点行=勾选，无预览播放）
-  const handlePress = useCallback((musicInfo: LX.Music.MusicInfo, index: number) => {
+  const handlePress = useCallback((musicInfo: SY.Music.MusicInfo, index: number) => {
     if (pickList || source == 'local') {
       // 选歌态/local 勾选态：点行勾选/取消（对标 QQ 音乐勾选选歌，2026-10-20 PM 席检索核实）
       setPickSelected(prev => {
@@ -337,7 +337,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题+来源角标；真机反馈 2026-10-20 拍板，
   // 替换原行式列表）——视觉单源共享组件 PlaylistGridCard（2026-10-21 起 MusicAddModal /
   // MusicMultiAddModal 弹窗同构延用，防两处漂移）
-  const renderPickList = useCallback(({ item }: { item: LX.List.MyListInfo }) => (
+  const renderPickList = useCallback(({ item }: { item: SY.List.MyListInfo }) => (
     <PlaylistGridCard
       item={item}
       width={gridWidth}
@@ -387,7 +387,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       : null
   }, [status, source, keyword, theme, t, handleRetry])
 
-  const renderItem = useCallback(({ item, index }: { item: LX.Music.MusicInfo, index: number }) => {
+  const renderItem = useCallback(({ item, index }: { item: SY.Music.MusicInfo, index: number }) => {
     // 下载曲以 local 形态出现在 local chip 时按原曲在线身份判勾、裸本地不标（题3 归一口径，代码审查 I-2-a）
     const identity = toOnlineIdentity(item)
     return (
@@ -409,8 +409,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     )
   }, [rowInfo, pickSelected, source, handlePress, handleAddAction, addedIds, downloadedSet])
 
-  const keyExtractor = useCallback((item: LX.Music.MusicInfo) => item.id, [])
-  const getItemLayout = useCallback((_data: ArrayLike<LX.Music.MusicInfo> | null | undefined, index: number) => (
+  const keyExtractor = useCallback((item: SY.Music.MusicInfo) => item.id, [])
+  const getItemLayout = useCallback((_data: ArrayLike<SY.Music.MusicInfo> | null | undefined, index: number) => (
     // offset 不含 contentContainer padding（RN 已知口径，LocalMusic 先例注记）：无 scrollToIndex 调用无漂移路径
     { length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index }
   ), [])

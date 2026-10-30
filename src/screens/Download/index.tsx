@@ -12,6 +12,7 @@ import ScreenHeader from '@/components/common/ScreenHeader'
 import { PlayerBarPlaceholder, usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import SwipeDeleteRow, { closeOpenSwipeRow } from '@/components/common/SwipeDeleteRow'
+import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -62,12 +63,12 @@ export default ({ componentId }: { componentId: string }) => {
   const bottomInset = usePlayerBarBottomInset()
   // chips 固定子头实测高（分类条内边距随内容，onLayout 取实测防写死漂移）
   const [chipsHeight, setChipsHeight] = useState(0)
-  const [tasks, setTasks] = useState<LX.Download.ListItem[]>(() => getDownloadListSnapshot())
+  const [tasks, setTasks] = useState<SY.Download.ListItem[]>(() => getDownloadListSnapshot())
   const [tab, setTab] = useState<TabId>('running')
   const menuRef = useRef<ActionSheetType>(null)
   const [menuVisible, setMenuVisible] = useState(false)
   const [menus, setMenus] = useState<ActionSheetItem[]>([])
-  const selectedRef = useRef<LX.Download.ListItem | null>(null)
+  const selectedRef = useRef<SY.Download.ListItem | null>(null)
 
   useEffect(() => {
     // 进页恢复任务表 + 重查 Wi-Fi 挂起（审查 I5：前台网络切换无回调，重进页面是恢复路径之一）
@@ -87,7 +88,7 @@ export default ({ componentId }: { componentId: string }) => {
   }, [])
 
   useEffect(() => {
-    const handleChanged = (list: LX.Download.ListItem[]) => { setTasks(list) }
+    const handleChanged = (list: SY.Download.ListItem[]) => { setTasks(list) }
     const handleProgress = () => {
       // 进度节流后整表刷新（TaskRow 按原始值 props 感知变化，审查 C4）
       setTasks(getDownloadListSnapshot())
@@ -110,7 +111,7 @@ export default ({ componentId }: { componentId: string }) => {
     return () => { subscription.remove() }
   }, [])
 
-  const isTabOf = useCallback((task: LX.Download.ListItem, id: TabId) => {
+  const isTabOf = useCallback((task: SY.Download.ListItem, id: TabId) => {
     switch (id) {
       case 'running': return task.status == 'run' || task.status == 'pause' // 暂停并入进行中（审查 C5）
       case 'waiting': return task.status == 'waiting'
@@ -134,7 +135,7 @@ export default ({ componentId }: { componentId: string }) => {
   // 已完成行：统一歌曲行数据（音质标签按实际下载档）
   const completedItems = useMemo(() => {
     return filtered.filter(task => task.status == 'completed').map(task => {
-      const qualityOverride: LX.Music._MusicQualityType = { [task.metadata.quality]: { size: null } }
+      const qualityOverride: SY.Music._MusicQualityType = { [task.metadata.quality]: { size: null } }
       return {
         task,
         musicInfo: toDownloadedMusicInfo(task),
@@ -155,10 +156,17 @@ export default ({ componentId }: { componentId: string }) => {
     setSelectedIds(new Set())
   }, [])
 
-  const toggleEditMode = useCallback(() => {
-    if (editMode) exitEditMode()
-    else setEditMode(true)
-  }, [editMode, exitEditMode])
+  // Android 返回键先退编辑再退页（2026-10-30 话题①定稿，Material 选择模式惯例）
+  useBackHandler(useCallback(() => {
+    if (!editMode) return false
+    exitEditMode()
+    return true
+  }, [editMode, exitEditMode]))
+
+  // 长按进编辑（2026-10-30 话题①定稿：文字钮退役，入口改行级长按）
+  const enterEditMode = useCallback(() => {
+    setEditMode(true)
+  }, [])
 
   const toggleSelected = useCallback((id: string) => {
     setSelectedIds(prev => {
@@ -176,7 +184,7 @@ export default ({ componentId }: { componentId: string }) => {
   }, [allSelected, filtered])
 
   // 左滑单删（①-2 定稿：直接执行+toast，不加确认/撤销）
-  const handleSwipeDelete = useCallback((task: LX.Download.ListItem) => {
+  const handleSwipeDelete = useCallback((task: SY.Download.ListItem) => {
     void removeDownloadTask(task.id).then(() => {
       // 左滑单删同步清理选择集残留（代码轮 S-7：防编辑栏计数虚高）
       setSelectedIds(prev => {
@@ -199,7 +207,10 @@ export default ({ componentId }: { componentId: string }) => {
         message: global.i18n.t(tip, { num: selectedIds.size }),
       })) return
     }
-    for (const id of selectedIds) {
+    // 编辑期间行可能经单行重试/删除迁出本 tab（审查 S-3）：批量执行前与现存快照交集过滤，
+    // 防对已消失 id 调 resume/remove
+    const validIds = [...selectedIds].filter(id => getDownloadListSnapshot().some(task => task.id == id))
+    for (const id of validIds) {
       if (tab == 'error') resumeDownloadTask(id) // fire-and-forget：resume 无回调，失败在行态可见
       else void removeDownloadTask(id)
     }
@@ -208,7 +219,7 @@ export default ({ componentId }: { componentId: string }) => {
   }, [selectedIds, tab, exitEditMode])
 
   // 菜单按任务状态裁剪（审查 I3）：未完成任务的 filePath 为空，播放必走错
-  const buildMenus = (task: LX.Download.ListItem): ActionSheetItem[] => {
+  const buildMenus = (task: SY.Download.ListItem): ActionSheetItem[] => {
     if (task.status == 'completed') {
       return [
         { action: 'play', label: t('play'), icon: 'play' },
@@ -222,7 +233,7 @@ export default ({ componentId }: { componentId: string }) => {
     ]
   }
 
-  const showTaskMenu = useCallback((task: LX.Download.ListItem) => {
+  const showTaskMenu = useCallback((task: SY.Download.ListItem) => {
     selectedRef.current = task
     setMenus(buildMenus(task))
     if (menuVisible) menuRef.current?.show()
@@ -261,7 +272,7 @@ export default ({ componentId }: { componentId: string }) => {
     }
   }, [])
 
-  const handleCompletedPress = useCallback((musicInfo: LX.Music.MusicInfoLocal, list: LX.Music.MusicInfoLocal[]) => {
+  const handleCompletedPress = useCallback((musicInfo: SY.Music.MusicInfoLocal, list: SY.Music.MusicInfoLocal[]) => {
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
       const index = list.findIndex(m => m.id == musicInfo.id)
       if (index > -1) void playList(LIST_IDS.TEMP, index)
@@ -311,7 +322,7 @@ export default ({ componentId }: { componentId: string }) => {
                           isLiked={likedSet.has(item.musicInfo.id)}
                           onLikePress={editMode ? undefined : toggleLike}
                           onPress={(_, pressIndex) => { if (editMode) toggleSelected(item.task.id); else handleCompletedPress(completedList[pressIndex], completedList) }}
-                          onLongPress={editMode ? undefined : () => { showTaskMenu(item.task) }}
+                          onLongPress={editMode ? undefined : enterEditMode}
                           onShowMenu={editMode ? undefined : () => { showTaskMenu(item.task) }}
                         />
                       </View>
@@ -347,6 +358,7 @@ export default ({ componentId }: { componentId: string }) => {
                       editMode={editMode}
                       selected={selectedIds.has(item.id)}
                       onToggleSelected={toggleSelected}
+                      onLongPress={tab == 'error' && !editMode ? enterEditMode : undefined}
                       onAction={handleTaskAction}
                       onMenu={showTaskMenu}
                     />
@@ -365,14 +377,16 @@ export default ({ componentId }: { componentId: string }) => {
         </Animated.View>
         <CategoryChips items={tabs} activeId={tab} onChange={id => { setTab(id as TabId); exitEditMode(); scrollY.stopAnimation(); scrollY.setValue(0) }} />
       </View>
+      {/* 编辑入口=行级长按（completed/error 行，2026-10-30 话题①定稿）：文字钮退役，常态头部
+          右侧为空；编辑态顶栏仅「取消」——列表清空也保留出口，故不做 filtered.length 判定 */}
       <ScreenHeader componentId={componentId} title={t('nav_download')} progress={scrollY} alwaysShowTitle
-        right={filtered.length == 0
-          ? null
-          : (
-              <TouchableOpacity style={styles.editBtn} activeOpacity={0.6} onPress={toggleEditMode}>
-                <Text size={14} color={theme['c-primary-font']}>{t(editMode ? 'cancel' : 'download_edit')}</Text>
+        right={editMode
+          ? (
+              <TouchableOpacity style={styles.editBtn} activeOpacity={0.6} onPress={exitEditMode}>
+                <Text size={14} color={theme['c-primary-font']}>{t('cancel')}</Text>
               </TouchableOpacity>
             )
+          : null
         }
       />
       {
@@ -407,7 +421,7 @@ export default ({ componentId }: { componentId: string }) => {
 }
 
 // 行操作直接动作（审查 I3：排队行取消、失败行重试均为一步动作，不再弹通用菜单）
-const handleTaskAction = (task: LX.Download.ListItem) => {
+const handleTaskAction = (task: SY.Download.ListItem) => {
   if (task.status == 'run') pauseDownloadTask(task.id)
   else if (task.status == 'pause') resumeDownloadTask(task.id)
   else if (task.status == 'error') resumeDownloadTask(task.id)
@@ -416,10 +430,10 @@ const handleTaskAction = (task: LX.Download.ListItem) => {
 
 // 进行中（含已暂停）/排队中/失败 行（68 高：封面占位 + 歌名 + 状态副行 [+ 进度条] + 操作钮）；
 // 原始值 props（审查 C4）
-const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode = false, selected = false, onToggleSelected, onAction, onMenu }: {
+const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode = false, selected = false, onToggleSelected, onAction, onMenu, onLongPress }: {
   id: string
   name: string
-  status: LX.Download.DownloadTaskStatus
+  status: SY.Download.DownloadTaskStatus
   progress: number
   statusText: string
   speed: string
@@ -427,8 +441,10 @@ const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode 
   editMode?: boolean
   selected?: boolean
   onToggleSelected?: (id: string) => void
-  onAction: (task: LX.Download.ListItem) => void
-  onMenu: (task: LX.Download.ListItem) => void
+  onAction: (task: SY.Download.ListItem) => void
+  onMenu: (task: SY.Download.ListItem) => void
+  /** 行级长按（2026-10-30 话题①定稿）：仅 error 行传入作批量编辑入口（审查 I-2） */
+  onLongPress?: () => void
 }) => {
   const t = useI18n()
   const theme = useTheme()
@@ -458,7 +474,13 @@ const TaskRow = memo(({ id, name, status, progress, statusText, speed, editMode 
             )
           : null
       }
-      <TouchableOpacity style={styles.taskRowMain} activeOpacity={0.6} disabled={!editMode} onPress={() => { onToggleSelected?.(id) }}>
+      <TouchableOpacity
+        style={styles.taskRowMain}
+        activeOpacity={editMode || !onLongPress ? 0.6 : 1}
+        disabled={editMode ? false : !onLongPress}
+        onPress={editMode ? () => { onToggleSelected?.(id) } : undefined}
+        onLongPress={onLongPress}
+      >
       <View style={{ ...styles.taskPic, backgroundColor: theme['c-border-background'] }}>
         <Icon name="music" size={ICON_SIZE.list} color={theme['c-font-label']} />
       </View>

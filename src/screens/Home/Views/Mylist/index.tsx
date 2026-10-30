@@ -26,7 +26,7 @@ export default ({ showBack, onBack, footer }: {
   const lovePic = useSettingValue('list.lovePic')
   const defaultPic = useSettingValue('list.defaultPic')
   const scrollY = useRef(new Animated.Value(0)).current
-  const activeListInfo = lists.find(l => l.id === activeListId) as LX.List.UserListInfo | undefined
+  const activeListInfo = lists.find(l => l.id === activeListId) as SY.List.UserListInfo | undefined
   const ambientPic = getListCoverPic(activeListId, lovePic, defaultPic, activeListInfo)
 
   return (

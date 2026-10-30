@@ -5,12 +5,12 @@
 // 参照声明（方案 §二 如实留档）：wy/tx 长链形态参照 GoMusic；短链展开仅 wy 有先例，
 // tx 可展开性走查实测；kg/kw/mg 无业界对标，按各平台 App 实际分享产物实测自定。
 export interface ParsedSonglistLink {
-  source: LX.OnlineSource
+  source: SY.OnlineSource
   id: string
 }
 
 // 短链域名清单（每条标注来源与实取日期，kg/kw/mg 走查实测后补齐）
-const SHORT_LINK_DOMAINS: ReadonlyArray<{ host: string, source: LX.OnlineSource }> = [
+const SHORT_LINK_DOMAINS: ReadonlyArray<{ host: string, source: SY.OnlineSource }> = [
   { host: '163cn.tv', source: 'wy' }, // 网易云 App「复制链接」产物，GoMusic README 实链验证 2026-10-20
   { host: 'c6.y.qq.com', source: 'tx' }, // QQ 音乐 App 分享短链域名（可展开性待真机走查实测）
 ]
@@ -46,7 +46,7 @@ const MG_PATTERNS: readonly RegExp[] = [
   /m\.music\.migu\.cn\/[^#]*[?&]songlistId=([\w-]+)/,
 ]
 
-const SOURCE_PATTERNS: ReadonlyArray<{ source: LX.OnlineSource, patterns: readonly RegExp[] }> = [
+const SOURCE_PATTERNS: ReadonlyArray<{ source: SY.OnlineSource, patterns: readonly RegExp[] }> = [
   { source: 'wy', patterns: WY_PATTERNS },
   { source: 'tx', patterns: TX_PATTERNS },
   { source: 'kg', patterns: KG_PATTERNS },

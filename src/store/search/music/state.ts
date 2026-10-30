@@ -1,7 +1,7 @@
 import music from '@/utils/musicSdk'
 
 export declare interface ListInfo {
-  list: LX.Music.MusicInfoOnline[]
+  list: SY.Music.MusicInfoOnline[]
   total: number
   page: number
   maxPage: number
@@ -9,18 +9,18 @@ export declare interface ListInfo {
   key: string | null
 }
 
-interface ListInfos extends Partial<Record<LX.OnlineSource, ListInfo>> {
+interface ListInfos extends Partial<Record<SY.OnlineSource, ListInfo>> {
   'all': ListInfo
 }
 
-export type Source = LX.OnlineSource | 'all'
+export type Source = SY.OnlineSource | 'all'
 
 export interface InitState {
   searchText: string
   source: Source
   sources: Source[]
   listInfos: ListInfos
-  maxPages: Partial<Record<LX.OnlineSource, number>>
+  maxPages: Partial<Record<SY.OnlineSource, number>>
 }
 
 const state: InitState = {
@@ -45,11 +45,11 @@ const state: InitState = {
 const buildSources = (enabled?: string[]) => {
   state.sources = []
   for (const source of music.sources) {
-    if (!music[source.id as LX.OnlineSource]?.musicSearch) continue
+    if (!music[source.id as SY.OnlineSource]?.musicSearch) continue
     if (enabled != null && !enabled.includes(source.id)) continue
-    state.sources.push(source.id as LX.OnlineSource)
-    if (!state.listInfos[source.id as LX.OnlineSource]) {
-      state.listInfos[source.id as LX.OnlineSource] = {
+    state.sources.push(source.id as SY.OnlineSource)
+    if (!state.listInfos[source.id as SY.OnlineSource]) {
+      state.listInfos[source.id as SY.OnlineSource] = {
         page: 1,
         maxPage: 0,
         limit: 30,
@@ -58,7 +58,7 @@ const buildSources = (enabled?: string[]) => {
         key: '',
       }
     }
-    if (state.maxPages[source.id as LX.OnlineSource] == null) state.maxPages[source.id as LX.OnlineSource] = 0
+    if (state.maxPages[source.id as SY.OnlineSource] == null) state.maxPages[source.id as SY.OnlineSource] = 0
   }
   // 空开启集=全源不可用（边界①）：不补聚合位，四页出提示态
   if (state.sources.length) state.sources.push('all')

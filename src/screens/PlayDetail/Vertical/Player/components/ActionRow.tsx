@@ -87,7 +87,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   const taskId = identityMusicInfo && !identityIsBareLocal
     ? `download__${identityMusicInfo.source}__${identityMusicInfo.id}`
     : null
-  const [taskState, setTaskState] = useState<{ status: LX.Download.DownloadTaskStatus, progress: number } | null>(null)
+  const [taskState, setTaskState] = useState<{ status: SY.Download.DownloadTaskStatus, progress: number } | null>(null)
   useEffect(() => {
     const refresh = () => {
       if (!taskId) {
@@ -146,10 +146,10 @@ const ActionRow = ({ page }: ActionRowProps) => {
     // 已下载曲按原曲在线身份展示可切档位（toOnlineIdentity 单源归一），切档经 reloadCurrentWithQuality 在线重链
     // （无业界对标，本产品自定：免重下载在线试听新档，审查 I-3）
     const musicInfo = identityMusicInfo
-    const sourceQualityList = musicInfo ? global.lx.qualityList[musicInfo.source] : undefined
+    const sourceQualityList = musicInfo ? global.sy.qualityList[musicInfo.source] : undefined
     // 本地歌曲等无在线音质元数据的场景：选项集为空 → 音质入口置灰（缺失能力不上界面，拍板原则）
     const songQualitys = musicInfo
-      ? (musicInfo.meta as LX.Music.MusicInfoMeta_online)._qualitys
+      ? (musicInfo.meta as SY.Music.MusicInfoMeta_online)._qualitys
       : undefined
     // 已下载档标记（题1 拍板3，对标 QQ 音乐音质面板）
     const downloadedQuality = musicInfo && !identityIsBareLocal

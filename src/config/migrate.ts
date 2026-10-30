@@ -8,7 +8,7 @@ import { saveListMusics, saveUserList } from '@/utils/data'
 interface OldUserListInfo {
   name: string
   id: string
-  source?: LX.OnlineSource
+  source?: SY.OnlineSource
   sourceListId?: string
   locationUpdateTime?: number
   list: any[]
@@ -17,7 +17,7 @@ interface OldUserListInfo {
 
 /* export const migrateListData = async() => {
   let playList = await parseDataFile<{ defaultList?: { list: any[] }, loveList?: { list: any[] }, tempList?: { list: any[] }, userList?: OldUserListInfo[] }>('playList.json')
-  let listDataAll: LX.List.ListDataFull = {
+  let listDataAll: SY.List.ListDataFull = {
     defaultList: [],
     loveList: [],
     userList: [],
@@ -47,12 +47,12 @@ interface OldUserListInfo {
       isRequiredSave = true
     }
   }
-  if (isRequiredSave) await global.lx.worker.dbService.listDataOverwrite(listDataAll)
+  if (isRequiredSave) await global.sy.worker.dbService.listDataOverwrite(listDataAll)
 
-  const lyricData = await parseDataFile<Record<string, LX.Music.LyricInfo>>('lyrics_edited.json')
+  const lyricData = await parseDataFile<Record<string, SY.Music.LyricInfo>>('lyrics_edited.json')
   if (lyricData) {
     for await (const [id, info] of Object.entries(lyricData)) {
-      await global.lx.worker.dbService.editedLyricAdd(id, info)
+      await global.sy.worker.dbService.editedLyricAdd(id, info)
     }
   }
 }
@@ -116,7 +116,7 @@ export const getAllListData = async(): Promise<{
  */
 export const migrateListData = async() => {
   const playList = await getAllListData()
-  let listDataAll: LX.List.ListDataFull = {
+  let listDataAll: SY.List.ListDataFull = {
     defaultList: [],
     loveList: [],
     userList: [],
@@ -136,7 +136,7 @@ export const migrateListData = async() => {
   listDataOverwrite(listDataAll)
   await saveUserList(userLists)
   const allListIds = [LIST_IDS.DEFAULT, LIST_IDS.LOVE, ...userLists.map(l => l.id)]
-  await saveListMusics([...allListIds.map(id => ({ id, musics: allMusicList.get(id) as LX.List.ListMusics }))])
+  await saveListMusics([...allListIds.map(id => ({ id, musics: allMusicList.get(id) as SY.List.ListMusics }))])
   await removeData(storageDataPrefixOld.listSort)
 
   const listPosition = await getData(storageDataPrefixOld.listPosition)

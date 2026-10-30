@@ -8,18 +8,18 @@ import playerState from '@/store/player/state'
 import settingState from '@/store/setting/state'
 
 
-export default async(setting: LX.AppSetting) => {
+export default async(setting: SY.AppSetting) => {
   const setPlayStatus = () => {
     setIsPlay(true)
   }
   const setPauseStatus = () => {
     setIsPlay(false)
-    if (global.lx.isPlayedStop) void pause()
+    if (global.sy.isPlayedStop) void pause()
   }
 
   const handleEnded = () => {
     // setTimeout(() => {
-    if (global.lx.isPlayedStop) {
+    if (global.sy.isPlayedStop) {
       setStatusText(global.i18n.t('player__end'))
       return
     }
@@ -49,7 +49,7 @@ export default async(setting: LX.AppSetting) => {
       const newValue = settings['player.togglePlayMethod']
       if (playerState.playedList.length) clearPlayedList()
       const playMusicInfo = playerState.playMusicInfo
-      if (newValue == 'random' && playMusicInfo.musicInfo && !playMusicInfo.isTempPlay) addPlayedList({ ...(playMusicInfo as LX.Player.PlayMusicInfo) })
+      if (newValue == 'random' && playMusicInfo.musicInfo && !playMusicInfo.isTempPlay) addPlayedList({ ...(playMusicInfo as SY.Player.PlayMusicInfo) })
     }
   }
 

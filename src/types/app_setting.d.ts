@@ -1,7 +1,7 @@
 import type { I18n } from '@/lang/i18n'
 
 declare global {
-  namespace LX {
+  namespace SY {
     type AddMusicLocationType = 'top' | 'bottom'
 
     interface AppSetting {
@@ -70,7 +70,7 @@ declare global {
       /**
        * 优先播放的音质
        */
-      'player.playQuality': LX.Quality
+      'player.playQuality': SY.Quality
 
       /**
        * 启动软件时是否恢复上次播放进度
@@ -270,7 +270,7 @@ declare global {
       /**
        * 下载音质（不可用时引擎向下回退）
        */
-      'download.quality': LX.Quality
+      'download.quality': SY.Quality
 
       /**
        * 同时下载数

@@ -25,7 +25,7 @@ const HEADER_HEIGHT = scaleSizeH(_HEADER_HEIGHT)
 export const HEADER_TOTAL_OFFSET_BASE = HEADER_HEIGHT
 
 export default memo(({ musicInfo, progress }: {
-  musicInfo: LX.Music.MusicInfo
+  musicInfo: SY.Music.MusicInfo
   /** 滚动进度（页面级 Animated.Value）：穿行渐显驱动 */
   progress: Animated.Value
 }) => {

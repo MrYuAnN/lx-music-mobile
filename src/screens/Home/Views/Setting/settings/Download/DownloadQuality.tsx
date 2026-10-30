@@ -29,7 +29,7 @@ export default memo(() => {
   }, [])
 
   const handleChange = useCallback((item: CheckSheetItem) => {
-    updateSetting({ 'download.quality': item.action as LX.Quality })
+    updateSetting({ 'download.quality': item.action as SY.Quality })
   }, [])
 
   return (

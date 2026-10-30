@@ -10,7 +10,7 @@ import { pause, play, playNext, playPrev } from '@/core/player/player'
 
 let isInitialized = false
 
-// let retryTrack: LX.Player.Track | null = null
+// let retryTrack: SY.Player.Track | null = null
 // let retryGetUrlId: string | null = null
 // let retryGetUrlNum = 0
 // let errorTime = 0
@@ -19,7 +19,7 @@ let isInitialized = false
 
 // 销毁播放器并退出
 const handleExitApp = async(reason: string) => {
-  global.lx.isPlayedStop = false
+  global.sy.isPlayedStop = false
   exitApp(reason)
 }
 
@@ -77,7 +77,16 @@ const registerPlaybackService = async() => {
   })
 
   TrackPlayer.addEventListener(TPEvent.PlaybackState, async info => {
-    if (global.lx.gettingUrlId || isTempId()) return
+    if (global.sy.gettingUrlId) return
+    // isTempId 旁路自愈（2026-10-30 话题②定稿）：track-changed 的异步回包慢于状态事件（冷启动
+    // 首播必现）时不再整批丢弃，主动刷新并写回。覆盖面=JS list 镜像可取到的 track（原生队列
+    // 超出镜像时取值 undefined 回退丢弃，与改前等价）；await 挂起窗口内并发事件派发可能乱序
+    // 一次，由下一事件自愈（代码审查 S-4 收窄口径）
+    if (isTempId()) {
+      const trackId = await getCurrentTrackId()
+      if (trackId) global.sy.playerTrackId = trackId
+      if (isTempId()) return
+    }
     // let currentIsPlaying = false
 
     switch (info.state) {
@@ -105,18 +114,18 @@ const registerPlaybackService = async() => {
         // console.log('playback-state', info)
         break
     }
-    if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')
+    if (global.sy.isPlayedStop) return handleExitApp('Timeout Exit')
 
-    // console.log('currentIsPlaying', currentIsPlaying, global.lx.playInfo.isPlaying)
-    // void updateMetaData(global.lx.store_playMusicInfo.musicInfo, currentIsPlaying)
+    // console.log('currentIsPlaying', currentIsPlaying, global.sy.playInfo.isPlaying)
+    // void updateMetaData(global.sy.store_playMusicInfo.musicInfo, currentIsPlaying)
   })
   TrackPlayer.addEventListener(TPEvent.PlaybackTrackChanged, async info => {
     // console.log('PlaybackTrackChanged====>', info)
-    global.lx.playerTrackId = await getCurrentTrackId()
+    global.sy.playerTrackId = await getCurrentTrackId()
     if (info.track == null) return
-    if (global.lx.isPlayedStop) return handleExitApp('Timeout Exit')
+    if (global.sy.isPlayedStop) return handleExitApp('Timeout Exit')
 
-    // console.log('global.lx.playerTrackId====>', global.lx.playerTrackId)
+    // console.log('global.sy.playerTrackId====>', global.sy.playerTrackId)
     if (isEmpty()) {
       // console.log('====TEMP PAUSE====')
       await TrackPlayer.pause()
@@ -136,7 +145,7 @@ const registerPlaybackService = async() => {
       //     retryGetUrlId = retryTrack.musicId
       //     retryGetUrlNum = 0
       //   }
-      //   store.dispatch(playerAction.refreshMusicUrl(global.lx.playInfo.currentPlayMusicInfo, errorTime))
+      //   store.dispatch(playerAction.refreshMusicUrl(global.sy.playInfo.currentPlayMusicInfo, errorTime))
       // } else {
       //   store.dispatch(playerAction.playNext(true))
       // }
@@ -207,8 +216,8 @@ const registerPlaybackService = async() => {
 
 
 export default () => {
-  if (global.lx.playerStatus.isRegisteredService) return
+  if (global.sy.playerStatus.isRegisteredService) return
   console.log('handle registerPlaybackService...')
   TrackPlayer.registerPlaybackService(() => registerPlaybackService)
-  global.lx.playerStatus.isRegisteredService = true
+  global.sy.playerStatus.isRegisteredService = true
 }

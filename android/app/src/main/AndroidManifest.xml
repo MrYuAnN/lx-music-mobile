@@ -38,6 +38,8 @@
           <action android:name="android.intent.action.VIEW" />
           <category android:name="android.intent.category.DEFAULT" />
           <category android:name="android.intent.category.BROWSABLE" />
+          <!-- 双轨并存（2026-10-30 去lx批定稿）：shiyin:// 主 scheme，lxmusic:// 保留兼容旧分享链接 -->
+          <data android:scheme="shiyin" android:host="*" />
           <data android:scheme="lxmusic" android:host="*" />
         </intent-filter>
         <intent-filter android:priority="80">
@@ -91,6 +93,10 @@
           <data android:pathPattern=".*\\..*\\.lxmc" />
           <data android:pathPattern=".*\\..*\\..*\\.lxmc" />
           <data android:pathSuffix=".lxmc" tools:targetApi="s" />
+          <data android:pathPattern=".*\\.shiyin" />
+          <data android:pathPattern=".*\\..*\\.shiyin" />
+          <data android:pathPattern=".*\\..*\\..*\\.shiyin" />
+          <data android:pathSuffix=".shiyin" tools:targetApi="s" />
         </intent-filter>
       </activity>
 

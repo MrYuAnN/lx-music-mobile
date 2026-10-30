@@ -48,7 +48,7 @@ export default forwardRef<HeaderType, HeaderProps>(({ componentId }, ref) => {
   }), [])
 
   // 已收藏态（收藏闭环 2026-10-18 拍板）：♥ 两态 toggle——未收藏=收藏克隆，已收藏=确认后取消（删本地克隆）
-  const collectedInfo = lists.find(l => (l as LX.List.UserListInfo).source == info.source && (l as LX.List.UserListInfo).sourceListId == info.id) as LX.List.UserListInfo | undefined
+  const collectedInfo = lists.find(l => (l as SY.List.UserListInfo).source == info.source && (l as SY.List.UserListInfo).sourceListId == info.id) as SY.List.UserListInfo | undefined
   const collected = !!collectedInfo
   const sourceName = info.source ? t(`source_real_${info.source}` as never) : ''
   const subtitle = collectedInfo

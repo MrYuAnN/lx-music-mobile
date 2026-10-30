@@ -4,7 +4,7 @@
 // }
 
 
-declare namespace LX {
+declare namespace SY {
   namespace Download {
     type DownloadTaskStatus = 'run'
     | 'waiting'
@@ -20,7 +20,7 @@ declare namespace LX {
     interface AddDownloadResult {
       status: AddDownloadStatus
       /** status=downloaded 时返回命中任务的实际落地档（toast 展示用，审查 I-F 回退链口径） */
-      downloadedQuality?: LX.Quality
+      downloadedQuality?: SY.Quality
     }
 
     interface ProgressInfo {
@@ -58,12 +58,12 @@ declare namespace LX {
       progress: number
       speed: string
       metadata: {
-        musicInfo: LX.Music.MusicInfoOnline
+        musicInfo: SY.Music.MusicInfoOnline
         url: string | null
         /** 实际落地档（resolve 回退时由 applyResolved 回写） */
-        quality: LX.Quality
+        quality: SY.Quality
         /** 用户请求档（审查 I-F：回退链下与落地档可能不同，三态判定与换档语义依据） */
-        requestedQuality?: LX.Quality
+        requestedQuality?: SY.Quality
         ext: FileExt
         fileName: string
         filePath: string

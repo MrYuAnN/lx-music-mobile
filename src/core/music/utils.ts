@@ -15,9 +15,9 @@ import { apis } from '@/utils/musicSdk/api-source'
 
 const getOtherSourcePromises = new Map()
 export const existTimeExp = /\[\d{1,2}:.*\d{1,4}\]/
-const otherSourceCache = new Map<string, LX.Music.MusicInfoOnline[]>()
+const otherSourceCache = new Map<string, SY.Music.MusicInfoOnline[]>()
 
-export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.ListItem, isRefresh = false): Promise<LX.Music.MusicInfoOnline[]> => {
+export const getOtherSource = async(musicInfo: SY.Music.MusicInfo | SY.Download.ListItem, isRefresh = false): Promise<SY.Music.MusicInfoOnline[]> => {
   // if (!isRefresh) {
   //   const cachedInfo = await getOtherSourceFromStore(musicInfo.id)
   //   if (cachedInfo.length) return cachedInfo
@@ -58,14 +58,14 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
   if (!isRefresh && otherSourceCache.has(key)) return otherSourceCache.get(key)!
   if (getOtherSourcePromises.has(key)) return getOtherSourcePromises.get(key)
 
-  const promise = new Promise<LX.Music.MusicInfoOnline[]>((resolve, reject) => {
+  const promise = new Promise<SY.Music.MusicInfoOnline[]>((resolve, reject) => {
     let timeout: null | number = BackgroundTimer.setTimeout(() => {
       timeout = null
       reject(new Error('find music timeout'))
     }, 12_000)
     findMusic(searchMusicInfo).then((otherSource) => {
       if (otherSourceCache.size > 30) otherSourceCache.clear()
-      const source = otherSource.map(toNewMusicInfo) as LX.Music.MusicInfoOnline[]
+      const source = otherSource.map(toNewMusicInfo) as SY.Music.MusicInfoOnline[]
       if (source.length) otherSourceCache.set(key, source)
       resolve(source)
     }).catch(reject).finally(() => {
@@ -82,7 +82,7 @@ export const getOtherSource = async(musicInfo: LX.Music.MusicInfo | LX.Download.
 }
 
 
-export const buildLyricInfo = async(lyricInfo: MakeOptional<LX.Player.LyricInfo, 'rawlrcInfo'>): Promise<LX.Player.LyricInfo> => {
+export const buildLyricInfo = async(lyricInfo: MakeOptional<SY.Player.LyricInfo, 'rawlrcInfo'>): Promise<SY.Player.LyricInfo> => {
   if (!settingState.setting['player.isS2t']) {
     // @ts-expect-error
     if (lyricInfo.rawlrcInfo) return lyricInfo
@@ -129,7 +129,7 @@ export const buildLyricInfo = async(lyricInfo: MakeOptional<LX.Player.LyricInfo,
   return lyricInfo.rawlrcInfo ? lyricInfo : { ...lyricInfo, rawlrcInfo: { ...lyricInfo } }
 }
 
-export const getCachedLyricInfo = async(musicInfo: LX.Music.MusicInfo): Promise<LX.Player.LyricInfo | null> => {
+export const getCachedLyricInfo = async(musicInfo: SY.Music.MusicInfo): Promise<SY.Player.LyricInfo | null> => {
   let lrcInfo = await getStoreLyric(musicInfo)
   // lrcInfo = {}
   if (existTimeExp.test(lrcInfo.lyric) && lrcInfo.tlyric != null) {
@@ -158,13 +158,13 @@ export const getCachedLyricInfo = async(musicInfo: LX.Music.MusicInfo): Promise<
   return null
 }
 
-export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: LX.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
+export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: SY.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
   url: string
-  quality: LX.Quality
+  quality: SY.Quality
   isFromCache: boolean
   expire?: number
 }> => {
-  if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
+  if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
 
   const quality = '128k'
 
@@ -183,11 +183,11 @@ export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: LX.Music.Mus
   })
 }
 
-export const getOnlineOtherSourceLyricByLocal = async(musicInfo: LX.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
-  lyricInfo: LX.Music.LyricInfo
+export const getOnlineOtherSourceLyricByLocal = async(musicInfo: SY.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
+  lyricInfo: SY.Music.LyricInfo
   isFromCache: boolean
 }> => {
-  if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
+  if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
 
   const lyricInfo = await getCachedLyricInfo(musicInfo)
   if (lyricInfo && !isRefresh) return { lyricInfo, isFromCache: true }
@@ -199,15 +199,15 @@ export const getOnlineOtherSourceLyricByLocal = async(musicInfo: LX.Music.MusicI
     reqPromise = Promise.reject(err)
   }
 
-  return reqPromise.then((lyricInfo: LX.Music.LyricInfo) => {
+  return reqPromise.then((lyricInfo: SY.Music.LyricInfo) => {
     return { lyricInfo, isFromCache: false }
   })
 }
 
-export const getOnlineOtherSourcePicByLocal = async(musicInfo: LX.Music.MusicInfoLocal): Promise<{
+export const getOnlineOtherSourcePicByLocal = async(musicInfo: SY.Music.MusicInfoLocal): Promise<{
   url: string
 }> => {
-  if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
+  if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
 
   let reqPromise
   try {
@@ -224,11 +224,11 @@ export const getOnlineOtherSourcePicByLocal = async(musicInfo: LX.Music.MusicInf
 export const TRY_QUALITYS_LIST = ['flac24bit', 'flac', '320k'] as const
 type TryQualityType = typeof TRY_QUALITYS_LIST[number]
 // 播放链可消费档位全集，自低到高（设置页与播放页音质选择共用单源，弹窗体系批 §问题7 拍板收口）
-export const PLAY_QUALITY_LIST: LX.Quality[] = ([...TRY_QUALITYS_LIST, '128k'] as LX.Quality[]).reverse()
-export const getPlayQuality = (highQuality: LX.Quality, musicInfo: LX.Music.MusicInfoOnline): LX.Quality => {
-  let type: LX.Quality = '128k'
+export const PLAY_QUALITY_LIST: SY.Quality[] = ([...TRY_QUALITYS_LIST, '128k'] as SY.Quality[]).reverse()
+export const getPlayQuality = (highQuality: SY.Quality, musicInfo: SY.Music.MusicInfoOnline): SY.Quality => {
+  let type: SY.Quality = '128k'
   if (TRY_QUALITYS_LIST.includes(highQuality as TryQualityType)) {
-    let list = global.lx.qualityList[musicInfo.source]
+    let list = global.sy.qualityList[musicInfo.source]
 
     let t = TRY_QUALITYS_LIST
       .slice(TRY_QUALITYS_LIST.indexOf(highQuality as TryQualityType))
@@ -240,22 +240,22 @@ export const getPlayQuality = (highQuality: LX.Quality, musicInfo: LX.Music.Musi
 }
 
 export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggleSource, isRefresh, retryedSource = [] }: {
-  musicInfos: LX.Music.MusicInfoOnline[]
-  quality?: LX.Quality
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  musicInfos: SY.Music.MusicInfoOnline[]
+  quality?: SY.Quality
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
   isRefresh: boolean
-  retryedSource?: LX.OnlineSource[]
+  retryedSource?: SY.OnlineSource[]
 }): Promise<{
   url: string
-  musicInfo: LX.Music.MusicInfoOnline
-  quality: LX.Quality
+  musicInfo: SY.Music.MusicInfoOnline
+  quality: SY.Quality
   isFromCache: boolean
   expire?: number
 }> => {
-  if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
+  if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
 
-  let musicInfo: LX.Music.MusicInfoOnline | null = null
-  let itemQuality: LX.Quality | null = null
+  let musicInfo: SY.Music.MusicInfoOnline | null = null
+  let itemQuality: SY.Quality | null = null
   // eslint-disable-next-line no-cond-assign
   while (musicInfo = (musicInfos.shift()!)) {
     if (retryedSource.includes(musicInfo.source)) continue
@@ -281,7 +281,7 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
   }
   // retryedSource.includes(musicInfo.source)
   // eslint-disable-next-line @typescript-eslint/promise-function-async
-  return reqPromise.then(({ url, type, expire }: { url: string, type: LX.Quality, expire?: number }) => {
+  return reqPromise.then(({ url, type, expire }: { url: string, type: SY.Quality, expire?: number }) => {
     return { musicInfo, url, quality: type, isFromCache: false, expire }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
@@ -296,19 +296,19 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
  * 获取在线音乐URL
  */
 export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSource, isRefresh, allowToggleSource }: {
-  musicInfo: LX.Music.MusicInfoOnline
-  quality?: LX.Quality
+  musicInfo: SY.Music.MusicInfoOnline
+  quality?: SY.Quality
   isRefresh: boolean
   allowToggleSource: boolean
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
 }): Promise<{
   url: string
-  musicInfo: LX.Music.MusicInfoOnline
-  quality: LX.Quality
+  musicInfo: SY.Music.MusicInfoOnline
+  quality: SY.Quality
   isFromCache: boolean
   expire?: number
 }> => {
-  if (!await global.lx.apiInitPromise[0]) throw new Error('source init failed')
+  if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
   // console.log(musicInfo.source)
   const targetQuality = quality ?? getPlayQuality(settingState.setting['player.playQuality'], musicInfo)
 
@@ -318,7 +318,7 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
   } catch (err: any) {
     reqPromise = Promise.reject(err)
   }
-  return reqPromise.then(({ url, type, expire }: { url: string, type: LX.Quality, expire?: number }) => {
+  return reqPromise.then(({ url, type, expire }: { url: string, type: SY.Quality, expire?: number }) => {
     return { musicInfo, url, quality: type, isFromCache: false, expire }
   }).catch(async(err: any) => {
     console.log(err)
@@ -343,16 +343,16 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
 
 
 export const getOnlineOtherSourcePicUrl = async({ musicInfos, onToggleSource, isRefresh, retryedSource = [] }: {
-  musicInfos: LX.Music.MusicInfoOnline[]
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  musicInfos: SY.Music.MusicInfoOnline[]
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
   isRefresh: boolean
-  retryedSource?: LX.OnlineSource[]
+  retryedSource?: SY.OnlineSource[]
 }): Promise<{
   url: string
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   isFromCache: boolean
 }> => {
-  let musicInfo: LX.Music.MusicInfoOnline | null = null
+  let musicInfo: SY.Music.MusicInfoOnline | null = null
   // eslint-disable-next-line no-cond-assign
   while (musicInfo = (musicInfos.shift()!)) {
     if (retryedSource.includes(musicInfo.source)) continue
@@ -386,13 +386,13 @@ export const getOnlineOtherSourcePicUrl = async({ musicInfos, onToggleSource, is
  * 获取在线歌曲封面
  */
 export const handleGetOnlinePicUrl = async({ musicInfo, isRefresh, onToggleSource, allowToggleSource }: {
-  musicInfo: LX.Music.MusicInfoOnline
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  musicInfo: SY.Music.MusicInfoOnline
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
   isRefresh: boolean
   allowToggleSource: boolean
 }): Promise<{
   url: string
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   isFromCache: boolean
 }> => {
   // console.log(musicInfo.source)
@@ -426,16 +426,16 @@ export const handleGetOnlinePicUrl = async({ musicInfo, isRefresh, onToggleSourc
 
 
 export const getOnlineOtherSourceLyricInfo = async({ musicInfos, onToggleSource, isRefresh, retryedSource = [] }: {
-  musicInfos: LX.Music.MusicInfoOnline[]
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  musicInfos: SY.Music.MusicInfoOnline[]
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
   isRefresh: boolean
-  retryedSource?: LX.OnlineSource[]
+  retryedSource?: SY.OnlineSource[]
 }): Promise<{
-  lyricInfo: LX.Music.LyricInfo | LX.Player.LyricInfo
-  musicInfo: LX.Music.MusicInfoOnline
+  lyricInfo: SY.Music.LyricInfo | SY.Player.LyricInfo
+  musicInfo: SY.Music.MusicInfoOnline
   isFromCache: boolean
 }> => {
-  let musicInfo: LX.Music.MusicInfoOnline | null = null
+  let musicInfo: SY.Music.MusicInfoOnline | null = null
   // eslint-disable-next-line no-cond-assign
   while (musicInfo = (musicInfos.shift()!)) {
     if (retryedSource.includes(musicInfo.source)) continue
@@ -460,7 +460,7 @@ export const getOnlineOtherSourceLyricInfo = async({ musicInfos, onToggleSource,
     reqPromise = Promise.reject(err)
   }
   // retryedSource.includes(musicInfo.source)
-  return reqPromise.then(async(lyricInfo: LX.Music.LyricInfo) => {
+  return reqPromise.then(async(lyricInfo: SY.Music.LyricInfo) => {
     return existTimeExp.test(lyricInfo.lyric) ? {
       lyricInfo,
       musicInfo,
@@ -477,13 +477,13 @@ export const getOnlineOtherSourceLyricInfo = async({ musicInfos, onToggleSource,
  * 获取在线歌词信息
  */
 export const handleGetOnlineLyricInfo = async({ musicInfo, onToggleSource, isRefresh, allowToggleSource }: {
-  musicInfo: LX.Music.MusicInfoOnline
-  onToggleSource: (musicInfo?: LX.Music.MusicInfoOnline) => void
+  musicInfo: SY.Music.MusicInfoOnline
+  onToggleSource: (musicInfo?: SY.Music.MusicInfoOnline) => void
   isRefresh: boolean
   allowToggleSource: boolean
 }): Promise<{
-  musicInfo: LX.Music.MusicInfoOnline
-  lyricInfo: LX.Music.LyricInfo | LX.Player.LyricInfo
+  musicInfo: SY.Music.MusicInfoOnline
+  lyricInfo: SY.Music.LyricInfo | SY.Player.LyricInfo
   isFromCache: boolean
 }> => {
   // console.log(musicInfo.source)
@@ -494,7 +494,7 @@ export const handleGetOnlineLyricInfo = async({ musicInfo, onToggleSource, isRef
   } catch (err) {
     reqPromise = Promise.reject(err)
   }
-  return reqPromise.then(async(lyricInfo: LX.Music.LyricInfo) => {
+  return reqPromise.then(async(lyricInfo: SY.Music.LyricInfo) => {
     return existTimeExp.test(lyricInfo.lyric) ? {
       musicInfo,
       lyricInfo,

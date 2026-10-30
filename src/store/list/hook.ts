@@ -10,7 +10,7 @@ export const useMyList = () => {
   const [lists, setList] = useState(state.allList)
 
   useEffect(() => {
-    const handleConfigUpdate = (keys: Array<keyof LX.AppSetting>) => {
+    const handleConfigUpdate = (keys: Array<keyof SY.AppSetting>) => {
       if (!keys.includes('common.langId')) return
       setList([...state.allList])
     }
@@ -46,7 +46,7 @@ export const useActiveListId = () => {
 
 
 export const useMusicList = () => {
-  const [list, setList] = useState<LX.List.ListMusics>([])
+  const [list, setList] = useState<SY.List.ListMusics>([])
 
   useEffect(() => {
     const handleToggle = (activeListId: string) => {
@@ -74,7 +74,7 @@ export const useMusicList = () => {
   return list
 }
 
-export const useMusicExistsList = (list: LX.List.MyListInfo, musicInfo: LX.Music.MusicInfo) => {
+export const useMusicExistsList = (list: SY.List.MyListInfo, musicInfo: SY.Music.MusicInfo) => {
   const [isExists, setExists] = useState(false)
 
   useEffect(() => {
@@ -119,7 +119,7 @@ export const useLikedSet = () => {
 
 // 红心 toggle（行内红心共用）：点亮=加入 LOVE 列表、取消=移除；轻触觉、无 toast（问题 1 拍板）
 export const useLikeToggle = () => {
-  return useCallback((musicInfo: LX.Music.MusicInfo, isLiked: boolean) => {
+  return useCallback((musicInfo: SY.Music.MusicInfo, isLiked: boolean) => {
     hapticImpactLight()
     if (isLiked) {
       void removeListMusics(LIST_IDS.LOVE, [musicInfo.id])

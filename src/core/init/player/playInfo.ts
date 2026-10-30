@@ -3,14 +3,14 @@ import { getListMusics } from '@/core/list'
 import { playList, play } from '@/core/player/player'
 
 
-export default async(setting: LX.AppSetting) => {
+export default async(setting: SY.AppSetting) => {
   const info = await getPlayInfo()
-  global.lx.restorePlayInfo = null
+  global.sy.restorePlayInfo = null
   if (!info?.listId || info.index < 0) return
 
   const list = await getListMusics(info.listId)
   if (!list[info.index]) return
-  global.lx.restorePlayInfo = info
+  global.sy.restorePlayInfo = info
 
   await playList(info.listId, info.index)
 

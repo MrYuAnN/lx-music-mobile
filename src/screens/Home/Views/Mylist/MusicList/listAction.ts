@@ -30,7 +30,7 @@ export const guardWritableList = (listId: string) => {
 // 后继承（防源变更波及副本，方案 §2.3-1）；copyFile 失败降级分流（审查 I3）——
 // 自定义封面（picCustom=true）不带封面创建交自动轨（共享路径的自愈只对非冻结条目成立），
 // 仅自动轨路径保留共享降级
-export const handleCloneList = async(listInfo: LX.List.UserListInfo) => {
+export const handleCloneList = async(listInfo: SY.List.UserListInfo) => {
   const list = await getListMusics(listInfo.id)
   const cloneId = `userlist_${Date.now()}`
   let pic: string | undefined = listInfo.pic
@@ -75,7 +75,7 @@ export const handleRemove = (listId: SelectInfo['listId'], musicInfo: SelectInfo
   if (selectedList.length) {
     void confirmDialog({
       message: global.i18n.t('list_remove_music_multi_tip', { num: selectedList.length }),
-      confirmButtonText: global.i18n.t('list_remove_tip_button'),
+      confirmButtonText: global.i18n.t('dialog_delete'),
     }).then(isRemove => {
       if (!isRemove) return
       void removeListMusics(listId, selectedList.map(s => s.id))
@@ -89,7 +89,7 @@ export const handleRemove = (listId: SelectInfo['listId'], musicInfo: SelectInfo
 // 「调整位置」handler 移除（歌单页拖拽排序批）：排序改行长按拖拽，落位直调 core
 // updateListMusicPosition（List.tsx onSettle），本文件不再承担（方案 playlist-drag-reorder §三.4）
 
-export const handleUpdateMusicInfo = (listId: SelectInfo['listId'], musicInfo: LX.Music.MusicInfoLocal, newInfo: Metadata) => {
+export const handleUpdateMusicInfo = (listId: SelectInfo['listId'], musicInfo: SY.Music.MusicInfoLocal, newInfo: Metadata) => {
   void updateListMusics([
     {
       id: listId,
@@ -113,16 +113,16 @@ export const handleShare = (musicInfo: SelectInfo['musicInfo']) => {
 }
 
 export const handleCopyLink = (musicInfo: SelectInfo['musicInfo']) => {
-  const url = musicSdk[musicInfo.source as LX.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo))
+  const url = musicSdk[musicInfo.source as SY.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo))
   clipboardWriteText(`${musicInfo.name}${url ? ' ' + url : ''}`)
   toast(global.i18n.t('copy_name_tip'))
 }
 
 
-export const searchListMusic = (list: LX.Music.MusicInfo[], text: string) => {
-  const fullMathNameResults = new Set<LX.Music.MusicInfo>()
-  const fullMathSingerResults = new Set<LX.Music.MusicInfo>()
-  const fullMathAlbumResults = new Set<LX.Music.MusicInfo>()
+export const searchListMusic = (list: SY.Music.MusicInfo[], text: string) => {
+  const fullMathNameResults = new Set<SY.Music.MusicInfo>()
+  const fullMathSingerResults = new Set<SY.Music.MusicInfo>()
+  const fullMathAlbumResults = new Set<SY.Music.MusicInfo>()
   const textLower = text.toLowerCase()
   for (const mInfo of list) {
     if (mInfo.name?.toLowerCase().includes(textLower)) {
@@ -133,7 +133,7 @@ export const searchListMusic = (list: LX.Music.MusicInfo[], text: string) => {
       fullMathAlbumResults.add(mInfo)
     }
   }
-  let result: LX.Music.MusicInfo[] = []
+  let result: SY.Music.MusicInfo[] = []
   let rxp = new RegExp(text.split('').map(s => s.replace(/[.*+?^${}()|[\]\\]/, '\\$&')).join('.*') + '.*', 'i')
   for (const mInfo of list) {
     if (fullMathNameResults.has(mInfo) || fullMathSingerResults.has(mInfo) || fullMathAlbumResults.has(mInfo)) continue
@@ -142,7 +142,7 @@ export const searchListMusic = (list: LX.Music.MusicInfo[], text: string) => {
     if (rxp.test(str)) result.push(mInfo)
   }
 
-  const sortedList: Array<{ num: number, data: LX.Music.MusicInfo }> = []
+  const sortedList: Array<{ num: number, data: SY.Music.MusicInfo }> = []
 
   for (const mInfo of result) {
     sortInsert(sortedList, {
@@ -160,12 +160,12 @@ export const searchListMusic = (list: LX.Music.MusicInfo[], text: string) => {
 
 // 歌曲详情跳源站网页（换源弹窗 MusicToggleModal 选源列表 openDetail 消费；歌单菜单入口已收敛删除，2026-10-20）
 export const handleShowMusicSourceDetail = async(minfo: SelectInfo['musicInfo']) => {
-  const url = musicSdk[minfo.source as LX.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(minfo))
+  const url = musicSdk[minfo.source as SY.OnlineSource]?.getMusicDetailPageUrl(toOldMusicInfo(minfo))
   if (!url) return
   void openUrl(url)
 }
 
-export const handleToggleSource = async(listId: string, musicInfo: LX.Music.MusicInfo, toggleMusicInfo: LX.Music.MusicInfoOnline) => {
+export const handleToggleSource = async(listId: string, musicInfo: SY.Music.MusicInfo, toggleMusicInfo: SY.Music.MusicInfoOnline) => {
   const list = getListMusicSync(listId)
   const oldId = musicInfo.id
   let oldIdx = list.findIndex(m => m.id == oldId)

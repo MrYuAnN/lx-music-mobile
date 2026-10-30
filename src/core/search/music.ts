@@ -17,7 +17,7 @@ export const clearListInfo: typeof searchMusicActions.clearListInfo = (source) =
 }
 
 
-export const search = async(text: string, page: number, sourceId: Source): Promise<LX.Music.MusicInfoOnline[]> => {
+export const search = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
   const listInfo = searchMusicState.listInfos[sourceId]!
   if (!text) return []
   const key = `${page}__${text}`

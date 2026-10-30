@@ -8,7 +8,7 @@ import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
 import { SPACING } from '@/config/spacing'
 
-type Sources = Readonly<Array<LX.OnlineSource | 'all'>>
+type Sources = Readonly<Array<SY.OnlineSource | 'all'>>
 
 export interface SourceSelectorProps<S extends Sources> {
   fontSize?: number

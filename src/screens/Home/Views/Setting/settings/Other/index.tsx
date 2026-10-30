@@ -60,7 +60,7 @@ export default memo(() => {
   const handleCleanAppCache = () => {
     void confirmDialog({
       message: t('confirm_tip'),
-      confirmButtonText: t('list_remove_tip_button'),
+      confirmButtonText: t('dialog_reset'),
     }).then(confirm => {
       if (!confirm) return
       setCleaning(true)
@@ -98,7 +98,8 @@ export default memo(() => {
   const openLogPopup = () => {
     void getLogs().then(log => {
       if (isUnmountedRef.current) return
-      const logArr = log.split(/^----lx log----\n|\n----lx log----\n|\n----lx log----$/)
+      // 双分隔符兼容（代码审查 S-9）：旧日志文件含 lx 分隔符，解析端双轨直至旧日志轮转淘汰
+      const logArr = log.split(/^----lx log----\n|\n----lx log----\n|\n----lx log----$|^----sy log----\n|\n----sy log----\n|\n----sy log----$/)
       logArr.reverse()
       setLogText(logArr.join('\n\n').replace(/^\n+|\n+$/, ''))
     })

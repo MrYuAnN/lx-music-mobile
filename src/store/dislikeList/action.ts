@@ -3,7 +3,7 @@ import { SPLIT_CHAR } from '@/config/constant'
 import { event } from './event'
 
 
-export const hasDislike = (info: LX.Music.MusicInfo | LX.Download.ListItem) => {
+export const hasDislike = (info: SY.Music.MusicInfo | SY.Download.ListItem) => {
   if ('progress' in info) info = info.metadata.musicInfo
   const name = info.name?.replaceAll(SPLIT_CHAR.DISLIKE_NAME, SPLIT_CHAR.DISLIKE_NAME_ALIAS).toLocaleLowerCase().trim() ?? ''
   const singer = info.singer?.replaceAll(SPLIT_CHAR.DISLIKE_NAME, SPLIT_CHAR.DISLIKE_NAME_ALIAS).toLocaleLowerCase().trim() ?? ''
@@ -12,7 +12,7 @@ export const hasDislike = (info: LX.Music.MusicInfo | LX.Download.ListItem) => {
     state.dislikeInfo.names.has(`${name}${SPLIT_CHAR.DISLIKE_NAME}${singer}`)
 }
 
-export const setDislikeInfo = (dislikeInfo: LX.Dislike.DislikeInfo) => {
+export const setDislikeInfo = (dislikeInfo: SY.Dislike.DislikeInfo) => {
   state.dislikeInfo.rules = dislikeInfo.rules
   state.dislikeInfo.names = dislikeInfo.names
   state.dislikeInfo.musicNames = dislikeInfo.musicNames

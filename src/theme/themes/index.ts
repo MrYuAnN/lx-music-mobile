@@ -16,13 +16,13 @@ const resolveThemeId = () => {
   return themeState.shouldUseDarkColors ? 'am_dark' : 'am_light'
 }
 
-type ColorsKey = keyof LX.Theme['config']['themeColors']
-type ExtInfoKey = keyof LX.Theme['config']['extInfo']
+type ColorsKey = keyof SY.Theme['config']['themeColors']
+type ExtInfoKey = keyof SY.Theme['config']['extInfo']
 const varColorRxp = /^var\((.+)\)$/
-export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
+export const buildActiveThemeColors = (theme: SY.Theme): SY.ActiveTheme => {
   theme.config.extInfo = { ...theme.config.extInfo }
 
-  for (const [k, v] of Object.entries(theme.config.extInfo) as Array<[ExtInfoKey, LX.Theme['config']['extInfo'][ExtInfoKey]]>) {
+  for (const [k, v] of Object.entries(theme.config.extInfo) as Array<[ExtInfoKey, SY.Theme['config']['extInfo'][ExtInfoKey]]>) {
     if (!v || !v.startsWith('var(')) continue
     theme.config.extInfo[k] = theme.config.themeColors[v.replace(varColorRxp, '$1') as ColorsKey]
   }
@@ -86,7 +86,7 @@ export const buildActiveThemeColors = (theme: LX.Theme): LX.ActiveTheme => {
   } as const
 }
 
-export const getTheme = (): LX.Theme => {
+export const getTheme = (): SY.Theme => {
   const themeId = resolveThemeId()
   return (themes.find(theme => theme.id == themeId) ?? themes[0])
 }

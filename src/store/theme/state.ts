@@ -4,7 +4,7 @@ import { createContext } from 'react'
 
 interface InitState {
   shouldUseDarkColors: boolean
-  theme: LX.ActiveTheme
+  theme: SY.ActiveTheme
 }
 
 const theme = {

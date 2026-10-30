@@ -47,7 +47,7 @@ const AppRoot = () => {
 
     void (async() => {
       const [fontSize] = await Promise.all([getFontSize(), windowSizeTools.init()])
-      global.lx.fontSize = fontSize
+      global.sy.fontSize = fontSize
       bootLog('Font size setting loaded.')
       void initLog()
 

@@ -40,12 +40,12 @@ export const useComponentIds = () => {
   return value
 }
 
-export const useAssertApiSupport = (source: LX.Source) => {
-  const [value, update] = useState(global.lx.qualityList[source] != null || source == 'local')
+export const useAssertApiSupport = (source: SY.Source) => {
+  const [value, update] = useState(global.sy.qualityList[source] != null || source == 'local')
 
   useEffect(() => {
     const handleUpdate = () => {
-      update(global.lx.qualityList[source] != null || source == 'local')
+      update(global.sy.qualityList[source] != null || source == 'local')
     }
 
     // 直连化（批1 阶段3）：源集/qualityList 随 /config 下发变化（apiSourceUpdated 已退役）

@@ -1,6 +1,6 @@
 import state, { type InitState } from './state'
 // let isInitedSearchHistory = false
-// const saveSearchHistoryListThrottle = throttle((list: LX.List.SearchHistoryList) => {
+// const saveSearchHistoryListThrottle = throttle((list: SY.List.SearchHistoryList) => {
 //   saveSearchHistoryList(list)
 // }, 500)
 

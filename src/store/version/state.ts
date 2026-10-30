@@ -3,7 +3,7 @@ import { version } from '../../../package.json'
 export interface VersionInfo {
   version: string
   desc: string
-  history?: LX.VersionInfo[]
+  history?: SY.VersionInfo[]
   url?: string
 }
 
@@ -16,7 +16,7 @@ export interface InitState {
     isUnknown: boolean
     isLatest: boolean
     reCheck: boolean
-    status: LX.UpdateStatus
+    status: SY.UpdateStatus
   }
   ignoreVersion: string | null
 }

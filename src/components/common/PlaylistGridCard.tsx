@@ -47,9 +47,9 @@ export const PlaylistGridScrollView = ({ children }: { children: (gridWidth: num
 }
 
 interface Props {
-  item: LX.List.MyListInfo
+  item: SY.List.MyListInfo
   width: number
-  onPress: (item: LX.List.MyListInfo) => void
+  onPress: (item: SY.List.MyListInfo) => void
   /** 置灰（写场景该歌已存在等）：仅降透明度，点击仍透传由调用方提示 */
   dimmed?: boolean
   showSourceBadge?: boolean
@@ -63,7 +63,7 @@ export default ({ item, width, onPress, dimmed = false, showSourceBadge = false 
   const defaultPic = useSettingValue('list.defaultPic')
   const lovePic = useSettingValue('list.lovePic')
   const collect = 'source' in item ? !!item.source : false
-  const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : item.id == LIST_IDS.LOVE ? lovePic : (item as LX.List.UserListInfo).pic
+  const pic = item.id == LIST_IDS.DEFAULT ? defaultPic : item.id == LIST_IDS.LOVE ? lovePic : (item as SY.List.UserListInfo).pic
   const isLove = item.id == LIST_IDS.LOVE
 
   return (
@@ -84,7 +84,7 @@ export default ({ item, width, onPress, dimmed = false, showSourceBadge = false 
           showSourceBadge
             ? (
                 <View style={styles.sourceBadge}>
-                  <Text size={9} color="#FFFFFF">{collect ? t(`source_short_${(item as LX.List.UserListInfo).source}` as keyof Message) : t('source_short_local')}</Text>
+                  <Text size={9} color="#FFFFFF">{collect ? t(`source_short_${(item as SY.List.UserListInfo).source}` as keyof Message) : t('source_short_local')}</Text>
                 </View>
               )
             : null

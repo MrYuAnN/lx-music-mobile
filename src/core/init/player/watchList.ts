@@ -13,7 +13,7 @@ export default () => {
 
     const { playIndex } = updatePlayIndex()
     if (playIndex < 0) { // 歌曲被移除
-      // if (global.lx.isPlayedStop) {
+      // if (global.sy.isPlayedStop) {
       //   stop()
       //   setTimeout(() => {
       //     setPlayMusicInfo(null, null)

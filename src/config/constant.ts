@@ -93,7 +93,12 @@ export const storageDataPrefix = {
   openStoragePath: '@open_storage_path',
   selectedManagedFolder: '@selected_managed_folder',
   notificationTipEnable: '@notification_tip_enable',
+  // 系统通知权限窗已发起标记（走查 F-4 / 复审 R3-v3：不复用 notificationTipEnable——
+  // 其存量语义为「拒绝过 in-app 提示」，复用会吞存量用户首次系统弹窗）
+  notificationPermissionRequested: '@notification_permission_requested',
   ignoringBatteryOptimizationTipEnable: '@ignoring_battery_optimization_tip_enable',
+  // 电池优化「去设置」失败冷却（2026-10-30 弹窗批）：时间戳 ms，冷却期内不再弹（7 天）
+  batteryOptimizationCooldownUntil: '@battery_optimization_cooldown_until',
 
   searchHistoryList: '@search_history_list',
   listUpdateInfo: '@list_update_info',
@@ -148,7 +153,8 @@ export const NAV_MENUS = [
 
 export type NAV_ID_Type = typeof NAV_MENUS[number]['id']
 
-export const LXM_FILE_EXT_RXP = ['json', 'lxmc', 'bin']
+// 列表文件导入过滤（2026-10-30 去lx批 B2）：shiyin 新格式 + lxmc 旧格式兼容 + json/bin 上游格式
+export const LIST_FILE_EXT_RXP = ['json', 'shiyin', 'lxmc', 'bin']
 
 export const MUSIC_TOGGLE_MODE = {
   listLoop: 'listLoop', // 列表循环
@@ -168,20 +174,20 @@ export const MUSIC_TOGGLE_MODE_LIST = [
 
 export const DEFAULT_SETTING = {
   leaderboard: {
-    source: 'kw' as LX.OnlineSource,
+    source: 'kw' as SY.OnlineSource,
     boardId: 'kw__16',
   },
 
   songList: {
-    source: 'kw' as LX.OnlineSource,
+    source: 'kw' as SY.OnlineSource,
     sortId: 'new',
     tagName: '',
     tagId: '',
   },
 
   search: {
-    temp_source: 'kw' as LX.OnlineSource,
-    source: 'all' as LX.OnlineSource | 'all',
+    temp_source: 'kw' as SY.OnlineSource,
+    source: 'all' as SY.OnlineSource | 'all',
     type: 'music' as 'music' | 'songlist',
   },
 

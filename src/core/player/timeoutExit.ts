@@ -14,7 +14,7 @@ const timeoutTools = {
   timeHooks: [] as Hook[],
   exit() {
     if (settingState.setting['player.timeoutExitPlayed'] && playerState.isPlay) {
-      global.lx.isPlayedStop = true
+      global.sy.isPlayedStop = true
       this.callHooks()
     } else {
       exitApp('Timeout Exit')
@@ -26,7 +26,7 @@ const timeoutTools = {
   callHooks() {
     const time = this.getTime()
     for (const hook of this.timeHooks) {
-      hook(time, global.lx.isPlayedStop)
+      hook(time, global.sy.isPlayedStop)
     }
   },
   clearTimeout() {
@@ -52,7 +52,7 @@ const timeoutTools = {
   },
   addTimeHook(hook: Hook) {
     this.timeHooks.push(hook)
-    hook(this.getTime(), global.lx.isPlayedStop)
+    hook(this.getTime(), global.sy.isPlayedStop)
   },
   removeTimeHook(hook: Hook) {
     this.timeHooks.splice(this.timeHooks.indexOf(hook), 1)
@@ -73,7 +73,7 @@ export const getTimeoutExitTime = () => {
 
 export const useTimeoutExitTimeInfo = () => {
   // 懒初始化取真实计时值（审查 I-E：硬编码 time:0 会让「未激活」首帧渲染成红色 00:00，paint 后才被 hook 校正）
-  const [info, setInfo] = useState(() => ({ time: timeoutTools.getTime(), isPlayedStop: global.lx.isPlayedStop }))
+  const [info, setInfo] = useState(() => ({ time: timeoutTools.getTime(), isPlayedStop: global.sy.isPlayedStop }))
   useEffect(() => {
     const hook: Hook = (time, isPlayedStop) => {
       setInfo({ time, isPlayedStop })
@@ -95,6 +95,6 @@ export const onTimeUpdate = (handler: Hook) => {
 
 
 export const cancelTimeoutExit = () => {
-  global.lx.isPlayedStop = false
+  global.sy.isPlayedStop = false
   timeoutTools.callHooks()
 }

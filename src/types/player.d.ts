@@ -1,7 +1,7 @@
 import type { Track as RNTrack } from 'react-native-track-player'
 
 declare global {
-  namespace LX {
+  namespace SY {
     namespace Player {
       interface MusicInfo {
         id: string | null
@@ -17,11 +17,11 @@ declare global {
         album: string
       }
 
-      interface LyricInfo extends LX.Music.LyricInfo {
-        rawlrcInfo: LX.Music.LyricInfo
+      interface LyricInfo extends SY.Music.LyricInfo {
+        rawlrcInfo: SY.Music.LyricInfo
       }
 
-      type PlayMusic = LX.Music.MusicInfo | LX.Download.ListItem
+      type PlayMusic = SY.Music.MusicInfo | SY.Download.ListItem
 
       type PlayMusicInfo = Readonly<{
         /**
@@ -78,7 +78,7 @@ declare global {
       interface Track extends RNTrack {
         musicId: string
         // original: PlayMusic
-        // quality: LX.Quality
+        // quality: SY.Quality
       }
 
     }

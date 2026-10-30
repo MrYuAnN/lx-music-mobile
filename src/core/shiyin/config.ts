@@ -10,7 +10,7 @@ import { storageDataPrefix } from '@/config/constant'
 export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 
 export interface ShiyinSourceInfo {
-  qualitys: LX.Quality[]
+  qualitys: SY.Quality[]
 }
 
 // 默认集（=服务端灰度开启集 kw/tx/wy 同源；含确定顺序供「首项跟随」语义成立）
@@ -32,8 +32,9 @@ interface CachedConfig {
 let currentSources: Record<string, ShiyinSourceInfo> = {}
 let refreshing: Promise<void> | null = null
 
-// 空集自愈（审查 I-E，拍板=自动重拉+手动重试）：空集态取链快速失败到不了 403 重拉分支，
-// 运行期唯一自愈源=本定时链（30s 起指数退避，上限 8min；恢复即广播复位四页）
+// 空集自愈（审查 I-E，拍板=自动重拉+手动重试；复审 R1-v3 定形态）：空集态取链快速失败到不了
+// 403 重拉分支，运行期唯一自愈源=本定时链——成功空集（applySources）与网络失败（catch）均
+// 「先 schedule 消费当前 count 再递增」，30s 起指数退避上限 8min；恢复非空即广播复位四页
 let emptyRetryTimer: ReturnType<typeof setTimeout> | null = null
 let emptyRetryCount = 0
 const EMPTY_RETRY_BASE = 30_000
@@ -52,12 +53,11 @@ const scheduleEmptyRetry = () => {
   const delay = Math.min(EMPTY_RETRY_BASE * 2 ** Math.min(emptyRetryCount, 4), EMPTY_RETRY_MAX)
   emptyRetryTimer = setTimeout(() => {
     emptyRetryTimer = null
-    void fetchShiyinConfig().then(() => {
-      resetEmptyRetry()
-    }).catch(() => {
+    // 成功空集的续链/退避由 applySources 空集分支承担；此处仅网络失败需自行续链
+    void fetchShiyinConfig().catch(() => {
       if (!Object.keys(currentSources).length) {
-        emptyRetryCount++
         scheduleEmptyRetry()
+        emptyRetryCount++
       }
     })
   }, delay)
@@ -76,12 +76,17 @@ const applySources = (sources: Record<string, ShiyinSourceInfo>) => {
   const changed = serializeSources(sources) != serializeSources(currentSources)
   currentSources = sources
   // qualityList 为 assertApiSupport/getPlayQuality 的消费单源（apiSource.ts 闸门填充）
-  global.lx.qualityList = Object.fromEntries(
+  global.sy.qualityList = Object.fromEntries(
     Object.entries(sources).map(([source, info]) => [source, info.qualitys]),
   )
   if (changed) global.state_event.sourcesUpdated(sources)
-  if (Object.keys(sources).length) resetEmptyRetry()
-  else scheduleEmptyRetry()
+  if (Object.keys(sources).length) {
+    resetEmptyRetry()
+  } else {
+    // 先 schedule（消费当前 count）再递增（复审 R1-v3）：序列 30s→60s→…封顶 8min
+    scheduleEmptyRetry()
+    emptyRetryCount++
+  }
 }
 
 export const fetchShiyinConfig = async(): Promise<void> => {
@@ -90,7 +95,7 @@ export const fetchShiyinConfig = async(): Promise<void> => {
     const resp = await httpFetch(`${SHIYIN_BASE_URL}/config`, { timeout: NETWORK_TIMEOUT }).promise
     const body = resp.body as unknown as {
       code: number
-      sources: Record<string, { qualitys: LX.Quality[] }>
+      sources: Record<string, { qualitys: SY.Quality[] }>
       server_time: number
       min_client_version: string
       upgrade_url: string

@@ -115,7 +115,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "cn.toside.music.mobile"
+    namespace "com.shiyin.music"
     defaultConfig {
         applicationId "com.shiyin.music"
         minSdkVersion rootProject.ext.minSdkVersion

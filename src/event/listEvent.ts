@@ -21,7 +21,7 @@ import { LIST_IDS } from '@/config/constant'
 import { setActiveList, setUserList } from '@/core/list'
 import listState from '@/store/list/state'
 
-const updateUserList = async(userLists: LX.List.UserListInfo[]) => {
+const updateUserList = async(userLists: SY.List.UserListInfo[]) => {
   await saveUserList(userLists)
   setUserList(userLists)
 }
@@ -34,7 +34,7 @@ const checkListExist = (changedIds: string[]) => {
 
 export const checkUpdateList = async(changedIds: string[]) => {
   if (!changedIds.length) return
-  await saveListMusics(changedIds.map(id => ({ id, musics: allMusicList.get(id) as LX.List.ListMusics })))
+  await saveListMusics(changedIds.map(id => ({ id, musics: allMusicList.get(id) as SY.List.ListMusics })))
   global.app_event.myListMusicUpdate(changedIds)
 }
 
@@ -49,7 +49,7 @@ export const checkUpdateList = async(changedIds: string[]) => {
 // }
 
 // 兼容v2.3.0之前版本插入数字类型的ID导致其意外在末尾追加 .0 的问题，确保所有ID都是字符串类型
-const fixListIdType = (lists: LX.List.UserListInfo[] | LX.List.UserListInfoFull[]) => {
+const fixListIdType = (lists: SY.List.UserListInfo[] | SY.List.UserListInfoFull[]) => {
   for (const list of lists) {
     if (typeof list.sourceListId == 'number') {
       list.sourceListId = String(list.sourceListId)
@@ -75,7 +75,7 @@ export class ListEvent extends Event {
    * @param listData 列表数据
    * @param isRemote 是否属于远程操作
    */
-  async list_data_overwrite(listData: MakeOptional<LX.List.ListDataFull, 'tempList'>, isRemote: boolean = false) {
+  async list_data_overwrite(listData: MakeOptional<SY.List.ListDataFull, 'tempList'>, isRemote: boolean = false) {
     fixListIdType(listData.userList)
     const oldIds = userLists.map(l => l.id)
     const changedIds = listDataOverwrite(listData)
@@ -85,7 +85,7 @@ export class ListEvent extends Event {
     if (removedList.length) await removeListMusics(removedList)
     const allListIds = [LIST_IDS.DEFAULT, LIST_IDS.LOVE, ...userLists.map(l => l.id)]
     if (changedIds.includes(LIST_IDS.TEMP)) allListIds.push(LIST_IDS.TEMP)
-    await saveListMusics([...allListIds.map(id => ({ id, musics: allMusicList.get(id) as LX.List.ListMusics }))])
+    await saveListMusics([...allListIds.map(id => ({ id, musics: allMusicList.get(id) as SY.List.ListMusics }))])
 
     global.app_event.myListMusicUpdate(changedIds)
     this.emit('list_data_overwrite', listData, isRemote)
@@ -98,7 +98,7 @@ export class ListEvent extends Event {
    * @param lists 列表信息
    * @param isRemote 是否属于远程操作
    */
-  async list_create(position: number, lists: LX.List.UserListInfo[], isRemote: boolean = false) {
+  async list_create(position: number, lists: SY.List.UserListInfo[], isRemote: boolean = false) {
     // const changedIds: string[] = []
     fixListIdType(lists)
     for (const list of lists) {
@@ -129,7 +129,7 @@ export class ListEvent extends Event {
    * @param lists 列表信息
    * @param isRemote 是否属于远程操作
    */
-  async list_update(lists: LX.List.UserListInfo[], isRemote: boolean = false) {
+  async list_update(lists: SY.List.UserListInfo[], isRemote: boolean = false) {
     userListsUpdate(lists)
     await updateUserList(userLists)
     this.emit('list_update', lists, isRemote)
@@ -153,7 +153,7 @@ export class ListEvent extends Event {
    * @param musicInfos 音乐信息
    * @param isRemote 是否属于远程操作
    */
-  async list_music_overwrite(listId: string, musicInfos: LX.Music.MusicInfo[], isRemote: boolean = false) {
+  async list_music_overwrite(listId: string, musicInfos: SY.Music.MusicInfo[], isRemote: boolean = false) {
     const changedIds = await listMusicOverwrite(listId, musicInfos)
     await checkUpdateList(changedIds)
     this.emit('list_music_overwrite', listId, musicInfos, isRemote)
@@ -166,7 +166,7 @@ export class ListEvent extends Event {
    * @param addMusicLocationType 添加在到列表的位置
    * @param isRemote 是否属于远程操作
    */
-  async list_music_add(listId: string, musicInfos: LX.Music.MusicInfo[], addMusicLocationType?: LX.AddMusicLocationType, isRemote: boolean = false) {
+  async list_music_add(listId: string, musicInfos: SY.Music.MusicInfo[], addMusicLocationType?: SY.AddMusicLocationType, isRemote: boolean = false) {
     const changedIds = await listMusicAdd(listId, musicInfos, addMusicLocationType)
     await checkUpdateList(changedIds)
     this.emit('list_music_add', listId, musicInfos, addMusicLocationType, isRemote)
@@ -180,7 +180,7 @@ export class ListEvent extends Event {
    * @param addMusicLocationType 添加在到列表的位置
    * @param isRemote 是否属于远程操作
    */
-  async list_music_move(fromId: string, toId: string, musicInfos: LX.Music.MusicInfo[], isRemote: boolean = false) {
+  async list_music_move(fromId: string, toId: string, musicInfos: SY.Music.MusicInfo[], isRemote: boolean = false) {
     const changedIds = await listMusicMove(fromId, toId, musicInfos)
     await checkUpdateList(changedIds)
     this.emit('list_music_move', fromId, toId, musicInfos, isRemote)
@@ -205,7 +205,7 @@ export class ListEvent extends Event {
    * @param musicInfos 歌曲&列表信息
    * @param isRemote 是否属于远程操作
    */
-  async list_music_update(musicInfos: LX.List.ListActionMusicUpdate, isRemote: boolean = false) {
+  async list_music_update(musicInfos: SY.List.ListActionMusicUpdate, isRemote: boolean = false) {
     const changedIds = await listMusicUpdateInfo(musicInfos)
     await checkUpdateList(changedIds)
     this.emit('list_music_update', musicInfos, isRemote)

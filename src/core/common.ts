@@ -34,7 +34,7 @@ export const initSetting = async() => {
  * 更新设置
  * @param setting 新设置
  */
-export const updateSetting = (setting: Partial<LX.AppSetting>) => {
+export const updateSetting = (setting: Partial<SY.AppSetting>) => {
   settingActions.updateSetting(setting)
   throttleSaveSetting()
 }

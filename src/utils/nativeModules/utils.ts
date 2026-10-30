@@ -13,14 +13,14 @@ export const installApk = (filePath: string, fileProviderAuthority: string) => U
 
 
 export const screenkeepAwake = () => {
-  if (global.lx.isScreenKeepAwake) return
-  global.lx.isScreenKeepAwake = true
+  if (global.sy.isScreenKeepAwake) return
+  global.sy.isScreenKeepAwake = true
   UtilsModule.screenkeepAwake()
 }
 export const screenUnkeepAwake = () => {
   // console.log('screenUnkeepAwake')
-  if (!global.lx.isScreenKeepAwake) return
-  global.lx.isScreenKeepAwake = false
+  if (!global.sy.isScreenKeepAwake) return
+  global.sy.isScreenKeepAwake = false
   UtilsModule.screenUnkeepAwake()
 }
 
@@ -32,20 +32,12 @@ export const getDeviceName = async(): Promise<string> => {
 
 export const isNotificationsEnabled = UtilsModule.isNotificationsEnabled as () => Promise<boolean>
 
-export const requestNotificationPermission = async() => new Promise<boolean>((resolve) => {
-  let subscription = AppState.addEventListener('change', (state) => {
-    if (state != 'active') return
-    subscription.remove()
-    setTimeout(() => {
-      void isNotificationsEnabled().then(resolve)
-    }, 1000)
-  })
-  UtilsModule.openNotificationPermissionActivity().then((result: boolean) => {
-    if (result) return
-    subscription.remove()
-    resolve(false)
-  })
-})
+// 稳定设备标识（SSAID）：同签名键卸载重装稳定（拾音 device_id 稳定源，走查反馈批）
+export const getAndroidId = UtilsModule.getAndroidId as () => Promise<string>
+
+// requestNotificationPermission 已退役（走查 F-4：in-app 引导流被系统权限窗一次性请求替代，
+// openNotificationPermissionActivity 无消费方——审查 S-3）；找回路径=openNotificationSettings
+// （nativeModules/lyricDesktop.ts）
 
 export const shareText = async(shareTitle: string, title: string, text: string): Promise<void> => {
   UtilsModule.shareText(shareTitle, title, text)
@@ -98,6 +90,10 @@ export const requestIgnoreBatteryOptimization = async() => new Promise<boolean>(
   })
   UtilsModule.requestIgnoreBatteryOptimization().then((result: boolean) => {
     if (result) return
+    subscription.remove()
+    resolve(false)
+  }).catch(() => {
+    // native promise reject 兜底（代码审查 S-1）：保证消费链必有终态，冷却标记可正常落盘
     subscription.remove()
     resolve(false)
   })

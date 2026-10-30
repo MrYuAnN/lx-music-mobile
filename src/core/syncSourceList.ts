@@ -4,7 +4,7 @@ import { overwriteListMusics, setFetchingListStatus } from './list'
 import { getListDetailAll } from '@/core/songlist'
 import { getListDetailAll as getBoardListAll } from '@/core/leaderboard'
 
-const fetchList = async(id: string, source: LX.OnlineSource, sourceListId: string) => {
+const fetchList = async(id: string, source: SY.OnlineSource, sourceListId: string) => {
   setFetchingListStatus(id, true)
 
   let promise
@@ -19,7 +19,7 @@ const fetchList = async(id: string, source: LX.OnlineSource, sourceListId: strin
   })
 }
 
-export default async(targetListInfo: LX.List.UserListInfo) => {
+export default async(targetListInfo: SY.List.UserListInfo) => {
   // console.log(targetListInfo)
   if (!targetListInfo.source || !targetListInfo.sourceListId) return
   const list = await fetchList(targetListInfo.id, targetListInfo.source, targetListInfo.sourceListId)

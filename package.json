@@ -27,23 +27,11 @@
     "node": ">= 22.11",
     "npm": ">= 8.5.2"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/lyswhut/lx-music-mobile.git"
-  },
   "keywords": [
     "music-player",
     "react-native-app"
   ],
-  "author": {
-    "name": "lyswhut",
-    "email": "lyswhut@qq.com"
-  },
   "license": "Apache-2.0",
-  "bugs": {
-    "url": "https://github.com/lyswhut/lx-music-mobile/issues"
-  },
-  "homepage": "https://github.com/lyswhut/lx-music-mobile#readme",
   "dependencies": {
     "@craftzdog/react-native-buffer": "~6.1.2",
     "@dr.pogodin/react-native-fs": "~2.40.3",

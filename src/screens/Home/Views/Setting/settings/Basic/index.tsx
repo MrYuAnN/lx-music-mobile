@@ -5,6 +5,7 @@ import SettingSection from '../../components/SettingSection'
 import Language from './Language'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
 import IsStartupPushPlayDetailScreen from './IsStartupPushPlayDetailScreen'
+import NotificationPermission from './NotificationPermission'
 import { useI18n } from '@/lang/i18n'
 
 export default memo(() => {
@@ -16,6 +17,7 @@ export default memo(() => {
       <IsStartupPushPlayDetailScreen />
       <Theme />
       <Language />
+      <NotificationPermission />
     </SettingSection>
   )
 })

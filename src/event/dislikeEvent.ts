@@ -3,7 +3,7 @@ import Event from './Event'
 import { saveDislikeListRules } from '@/utils/data'
 import { setDislikeInfo } from '@/core/dislikeList'
 
-const updateList = async(dislikeInfo: LX.Dislike.DislikeInfo) => {
+const updateList = async(dislikeInfo: SY.Dislike.DislikeInfo) => {
   await saveDislikeListRules(dislikeInfo.rules)
   setDislikeInfo(dislikeInfo)
 }
@@ -18,7 +18,7 @@ export class DislikeEvent extends Event {
    * @param dislikeData 列表数据
    * @param isRemote 是否属于远程操作
    */
-  async dislike_data_overwrite(dislikeData: LX.Dislike.DislikeRules, isRemote: boolean = false) {
+  async dislike_data_overwrite(dislikeData: SY.Dislike.DislikeRules, isRemote: boolean = false) {
     const dislikeInfo = await overwirteDislikeInfo(dislikeData)
     await updateList(dislikeInfo)
     this.emit('dislike_data_overwrite', dislikeData, isRemote)
@@ -31,7 +31,7 @@ export class DislikeEvent extends Event {
    * @param musicInfos 添加的歌曲信息
    * @param isRemote 是否属于远程操作
    */
-  async dislike_music_add(musicInfo: LX.Dislike.DislikeMusicInfo[], isRemote: boolean = false) {
+  async dislike_music_add(musicInfo: SY.Dislike.DislikeMusicInfo[], isRemote: boolean = false) {
     const dislikeInfo = await addDislikeInfo(musicInfo)
     await updateList(dislikeInfo)
     this.emit('dislike_music_add', musicInfo, isRemote)

@@ -18,14 +18,14 @@ import { handlePlay } from './listAction'
 import { hapticImpactLight } from '@/utils/haptic'
 import { SPACING } from '@/config/spacing'
 
-type FlatListType = FlatListProps<LX.Music.MusicInfoOnline>
+type FlatListType = FlatListProps<SY.Music.MusicInfoOnline>
 
 export type {
   RowInfoType,
 }
 
 export interface ListProps {
-  onShowMenu: (musicInfo: LX.Music.MusicInfoOnline, index: number, position: Position) => void
+  onShowMenu: (musicInfo: SY.Music.MusicInfoOnline, index: number, position: Position) => void
   onMuiltSelectMode: () => void
   onSelectAll: (isAll: boolean) => void
   onRefresh: () => void
@@ -43,16 +43,16 @@ export interface ListProps {
   contentPaddingTop?: number
 }
 export interface ListType {
-  setList: (list: LX.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
+  setList: (list: SY.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
   setIsMultiSelectMode: (isMultiSelectMode: boolean) => void
   setSelectMode: (mode: SelectMode) => void
   selectAll: (isAll: boolean) => void
-  getSelectedList: () => LX.Music.MusicInfoOnline[]
-  getList: () => LX.Music.MusicInfoOnline[]
+  getSelectedList: () => SY.Music.MusicInfoOnline[]
+  getList: () => SY.Music.MusicInfoOnline[]
   setStatus: (val: Status) => void
   /** 列表内搜索定位（方案 playlist-search-add-music §B3，2026-10-20）：按 id 匹配滚动定位，
    * 对齐 Mylist/List 先例（scrollToIndex + viewPosition 0.3 + rowNum 换算）；未命中 toast（两页统一口径） */
-  scrollToInfo: (info: LX.Music.MusicInfo) => void
+  scrollToInfo: (info: SY.Music.MusicInfo) => void
 }
 export type Status = 'loading' | 'refreshing' | 'end' | 'error' | 'idle'
 
@@ -77,14 +77,14 @@ const List = forwardRef<ListType, ListProps>(({
   const t = useI18n()
   const theme = useTheme()
   const bottomInset = usePlayerBarBottomInset()
-  const flatListRef = useRef<FlatList<LX.Music.MusicInfoOnline>>(null)
-  const [currentList, setList] = useState<LX.Music.MusicInfoOnline[]>([])
+  const flatListRef = useRef<FlatList<SY.Music.MusicInfoOnline>>(null)
+  const [currentList, setList] = useState<SY.Music.MusicInfoOnline[]>([])
   const [showSource, setShowSource] = useState(false)
   const isMultiSelectModeRef = useRef(false)
   const selectModeRef = useRef<SelectMode>('single')
   const prevSelectIndexRef = useRef(-1)
-  const [selectedList, setSelectedList] = useState<LX.Music.MusicInfoOnline[]>([])
-  const selectedListRef = useRef<LX.Music.MusicInfoOnline[]>([])
+  const [selectedList, setSelectedList] = useState<SY.Music.MusicInfoOnline[]>([])
+  const selectedListRef = useRef<SY.Music.MusicInfoOnline[]>([])
   const [visibleMultiSelect, setVisibleMultiSelect] = useState(false)
   const [status, setStatus] = useState<Status>('idle')
   const rowInfo = useRef(getRowInfo(rowType))
@@ -112,7 +112,7 @@ const List = forwardRef<ListType, ListProps>(({
       selectModeRef.current = mode
     },
     selectAll(isAll) {
-      let list: LX.Music.MusicInfoOnline[]
+      let list: SY.Music.MusicInfoOnline[]
       if (isAll) {
         list = [...currentList]
       } else {
@@ -141,14 +141,14 @@ const List = forwardRef<ListType, ListProps>(({
   }))
 
 
-  const handleUpdateSelectedList = (newList: LX.Music.MusicInfoOnline[]) => {
+  const handleUpdateSelectedList = (newList: SY.Music.MusicInfoOnline[]) => {
     if (selectedListRef.current.length && newList.length == currentList.length) onSelectAll(true)
     else if (selectedListRef.current.length == currentList.length) onSelectAll(false)
     selectedListRef.current = newList
     setSelectedList(newList)
   }
-  const handleSelect = (item: LX.Music.MusicInfoOnline, pressIndex: number) => {
-    let newList: LX.Music.MusicInfoOnline[]
+  const handleSelect = (item: SY.Music.MusicInfoOnline, pressIndex: number) => {
+    let newList: SY.Music.MusicInfoOnline[]
     if (selectModeRef.current == 'single') {
       prevSelectIndexRef.current = pressIndex
       const index = selectedListRef.current.indexOf(item)
@@ -179,9 +179,9 @@ const List = forwardRef<ListType, ListProps>(({
     handleUpdateSelectedList(newList)
   }
 
-  const handlePress = (item: LX.Music.MusicInfoOnline, index: number) => {
+  const handlePress = (item: SY.Music.MusicInfoOnline, index: number) => {
     requestAnimationFrame(() => {
-      if (checkHomePagerIdle && !global.lx.homePagerIdle) return
+      if (checkHomePagerIdle && !global.sy.homePagerIdle) return
       if (isMultiSelectModeRef.current) {
         handleSelect(item, index)
       } else {
@@ -196,7 +196,7 @@ const List = forwardRef<ListType, ListProps>(({
     })
   }
 
-  const handleLongPress = (item: LX.Music.MusicInfoOnline, index: number) => {
+  const handleLongPress = (item: SY.Music.MusicInfoOnline, index: number) => {
     if (isMultiSelectModeRef.current) return
     hapticImpactLight()
     prevSelectIndexRef.current = index
@@ -226,9 +226,9 @@ const List = forwardRef<ListType, ListProps>(({
       downloaded={downloadedSet.has(downloadedAction.getDownloadedKey(item.source, item.id))}
       onLikePress={toggleLike}
       // OnlineList 数据源恒为在线歌曲，统一行按联合类型收窄，边界处断言
-      onPress={(pressedItem, pressIndex) => { handlePress(pressedItem as LX.Music.MusicInfoOnline, pressIndex) }}
-      onLongPress={(pressedItem, pressIndex) => { handleLongPress(pressedItem as LX.Music.MusicInfoOnline, pressIndex) }}
-      onShowMenu={onShowMenu as unknown as (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void}
+      onPress={(pressedItem, pressIndex) => { handlePress(pressedItem as SY.Music.MusicInfoOnline, pressIndex) }}
+      onLongPress={(pressedItem, pressIndex) => { handleLongPress(pressedItem as SY.Music.MusicInfoOnline, pressIndex) }}
+      onShowMenu={onShowMenu as unknown as (item: SY.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void}
     />
   )
   const getkey: FlatListType['keyExtractor'] = item => item.id

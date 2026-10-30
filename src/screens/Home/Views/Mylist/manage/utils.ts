@@ -4,7 +4,7 @@ export interface DuplicateMusicItem {
   id: string
   index: number
   group: string
-  musicInfo: LX.Music.MusicInfo
+  musicInfo: SY.Music.MusicInfo
 }
 /**
  * 过滤列表内重复的歌曲
@@ -12,10 +12,10 @@ export interface DuplicateMusicItem {
  * @param isFilterVariant 是否过滤 Live Explicit 等歌曲名
  * @returns
  */
-export const filterDuplicateMusic = async(list: LX.Music.MusicInfo[], isFilterVariant: boolean = true) => {
+export const filterDuplicateMusic = async(list: SY.Music.MusicInfo[], isFilterVariant: boolean = true) => {
   const listMap = new Map<string, DuplicateMusicItem[]>()
   const duplicateList = new Set<string>()
-  const handleFilter = (name: string, index: number, musicInfo: LX.Music.MusicInfo) => {
+  const handleFilter = (name: string, index: number, musicInfo: SY.Music.MusicInfo) => {
     if (listMap.has(name)) {
       const targetMusicInfo = listMap.get(name)
       targetMusicInfo!.push({

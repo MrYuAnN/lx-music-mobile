@@ -39,9 +39,9 @@ export interface LocalMusicItem {
   // 下载曲回填（2026-10-29 走查反馈）：picUrl 直指磁盘 sidecar 封面（file://，零网络），
   // onlineInfo=原曲在线身份（切档取链/评论/音质展示复用）；随扫描持久化
   picUrl?: string
-  onlineInfo?: LX.Music.MusicInfoOnline
+  onlineInfo?: SY.Music.MusicInfoOnline
   // 下载实际档（单档布尔形态，供 ListItem qualityOverride 点亮音质标签）
-  _qualitys?: LX.Music._MusicQualityType
+  _qualitys?: SY.Music._MusicQualityType
   // 封面匹配失败标记（走查反馈：无可用封面置位后跳过封面匹配，isRefresh 强制；
   // 歌词走「空歌词缓存」语义不用标记——无歌词是正常状态）
   noCover?: boolean
@@ -65,9 +65,11 @@ export const toLocalMusicItem = (filePath: string, meta: {
     ext: meta.ext,
     size: meta.size,
     interval: meta.interval,
-    name: meta.name,
-    singer: meta.singer,
-    albumName: meta.albumName,
+    // 字段兜底（闪退修复 2026-10-30）：扫描 worker 对缺 tag 文件传 undefined，透传入库后
+    // 渲染链 splitSingers/toLowerCase 对 undefined 调方法即崩——入库前统一收敛为空串
+    name: meta.name || '',
+    singer: meta.singer || '',
+    albumName: meta.albumName || '',
   }
 }
 
@@ -85,7 +87,7 @@ export const updateLocalMusicMeta = (id: string, patch: Partial<Pick<LocalMusicI
   return true
 }
 
-export const toMusicInfoLocal = (item: LocalMusicItem): LX.Music.MusicInfoLocal => {
+export const toMusicInfoLocal = (item: LocalMusicItem): SY.Music.MusicInfoLocal => {
   return {
     id: item.id,
     name: item.name,
@@ -229,8 +231,8 @@ const CONCURRENCY = 4
 // 下载 mp3 为纯音频流无 tag，但素材已全存盘：sidecar 封面文件+downloadList 原曲身份。
 // 扫描合并时按 filePath 匹配任务回填，存量已下载歌全覆盖；补全结果随扫描持久化，
 // 下次 size 未变走存量快照直接读（=「下载时存素材、展示直接读」，不再匹配搜索））
-const buildDownloadTaskMap = async(): Promise<Map<string, LX.Download.ListItem>> => {
-  const map = new Map<string, LX.Download.ListItem>()
+const buildDownloadTaskMap = async(): Promise<Map<string, SY.Download.ListItem>> => {
+  const map = new Map<string, SY.Download.ListItem>()
   try {
     await initDownloadList()
     for (const task of getDownloadListSnapshot()) {
@@ -241,7 +243,7 @@ const buildDownloadTaskMap = async(): Promise<Map<string, LX.Download.ListItem>>
   return map
 }
 
-const applyDownloadMeta = async(file: { path: string, size: number }, item: LocalMusicItem, map: Map<string, LX.Download.ListItem>): Promise<LocalMusicItem> => {
+const applyDownloadMeta = async(file: { path: string, size: number }, item: LocalMusicItem, map: Map<string, SY.Download.ListItem>): Promise<LocalMusicItem> => {
   const task = map.get(file.path)
   if (!task) return item
   const mi = task.metadata.musicInfo
@@ -362,7 +364,7 @@ export const initLocalMusicList = async() => {
 }
 
 /** 单文件条目构建（下载联动 I-B 用）：存量 size 未变直接回填合成，否则读元数据过滤后合成 */
-const buildLocalMusicItem = async(filePath: string, size: number, downloadByPath: Map<string, LX.Download.ListItem>): Promise<LocalMusicItem | null> => {
+const buildLocalMusicItem = async(filePath: string, size: number, downloadByPath: Map<string, SY.Download.ListItem>): Promise<LocalMusicItem | null> => {
   const existing = localMusicList.find(m => m.filePath == filePath)
   if (existing && existing.size == size) {
     return applyDownloadMeta({ path: filePath, size }, existing, downloadByPath)
@@ -396,7 +398,7 @@ const registerDownloadLink = () => {
   global.state_event.on('downloadStateChanged', handleDownloadChanged)
 }
 
-const handleDownloadChanged = (_list: LX.Download.ListItem[]) => {
+const handleDownloadChanged = (_list: SY.Download.ListItem[]) => {
   if (isScanning) return
   if (syncingDownloadFiles) {
     // 单飞窗口内不丢事件：置 dirty，收尾用最新快照重跑（代码轮 I-3 修复）
@@ -413,7 +415,7 @@ const handleDownloadChanged = (_list: LX.Download.ListItem[]) => {
   void drain()
 }
 
-const syncDownloadFiles = async(list: LX.Download.ListItem[]) => {
+const syncDownloadFiles = async(list: SY.Download.ListItem[]) => {
   let changed = false
   // 幽灵剔除改差集定向（代码轮 I-4 修复）：仅复核「completed 记录已消失」的拾音目录条目
   // （换档删旧档/删除），不再每事件全量 O(N) existsFile

@@ -4,7 +4,7 @@ import { getDeviceLanguage } from '@/utils/tools'
 import { setLanguage, updateSetting } from '@/core/common'
 
 
-export default async(setting: LX.AppSetting) => {
+export default async(setting: SY.AppSetting) => {
   let lang = setting['common.langId']
 
   global.i18n = createI18n()

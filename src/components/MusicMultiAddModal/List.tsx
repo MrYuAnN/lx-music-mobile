@@ -7,7 +7,7 @@ import { PlaylistGridCreateCard, PlaylistGridScrollView } from '@/components/com
 // （审查 S-1 再收编），本文件只保留目标排除/只读放宽过滤与行渲染
 export default ({ listId, onPress, readonlySelectable = false, showCreate = true }: {
   listId: string
-  onPress: (listInfo: LX.List.MyListInfo) => void
+  onPress: (listInfo: SY.List.MyListInfo) => void
   /** 读语义场景（添加歌曲「其他歌单」来源，方案 playlist-search-add-music §A2/复核 S-a）：
    * 收藏歌单作为读源可选——原排除（isListContentReadonly）是「向其写入」的写防护，读场景不成立；
    * 写场景（移动/添加目标选择）缺省 false 维持现状 */

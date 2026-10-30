@@ -4,10 +4,10 @@ import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position 
 import { handleDislike } from './listAction'
 
 export interface SelectInfo {
-  musicInfo: LX.Music.MusicInfoOnline
+  musicInfo: SY.Music.MusicInfoOnline
   /** 当前列表全量（点播注入临时队列用） */
-  list: LX.Music.MusicInfoOnline[]
-  selectedList: LX.Music.MusicInfoOnline[]
+  list: SY.Music.MusicInfoOnline[]
+  selectedList: SY.Music.MusicInfoOnline[]
   index: number
   single: boolean
 }
@@ -53,7 +53,7 @@ export default forwardRef<ListMenuType, ListMenuProps>((props: ListMenuProps, re
   // 菜单收敛（2026-10-20 拍板）：删「歌曲详情」（跳源站网页低频）/「清除缓存」（播放链接缓存，
   // 播放器对过期链接自动重取），8 项 -> 5 项；「不喜欢」随黑名单重设计（治理批 P5）回归菜单
   // （快捷入口+播放页双入口，覆盖原「入口归播放页」拍板）
-  const handleSetMenu = (_musicInfo: LX.Music.MusicInfo) => {
+  const handleSetMenu = (_musicInfo: SY.Music.MusicInfo) => {
     setMenus([
       { action: 'play', label: t('play'), icon: 'play' },
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },

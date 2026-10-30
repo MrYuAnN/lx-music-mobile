@@ -2,13 +2,13 @@ import { LIST_IDS } from '@/config/constant'
 
 
 export interface InitState {
-  defaultList: LX.List.MyDefaultListInfo
-  loveList: LX.List.MyLoveListInfo
-  tempList: LX.List.MyTempListInfo
-  userList: LX.List.UserListInfo[]
+  defaultList: SY.List.MyDefaultListInfo
+  loveList: SY.List.MyLoveListInfo
+  tempList: SY.List.MyTempListInfo
+  userList: SY.List.UserListInfo[]
   activeListId: string
 
-  allList: Array<LX.List.MyDefaultListInfo | LX.List.MyLoveListInfo | LX.List.UserListInfo>
+  allList: Array<SY.List.MyDefaultListInfo | SY.List.MyLoveListInfo | SY.List.UserListInfo>
 
   tempListMeta: {
     id: string

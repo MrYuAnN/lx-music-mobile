@@ -15,7 +15,7 @@ interface BlankViewProps {
   scrollYAnimated?: Animated.Value
   contentPaddingTop?: number
 }
-type Source = LX.OnlineSource | 'all'
+type Source = SY.OnlineSource | 'all'
 
 export interface BlankViewType {
   show: (source: Source) => void

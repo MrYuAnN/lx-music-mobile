@@ -28,7 +28,7 @@ export default memo(() => {
   }, [])
 
   const handleChange = useCallback((item: CheckSheetItem) => {
-    updateSetting({ 'player.playQuality': item.action as LX.Quality })
+    updateSetting({ 'player.playQuality': item.action as SY.Quality })
   }, [])
 
   return (

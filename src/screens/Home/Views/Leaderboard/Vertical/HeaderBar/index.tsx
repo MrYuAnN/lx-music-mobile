@@ -19,7 +19,7 @@ export interface HeaderBarProps {
 }
 
 export interface HeaderBarType {
-  setBound: (source: LX.OnlineSource, id: string, name: string) => void
+  setBound: (source: SY.OnlineSource, id: string, name: string) => void
 }
 
 // 排行榜顶栏（拍板定稿）：单淡底字段形触发器（r8 同构搜索框，单选字段非 chips 故不用胶囊 r999）「酷我 · 热歌榜 ⌄」——音源短名（前置维度）
@@ -32,7 +32,7 @@ export default forwardRef<HeaderBarType, HeaderBarProps>(({ onBoundSelect, onSou
   const t = useI18n()
   const sheetRef = useRef<BoardPickerSheetType>(null)
   // 首项跟随（批1 阶段2）：初值=store 构建集首项（替换 'kw' 硬编码）
-  const [source, setSource] = useState<LX.OnlineSource>(boardState.sources[0] ?? 'kw')
+  const [source, setSource] = useState<SY.OnlineSource>(boardState.sources[0] ?? 'kw')
   const [boardId, setBoardId] = useState('')
   const [boardName, setBoardName] = useState('')
 

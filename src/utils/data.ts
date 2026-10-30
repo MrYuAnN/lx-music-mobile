@@ -30,9 +30,9 @@ const selectedManagedFolderPrefix = storageDataPrefix.selectedManagedFolder
 // const defaultListKey = listPrefix + 'default'
 // const loveListKey = listPrefix + 'love'
 
-let listPosition: LX.List.ListPositionInfo
+let listPosition: SY.List.ListPositionInfo
 let listPrevSelectId: string
-let listUpdateInfo: LX.List.ListUpdateInfo
+let listUpdateInfo: SY.List.ListUpdateInfo
 
 let searchSetting: typeof DEFAULT_SETTING['search']
 let songListSetting: typeof DEFAULT_SETTING['songList']
@@ -63,8 +63,8 @@ export const saveFontSize = async(size: number) => {
   await saveData(fontSizeKey, size)
 }
 
-export const getUserTheme = async() => (await getData<LX.Theme[]>(themeKey) ?? [])
-export const saveUserTheme = async(themes: LX.Theme[]) => {
+export const getUserTheme = async() => (await getData<SY.Theme[]>(themeKey) ?? [])
+export const saveUserTheme = async(themes: SY.Theme[]) => {
   await saveData(themeKey, themes)
 }
 
@@ -123,7 +123,7 @@ export const getListUpdateInfo = async() => {
   await initListUpdateInfo()
   return listUpdateInfo
 }
-export const saveListUpdateInfo = async(info: LX.List.ListUpdateInfo) => {
+export const saveListUpdateInfo = async(info: SY.List.ListUpdateInfo) => {
   await initListUpdateInfo()
   listUpdateInfo = info
   saveListUpdateInfoThrottle()
@@ -284,8 +284,8 @@ const idFixRxp = /\.0$/
 /**
  * 获取用户列表
  */
-export const getUserLists = async(): Promise<LX.List.UserListInfo[]> => {
-  const list = await getData<LX.List.UserListInfo[]>(userListKey) ?? []
+export const getUserLists = async(): Promise<SY.List.UserListInfo[]> => {
+  const list = await getData<SY.List.UserListInfo[]>(userListKey) ?? []
   for (const info of list) {
     // 兼容v2.3.0之前版本PC端插入数字类型的ID导致其意外在末尾追加 .0 的问题
     if (info.sourceListId?.endsWith?.('.0')) {
@@ -299,7 +299,7 @@ export const getUserLists = async(): Promise<LX.List.UserListInfo[]> => {
  * 保存用户列表
  * @param listInfo
  */
-export const saveUserList = async(listInfo: LX.List.UserListInfo[]) => {
+export const saveUserList = async(listInfo: SY.List.UserListInfo[]) => {
   await saveData(userListKey, listInfo)
 }
 
@@ -308,8 +308,8 @@ export const saveUserList = async(listInfo: LX.List.UserListInfo[]) => {
  * @param listId 列表id
  * @returns
  */
-export const getListMusics = async(listId: string): Promise<LX.Music.MusicInfo[]> => {
-  const list = await getData<LX.Music.MusicInfo[]>(listPrefix + listId)
+export const getListMusics = async(listId: string): Promise<SY.Music.MusicInfo[]> => {
+  const list = await getData<SY.Music.MusicInfo[]>(listPrefix + listId)
   return list ?? []
 }
 
@@ -317,7 +317,7 @@ export const getListMusics = async(listId: string): Promise<LX.Music.MusicInfo[]
  * 保存列表内歌曲
  * @param listData 列表数据
  */
-export const saveListMusics = async(listData: Array<{ id: string, musics: LX.Music.MusicInfo[] }>) => {
+export const saveListMusics = async(listData: Array<{ id: string, musics: SY.Music.MusicInfo[] }>) => {
   if (listData.length > 1) {
     await saveDataMultiple(listData.map(list => ([listPrefix + list.id, list.musics])))
   } else {
@@ -333,24 +333,24 @@ export const saveListMusics = async(listData: Array<{ id: string, musics: LX.Mus
 export const removeListMusics = async(ids: string[]): Promise<void> => {
   if (ids.length > 1) {
     await removeDataMultiple(ids.map(id => {
-      // delete global.lx.listScrollPosition[id]
-      // delete global.lx.listSort[id]
+      // delete global.sy.listScrollPosition[id]
+      // delete global.sy.listSort[id]
       return listPrefix + id
     }))
   } else {
     await removeData(listPrefix + ids[0])
   }
-  // await saveData(listSortPrefix, global.lx.listSort)
-  // delaySaveListScrollPosition(global.lx.listScrollPosition)
+  // await saveData(listSortPrefix, global.sy.listSort)
+  // delaySaveListScrollPosition(global.sy.listScrollPosition)
 }
 
 export const qualitys = ['128k', '320k', 'flac', 'flac24bit']
-export const hasMusicUrlByMusic = async(musicInfo: LX.Music.MusicInfo) => {
+export const hasMusicUrlByMusic = async(musicInfo: SY.Music.MusicInfo) => {
   return getDataMultiple(qualitys.map(q => `${storageDataPrefix.musicUrl}${musicInfo.id}_${q}`)).then((urls) => {
     return urls.some(([, url]) => !!url)
   })
 }
-export const clearMusicUrlByMusic = async(musicInfo: LX.Music.MusicInfo) => {
+export const clearMusicUrlByMusic = async(musicInfo: SY.Music.MusicInfo) => {
   await removeDataMultiple(qualitys.map(q => `${storageDataPrefix.musicUrl}${musicInfo.id}_${q}`))
 }
 // URL 缓存本地兜底 TTL：服务端 expire 未下发（异常路径）时的保守时效（2026-10-29 审查 I-C 缺省语义）
@@ -359,7 +359,7 @@ const MUSIC_URL_LOCAL_TTL = 10 * 60
 const MUSIC_URL_EXPIRE_GRACE = 60
 /** 读直链缓存：存储值 {url, expire}。旧格式纯字符串/异构/已过期（含宽限）一律返回空串视同
  *  缓存 miss——过期校验单点下沉本层（2026-10-29 审查 C1 修订），online/utils 各读点天然全覆盖 */
-export const getMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality) => {
+export const getMusicUrl = async(musicInfo: SY.Music.MusicInfo, type: SY.Quality) => {
   const raw = await getData<{ url?: string, expire?: number }>(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`)
   if (!raw || typeof raw != 'object') return ''
   if (typeof raw.url != 'string' || !raw.url || typeof raw.expire != 'number') return ''
@@ -367,7 +367,7 @@ export const getMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality
   return raw.url
 }
 /** 写直链缓存：expire=服务端下发的绝对过期时刻（秒级 unix）；缺省按本地兜底 TTL */
-export const saveMusicUrl = async(musicInfo: LX.Music.MusicInfo, type: LX.Quality, url: string, expire?: number) => saveData(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`, {
+export const saveMusicUrl = async(musicInfo: SY.Music.MusicInfo, type: SY.Quality, url: string, expire?: number) => saveData(`${storageDataPrefix.musicUrl}${musicInfo.id}_${type}`, {
   url,
   expire: expire ?? (Math.trunc(Date.now() / 1000) + MUSIC_URL_LOCAL_TTL),
 })
@@ -376,26 +376,26 @@ export const clearMusicUrl = async(keys?: string[]) => {
   await removeDataMultiple(keys)
 }
 
-export const getLyric = async(musicInfo: LX.Music.MusicInfo) => getData<LX.Music.LyricInfo>(`${storageDataPrefix.lyric}${musicInfo.id}`).then(lrcInfo => lrcInfo ?? { lyric: '' })
-export const saveLyric = async(musicInfo: LX.Music.MusicInfo, lyricInfo: LX.Music.LyricInfo) => saveData(`${storageDataPrefix.lyric}${musicInfo.id}`, lyricInfo)
+export const getLyric = async(musicInfo: SY.Music.MusicInfo) => getData<SY.Music.LyricInfo>(`${storageDataPrefix.lyric}${musicInfo.id}`).then(lrcInfo => lrcInfo ?? { lyric: '' })
+export const saveLyric = async(musicInfo: SY.Music.MusicInfo, lyricInfo: SY.Music.LyricInfo) => saveData(`${storageDataPrefix.lyric}${musicInfo.id}`, lyricInfo)
 export const clearLyric = async(keys?: string[]) => {
   if (!keys) keys = (await getAllKeys()).filter(key => key.startsWith(storageDataPrefix.lyric))
   await removeDataMultiple(keys)
 }
-export const saveEditedLyric = async(musicInfo: LX.Music.MusicInfo, lyricInfo: LX.Music.LyricInfo) => saveData(`${storageDataPrefix.lyric}${musicInfo.id}_edited`, lyricInfo)
+export const saveEditedLyric = async(musicInfo: SY.Music.MusicInfo, lyricInfo: SY.Music.LyricInfo) => saveData(`${storageDataPrefix.lyric}${musicInfo.id}_edited`, lyricInfo)
 export const clearEditedLyric = async() => {
   let keys = (await getAllKeys()).filter(key => key.startsWith(storageDataPrefix.lyric) && key.endsWith('_edited'))
   await removeDataMultiple(keys)
 }
-export const getPlayerLyric = async(musicInfo: LX.Music.MusicInfo): Promise<LX.Player.LyricInfo> => {
+export const getPlayerLyric = async(musicInfo: SY.Music.MusicInfo): Promise<SY.Player.LyricInfo> => {
   return getDataMultiple([
     `${storageDataPrefix.lyric}${musicInfo.id}`,
     `${storageDataPrefix.lyric}${musicInfo.id}_edited`,
   ]).then(([lrcInfo, lrcInfo_edited]) => {
-    const lyricInfo: LX.Music.LyricInfo = lrcInfo_edited[1] as LX.Music.LyricInfo | null ?? {
+    const lyricInfo: SY.Music.LyricInfo = lrcInfo_edited[1] as SY.Music.LyricInfo | null ?? {
       lyric: '',
     }
-    let rawLyricInfo: LX.Music.LyricInfo = lrcInfo[1] as LX.Music.LyricInfo | null ?? {
+    let rawLyricInfo: SY.Music.LyricInfo = lrcInfo[1] as SY.Music.LyricInfo | null ?? {
       lyric: '',
     }
     return lyricInfo.lyric ? {
@@ -408,8 +408,8 @@ export const getPlayerLyric = async(musicInfo: LX.Music.MusicInfo): Promise<LX.P
   })
 }
 
-export const getOtherSource = async(id: string) => getData<LX.Music.MusicInfoOnline[]>(`${storageDataPrefix.musicOtherSource}${id}`).then((url) => url ?? [])
-export const saveOtherSource = async(id: string, sourceInfo: LX.Music.MusicInfoOnline[]) => saveData(`${storageDataPrefix.musicOtherSource}${id}`, sourceInfo)
+export const getOtherSource = async(id: string) => getData<SY.Music.MusicInfoOnline[]>(`${storageDataPrefix.musicOtherSource}${id}`).then((url) => url ?? [])
+export const saveOtherSource = async(id: string, sourceInfo: SY.Music.MusicInfoOnline[]) => saveData(`${storageDataPrefix.musicOtherSource}${id}`, sourceInfo)
 export const clearOtherSource = async(keys?: string[]) => {
   if (!keys) keys = (await getAllKeys()).filter(key => key.startsWith(storageDataPrefix.musicOtherSource))
   await removeDataMultiple(keys)
@@ -451,12 +451,12 @@ export const getMetaCache = async() => {
   return info
 }
 
-export const savePlayInfo = async(playInfo: LX.Player.SavedPlayInfo) => {
+export const savePlayInfo = async(playInfo: SY.Player.SavedPlayInfo) => {
   return saveData(playInfoStorageKey, playInfo)
 }
 // 获取上次关闭时的当前歌曲播放信息
 export const getPlayInfo = async() => {
-  return getData<LX.Player.SavedPlayInfo | null>(playInfoStorageKey)
+  return getData<SY.Player.SavedPlayInfo | null>(playInfoStorageKey)
 }
 
 let selectedManagedFolder: string | null = ''

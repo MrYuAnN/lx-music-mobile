@@ -33,11 +33,14 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
   const subHeaderFade = scrollYAnimated.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
   const musicListRef = useRef<MusicListType>(null)
   const headerBarRef = useRef<HeaderBarType>(null)
-  // 首项跟随（批1 阶段2）：初始源=store 构建集首项（替换 'kw' 硬编码）
-  const boundInfo = useRef<{ source: LX.OnlineSource, id: string | null }>({ source: boardState.sources[0] ?? 'kw', id: null })
+  // 空源期同步占位（复审 R2-v3：getLeaderboardSetting 为 async，同期初值拿不到持久化值）——
+  // init then 内先写持久化绑定、再判空源短路；有源时持久化值即刻覆盖
+  const boundInfo = useRef<{ source: SY.OnlineSource, id: string | null }>({ source: boardState.sources[0] ?? 'kw', id: null })
   const sourceChangeSeqRef = useRef(0)
 
-  const handleBoundChange = (source: LX.OnlineSource, id: string) => {
+  // 空源期交互入口守卫（复审 R2-v3）：tip 态下 sheet/⋯按钮无有效源上下文，禁发请求
+  const handleBoundChange = (source: SY.OnlineSource, id: string) => {
+    if (!boardState.sources.length) return
     musicListRef.current?.loadList(source, id)
     void saveLeaderboardSetting({
       source,
@@ -48,6 +51,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
   // sheet 点选榜单：更新显示 + 加载列表 + 持久化。seq 递增使在途 init 迟到响应全部失效
   // （防 init 网络窗口内选榜被覆盖，三席审查 #7）
   const onBoundSelect: HeaderBarProps['onBoundSelect'] = (source, id, name) => {
+    if (!boardState.sources.length) return
     sourceChangeSeqRef.current++
     boundInfo.current = { source, id }
     headerBarRef.current?.setBound(source, id, name)
@@ -56,6 +60,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
 
   // sheet 切源（拍板#3：切源即应用该源第一榜；board 由 sheet 单链守卫后上交）
   const onSourceChange: HeaderBarProps['onSourceChange'] = (source, board) => {
+    if (!boardState.sources.length) return
     sourceChangeSeqRef.current++ // 使在途 init 响应失效
     boundInfo.current = { source, id: board.id }
     headerBarRef.current?.setBound(source, board.id, board.name ?? 'Unknown')
@@ -65,10 +70,12 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
   // ⋯播放：仅点选的榜单就是当前主列表时复用其数据，否则交给 handlePlay 按 id 拉取
   // （切源网络窗口内点 ⋯ 不再先短暂播放旧榜内容，审查 S-5）
   const onPlay: HeaderBarProps['onPlay'] = (id) => {
+    if (!boardState.sources.length) return
     const info = boardState.listDetailInfo
     void handlePlay(id, info.id == id ? info.list : undefined)
   }
   const onCollect: HeaderBarProps['onCollect'] = (id, name) => {
+    if (!boardState.sources.length) return
     void handleCollect(id, name, boundInfo.current.source)
   }
 
@@ -85,6 +92,11 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
       }
       if (seq == sourceChangeSeqRef.current) {
         boundInfo.current = { source, id: boardId }
+      }
+      // 空源期（边界①）：绑定已写（持久化值，恢复分支消费），短路加载——不发任何请求，
+      // 页面走 SourcesOfflineTip（走查 F-2/F-3：占位源对摘源发请求报 unknown 的根治）
+      if (!boardState.sources.length) return
+      if (seq == sourceChangeSeqRef.current) {
         musicListRef.current?.loadList(source, boardId)
       }
       void getBoardsList(source).then(list => {
@@ -102,14 +114,24 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
       const sources = boardState.sources
       const wasEmpty = prevSourcesEmpty
       prevSourcesEmpty = !sources.length
-      // 空集→非空恢复（审查 I-F）：组件重挂后按当前绑定补拉（id 失效落首榜）
+      // 空集→非空恢复（审查 I-F）：组件重挂后按当前绑定补拉（id 失效落首榜）。
+      // 恢复分支摘源守卫（复审 R2-v3）：115 行 return 短路了 117-128 既有摘源重绑，
+      // 绑定源已被摘时须在本分支先改绑首项再补拉，否则恢复时刻对被摘源发请求重演 unknown
       if (wasEmpty && sources.length) {
+        if (!sources.includes(boundInfo.current.source)) {
+          boundInfo.current = { source: sources[0], id: null }
+        }
+        const reboundSource = boundInfo.current.source
+        // seq 守卫（代码审查 I-1，同构下方 133-144 摘源重绑/审查 S-6）：恢复网络窗口内
+        // 用户已手动切源/选榜则弃本次自动应用，防迟到响应回滚用户选择并污染持久化
+        const seq = sourceChangeSeqRef.current
         requestAnimationFrame(() => {
-          void getBoardsList(boundInfo.current.source).then(list => {
+          void getBoardsList(reboundSource).then(list => {
+            if (seq != sourceChangeSeqRef.current) return
             const bound = list.find(l => l.id == boundInfo.current.id) ?? list[0]
             if (!bound) return
-            headerBarRef.current?.setBound(boundInfo.current.source, bound.id, bound.name ?? 'Unknown')
-            handleBoundChange(boundInfo.current.source, bound.id)
+            headerBarRef.current?.setBound(reboundSource, bound.id, bound.name ?? 'Unknown')
+            handleBoundChange(reboundSource, bound.id)
           }).catch(() => {})
         })
         return

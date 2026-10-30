@@ -12,7 +12,7 @@ import { handlePlay } from './listAction'
 // >
 
 export interface MusicListType {
-  loadList: (source: LX.OnlineSource, listId: string) => void
+  loadList: (source: SY.OnlineSource, listId: string) => void
 }
 
 export interface MusicListProps {

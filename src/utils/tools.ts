@@ -3,7 +3,7 @@ import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appear
 import Clipboard from '@react-native-clipboard/clipboard'
 import { storageDataPrefix } from '@/config/constant'
 import { gzipFile, readFile, temporaryDirectoryPath, unGzipFile, unlink, writeFile } from '@/utils/fs'
-import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled, requestNotificationPermission, requestIgnoreBatteryOptimization, shareText } from '@/utils/nativeModules/utils'
+import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled, requestIgnoreBatteryOptimization, shareText } from '@/utils/nativeModules/utils'
 import musicSdk from '@/utils/musicSdk'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import BackgroundTimer from 'react-native-background-timer'
@@ -137,8 +137,8 @@ export const toast = (message: string, duration: 'long' | 'short' = 'short', pos
 
 export const openUrl = async(url: string): Promise<void> => Linking.canOpenURL(url).then(async() => Linking.openURL(url))
 
-export const assertApiSupport = (source: LX.Source): boolean => {
-  return source == 'local' || global.lx.qualityList[source] != null
+export const assertApiSupport = (source: SY.Source): boolean => {
+  return source == 'local' || global.sy.qualityList[source] != null
 }
 
 // const handleRemoveDataMultiple = async keys => {
@@ -252,88 +252,69 @@ export const clipboardWriteText = (str: string) => {
 
 
 export const checkNotificationPermission = async() => {
-  const isHide = await getData(storageDataPrefix.notificationTipEnable)
-  if (isHide != null) return
   const enabled = await isNotificationsEnabled()
   if (enabled) return
-  // 三钮竖排（HIG 三按钮 alert，审查 I-1）路由 ConfirmHost：不再提示/拒绝/同意并前往，
-  // 按钮副作用保持原语义
-  return confirmAction.show({
-    title: global.i18n.t('notifications_check_title'),
-    message: global.i18n.t('notifications_check_tip'),
-    cancelButtonText: global.i18n.t('never_show'),
-    confirmButtonText: global.i18n.t('agree_go'),
-    neutral: {
-      text: global.i18n.t('disagree'),
-      onPress: () => {
-        toast(global.i18n.t('disagree_tip'))
-      },
-    },
-    showConfirm: true,
-    // 强制三选一（审查 S-3 拍板对齐原版）：原版 Alert 未传第四参=Android 默认 cancelable:false，
-    // 遮罩/返回键均不可关，防「误关不落『不再提示』下次启动再弹」
-    bgHide: false,
-    keyHide: false,
-    onCancel: () => {
-      void saveData(storageDataPrefix.notificationTipEnable, '1')
-      toast(global.i18n.t('disagree_tip'))
-    },
-    onConfirm: () => {
-      requestAnimationFrame(() => {
-        void requestNotificationPermission().then((result) => {
-          if (!result) toast(global.i18n.t('disagree_tip'))
-        })
-      })
-    },
-  }).then(() => {})
+  // 系统权限窗一次性请求（走查 F-4 / 复审 R3-v3）：fire-and-forget 不阻塞首播；拒绝=静默
+  // 降级（播放正常、无通知卡片），设置页「通知权限」入口（openNotificationSettings）为唯一
+  // 找回路径。原 in-app 三钮弹窗退役；ROM 代弹与桌面歌词锁定路径的重复由 OS 单次窗语义天然去重
+  const requested = await getData(storageDataPrefix.notificationPermissionRequested)
+  if (requested != null) return
+  // 一次性标记后置（2026-10-30 弹窗批定稿/审查 I-1）：resolve 即落盘（granted/denied 均落，
+  // denied 无法区分 ROM 拦截与用户拒绝），仅 reject/异常不落盘允许下次重试。
+  // 拒绝=静默降级（拍板 I-2/R3-v3）：不 toast 不催促；设置页「通知权限」入口为唯一找回路径
+  void PermissionsAndroid.request(PermissionsAndroid.PERMISSIONS.POST_NOTIFICATIONS)
+    .then(() => saveData(storageDataPrefix.notificationPermissionRequested, '1'))
+    .catch(() => {})
 }
 
 
 export const checkIgnoringBatteryOptimization = async() => {
   const isHide = await getData(storageDataPrefix.ignoringBatteryOptimizationTipEnable)
   if (isHide != null) return
+  // 去设置失败冷却（2026-10-30 弹窗批定稿/审查 I-1）：系统框被 ROM 拦截或用户在系统框拒绝时
+  // 落 7 天冷却标记，冷却期内不再打扰；「不再提醒」为永久键，设置页清缓存可复位（reset 双清）。
+  // 7 天取值：业界无权威数值（惯例为按 session/版本限频重提示），本产品自定（代码审查 I-3 补注）
+  const cooldownUntil = await getData(storageDataPrefix.batteryOptimizationCooldownUntil)
+  if (cooldownUntil != null && Date.now() < Number(cooldownUntil)) return
   const enabled = await isIgnoringBatteryOptimization()
   if (enabled) return
   return confirmAction.show({
     title: global.i18n.t('ignoring_battery_optimization_check_title'),
     message: global.i18n.t('ignoring_battery_optimization_check_tip'),
     cancelButtonText: global.i18n.t('never_show'),
-    confirmButtonText: global.i18n.t('agree_to'),
-    neutral: {
-      text: global.i18n.t('disagree'),
-      onPress: () => {
-        toast(global.i18n.t('disagree_tip'))
-      },
-    },
+    confirmButtonText: global.i18n.t('dialog_go_settings'),
     showConfirm: true,
-    // 强制三选一（审查 S-3 拍板对齐原版）：同 checkNotificationPermission
+    // 强制二选一（双钮化定稿）：遮罩/返回键均不可关，防「误关不落标记下次启动再弹」
     bgHide: false,
     keyHide: false,
     onCancel: () => {
       void saveData(storageDataPrefix.ignoringBatteryOptimizationTipEnable, '1')
-      toast(global.i18n.t('disagree_tip'))
     },
     onConfirm: () => {
       requestAnimationFrame(() => {
         void requestIgnoreBatteryOptimization().then((result) => {
-          if (!result) toast(global.i18n.t('disagree_tip'))
+          if (!result) void saveData(storageDataPrefix.batteryOptimizationCooldownUntil, String(Date.now() + 7 * 24 * 60 * 60 * 1000))
+        }).catch(() => {
+          void saveData(storageDataPrefix.batteryOptimizationCooldownUntil, String(Date.now() + 7 * 24 * 60 * 60 * 1000))
         })
       })
     },
   }).then(() => {})
 }
 export const resetNotificationPermissionCheck = async() => {
-  return removeData(storageDataPrefix.notificationTipEnable)
+  await removeData(storageDataPrefix.notificationTipEnable)
+  return removeData(storageDataPrefix.notificationPermissionRequested)
 }
 export const resetIgnoringBatteryOptimizationCheck = async() => {
-  return removeData(storageDataPrefix.ignoringBatteryOptimizationTipEnable)
+  await removeData(storageDataPrefix.ignoringBatteryOptimizationTipEnable)
+  return removeData(storageDataPrefix.batteryOptimizationCooldownUntil)
 }
 
 export const formatMusicName = (format: string, name: string, singer: string) => {
   return format.replace('歌手', singer).replace('歌名', name)
 }
 
-export const shareMusic = (downloadFileName: LX.AppSetting['download.fileName'], musicInfo: LX.Music.MusicInfo) => {
+export const shareMusic = (downloadFileName: SY.AppSetting['download.fileName'], musicInfo: SY.Music.MusicInfo) => {
   const name = musicInfo.name
   const singer = musicInfo.singer
   const detailUrl = musicInfo.source == 'local' ? '' : musicSdk[musicInfo.source]?.getMusicDetailPageUrl(toOldMusicInfo(musicInfo)) ?? ''

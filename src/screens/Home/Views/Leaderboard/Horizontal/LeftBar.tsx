@@ -18,11 +18,11 @@ type Sources = Readonly<InitState['sources']>
 type SourceSelectorType = _SourceSelectorType<Sources>
 
 export interface LeftBarProps {
-  onChangeList: (source: LX.OnlineSource, id: string) => void
+  onChangeList: (source: SY.OnlineSource, id: string) => void
 }
 
 export interface LeftBarType {
-  setBound: (source: LX.OnlineSource, id: string) => void
+  setBound: (source: SY.OnlineSource, id: string) => void
 }
 
 export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => {
@@ -30,7 +30,7 @@ export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => 
   const sourceSelectorRef = useRef<SourceSelectorType>(null)
   const boardsListRef = useRef<BoardsListType>(null)
   // 首项跟随（批1 阶段2）：初始源=store 构建集首项（替换 'kw' 硬编码）
-  const boundInfo = useRef<{ source: LX.OnlineSource, id: string | null }>({ source: boardState.sources[0] ?? 'kw', id: null })
+  const boundInfo = useRef<{ source: SY.OnlineSource, id: string | null }>({ source: boardState.sources[0] ?? 'kw', id: null })
   useImperativeHandle(ref, () => ({
     setBound(source, listId) {
       boundInfo.current = { source, id: listId }
@@ -79,7 +79,7 @@ export default forwardRef<LeftBarType, LeftBarProps>(({ onChangeList }, ref) => 
   // eslint-disable-next-line react-hooks/exhaustive-deps -- onChangeList 父级引用不稳定，仅订阅一次
   }, [])
 
-  const onSourceChange = (source: LX.OnlineSource) => {
+  const onSourceChange = (source: SY.OnlineSource) => {
     boundInfo.current.source = source
     void getBoardsList(source).then(list => {
       const id = list[0].id

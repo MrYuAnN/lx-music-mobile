@@ -45,7 +45,7 @@ export default memo(() => {
       // }, 100)
     })
 
-    const handleSettingUpdate = (keys: Array<keyof LX.AppSetting>) => {
+    const handleSettingUpdate = (keys: Array<keyof SY.AppSetting>) => {
       if (!keys.includes('common.alwaysKeepStatusbarHeight') || !sizeRef.current[1]) return
       const height = getStatusbarHeight()
 

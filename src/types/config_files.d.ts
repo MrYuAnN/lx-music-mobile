@@ -1,8 +1,8 @@
-declare namespace LX {
+declare namespace SY {
   namespace ConfigFile {
     interface MyListInfoPart {
       type: 'playListPart_v2'
-      data: LX.List.MyDefaultListInfoFull | LX.List.MyLoveListInfoFull | LX.List.UserListInfoFull
+      data: SY.List.MyDefaultListInfoFull | SY.List.MyLoveListInfoFull | SY.List.UserListInfoFull
     }
 
   }

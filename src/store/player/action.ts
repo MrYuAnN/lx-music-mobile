@@ -1,7 +1,7 @@
 import { arrPush, arrUnshift, formatPlayTime2 } from '@/utils'
 import state from './state'
 
-type PlayerMusicInfoKeys = keyof LX.Player.MusicInfo
+type PlayerMusicInfoKeys = keyof SY.Player.MusicInfo
 const musicInfoKeys: PlayerMusicInfoKeys[] = Object.keys(state.musicInfo) as PlayerMusicInfoKeys[]
 
 export default {
@@ -16,7 +16,7 @@ export default {
 
     global.state_event.playInfoChanged({ ...state.playInfo })
   },
-  setPlayMusicInfo(listId: string | null, musicInfo: LX.Download.ListItem | LX.Music.MusicInfo | null, isTempPlay: boolean = false) {
+  setPlayMusicInfo(listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false) {
     state.playMusicInfo = { listId, musicInfo, isTempPlay }
     // 换歌重置实际播放档（2026-10-29 题1）：走 setActualQuality 发事件（审查 I-A2：裸赋值
     // 不通知订阅方，换歌瞬间 UI 残留上一首档位），UI 回退全局设置档
@@ -24,12 +24,12 @@ export default {
 
     global.state_event.playMusicInfoChanged(state.playMusicInfo)
   },
-  setActualQuality(quality: LX.Quality | null) {
+  setActualQuality(quality: SY.Quality | null) {
     state.actualQuality = quality
 
     global.state_event.actualQualityChanged(quality)
   },
-  setMusicInfo(_musicInfo: Partial<LX.Player.MusicInfo>) {
+  setMusicInfo(_musicInfo: Partial<SY.Player.MusicInfo>) {
     for (const key of musicInfoKeys) {
       const val = _musicInfo[key]
       if (val !== undefined) {
@@ -72,7 +72,7 @@ export default {
 
     global.state_event.playProgressChanged({ ...state.progress })
   },
-  addPlayedList(info: LX.Player.PlayMusicInfo) {
+  addPlayedList(info: SY.Player.PlayMusicInfo) {
     if (state.playedList.some(m => m.musicInfo.id == info.musicInfo.id)) return
     state.playedList.push(info)
 
@@ -88,8 +88,8 @@ export default {
 
     global.state_event.playPlayedListChanged({ ...state.playedList })
   },
-  addTempPlayList(list: LX.Player.TempPlayListItem[]) {
-    const topList: Array<{ listId: string | null, musicInfo: LX.Music.MusicInfo | LX.Download.ListItem }> = []
+  addTempPlayList(list: SY.Player.TempPlayListItem[]) {
+    const topList: Array<{ listId: string | null, musicInfo: SY.Music.MusicInfo | SY.Download.ListItem }> = []
     const bottomList = list.filter(({ isTop, ...musicInfo }) => {
       if (isTop) {
         topList.push(musicInfo)

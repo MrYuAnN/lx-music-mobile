@@ -38,10 +38,10 @@ const PRESSED_BACKGROUND = {
 // local 行降级：无 _qualitys 不渲染标签（qualityOverride 显式传入）、无 picUrl 走 icon 占位；
 // 时长恒行尾独立显示（2026-10-29 走查拍板统一，showSublineInterval 降级路径已删）
 export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge = false, showCover, showSource, showInterval, activeIndex = -1, isLiked = false, qualityOverride, downloaded = false, onLikePress, onPress, onLongPress, onShowMenu, addAction, added = false, dragEnabled = false, onDragStart, onDragMove, onDragRelease, onDragCancel }: {
-  item: LX.Music.MusicInfo
+  item: SY.Music.MusicInfo
   index: number
   rowInfo: RowInfo
-  selectedList: LX.Music.MusicInfo[]
+  selectedList: SY.Music.MusicInfo[]
   showIndex: boolean
   /** 排行榜前三金银铜徽章开关（显式化，三席审查 S-F：此前隐含「showIndex=true 恒榜单场景」的注释约定，无类型约束） */
   rankBadge?: boolean
@@ -51,24 +51,24 @@ export default memo(({ item, index, rowInfo, selectedList, showIndex, rankBadge 
   activeIndex?: number
   isLiked?: boolean
   /** 显式音质标签（下载管理已完成行按实际下载档显示） */
-  qualityOverride?: LX.Music._MusicQualityType
+  qualityOverride?: SY.Music._MusicQualityType
   /** 已下载标记（2026-10-29 重做定稿：check-circle 副行右端锚定，有/无不位移；对标网易云已下载=勾。
    * memo comparator 已入比较项，宿主从 useDownloadedSet 取值传入） */
   downloaded?: boolean
-  onLikePress?: (item: LX.Music.MusicInfo, isLiked: boolean) => void
-  onPress: (item: LX.Music.MusicInfo, index: number) => void
-  onLongPress?: (item: LX.Music.MusicInfo, index: number) => void
+  onLikePress?: (item: SY.Music.MusicInfo, isLiked: boolean) => void
+  onPress: (item: SY.Music.MusicInfo, index: number) => void
+  onLongPress?: (item: SY.Music.MusicInfo, index: number) => void
   /** 行菜单（⋮）。缺省且无 addAction 时不渲染尾部钮 */
-  onShowMenu?: (item: LX.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
+  onShowMenu?: (item: SY.Music.MusicInfo, index: number, position: { x: number, y: number, w: number, h: number }) => void
   /** 尾部「+ 添加」动作（添加歌曲页专用，方案 playlist-search-add-music §A2）：存在时替换 ⋮ 槽位；
    * added=true 显示已添加 ✓ 态。调用方以 useCallback 保持引用稳定（comparator 引用比较） */
-  addAction?: (item: LX.Music.MusicInfo) => void
+  addAction?: (item: SY.Music.MusicInfo) => void
   added?: boolean
   /** 拖拽排序手势开关（歌单链接导入同批方案 playlist-drag-reorder §三.1）：默认 false，既有消费方零变化。
    * true 时行级长按改分阶段判定（方案拍板 #1/R2）：长按到点即震+待命（反馈时点与现状一致），
    * 松手走 onLongPress（宿主多选，现状不变）；位移超阈值且宿主 allowDrag → onDragStart 拾起拖拽 */
   dragEnabled?: boolean
-  onDragStart?: (item: LX.Music.MusicInfo, index: number, absoluteY: number) => void
+  onDragStart?: (item: SY.Music.MusicInfo, index: number, absoluteY: number) => void
   onDragMove?: (absoluteY: number) => void
   onDragRelease?: () => void
   onDragCancel?: () => void
