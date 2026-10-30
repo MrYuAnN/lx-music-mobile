@@ -87,21 +87,18 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
       const sources = store.sources
       const wasEmpty = prevSourcesEmpty
       prevSourcesEmpty = !sources.length
-      // 空集→非空恢复（审查 I-F）：重渲染后补一次重搜；空文本不触发（审查 S-3）
-      if (wasEmpty && sources.length && searchState.searchText.trim()) {
+      // 恢复/重定向统一单次重搜（审查 S-2：原空集恢复 rAF 与源重定向同步调用在同一广播周期
+      // 对同词双 loadList——网络被 search() key 缓存兜住，仅 UI 重复刷）；空文本不触发（审查 S-3）
+      const sourceChanged = sources.length > 0 && !sources.includes(searchInfo.current.source)
+      if (sourceChanged) {
+        searchInfo.current.source = sources[0]
+        void saveSearchSetting({ source: searchInfo.current.source })
+      }
+      headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
+      if (searchState.searchText.trim() && ((wasEmpty && sources.length) || sourceChanged)) {
         requestAnimationFrame(() => {
           listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
         })
-      }
-      if (!sources.length || sources.includes(searchInfo.current.source)) {
-        headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
-        return
-      }
-      searchInfo.current.source = sources[0]
-      void saveSearchSetting({ source: searchInfo.current.source })
-      headerBarRef.current?.setSourceList(sources, searchInfo.current.source)
-      if (searchState.searchText.trim()) {
-        listRef.current?.loadList(searchState.searchText, searchInfo.current.source, searchInfo.current.searchType)
       }
     }
     const sourcesListener = () => {
@@ -126,10 +123,10 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     void saveSearchSetting({ source })
     listRef.current?.loadList(searchState.searchText, source, searchInfo.current.searchType)
   }
+  // 联想直调（2026-10-30 提速拍板：UI 触发层防抖整层删除——原双层叠加（UI 层 500ms timeout +
+  // 联想 debounce 200ms）末次请求最迟停手后 ~700ms；请求合并单源化到 TipList 的 debounceTipSearch）
   const handleTipSearch: HeaderBarProps['onTipSearch'] = (text) => {
-    setTimeout(() => {
-      searchTipListRef.current?.search(text, layoutHeightRef.current)
-    }, 500)
+    searchTipListRef.current?.search(text, layoutHeightRef.current)
   }
   const handleHideTipList = () => {
     if (timeoutRef.current) {
@@ -192,7 +189,13 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     <View style={styles.container}>
       {scrollYAnimated == null && subHeaderElement}
       <View style={styles.content} onLayout={handleLayout}>
-        <TipList ref={searchTipListRef} onSearch={handleSearch} />
+        {/* 联想面板锚定悬浮子头正下方：接线态 content 全屏延伸，其 top:0 已是页面顶，须补偿子头实测高；
+            横屏流内宿主子头在 content 之外，offset=0（2026-10-30 修复联想面板从屏幕顶展开遮蔽搜索页） */}
+        <TipList
+          ref={searchTipListRef}
+          onSearch={handleSearch}
+          topOffset={scrollYAnimated != null ? (contentPaddingTop ?? 0) + subHeaderHeight : 0}
+        />
         {sourcesEmpty
           ? <SourcesOfflineTip />
           : (

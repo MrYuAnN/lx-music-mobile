@@ -10,6 +10,8 @@ import { SPACING } from '@/config/spacing'
 
 export interface SearchTipListProps<T> extends ListProps<T> {
   onPressBg?: () => void
+  /** 面板顶部锚点偏移（默认 0 贴容器顶；宿主头部为悬浮层时传头部实测高，如搜索页悬浮子头） */
+  topOffset?: number
 }
 export interface SearchTipListType<T> {
   setList: (list: T[]) => void
@@ -18,12 +20,18 @@ export interface SearchTipListType<T> {
 
 const noop = () => {}
 
-const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTipListProps<T>, ref: Ref<SearchTipListType<T>>) => {
+const Component = <T extends ItemT<T>>({ onPressBg = noop, topOffset = 0, ...props }: SearchTipListProps<T>, ref: Ref<SearchTipListType<T>>) => {
   const theme = useTheme()
   const translateY = useRef(new Animated.Value(0)).current
   const scaleY = useRef(new Animated.Value(0)).current
+  // 收起渐隐（2026-10-30 真机反馈收尾闪烁：压扁+上滑全程不透明，最后几帧不透明细条急速掠过+玻璃垫层缩放残影；
+  // fade 200ms 先于位移 300ms 完成，收尾必透明兜底）
+  const fade = useRef(new Animated.Value(1)).current
   const [visible, setVisible] = useState(false)
   const [animatePlayed, setAnimatPlayed] = useState(true)
+  // 收起动画期间关闭触摸（审查 S-3：fade 200ms 早于位移 300ms 完成，尾部 ~100ms 透明层
+  // 仍拦截点击——opacity:0 不禁触摸；收起即放行点击穿透到下层内容）
+  const [interactive, setInteractive] = useState(true)
   const listRef = useRef<ListType<T>>(null)
   const prevListRef = useRef<T[]>([])
   const heightRef = useRef(0)
@@ -49,16 +57,13 @@ const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTip
     if (!heightRef.current) return
     setVisible(true)
     setAnimatPlayed(false)
+    setInteractive(true)
     requestAnimationFrame(() => {
       translateY.setValue(-heightRef.current / 2)
       scaleY.setValue(0)
+      fade.setValue(1)
 
       Animated.parallel([
-      // Animated.timing(fade, {
-      //   toValue: 1,
-      //   duration: 300,
-      //   useNativeDriver: true,
-      // }),
         Animated.timing(translateY, {
           toValue: 0,
           duration: 300,
@@ -73,16 +78,17 @@ const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTip
         setAnimatPlayed(true)
       })
     })
-  }, [translateY, scaleY])
+  }, [fade, scaleY, translateY])
 
   const handleHide = useCallback(() => {
     setAnimatPlayed(false)
+    setInteractive(false)
     Animated.parallel([
-      // Animated.timing(fade, {
-      //   toValue: 0,
-      //   duration: 200,
-      //   useNativeDriver: true,
-      // }),
+      Animated.timing(fade, {
+        toValue: 0,
+        duration: 200,
+        useNativeDriver: true,
+      }),
       Animated.timing(translateY, {
         toValue: -heightRef.current / 2,
         duration: 300,
@@ -99,13 +105,17 @@ const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTip
       setVisible(false)
       setAnimatPlayed(true)
     })
-  }, [translateY, scaleY])
+  }, [fade, scaleY, translateY])
 
 
   const component = useMemo(() => (
     <Animated.View
+      pointerEvents={interactive ? 'auto' : 'none'}
       style={{
         ...styles.anima,
+        top: topOffset,
+        bottom: 0,
+        opacity: fade,
         transform: [
           { translateY },
           { scaleY },
@@ -119,7 +129,7 @@ const Component = <T extends ItemT<T>>({ onPressBg = noop, ...props }: SearchTip
       </View>
       <View style={styles.blank} onTouchStart={onPressBg}></View>
     </Animated.View>
-  ), [onPressBg, props, scaleY, theme, translateY])
+  ), [fade, interactive, onPressBg, props, scaleY, theme, topOffset, translateY])
 
   return !visible && animatePlayed ? null : component
 }
@@ -131,8 +141,6 @@ const styles = StyleSheet.create({
   anima: {
     position: 'absolute',
     left: 0,
-    top: 0,
-    height: '100%',
     width: '100%',
     zIndex: 10,
   },

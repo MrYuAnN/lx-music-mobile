@@ -34,10 +34,19 @@ const SearchBar = forwardRef<SearchBarType, {
       const text = isControlled ? (value) : innerValue
 
       // 命令式回填（对齐旧 SearchInput 契约）：非受控仅写内部 state，不触发 onChangeText——
-      // 否则搜索页挂载回填/提交回写都会多触发一次联想请求
+      // 否则搜索页挂载回填/提交回写都会多触发一次联想请求。
+      // 受控模式契约（审查 S-4）：setText 经 onChangeText 外发，与用户键入同通道无法区分——
+      // 消费方若需区分须自行比对 value（当前受控消费方均不依赖该区分）
       const setText = (next: string) => {
         if (!isControlled) setInnerValue(next)
         else onChangeText?.(next)
+      }
+
+      // 用户键入路径（2026-10-30 修复联想词不动态：此前与 setText 同函数，非受控下父组件
+      // 收不到键入，搜索页 onTipSearch 全程死路）——无论受控与否都外发
+      const handleInputChange = (next: string) => {
+        if (!isControlled) setInnerValue(next)
+        onChangeText?.(next)
       }
 
       useImperativeHandle(ref, () => ({
@@ -70,7 +79,7 @@ const SearchBar = forwardRef<SearchBarType, {
         placeholder={placeholder}
         placeholderTextColor={theme['c-300']}
         value={text}
-        onChangeText={setText}
+        onChangeText={handleInputChange}
         onSubmitEditing={() => { onSubmit(text) }}
         onBlur={onBlur}
         onTouchStart={onTouchStart}

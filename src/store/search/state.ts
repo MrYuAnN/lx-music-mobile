@@ -1,13 +1,12 @@
 export type SearchType = 'music' | 'songlist'
 
 export interface InitState {
-  temp_source: 'kw'
-  // temp_source: SY.OnlineSource
+  temp_source: SY.OnlineSource
   searchType: SearchType
   searchText: string
   tipListInfo: {
     text: string
-    source: 'kw'
+    source: SY.OnlineSource
     list: string[]
   }
   historyList: string[]

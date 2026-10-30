@@ -29,9 +29,9 @@ export default forwardRef<MusicListType, SearchSonglistListProps>(({ scrollYAnim
     async loadList(text, source) {
       // const listDetailInfo = searchSonglistState.listDetailInfo
       listRef.current?.setList([], source == 'all')
-      if (searchSonglistState.searchText == text && searchSonglistState.source == source && searchSonglistState.listInfos[searchSonglistState.source]!.list.length) {
+      if (searchSonglistState.searchText == text && searchSonglistState.source == source && searchSonglistState.listInfos[searchSonglistState.source]?.list.length) {
         requestAnimationFrame(() => {
-          listRef.current?.setList(searchSonglistState.listInfos[searchSonglistState.source]!.list, source == 'all')
+          listRef.current?.setList(searchSonglistState.listInfos[searchSonglistState.source]?.list ?? [], source == 'all')
         })
       } else {
         listRef.current?.setStatus('loading')
@@ -74,8 +74,8 @@ export default forwardRef<MusicListType, SearchSonglistListProps>(({ scrollYAnim
   }
   const handleLoadMore: SonglistProps['onLoadMore'] = () => {
     listRef.current?.setStatus('loading')
-    const info = searchSonglistState.listInfos[searchInfoRef.current.source]!
-    const page = info.list.length ? info.page + 1 : 1
+    const info = searchSonglistState.listInfos[searchInfoRef.current.source]
+    const page = info?.list.length ? info.page + 1 : 1
     search(searchInfoRef.current.text, page, searchInfoRef.current.source).then((list) => {
       // const result = setListInfo(listDetail, searchSonglistState.listDetailInfo.id, page)
       if (isUnmountedRef.current) return

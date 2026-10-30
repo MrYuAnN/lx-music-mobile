@@ -6,16 +6,32 @@ import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import musicSdk from '@/utils/musicSdk'
 import searchState, { type InitState as SearchState } from '@/store/search/state'
+import searchMusicState from '@/store/search/music/state'
 import { setSearchText, setTipList, setTipListInfo } from '@/core/search/search'
 import { debounce } from '@/utils'
 import { SPACING } from '@/config/spacing'
 
 export const ITEM_HEIGHT = scaleSizeH(36)
 
+// 联想请求防抖单源（2026-10-30 提速拍板：原 200ms；业界联想延迟区间 100-300ms（Algolia
+// 官方甜点 200ms），取下限 100ms 有 Algolia Autocomplete 默认值提案先例）
+// sources 各源模块形状异构（并非全源具备联想能力），按消费面收敛最小接口
+interface TipSearchableSource { tipSearch: { search: (str: string) => Promise<string[]> } }
 export const debounceTipSearch = debounce((keyword: string, source: SearchState['temp_source'], callback: (list: string[]) => void) => {
   // console.log(reslutList)
-  void musicSdk[source].tipSearch.search(keyword).then(callback)
-}, 200)
+  const mod = musicSdk[source] as unknown as TipSearchableSource | undefined
+  void mod?.tipSearch.search(keyword).then(callback)
+}, 100)
+
+// 联想源=生效集内首个具备 tipSearch 能力的源（2026-10-30 审查 I-2：联想面与搜索面同界——
+// 原 store temp_source 为从未写入的冻结 'kw'，server 摘源后联想仍走被摘源且与实际搜索源错位）
+const getTipSource = (): SearchState['temp_source'] | null => {
+  for (const source of searchMusicState.sources) {
+    if (source == 'all') continue
+    if ((musicSdk[source] as unknown as TipSearchableSource | undefined)?.tipSearch) return source
+  }
+  return null
+}
 
 
 export type SearchTipListProps = _SearchTipListProps<string>
@@ -23,6 +39,8 @@ export type SearchTipListType = _SearchTipListType<string>
 
 interface TipListProps {
   onSearch: (keyword: string) => void
+  /** 联想面板顶部锚点偏移（透传 SearchTipList） */
+  topOffset?: number
 }
 export interface TipListType {
   search: (keyword: string, height: number) => void
@@ -30,7 +48,7 @@ export interface TipListType {
   hide: () => void
 }
 
-export default forwardRef<TipListType, TipListProps>(({ onSearch }, ref) => {
+export default forwardRef<TipListType, TipListProps>(({ onSearch, topOffset }, ref) => {
   const searchTipListRef = useRef<SearchTipListType>(null)
   const [visible, setVisible] = useState(false)
   const visibleListRef = useRef(false)
@@ -46,16 +64,19 @@ export default forwardRef<TipListType, TipListProps>(({ onSearch }, ref) => {
   const handleSearch = (keyword: string, height: number) => {
     searchTipListRef.current?.setHeight(height)
     setSearchText(keyword)
+    const source = getTipSource()
     if (keyword) {
-      setTipListInfo(keyword, searchState.temp_source)
-      debounceTipSearch(keyword, searchState.temp_source, (list) => {
+      // 空集（全源不可用提示态）无源可联想，静默跳过
+      if (!source) return
+      setTipListInfo(keyword, source)
+      debounceTipSearch(keyword, source, (list) => {
         if (keyword != searchState.tipListInfo.text) return
         setTipList(list)
         if (!visibleListRef.current || isUnmountedRef.current) return
         searchTipListRef.current?.setList(list)
       })
     } else {
-      setTipListInfo(keyword, searchState.temp_source)
+      setTipListInfo(keyword, source ?? searchState.temp_source)
       setTipList([])
       searchTipListRef.current?.setList([])
     }
@@ -113,6 +134,7 @@ export default forwardRef<TipListType, TipListProps>(({ onSearch }, ref) => {
     visible
       ? <SearchTipList
           ref={searchTipListRef}
+          topOffset={topOffset}
           renderItem={renderItem}
           onPressBg={() => searchTipListRef.current?.setList([])}
           keyExtractor={getkey}
