@@ -13,7 +13,6 @@ const defaultSetting: SY.AppSetting = {
   'player.startupPushPlayDetailScreen': false,
   'player.togglePlayMethod': 'listLoop',
   'player.playQuality': '128k',
-  'player.isSavePlayTime': false,
   'player.volume': 1,
   'player.playbackRate': 1,
   'player.cacheSize': '1024',

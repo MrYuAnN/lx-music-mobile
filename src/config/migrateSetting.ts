@@ -8,7 +8,6 @@ export default (setting: any): Partial<SY.AppSetting> => {
   if (compareVer(setting.version as string, '2.0') < 0) {
     setting['player.startupAutoPlay'] = setting.startupAutoPlay
     setting['player.togglePlayMethod'] = setting.player?.togglePlayMethod
-    setting['player.isSavePlayTime'] = setting.player?.isSavePlayTime
     setting['player.cacheSize'] = setting.player?.cacheSize
     setting['player.timeoutExit'] = setting.player?.timeoutExit
     setting['player.timeoutExitPlayed'] = setting.player?.timeoutExitPlayed

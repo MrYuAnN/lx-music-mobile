@@ -226,7 +226,9 @@ const handleRestorePlay = async(restorePlayInfo: SY.Player.SavedPlayInfo) => {
   if (!musicInfo) return
 
   setTimeout(() => {
-    global.app_event.setProgress(settingState.setting['player.isSavePlayTime'] ? restorePlayInfo.time : 0, restorePlayInfo.maxTime)
+    // 存档恒开（2026-10-21 拍板）：isSavePlayTime 设置项已删，此消费点漏改导致恢复恒 seek 0
+    // ——10-30 B3 走查实证，无条件恢复存档进度
+    global.app_event.setProgress(restorePlayInfo.time, restorePlayInfo.maxTime)
   })
 
   const playMusicInfo = playerState.playMusicInfo

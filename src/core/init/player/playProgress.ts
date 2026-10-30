@@ -16,6 +16,7 @@ const delaySavePlayInfo = throttleBackgroundTimer(() => {
     maxTime: playerState.progress.maxPlayTime,
     listId: playerState.playMusicInfo.listId!,
     index: playerState.playInfo.playIndex,
+    musicId: playerState.playMusicInfo.musicInfo?.id ?? '',
   })
 }, 2000)
 
@@ -35,8 +36,10 @@ export default () => {
       setNowPlayTime(position)
       if (!playerState.isPlay) return
 
-      // isSavePlayTime 设置项已删（2026-10-21 设置页瘦身：业界均自动恢复进度），存档恒开
-      if (!playerState.playMusicInfo.isTempPlay && isScreenOn) {
+      // isSavePlayTime 设置项已删（2026-10-21 设置页瘦身：业界均自动恢复进度），存档恒开；
+      // isTempPlay 守卫同撤（2026-10-30 B3 走查：本产品搜索/本地/下载播放全走 TEMP 临时列表，
+      // 不存档=杀进程恢复链全灭；TEMP 列表本体有持久化，恢复链可直接消费）
+      if (isScreenOn) {
         delaySavePlayInfo()
       }
     })
@@ -121,36 +124,15 @@ export default () => {
     // void setCurrentTime(playerState.progress.nowPlayTime)
     // setMaxplayTime(playProgress.maxPlayTime)
     handlePause()
-    if (!playerState.playMusicInfo.isTempPlay) {
-      void savePlayInfo({
-        time: playerState.progress.nowPlayTime,
-        maxTime: playerState.progress.maxPlayTime,
-        listId: playerState.playMusicInfo.listId!,
-        index: playerState.playInfo.playIndex,
-      })
-    }
+    // isTempPlay 守卫同撤（2026-10-30 B3 走查，理由见上）
+    void savePlayInfo({
+      time: playerState.progress.nowPlayTime,
+      maxTime: playerState.progress.maxPlayTime,
+      listId: playerState.playMusicInfo.listId!,
+      index: playerState.playInfo.playIndex,
+      musicId: playerState.playMusicInfo.musicInfo?.id ?? '',
+    })
   }
-
-  // watch(() => playerState.progress.nowPlayTime, (newValue, oldValue) => {
-  //   if (settingState.setting['player.isSavePlayTime'] && !playMusicInfo.isTempPlay) {
-  //     delaySavePlayInfo({
-  //       time: newValue,
-  //       maxTime: playerState.progress.maxPlayTime,
-  //       listId: playMusicInfo.listId as string,
-  //       index: playInfo.playIndex,
-  //     })
-  //   }
-  // })
-  // watch(() => playerState.progress.maxPlayTime, maxPlayTime => {
-  //   if (!playMusicInfo.isTempPlay) {
-  //     delaySavePlayInfo({
-  //       time: playerState.progress.nowPlayTime,
-  //       maxTime: maxPlayTime,
-  //       listId: playMusicInfo.listId as string,
-  //       index: playInfo.playIndex,
-  //     })
-  //   }
-  // })
 
   const handleConfigUpdated: typeof global.state_event.configUpdated = (keys, settings) => {
     if (keys.includes('player.playbackRate')) startUpdateTimeout()
@@ -173,11 +155,6 @@ export default () => {
   global.app_event.on('stop', handleStop)
   global.app_event.on('error', handleError)
   global.app_event.on('setProgress', setProgress)
-  // global.app_event.on(eventPlayerNames.restorePlay, handleRestorePlay)
-  // global.app_event.on('playerLoadeddata', handleLoadeddata)
-  // global.app_event.on('playerCanplay', handleCanplay)
-  // global.app_event.on('playerWaiting', handleWating)
-  // global.app_event.on('playerEmptied', handleEmpied)
   global.app_event.on('musicToggled', handleSetPlayInfo)
   global.state_event.on('configUpdated', handleConfigUpdated)
 

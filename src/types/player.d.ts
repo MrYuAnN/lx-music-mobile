@@ -73,6 +73,8 @@ declare global {
         maxTime: number
         listId: string
         index: number
+        /** 当前播放歌曲 id（2026-10-30 审查 I-1：TEMP 列表可被新搜索覆盖，恢复时按 id 重定位防错歌错进度；旧存档无此字段走位置语义） */
+        musicId?: string
       }
 
       interface Track extends RNTrack {

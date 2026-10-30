@@ -75,8 +75,6 @@ declare global {
       /**
        * 启动软件时是否恢复上次播放进度
        */
-      'player.isSavePlayTime': boolean
-
       /**
        * 音量大小
        */

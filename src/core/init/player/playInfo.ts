@@ -9,10 +9,17 @@ export default async(setting: SY.AppSetting) => {
   if (!info?.listId || info.index < 0) return
 
   const list = await getListMusics(info.listId)
-  if (!list[info.index]) return
-  global.sy.restorePlayInfo = info
+  // TEMP 列表可被新搜索覆盖（审查 I-1：存档 index/time 与内容版本错位）——按 musicId 重定位；
+  // 找不到=上次播放的歌曲已不在当前列表，存档失效不恢复（避免放错歌错进度）。旧存档无
+  // musicId 保持位置语义（向后兼容）
+  let index = info.index
+  if (info.musicId && list[index]?.id != info.musicId) {
+    index = list.findIndex(m => m.id == info.musicId)
+  }
+  if (index < 0 || !list[index]) return
+  global.sy.restorePlayInfo = { ...info, index }
 
-  await playList(info.listId, info.index)
+  await playList(info.listId, index)
 
   if (setting['player.startupAutoPlay']) setTimeout(play)
 
