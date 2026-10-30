@@ -3,6 +3,7 @@ import { Animated, TouchableOpacity, View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
+import Image from '@/components/common/Image'
 import ListItem, { ITEM_HEIGHT } from '@/components/OnlineList/ListItem'
 import { AnimatedFlatList, AnimatedSectionList } from '@/components/common/AnimatedLists'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
@@ -106,11 +107,12 @@ export const FolderSectionList = ({ folders, actions, scrollYAnimated, contentPa
   )
 }
 
-// 专辑视图：封面网格（numColumns=2，本地无封面→占位图标，本批预期形态）
+// 专辑视图：封面网格（numColumns=2）。封面=组内首个带 picUrl 的歌曲封面（2026-10-30 走查：
+// 原「本地无封面→占位图标」占位形态的前提被扫描内嵌提取+写入标签推翻）；无图回退音符占位
 export const AlbumGrid = ({ albums, onGroupPress, scrollYAnimated, contentPaddingTop }: {
   albums: MusicGroup[]
   onGroupPress: (group: MusicGroup) => void
-  /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传不挂 onScroll */
+  /** 顶栏/子头玻璃渐显驱动（毛玻璃全体系子头批）：可选，未传零 diff */
   scrollYAnimated?: Animated.Value
   /** 穿行 paddingTop（=顶栏+子头，子头批审查 I-1）：内化进 contentContainerStyle */
   contentPaddingTop?: number
@@ -127,15 +129,22 @@ export const AlbumGrid = ({ albums, onGroupPress, scrollYAnimated, contentPaddin
       numColumns={2}
       keyExtractor={item => `album__${item.name}`}
       columnWrapperStyle={styles.gridRow}
-      renderItem={({ item }) => (
-        <TouchableOpacity style={styles.gridItem} activeOpacity={0.7} onPress={() => { onGroupPress(item) }}>
-          <View style={{ ...styles.gridPic, backgroundColor: theme['c-border-background'] }}>
-            <Icon name="music" size={30} color={theme['c-font-label']} />
-          </View>
-          <Text style={styles.gridName} size={13} numberOfLines={1}>{item.name}</Text>
-          <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.singer}</Text>
-        </TouchableOpacity>
-      )}
+      renderItem={({ item }) => {
+        const picUrl = item.list.find(m => m.meta.picUrl)?.meta.picUrl
+        return (
+          <TouchableOpacity style={styles.gridItem} activeOpacity={0.7} onPress={() => { onGroupPress(item) }}>
+            <View style={{ ...styles.gridPic, backgroundColor: theme['c-border-background'] }}>
+              {
+                picUrl
+                  ? <Image url={picUrl} style={styles.gridPicImg} />
+                  : <Icon name="music" size={30} color={theme['c-font-label']} />
+              }
+            </View>
+            <Text style={styles.gridName} size={13} numberOfLines={1}>{item.name}</Text>
+            <Text size={12} color={theme['c-font-label']} numberOfLines={1}>{item.singer}</Text>
+          </TouchableOpacity>
+        )
+      }}
       onScroll={handleAnimatedScroll}
       scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       showsVerticalScrollIndicator={false}
@@ -143,7 +152,8 @@ export const AlbumGrid = ({ albums, onGroupPress, scrollYAnimated, contentPaddin
   )
 }
 
-// 歌手视图：圆形字头聚合列表（原型 5），点入二级歌曲列表
+// 歌手视图：圆形头像聚合列表，点入二级歌曲列表。头像=该歌手歌曲首个 picUrl（2026-10-30
+// 走查：原「字头」占位前提同专辑网格——本地已有封面可读；无图回退字头）
 export const ArtistList = ({ artists, onGroupPress, scrollYAnimated, contentPaddingTop }: {
   artists: MusicGroup[]
   onGroupPress: (group: MusicGroup) => void
@@ -167,18 +177,25 @@ export const ArtistList = ({ artists, onGroupPress, scrollYAnimated, contentPadd
       // 同款先例注记）：本视图无 scrollToIndex 调用故无漂移路径；未来接「定位当前播放」类功能
       // 须把 paddingTop 计入 offset
       getItemLayout={(_, index) => ({ length: ITEM_HEIGHT, offset: ITEM_HEIGHT * index, index })}
-      renderItem={({ item }) => (
-        <TouchableOpacity style={styles.artistRow} activeOpacity={0.7} onPress={() => { onGroupPress(item) }}>
-          <View style={{ ...styles.artistAvatar, backgroundColor: theme['c-border-background'] }}>
-            <Text size={16} color={theme['c-font-label']}>{item.name.slice(0, 1)}</Text>
-          </View>
-          <View style={styles.artistInfo}>
-            <Text size={15} numberOfLines={1}>{item.name}</Text>
-            <Text size={12} color={theme['c-font-label']}>{t('local_music_songs_count', { n: item.list.length })}</Text>
-          </View>
-          <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-300']} />
-        </TouchableOpacity>
-      )}
+      renderItem={({ item }) => {
+        const picUrl = item.list.find(m => m.meta.picUrl)?.meta.picUrl
+        return (
+          <TouchableOpacity style={styles.artistRow} activeOpacity={0.7} onPress={() => { onGroupPress(item) }}>
+            <View style={{ ...styles.artistAvatar, backgroundColor: theme['c-border-background'] }}>
+              {
+                picUrl
+                  ? <Image url={picUrl} style={styles.artistAvatarImg} />
+                  : <Text size={16} color={theme['c-font-label']}>{item.name.slice(0, 1)}</Text>
+              }
+            </View>
+            <View style={styles.artistInfo}>
+              <Text size={15} numberOfLines={1}>{item.name}</Text>
+              <Text size={12} color={theme['c-font-label']}>{t('local_music_songs_count', { n: item.list.length })}</Text>
+            </View>
+            <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-300']} />
+          </TouchableOpacity>
+        )
+      }}
       onScroll={handleAnimatedScroll}
       scrollEventThrottle={handleAnimatedScroll ? 16 : undefined}
       showsVerticalScrollIndicator={false}
@@ -223,6 +240,11 @@ const styles = createStyle({
   gridName: {
     marginBottom: 1,
   },
+  gridPicImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: scaleSizeW(8),
+  },
   artistRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -237,6 +259,11 @@ const styles = createStyle({
     alignItems: 'center',
     justifyContent: 'center',
     marginRight: SPACING.s12,
+  },
+  artistAvatarImg: {
+    width: '100%',
+    height: '100%',
+    borderRadius: scaleSizeW(20),
   },
   artistInfo: {
     flex: 1,
