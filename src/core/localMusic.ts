@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
-import { readDir, existsFile, extname, externalStorageDirectoryPath, stat, unlink } from '@/utils/fs'
+import { readDir, existsFile, extname, externalStorageDirectoryPath, mkdir, privateStorageDirectoryPath, stat, unlink } from '@/utils/fs'
 import { readMetadata, writePic } from '@/utils/localMediaMetadata'
+import { readPic as extractEmbeddedPic } from 'react-native-local-media-metadata'
 import { toMD5 } from '@/utils/tools'
 import { getDownloadListSnapshot, initDownloadList, DOWNLOAD_DIR, removeDownloadTaskByPath } from '@/core/download'
 
@@ -45,6 +46,9 @@ export interface LocalMusicItem {
   // 封面匹配失败标记（走查反馈：无可用封面置位后跳过封面匹配，isRefresh 强制；
   // 歌词走「空歌词缓存」语义不用标记——无歌词是正常状态）
   noCover?: boolean
+  // 文件无内嵌封面负缓存（2026-10-30 走查：扫描提取用；不复用 noCover——那是播放链
+  // 「跳过在线匹配」语义，混用会让无内嵌图但可在线匹配的歌永无封面）
+  noEmbeddedArt?: boolean
 }
 
 let localMusicList: LocalMusicItem[] = []
@@ -257,6 +261,24 @@ const deriveQualityFromHeader = (meta: { ext?: string, bitrate?: string, type?: 
   return null
 }
 
+// 内嵌封面持久缓存目录（与播放链 core/music/local.ts 的 cover_cache 同源；清数据随应用
+// 数据清除，重扫自动重新提取）
+const COVER_CACHE_DIR = `${privateStorageDirectoryPath}/cover_cache`
+
+// 内嵌封面提取（2026-10-30 走查反馈：「写入标签」嵌入文件本体的封面，清数据重扫后列表无
+// 封面——扫描链此前只回读文本 tag；提取入持久 cover_cache，file:// 零网络。
+// noEmbeddedArt 负缓存=文件无内嵌图，置位后不再重复提取）
+const extractEmbeddedArt = async(file: { path: string }, item: LocalMusicItem): Promise<LocalMusicItem> => {
+  if (item.picUrl || item.noEmbeddedArt) return item
+  try {
+    await mkdir(COVER_CACHE_DIR).catch(() => {})
+    const pic = await extractEmbeddedPic(file.path, COVER_CACHE_DIR)
+    if (pic) return { ...item, picUrl: pic.startsWith('/') ? `file://${pic}` : pic }
+    return { ...item, noEmbeddedArt: true }
+  } catch { /* 单文件提取失败不阻塞扫描，下轮重扫再试 */ }
+  return item
+}
+
 // 孤儿恢复（2026-10-30 元数据绑定定稿）：任务记录已失（如卸载重装）但旁车封面在——
 // 封面回填 + 一次性嵌入文件本体（嵌入后随文件走，不再依赖旁车与任务记录）；
 // 身份从下载命名格式「歌手 - 歌名」解析回填（旁车存在=本 App 下载产物的强信号）；
@@ -273,7 +295,8 @@ const recoverOrphanCover = async(
   const fileName = file.path.slice(file.path.lastIndexOf('/') + 1)
   const coverPath = `${dir}/.${fileName}.cover.jpg`
   try {
-    if (!(await existsFile(coverPath))) return item
+    // 旁车 miss → 内嵌封面提取兜底（2026-10-30 走查：外部扫描文件的封面读取侧）
+    if (!(await existsFile(coverPath))) return extractEmbeddedArt(file, item)
     const doneList = await getData<string[]>(storageDataPrefix.localOrphanEmbedDone) ?? []
     let result = { ...item, picUrl: `file://${coverPath}` }
     const parsed = /^(.*) - (.*)$/.exec(fileName.slice(0, fileName.lastIndexOf('.')))
