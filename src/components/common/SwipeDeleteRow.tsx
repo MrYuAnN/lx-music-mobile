@@ -80,9 +80,15 @@ const SwipeDeleteRow = forwardRef<SwipeDeleteRowType, {
       translateX.value = withTiming(shouldOpen ? -SWIPE_OPEN_WIDTH : 0, { duration: 150 })
       if (shouldOpen) {
         hapticImpactLight()
-        // 单开互斥：收起上一条再登记当前
-        try { openRowClose?.() } catch {}
+        // 单开互斥：收起上一条再登记当前。自登记守卫：onEnd 关闭路径不注销登记，收回去后
+        // openRowClose 仍指本行——重开时误调自身 close 会在同 tick 用 withTiming(0) 覆盖
+        // 开行动画，行即「第二次左滑一直往回收」（B3-2 真机走查实证）
+        if (openRowClose && openRowClose != closeSelfRef.current) {
+          try { openRowClose() } catch {}
+        }
         openRowClose = closeSelfRef.current
+      } else if (openRowClose == closeSelfRef.current) {
+        openRowClose = null
       }
     })
 
