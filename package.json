@@ -56,6 +56,7 @@
     "react-native-haptic-feedback": "~3.0.0",
     "react-native-image-colors": "~1.5.2",
     "react-native-image-picker": "^8.3.0",
+    "react-native-keychain": "^10.0.0",
     "react-native-linear-gradient": "~2.8.3",
     "react-native-local-media-metadata": "github:lyswhut/react-native-local-media-metadata#1b5be310d112afce0df598d3e9c7521c3311049c",
     "react-native-pager-view": "9.0.7",

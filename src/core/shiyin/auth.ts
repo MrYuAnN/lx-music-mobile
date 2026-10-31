@@ -1,17 +1,20 @@
-// 拾音直连鉴权客户端（批1 直连换心；方案 doc/plans/self-hosted-music-server.md §四）
-// 批1 联调形态：dev key 首绑登记制（服务端 modules.shiyin.dev_test_key，批2 激活链上线时
-// 本文件 DEV_TEST_KEY 与 /register 调用整体替换为 receipt 注册流程，列批2 交付清单）。
-// token/device_secret 批1 存普通 storage（批2 迁安全存储）；device_id 已切 SSAID+盐哈希稳定
-// 源（走查反馈批，对齐净屏 activation-sdk：后端仅见哈希；uuid 持久化为 SSAID 不可得兜底）。
+// 拾音直连鉴权客户端（批2 直连商业化；方案 doc/plans/self-hosted-music-server.md §四）
+// 批2 改造（实施单源 .review-bundle/2026-10-31/context-b2-plan.md §三B/C/D）：
+//   ① dev key 退役——/register 的 key=SDK storedKey（激活码/试用码，claim persist 即写主 key）；
+//   ② token/device_secret 迁 react-native-keychain（Keystore；首启迁移=写成功才删旧键，失败
+//      保留旧值本次会话回退用旧值——审查 S3）；
+//   ③ device_id 切 SDK 指纹（同算法同盐 sha256(ANDROID_ID+'shiyin-device-v1')，值不变；
+//      SSAID 不可得设备的 uuid 兜底两存储不迁移，指纹会变——审查 S4 知情，批2 前记录本就清理）；
+//   R1 权益态全分类：无码→等待首启自动试用领取到账（N2 轮询）→未激活；本地 receipt 判到期→
+//      直接过期态；/register 403 not_entitled/device_limit→快速失败——三者均不进退避循环。
+// 重注册指数退避仅保留给 502/503/网络错误（平台不可达语义，方案 §四流程 3）。
 import { sha256 } from 'js-sha256'
 import { httpFetch } from '@/utils/request'
-import { getData, saveData } from '@/plugins/storage'
+import { getData, removeData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
-import { getAndroidId } from '@/utils/nativeModules/utils'
+import * as Keychain from 'react-native-keychain'
+import { activationModule } from '@/utils/nativeModules/activation'
 import { SHIYIN_BASE_URL } from './config'
-
-// 批1 联调 dev key（批2 删：换 receipt 注册）
-const DEV_TEST_KEY = 'affeee63128d89678d5e2d186489d45f'
 
 interface ShiyinAuth {
   token: string
@@ -20,46 +23,43 @@ interface ShiyinAuth {
   expiresAt: number
 }
 
+// 批1 的 AUTH_KEY 退役为迁移源（keychain 主源后首启搬一次即删）；DEVICE_ID_KEY 退役死键
+// （SDK 自持 SP 持久化，批量清理随迁移路径顺手 removeData）
 const AUTH_KEY = storageDataPrefix.shiyinAuth
 const DEVICE_ID_KEY = storageDataPrefix.shiyinDeviceId
+const AUTH_SERVICE = 'com.shiyin.music.shiyin_auth'
 // 到期前余量：提前重注册，避免取链途中过期
 const EXPIRE_MARGIN = 5 * 60 * 1000
-// 重注册指数退避（取链链路上等待受限：500ms 起步 4 次，全失败终止报错）
+// 重注册指数退避（仅平台不可达/网络类；500ms 起步 4 次，全失败终止报错）
 const RETRY_DELAYS = [500, 1000, 2000, 4000]
+// 无码时等待首启自动试用领取到账（N2）：SDK claim 成功即写主 key；退避起步 10s，
+// 轮询 12s 覆盖「成功一跳」，超时=领取失败/无网/关断——落未激活文案
+const TRIAL_WAIT_INTERVAL = 1000
+const TRIAL_WAIT_ATTEMPTS = 12
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
 
-const genDeviceId = (): string => {
-  // RFC 4122 v4
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, ch => {
-    const rand = Math.trunc(Math.random() * 16)
-    return (ch == 'x' ? rand : (rand & 0x3) | 0x8).toString(16)
-  })
+// 快速失败专用错误（R1）：均不进退避循环；换源链同 ShiyinRegisterFailed 待遇直接终止
+const shiyinError = (name: string, message: string): Error => {
+  const err = new Error(message)
+  err.name = name
+  return err
 }
 
-let deviceIdInFlight: Promise<string> | null = null
+/** 非退避错误（快速失败族）：ensureAuth 与换源链按 name 识别直接终止 */
+export const isShiyinFastFail = (err: unknown): boolean => {
+  const name = (err as Error)?.name ?? ''
+  return (
+    name == 'ShiyinRegisterFailed' || name == 'ShiyinNotActivated' ||
+    name == 'ShiyinEntitlementExpired' || name == 'ShiyinEntitlementInvalid'
+  )
+}
 
 export const getDeviceId = async(): Promise<string> => {
-  // single-flight（审查 I-D）：并发首调共享同一 promise，防双 uuid 双注册占席位
-  if (deviceIdInFlight) return deviceIdInFlight
-  const flight = (async() => {
-    // 稳定源优先（走查反馈批：uuid 存储态卸载即失→dev 席位爆/权益丢）：SSAID 同签名键
-    // 卸载重装稳定；送出前 SHA-256+盐哈希（对齐净屏 activation-sdk 2026-09 拍板：后端仅见
-    // 哈希不暴露原始硬件标识，盐=平台注册产品盐）；SSAID 不可得（空串）退化首装 uuid
-    // 持久化兜底（净屏同款回退）
-    const androidId = await getAndroidId()
-    if (androidId) return sha256.hex(androidId + 'shiyin-device-v1')
-    let deviceId = await getData<string>(DEVICE_ID_KEY)
-    if (!deviceId) {
-      deviceId = genDeviceId()
-      await saveData(DEVICE_ID_KEY, deviceId)
-    }
-    return deviceId
-  })().finally(() => {
-    deviceIdInFlight = null
-  })
-  deviceIdInFlight = flight
-  return flight
+  // single-flight（审查 I-D）：并发首调共享同一 promise。SDK deviceId 首调现算后持久化
+  // （自有 SP），之后恒定——卸载重装同签名稳定；送出前盐化哈希后端仅见哈希（③）
+  // eslint-disable-next-line @typescript-eslint/promise-function-async
+  return activationModule.getDeviceId()
 }
 
 // HMAC-SHA256（方案 §四：基串=METHOD\npath\nts\ndevice_id，hex 小写）
@@ -74,31 +74,90 @@ export const getClientVersion = (): string => {
 let auth: ShiyinAuth | null = null
 let inFlight: Promise<ShiyinAuth> | null = null
 
-const readAuth = async(): Promise<ShiyinAuth | null> => {
-  const cached = auth
-  if (cached) return cached
-  const stored = await getData<ShiyinAuth>(AUTH_KEY)
-  // eslint-disable-next-line require-atomic-updates -- 单线程 single-flight 单例，读-写间无并发写方
-  auth = stored
-  return stored
+// keychain 主源读；空则走批1 旧值迁移（S3：keychain 写成功才删旧键；写失败保留旧值，
+// 本次会话回退用旧值——后果=极端时需重新激活，审查知情）。迁移幂等。
+const readStoredAuth = async(): Promise<ShiyinAuth | null> => {
+  try {
+    const stored = await Keychain.getGenericPassword({ service: AUTH_SERVICE })
+    if (stored && stored.password) return JSON.parse(stored.password) as ShiyinAuth
+  } catch {
+    // keychain 读失败按无凭证走迁移/重注册兜底（setGenericPassword 会覆盖重建）
+  }
+  const legacy = await getData<ShiyinAuth>(AUTH_KEY)
+  if (!legacy) return null
+  try {
+    await Keychain.setGenericPassword('shiyin_auth', JSON.stringify(legacy), { service: AUTH_SERVICE })
+    await removeData(AUTH_KEY)
+    // 批1 uuid 兜底死键顺手清（③ 退役）
+    await removeData(DEVICE_ID_KEY)
+  } catch {
+    // 迁移写失败：保留旧值，本次会话回退用旧值（S3）
+  }
+  return legacy
+}
+
+const writeStoredAuth = async(next: ShiyinAuth): Promise<void> => {
+  await Keychain.setGenericPassword('shiyin_auth', JSON.stringify(next), { service: AUTH_SERVICE })
+}
+
+/** 删除本地取链凭证（解绑本机 N4：立即断链，防旧 token 复用至 TTL 尽） */
+export const clearStoredAuth = async(): Promise<void> => {
+  auth = null
+  try {
+    await Keychain.resetGenericPassword({ service: AUTH_SERVICE })
+  } catch { /* 无凭证/已清 */ }
+  await removeData(AUTH_KEY)
 }
 
 const isValid = (a: ShiyinAuth | null): a is ShiyinAuth => {
   return a != null && a.token != '' && a.expiresAt - EXPIRE_MARGIN > Date.now()
 }
 
+// N2：首启自动试用领取在途——SDK claim 成功即写主 key（试用码即 storedKey），轮询等待到账
+const waitTrialKey = async(): Promise<string> => {
+  for (let i = 0; i < TRIAL_WAIT_ATTEMPTS; i++) {
+    await delay(TRIAL_WAIT_INTERVAL)
+    const key = await activationModule.getStoredKey()
+    if (key) return key
+  }
+  return ''
+}
+
 const doRegister = async(): Promise<ShiyinAuth> => {
   const deviceId = await getDeviceId()
+  let key = await activationModule.getStoredKey()
+  if (!key) {
+    // 两级前置（R1）：本地 receipt 判到期（SDK State 纯本地时间戳计算）→ 不发起请求
+    const state = await activationModule.getState()
+    if (state.state == 'expired') {
+      throw shiyinError('ShiyinEntitlementExpired', global.i18n.t('shiyin_entitlement_expired'))
+    }
+    // 无码：等首启自动试用领取到账（N2），超时=未激活
+    key = await waitTrialKey()
+    if (!key) throw shiyinError('ShiyinNotActivated', global.i18n.t('shiyin_not_activated'))
+  }
   const resp = await httpFetch(`${SHIYIN_BASE_URL}/register`, {
     method: 'post',
-    body: { key: DEV_TEST_KEY, device_id: deviceId },
+    body: { key, device_id: deviceId },
   }).promise
   const body = resp.body as unknown as {
     code: number
     token?: string
     device_secret?: string
     expires_in?: number
+    message?: string
   }
+  // 403 权益失效族（R1）：服务端核验失败/设备满——快速失败不进退避（每次必败重试还空耗
+  // 注册 IP 日限），文案区分失效与设备满
+  if (resp.statusCode == 403) {
+    throw shiyinError(
+      'ShiyinEntitlementInvalid',
+      body.message == 'device_limit'
+        ? global.i18n.t('shiyin_device_limit')
+        : global.i18n.t('shiyin_entitlement_invalid'),
+    )
+  }
+  // 502/503/其余非 200=平台不可达/瞬时故障：可重试，交 ensureAuth 退避
   if (resp.statusCode != 200 || body.code != 200 || !body.token || !body.device_secret || !body.expires_in) {
     throw new Error(`register failed: ${resp.statusCode}`)
   }
@@ -109,32 +168,36 @@ const doRegister = async(): Promise<ShiyinAuth> => {
     expiresAt: Date.now() + body.expires_in * 1000,
   }
   auth = next
-  await saveData(AUTH_KEY, next)
+  await writeStoredAuth(next)
   return next
 }
 
 // single-flight：并发调用共享同一注册 promise；force=401 触发的强刷。
-// 占位先于任何 await（审查 I-D）：检查 inFlight 与登记新 promise 之间无挂起点，
-// 消除「检查-登记间隙」导致的双注册竞态；缓存读/校验移入 flight 内部。
+// 占位先于任何 await（审查 I-D）：检查 inFlight 与登记新 promise 之间无挂起点。
 export const ensureAuth = async(force = false): Promise<ShiyinAuth> => {
   if (inFlight) return inFlight
   const flight = (async() => {
     if (!force) {
-      const current = await readAuth()
-      if (isValid(current)) return current
+      // eslint-disable-next-line require-atomic-updates -- single-flight 单例，读-写间无并发写方（批1 同款豁免）
+      if (auth == null) auth = await readStoredAuth()
+      if (isValid(auth)) return auth
     }
     let lastErr: Error | null = null
     for (let i = 0; i <= RETRY_DELAYS.length; i++) {
       try {
         return await doRegister()
       } catch (err) {
+        // 快速失败族直接终止（R1）：文案已含用户动作指引，不退避
+        if (isShiyinFastFail(err)) {
+          auth = null
+          throw err
+        }
         lastErr = err as Error
         if (i < RETRY_DELAYS.length) await delay(RETRY_DELAYS[i])
       }
     }
     auth = null
     const err = new Error(global.i18n.t('shiyin_register_failed') + ` (${lastErr?.message ?? ''})`)
-    // 专用标记（审查 S-5）：供换源链识别后直接终止（同 429 待遇，不再逐源重试退避）
     err.name = 'ShiyinRegisterFailed'
     throw err
   })().finally(() => {

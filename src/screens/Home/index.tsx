@@ -5,6 +5,7 @@ import { setComponentId } from '@/core/common'
 import { COMPONENT_IDS } from '@/config/constant'
 import Vertical from './Vertical'
 import Horizontal from './Horizontal'
+import { useTrialWelcome } from '@/core/shiyin/activation'
 
 
 interface Props {
@@ -14,6 +15,8 @@ interface Props {
 
 export default ({ componentId }: Props) => {
   const isHorizontalMode = useHorizontalMode()
+  // 批2 F.1 首启试用欢迎提示（净屏 pending 消费对齐：AppState active 每次前台消费，轻 toast）
+  useTrialWelcome()
   useEffect(() => {
     setComponentId(COMPONENT_IDS.home, componentId)
     // 启动 push（启动时打开播放页）已上收启动链收尾（core/init P1）：

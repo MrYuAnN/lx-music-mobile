@@ -9,6 +9,7 @@ import { langS2T, toNewMusicInfo, toOldMusicInfo } from '@/utils'
 import { assertApiSupport } from '@/utils/tools'
 import settingState from '@/store/setting/state'
 import { requestMsg } from '@/utils/message'
+import { isShiyinFastFail } from '@/core/shiyin/auth'
 import BackgroundTimer from 'react-native-background-timer'
 import { apis } from '@/utils/musicSdk/api-source'
 
@@ -285,8 +286,9 @@ export const getOnlineOtherSourceMusicUrl = async({ musicInfos, quality, onToggl
     return { musicInfo, url, quality: type, isFromCache: false, expire }
     // eslint-disable-next-line @typescript-eslint/promise-function-async
   }).catch((err: any) => {
-    // 注册失败直接终止（审查 S-5）：换源再试同样过不了 ensureAuth，白耗 5 轮退避
-    if (err.message == requestMsg.tooManyRequests || err.name == 'ShiyinRegisterFailed') throw err
+    // 注册失败/未激活/权益失效直接终止（审查 S-5 + 批2 R1）：换源再试同样过不了 ensureAuth，
+    // 白耗退避（快速失败族判据单源=auth.isShiyinFastFail）
+    if (err.message == requestMsg.tooManyRequests || isShiyinFastFail(err)) throw err
     console.log(err)
     return getOnlineOtherSourceMusicUrl({ musicInfos, quality, onToggleSource, isRefresh, retryedSource })
   })

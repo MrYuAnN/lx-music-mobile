@@ -7,15 +7,17 @@ import { BorderWidths } from '@/theme'
 import Text, { FontFamilies } from '@/components/common/Text'
 import PageContent from '@/components/PageContent'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
-import { createStyle } from '@/utils/tools'
+import { createStyle, openUrl } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { useVersionInfo } from '@/store/version/hook'
 import { checkUpdate } from '@/core/version'
+import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
 import { SPACING } from '@/config/spacing'
 import ActionRow from '@/screens/Home/Views/Setting/components/ActionRow'
+import ActivationCard from './ActivationCard'
 
 const currentVer = process.versions.app
 
@@ -82,6 +84,11 @@ export default ({ componentId }: { componentId: string }) => {
             ]}
           >
             <ActionRow label={t('about_check_update')} value={statusText} onPress={() => { void checkUpdate() }} />
+            {/* 批2 激活管理（净屏对齐最小面：状态行+输码+解绑本机，见 ActivationCard） */}
+            <ActivationCard />
+            {/* 客服指路（审计 D5 捷径版）：SDK 解绑月限/体验卡等文案均指路客服，App 内
+                须有落点——跳官网 FAQ（联系方式由官网侧维护） */}
+            <ActionRow label={t('setting_contact')} onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq.html`) }} />
           </View>
           <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
             {t('about_copyright', { year: new Date().getFullYear() })}
