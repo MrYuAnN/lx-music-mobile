@@ -48,8 +48,8 @@
     "lrc-file-parser": "^2.4.2",
     "message2call": "^0.1.3",
     "pako": "^2.1.0",
-    "react": "19.2.3",
-    "react-native": "0.86.3",
+    "react": "19.3.0",
+    "react-native": "0.88.1",
     "react-native-background-timer": "github:lyswhut/react-native-background-timer#55ecaa80880e9cec1fff81f3ce10e6250ab3c40c",
     "react-native-file-system": "github:lyswhut/react-native-file-system#fcb0e6f55af684ac60598c720c77cfe0502f2c65",
     "react-native-gesture-handler": "~3.3.0",
@@ -66,9 +66,9 @@
     "react-native-screens": "~4.29.0",
     "react-native-svg": "~15.15.5",
     "react-native-text-ticker": "~1.16.0",
-    "react-native-track-player": "github:lovegaoshi/react-native-track-player#33a3ecd0522c4d47576153b820c1da68942813cd",
+    "react-native-track-player": "github:lovegaoshi/react-native-track-player#56205c7f1a4fcd9ec7a098915893b1f7a0573b54",
     "react-native-view-shot": "^6.1.1",
-    "react-native-worklets": "0.13.0"
+    "react-native-worklets": "0.13.1"
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
@@ -77,11 +77,11 @@
     "@babel/preset-env": "^7.29.2",
     "@babel/runtime": "^7.29.2",
     "@phosphor-icons/core": "^2.1.1",
-    "@react-native-community/cli": "20.1.0",
-    "@react-native-community/cli-platform-android": "20.1.0",
-    "@react-native/babel-preset": "0.86.3",
-    "@react-native/metro-config": "0.86.3",
-    "@react-native/typescript-config": "0.86.3",
+    "@react-native-community/cli": "20.2.0",
+    "@react-native-community/cli-platform-android": "20.2.0",
+    "@react-native/babel-preset": "0.88.1",
+    "@react-native/metro-config": "0.88.1",
+    "@react-native/typescript-config": "0.88.1",
     "@types/he": "^1.2.3",
     "@types/node": "^26.6.5",
     "@types/react": "^19.2.0",
@@ -112,6 +112,6 @@
     }
   },
   "allowScripts": {
-    "github:lovegaoshi/react-native-track-player#33a3ecd0522c4d47576153b820c1da68942813cd": true
+    "github:lovegaoshi/react-native-track-player#56205c7f1a4fcd9ec7a098915893b1f7a0573b54": true
   }
 }

@@ -1,7 +1,7 @@
-diff --git a/android/src/main/java/com/localmediametadata/AsyncTask.java b/android/src/main/java/com/localmediametadata/AsyncTask.java
-index 6ba3c20f..78033118 100644
---- a/android/src/main/java/com/localmediametadata/AsyncTask.java
-+++ b/android/src/main/java/com/localmediametadata/AsyncTask.java
+diff --git a/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/AsyncTask.java b/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/AsyncTask.java
+index 6ba3c20..7803311 100644
+--- a/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/AsyncTask.java
++++ b/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/AsyncTask.java
 @@ -25,7 +25,11 @@ public class AsyncTask {
          try {
            Object result = callable.call();
@@ -27,6 +27,10 @@ index 6ba3c20f..78033118 100644
          } else promise.resolve(result);
        });
      } catch (Exception err) {
+diff --git a/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/MetadataCallable.java b/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/MetadataCallable.java
+index 6d3c594..0d4f236 100644
+--- a/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/MetadataCallable.java
++++ b/node_modules/react-native-local-media-metadata/android/src/main/java/com/localmediametadata/MetadataCallable.java
 @@ -20,7 +20,9 @@ public class MetadataCallable {
      public WritableMap call() {
        try {
