@@ -124,6 +124,15 @@ public class UtilsModule extends ReactContextBaseJavaModule implements com.faceb
     reactContext.registerReceiver(screenOnOffReceiver, theFilter);
   }
 
+  // F-1 无白屏（拍板 A）：JS containerReady 解除 splash 保持（MainActivity.contentReady）
+  @ReactMethod
+  public void notifyContentReady() {
+    Activity currentActivity = reactContext.getCurrentActivity();
+    if (currentActivity instanceof com.shiyin.music.MainActivity) {
+      ((com.shiyin.music.MainActivity) currentActivity).markContentReady();
+    }
+  }
+
   @ReactMethod
   public void exitApp() {
     // https://github.com/wumke/react-native-exit-app/blob/master/android/src/main/java/com/github/wumke/RNExitApp/RNExitAppModule.java

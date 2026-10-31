@@ -1,10 +1,11 @@
 // 拾音直连 /config 客户端（批1 直连换心；方案 doc/plans/self-hosted-music-server.md §四）
-// SWR 语义：有本地缓存→缓存即时生效+后台刷新（有变化才广播 sourcesUpdated）；
-// 无缓存→等网络（8s 上限）→空集兜底（2026-10-30 拍板修订：能力边界=服务端配置面，
-// 快照式默认集会过期失真——server 只开 tx 时旧默认集 kw/tx/wy 搜出不可播源；空集走
-// 「全源不可用」提示态+下方自愈重拉链。闸门立即放行=「无缓存不等网络」属 F-1 实施后
-// 目标态，现行无缓存路径仍 await 网络 8s 上限——审查 I-3 挂起窗口归 F-1 统一收口）。
-// TTL 24h：超期缓存降级为「先试网络再退回空缓存仍放行」。
+// F-1 秒开语义（doc/plans/instant-open.md §二.1，拍板②）：闸门**永不 await 网络**——
+// 有缓存（含 TTL 过期）→ 旧值即刻放行；无缓存 → 空集放行（快照式默认集退役，2026-10-30
+// 拍板：能力边界=服务端配置面，快照集随摘源过期失真；空集走「全源不可用」提示态+自愈链）；
+// 后台刷新全路径保留（SWR 每启核对支撑摘源实时收敛/回涨，失败静默保持当前值）。
+// 闸门 resolve 新契约（0.88 批 F-1 审查 I-4）：resolve 仅保证 qualityList 已按当前值
+// 同步填充，**不保证源集已收敛/服务端集已到达**——无缓存空窗期源集可能仍为空集。
+// TTL 24h 仅作缓存新鲜度参考（过期不再阻塞，只意味着后台刷新更必要）。
 // /url 遇 403 source_disabled 时由 client 调 refreshShiyinConfig 立即重拉。
 import { httpFetch } from '@/utils/request'
 import { getData, saveData } from '@/plugins/storage'
@@ -17,9 +18,10 @@ export interface ShiyinSourceInfo {
 }
 
 const CONFIG_CACHE_KEY = storageDataPrefix.shiyinConfig
-const CACHE_TTL = 24 * 60 * 60 * 1000
 const NETWORK_TIMEOUT = 8000
 
+// CachedConfig.fetchedAt 保留写入（结构回滚兼容；TTL 24h 判断已随 F-1 退役——
+// 过期缓存不再阻塞闸门，fetchedAt 仅作调试/未来新鲜度策略参考）
 interface CachedConfig {
   sources: Record<string, ShiyinSourceInfo>
   fetchedAt: number
@@ -116,27 +118,15 @@ export const fetchShiyinConfig = async(): Promise<void> => {
   return refreshing
 }
 
-// SWR 主体（core/apiSource.ts initShiyinConfig 闸门调用）：缓存/兜底存在即放行，恒 true
+// SWR 主体（core/apiSource.ts initShiyinConfig 闸门调用，F-1 拍板②）：永不等网络——
+// 缓存旧值（含 TTL 过期）或空集即刻放行，刷新全部转后台，恒 true
 export const initShiyinConfigClient = async(): Promise<boolean> => {
   const cached = await getData<CachedConfig>(CONFIG_CACHE_KEY)
   // 空集缓存同放行（审查 S-7，随 I-E 自愈口径）：冷启动与运行时空集语义一致——
   // 提示态+自愈定时链兜底；无缓存断网同落空集（2026-10-30 拍板修订，原「默认集兜底」退役）
-  if (cached?.sources) {
-    applySources(cached.sources)
-    if (Date.now() - cached.fetchedAt > CACHE_TTL) {
-      // 缓存超 TTL：先试网络再退回（与无缓存的差异=失败时旧缓存仍可放行）
-      await fetchShiyinConfig().catch(() => {})
-      return true
-    }
-    void fetchShiyinConfig().catch(() => {})
-    return true
-  }
-  try {
-    await fetchShiyinConfig()
-    return true
-  } catch {
-    // 空集兜底（2026-10-30 拍板）：不写死快照源集；applySources 空集分支自挂自愈重拉链
-    applySources({})
-    return true
-  }
+  applySources(cached?.sources ?? {})
+  // 后台刷新（SWR 每启核对，I-C 保留项）：成功非空 resetEmptyRetry、成功空集续链、
+  // 失败静默保持当前值——TTL 过期/无缓存不再阻塞闸门（I-3 两挂起窗口随 F-1 收口）
+  void fetchShiyinConfig().catch(() => {})
+  return true
 }

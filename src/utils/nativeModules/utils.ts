@@ -7,6 +7,9 @@ export const FILE_PROVIDER_AUTHORITY = UtilsModule.fileProviderAuthority as stri
 
 export const exitApp = UtilsModule.exitApp
 
+// F-1 无白屏（拍板 A）：containerReady 解除 splash 保持（MainActivity.contentReady）
+export const notifyContentReady = UtilsModule.notifyContentReady
+
 export const getSupportedAbis = UtilsModule.getSupportedAbis
 
 export const installApk = (filePath: string, fileProviderAuthority: string) => UtilsModule.installApk(filePath, fileProviderAuthority)

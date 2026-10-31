@@ -8,4 +8,13 @@
         <item name="android:windowBackground">@color/launch_window_background</item>
     </style>
 
+    <!-- F-1 无白屏（拍板 A）：splash 保持到内容就绪——MainActivity 用本主题，
+         JS containerReady 解除；postSplashScreenTheme 指回 AppTheme（edge-to-edge/
+         窗口配置原样继承），splash 底色走 DayNight 资源自动切深浅 -->
+    <style name="AppThemeSplash" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/launch_window_background</item>
+        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="postSplashScreenTheme">@style/AppTheme</item>
+    </style>
+
 </resources>

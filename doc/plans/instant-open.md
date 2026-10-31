@@ -23,12 +23,15 @@
 ### 2. init 链不动（src/core/init/index.ts）
 `await initShiyinConfig()` 原位保留（改后毫秒级）；initDynamicSources 先于它的顺序不变。
 
-### 3. 原生预连接·保守版（cn/toside/music/mobile/MainApplication.kt）
-onCreate 后台线程：DNS 预解析 + TCP connect 预热 shiyinbox.top，失败静默，严格后台线程防 ANR。**收益预期（审查 I-D/S-1 修订）**：消除 DNS+TCP 建连（约 1-2 个 RTT），TLS 仍在首请求；实测值以探针为准，若仍超预期再评估「OkHttp 连接池填充预热」轻量路径与 HTTPDNS 立项。**不做** OkHttpClientProvider 定制。
+### 3. 原生预连接·保守版（com/shiyin/music/MainApplication.kt）
+onCreate 后台线程：DNS 预解析 + TCP connect 预热 shiyinbox.top，失败静默，严格后台线程防 ANR。**收益预期（审查 I-D/S-1 修订；F-1 实施批审查 I-5 再修订）**：**DNS 预解析消除=确定收益；裸 Socket 连后即关不进任何连接池，TCP 握手消除不成立（主流 preconnect 均为保连接复用形态——Chrome preconnect/Lighthouse/W3C resource hints；本实现为保守版自定形态，理由=不动 OkHttpClientProvider 的范围约束）**，TLS 仍在首请求；实测值以探针为准，DNS/TCP 拆分 Log.i（tag=ShiyinBoot）即 HTTPDNS 立项判据数据，若仍超预期再评估「OkHttp 连接池填充预热」轻量路径与 HTTPDNS 立项。**不做** OkHttpClientProvider 定制。
 
 ### 4. onReady 打点（src/App.tsx + src/utils/bootLog.ts，审查 I-B 修订新增基建项）
-- bootLog.ts 基建改造：每条附时间戳；同步 `console.log('[BOOT]…')` 桥接 logcat（ReactNativeJS tag，`adb logcat -s ReactNativeJS` 可抓；release 可见性装机首验）；bootLog.ts 纳入回滚清单。
-- 打点：init 链起点（现有 `bootLog('Initing...')` 补 t0）+ containerReady（耗时差值）；原生段 Application.onCreate `Log.i`。
+- bootLog.ts 基建改造：每条附时间戳；桥接 logcat 用 **`console.warn`**（实施批修订：release Hermes 下 `console.log` 不进 logcat——build-speed 铁律实证；warn 走异常通道 ReactNativeJS tag 同样可抓，`adb logcat -s ReactNativeJS`；dev 双通道 `__DEV__ ? log : warn` 免 LogBox 噪声）；release 可见性装机首验；bootLog.ts 纳入回滚清单。
+- 打点：init 链起点（现有 `bootLog('Initing...')` 补 t0）+ containerReady（耗时差值）；原生段 Application.onCreate `Log.i`（tag=ShiyinBoot，与 JS 侧 `[BOOT]` 前缀配对）。
+
+### 6. splash 保持到内容就绪（2026-10-31 实施中用户新增拍板 A）
+装机实测发现「无白屏：launch_window_background 现状机制」假设不完整——Android 12+ 系统 splash 图标淡出后、React 首帧前的纯色期（bundle 执行物理耗时）被感知为一瞬白屏（浅色 F2F2F7≈白）。处置=引入 **AndroidX 官方 core-splashscreen**（非拍板⑤否决的 react-native-bootsplash 社区库，拍板⑤只否决该库）：`setKeepOnScreenCondition` 保持图标到 JS containerReady（经 UtilsModule.notifyContentReady 桥），3s 保险丝防桥未通卡死；主题 `AppThemeSplash`（postSplashScreenTheme 指回 AppTheme，底色走 DayNight 资源）。冷启动序列变「图标→内容」。**实施坑**：裸 `splashScreen` 属性会解析到 Activity 平台 `getSplashScreen()`（android.window，API 31+），必须接住 `installSplashScreen()` 的 androidx 返回实例再调 keep-on-screen。
 
 ### 5. 不做清单（含补记理由）
 HTTPDNS（视实测另立项）/ bootsplash 库（launch 主题已天然保持）/ 分帧 init（有缓存 init 链 ~40ms）/ 离线提示 UI（拍板静默）/ StatusBar（RN 升级批）/ **原生预取 /config**（审查 S-3 补记：首装场景 LD/Firebase 原生 bootstrap 同型增强，不取理由=引入原生网络+存储依赖与生命周期管理，超出保守版范围，随 HTTPDNS 项一并评估）。
@@ -48,13 +51,26 @@ HTTPDNS（视实测另立项）/ bootsplash 库（launch 主题已天然保持�
 
 1. 静态：tsc + eslint 双绿。
 2. 探针矩阵（真机 5 次取中位，**六场景**）：①有缓存（TTL 内）②**TTL 过期（预置 fetchedAt=now-25h，审查 I-E 新增——本次唯一退役语义的直接验证点）**③清数据在线 ④清数据离线 ⑤飞行模式缓存态 ⑥深链冷启动；主度量=am start -W 全段，bootLog 差值归因。
-3. 功能回归：**空集放行四页提示态（2026-10-30 修订，原默认集放行退役）**；TTL 过期启动**旧值放行不等网络**+后台刷新成功后 sourcesUpdated 修正四页；**离线 TTL 态保持旧值不降级**；摘源实时收敛/回涨（config.ts:135 保留项）；空集演练（自愈链）；apiInitPromise 消费方（搜索/取链/歌词）；**首启聚合搜索仅命中开启集（走查批新增验证点，用户实证过泄漏）**；深链冷启动；覆盖安装存量数据。
+3. 功能回归：**空集放行四页提示态（2026-10-30 修订，原默认集放行退役）**；TTL 过期启动**旧值放行不等网络**+后台刷新成功后 sourcesUpdated 修正四页；**离线 TTL 态保持旧值不降级**；摘源实时收敛/**回涨**（config.ts:135 保留项）；空集演练（自愈链）；apiInitPromise 消费方（搜索/取链/歌词）；**首启聚合搜索仅命中开启集（走查批新增验证点，用户实证过泄漏）**；**无缓存空窗期发起搜索**（F-1 实施批审查 I-4：闸门毫秒级 resolve、后台 /config 在途窗口——四页提示态接管或空返回+广播修正）；深链冷启动（探针⑥之外补功能断言=落地页正确）；覆盖安装存量数据。
 4. 真机回归并入统一装机批。
+
+**场景→预期→回归点映射**（F-1 实施批审查 S-5 补）：
+
+| 场景 | 预期 | 对应回归点 |
+|---|---|---|
+| ①缓存 TTL 内 | 旧值即刻放行，SWR 后台核对 | 摘源实时收敛/回涨 |
+| ②TTL 过期（预置 fetchedAt=now-25h，手段=**系统时间调后 +25h**，AsyncStorage 不可 adb 直改） | 旧值放行**不等网络**（I-3 唯一直接验证点） | TTL 过期旧值放行+后台修正广播 |
+| ③清数据在线 | 空集放行→后台 /config 到达广播修正 | 空集提示态+自愈链；首启聚合仅命中开启集 |
+| ④清数据离线 | 空集提示态，无 8s 挂起 | 自愈链静默（下次启动/403 重拉为准，R6） |
+| ⑤飞行模式缓存态 | 缓存旧值放行**不降级** | 离线 TTL 态保持旧值 |
+| ⑥深链冷启动 | ≤1s + 落地页正确 | 深链功能回归 |
+
+**通过门槛**：六场景中位均 ≤1s（拍板①）；任一超标→触发 R5（如实报告+第二梯队方案）。
 
 ## 五、回滚
 
-JS（config.ts/bootLog.ts/App.tsx）+ Kotlin（MainApplication.kt）同一 commit，revert 即净；无数据迁移、无存储键变更。回滚清单以实际 diff 文件回填（审查 S-3）。
+JS（config.ts/bootLog.ts/App.tsx + search/music.ts、songlist.ts 注释）+ Kotlin（MainApplication.kt）同一 commit，revert 即净；无数据迁移、无存储键变更（CachedConfig 结构未动，fetchedAt 保留写入）。**文件级分层路径（F-1 实施批审查 I-3 回填，S-3 约束）**：JS 段异常→partial revert config.ts（保留观测基建）；原生段异常→partial revert MainApplication.kt；根因不明→整批 revert。
 
 ## 六、实施顺序
 
-修复批真机回归+commit → **本批实施** → RN 0.88 升级批。
+~~修复批真机回归+commit → 本批实施 → RN 0.88 升级批~~（已失效）——拍板⑦修订为 **RN 0.88 一跳前置（已完成：4ad6e091/3fb30e05/9476a962）→ 本批实施**。

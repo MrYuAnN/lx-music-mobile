@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { init as initLog } from '@/utils/log'
 import '@/config/globalData'
 import { getFontSize } from '@/utils/data'
-import { exitApp } from '@/utils/nativeModules/utils'
+import { exitApp, notifyContentReady } from '@/utils/nativeModules/utils'
 import { windowSizeTools } from '@/utils/windowSizeTools'
 import { tipDialogNative } from '@/utils/tools'
 import { initInsets } from '@/utils/insetsTool'
@@ -76,6 +76,10 @@ const AppRoot = () => {
 
   // 容器就绪：首屏状态派生（对齐 RNN setRoot 后的首个 appear）+ 启动链收尾
   const handleContainerReady = useCallback(() => {
+    // F-1 全段度量终点（拍板⑥）：onReady=首页可交互（审查 I-B 打点项）
+    bootLog('Container ready.')
+    // F-1 无白屏（拍板 A）：解除 splash 保持（此时内容首帧已提交）
+    notifyContentReady()
     handleNavigationStateChange()
     void pushedHomeHandlerRef.current?.()
   }, [])

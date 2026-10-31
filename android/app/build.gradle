@@ -218,6 +218,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // F-1 无白屏（方案 §一 + 用户拍板 A）：splash 保持到内容就绪（AndroidX 官方库，
+    // 非拍板⑤否决的 react-native-bootsplash 社区库）
+    implementation("androidx.core:core-splashscreen:1.0.1")
     // implementation "androidx.javascriptengine:javascriptengine:1.0.0-alpha07"
     // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation 'wang.harlon.quickjs:wrapper-android:2.4.0'

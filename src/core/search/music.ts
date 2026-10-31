@@ -19,9 +19,10 @@ export const clearListInfo: typeof searchMusicActions.clearListInfo = (source) =
 
 export const search = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
   if (!text) return []
-  // 源集就绪闸门（2026-10-30 拍板：搜索面=服务端配置面）：闸门 resolve 晚于 sourcesUpdated
-  // 广播重建（init 先订阅后初始化），await 后 state.sources 必为已收敛集——根除首启瞬时窗口
-  // 对未配置源发搜索
+  // 源集就绪闸门（2026-10-30 拍板：搜索面=服务端配置面；F-1 后契约更新见 config.ts 头注）：
+  // 闸门 resolve 仅保证 qualityList 已同步填充，**不保证源集已收敛**——有缓存路径 resolve
+  // 晚于广播重建（init 先订阅后初始化），await 后 sources=缓存重建集；无缓存路径空集起步
+  // 且不广播，resolve 时后台 /config 仍在途（最长 8s）——下方空集守卫即该空窗期的实际路径
   await global.sy.apiInitPromise[0]
   // 闸门后源 id 校验：提交瞬间的 id 可能是配置就绪前的默认/持久化值（清数据首启默认 'kw'
   // vs server 仅 tx，重建后 listInfos 无该源条目，直接取即 TypeError 静默空结果）——重定向
