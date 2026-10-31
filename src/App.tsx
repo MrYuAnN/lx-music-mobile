@@ -103,7 +103,7 @@ const AppRoot = () => {
       <PlaylistCoverGenHost />
       {/* 全局确认弹窗宿主：挂 inited 条件块外（审查 I-2）——init 链路弹窗（deeplink）可达 */}
       <ConfirmHost />
-      <StatusBar translucent backgroundColor="transparent" barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={theme.isDark ? 'light-content' : 'dark-content'} />
     </View>
   )
 }
