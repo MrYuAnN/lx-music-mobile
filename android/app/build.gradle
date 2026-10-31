@@ -116,12 +116,23 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.shiyin.music"
+    // buildConfigField（批2 activation-sdk 四件套）依赖 BuildConfig 生成（AGP 8+ 默认关闭，显式开）
+    buildFeatures {
+        buildConfig true
+    }
     defaultConfig {
         applicationId "com.shiyin.music"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode verCode
         versionName verName
+        // 批2：activation-sdk 配置四件套（ActivationSdk.init 注入源；净屏 app/build.gradle:150 同款形态）。
+        // SDK_DEVICE_SALT 不可变（换盐=全量存量设备指纹失效），断言测试锁定（salt=平台 products 注册表 salt_id）。
+        // SDK_SERVICE_PUBKEY_HEX=平台实例验签公钥（sha256(service.private)=70a4659c… 双端 diff 一致，2026-10-31 核实）。
+        buildConfigField "String", "SDK_API_BASE", '"https://shiyinbox.top"'
+        buildConfigField "String", "SDK_PRODUCT_ID", '"shiyin"'
+        buildConfigField "String", "SDK_DEVICE_SALT", '"shiyin-device-v1"'
+        buildConfigField "String", "SDK_SERVICE_PUBKEY_HEX", '"bb50b7c0294ec095a8f31237995838620402349fecc71010d6d6dde100b23e23"'
     }
 
     splits {
@@ -218,6 +229,9 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+    // 批2：激活/权益/设备指纹全链自 activation-sdk（源码单源=净屏仓活源拷入，diff 对拍一致；
+    // coroutines-core 经其 api 依赖传递可见）
+    implementation project(':activation-sdk')
     // F-1 无白屏（方案 §一 + 用户拍板 A）：splash 保持到内容就绪（AndroidX 官方库，
     // 非拍板⑤否决的 react-native-bootsplash 社区库）
     implementation("androidx.core:core-splashscreen:1.0.1")

@@ -4,4 +4,5 @@
     <string name="desktop_lyric_locked_title">歌词已锁定</string>
     <string name="desktop_lyric_locked_text">点击「解锁」恢复歌词操作</string>
     <string name="desktop_lyric_unlock">解锁</string>
+    <string name="activation_restored_toast">已恢复本机激活</string>
 </resources>

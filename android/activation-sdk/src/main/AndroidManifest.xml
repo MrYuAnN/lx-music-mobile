@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- INTERNET：SDK 全部平台端点请求所必需；manifest merger 自动并入宿主（业界 SDK 标准形态，
+     接入方免疫漏配——三席审查 PM-I1/优化师 S3）。其余权限由宿主按需声明。 -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+</manifest>

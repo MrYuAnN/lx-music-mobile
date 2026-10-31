@@ -1,0 +1,53 @@
+// activation-sdk（平台激活码 SDK；方案 §3.7，批次 4 自净屏 App 抽取，2026-10-07 改名去净屏化）
+// 源码分发（v1.1 拍板：接入方均为自有仓库、契约低频变更；maven 分发不做）
+// 宿主拷入本目录后：settings.gradle include + app 依赖 project(':activation-sdk') + ActivationSdk.init()
+// 形态对齐宿主 App（AGP 9 内置 Kotlin：无独立 kotlin 插件，kotlin{} compilerOptions 新 DSL）
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
+plugins {
+    id 'com.android.library'
+}
+
+android {
+    namespace 'top.astock.activation'
+    compileSdkVersion 37
+
+    defaultConfig {
+        minSdkVersion 23
+    }
+
+    // 纯 Kotlin 逻辑 + WorkManager Worker：无 AAPT 资源/BuildConfig 需求
+    buildFeatures {
+        buildConfig false
+    }
+
+    testOptions {
+        unitTests {
+            // 纯 JVM 单测（组1 块4）：android.util.Log 等框架 stub 返回默认值不抛
+            // "not mocked"；单测限定不触 Android Framework（方案 N-3 拍板）
+            returnDefaultValues = true
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+    }
+}
+
+dependencies {
+    // 版本与净屏宿主对齐（app/build.gradle 同源值）；宿主版本不同时 gradle 取高者。
+    // coroutines 用 api：对外 suspend API 的编译可见性必须传递给宿主（三席审查 S2）
+    api 'org.jetbrains.kotlinx:kotlinx-coroutines-core:1.11.0'
+    implementation 'androidx.work:work-runtime-ktx:2.11.2'
+    // 纯 JVM 单测（组1 块4）：org.json 真实现（android.jar stub 会抛）+ junit4
+    testImplementation 'junit:junit:4.13.2'
+    testImplementation 'org.json:json:20240303'
+    testImplementation 'org.jetbrains.kotlinx:kotlinx-coroutines-test:1.11.0'
+}

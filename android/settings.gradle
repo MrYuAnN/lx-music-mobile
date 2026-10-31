@@ -4,4 +4,16 @@ extensions.configure(com.facebook.react.ReactSettingsExtension){ ex -> ex.autoli
 
 rootProject.name = 'shiyin'
 include ':app'
+// 批2：平台激活码 SDK（源码拷入自净屏仓活源，diff 对拍一致；README 检查单见 SDK README.md）
+include ':activation-sdk'
+
+// activation-sdk 接线版重定向：本项目 gradle.properties 保有 android.builtInKotlin/newDsl 双
+// opt-out（RN 0.88 批实测必需——内置模式与 :app/三方库 kotlin-android 硬冲突，2026-10-31 实证；
+// AGP 10 迁移时统一移除）。opt-out 形态=外部 KGP 模式，活源 build.gradle 的 kotlin{} DSL 缺
+// 插件提供者且 settings 注入（beforeProject apply java/kotlin-android）与 AGP 9 library 冲突
+// （configuration 角色锁实证），故以 build.host.gradle 接线版构建：与活源唯一差异=plugins 块
+// 多一行 kotlin-android（kotlin{} 在外部 KGP 下同为合法 DSL）。活源升级检查单：diff 活源
+// build.gradle ↔ 本文件同步语义。
+project(':activation-sdk').buildFileName = 'build.host.gradle'
+
 includeBuild('../node_modules/@react-native/gradle-plugin')
