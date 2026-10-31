@@ -8,6 +8,8 @@ import { openUrl, toast } from '@/utils/tools'
 
 export const showModal = () => {
   if (versionState.showModal) return
+  // S1 互斥（批2 ⑤）：强更弹窗置位期间抑制常规更新弹窗（强更唯一优先，防双 modal 叠加）
+  if (versionState.upgradeRequired.required) return
   showVersionModal()
 }
 

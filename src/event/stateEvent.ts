@@ -110,6 +110,11 @@ export class StateEvent extends Event {
     this.emit('versionModalUpdated', visible)
   }
 
+  // ⑤ 强更标志（批2 min_client_version 消费，config.ts 冷启动一次判定）
+  upgradeRequiredUpdated(info: VersionState['upgradeRequired']) {
+    this.emit('upgradeRequiredUpdated', info)
+  }
+
   // 全局确认弹窗（弹窗体系统一方案批1）：无参广播，hook 读 store/confirm 快照
   confirmModalUpdated() {
     this.emit('confirmModalUpdated')

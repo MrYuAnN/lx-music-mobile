@@ -14,6 +14,20 @@ export const useVersionInfo = () => {
   return info
 }
 
+// ⑤ 强更标志（批2 min_client_version 消费）
+export const useUpgradeRequired = () => {
+  const [info, setInfo] = useState(state.upgradeRequired)
+
+  useEffect(() => {
+    global.state_event.on('upgradeRequiredUpdated', setInfo)
+    return () => {
+      global.state_event.off('upgradeRequiredUpdated', setInfo)
+    }
+  }, [])
+
+  return info
+}
+
 // 弹窗可见性（N1：RNN overlay → store 驱动的 RN Modal）
 export const useVersionModalVisible = () => {
   const [visible, setVisible] = useState(state.showModal)

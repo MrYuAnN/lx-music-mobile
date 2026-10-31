@@ -8,8 +8,10 @@
 // TTL 24h 仅作缓存新鲜度参考（过期不再阻塞，只意味着后台刷新更必要）。
 // /url 遇 403 source_disabled 时由 client 调 refreshShiyinConfig 立即重拉。
 import { httpFetch } from '@/utils/request'
+import { compareVer } from '@/utils'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
+import versionActions from '@/store/version/action'
 
 export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 
@@ -19,6 +21,24 @@ export interface ShiyinSourceInfo {
 
 const CONFIG_CACHE_KEY = storageDataPrefix.shiyinConfig
 const NETWORK_TIMEOUT = 8000
+
+// ⑤ min_client_version 强更消费（批2，R6+S2）：判定收敛在冷启动路径一次——
+// initShiyinConfigClient 的后台刷新回调；403 source_disabled 重拉与空集自愈链的
+// fetch 不触发（防运行期反复弹窗）。min_client_version 空/不可解析=无门槛跳过（S2，
+// 对齐服务端 VersionLess 口径）。
+let upgradeCheckDone = false
+// 最近一次 /config 成功响应的强更元数据（body 字段，fetchShiyinConfig 解析时存）
+let lastConfigMeta: { min_client_version: string, upgrade_url: string } | null = null
+
+const checkUpgradeRequired = (info: { min_client_version: string, upgrade_url: string }) => {
+  if (upgradeCheckDone) return
+  const min = info.min_client_version?.trim() ?? ''
+  if (!min || !/^\d+(\.\d+)*$/.test(min)) return
+  upgradeCheckDone = true
+  if (compareVer(process.versions.app, min) < 0) {
+    versionActions.setUpgradeRequired({ required: true, url: info.upgrade_url ?? '' })
+  }
+}
 
 // CachedConfig.fetchedAt 保留写入（结构回滚兼容；TTL 24h 判断已随 F-1 退役——
 // 过期缓存不再阻塞闸门，fetchedAt 仅作调试/未来新鲜度策略参考）
@@ -101,6 +121,7 @@ export const fetchShiyinConfig = async(): Promise<void> => {
     if (resp.statusCode != 200 || body.code != 200 || body.sources == null) {
       throw new Error(`config fetch failed: ${resp.statusCode}`)
     }
+    lastConfigMeta = { min_client_version: body.min_client_version ?? '', upgrade_url: body.upgrade_url ?? '' }
     const sources: Record<string, ShiyinSourceInfo> = {}
     for (const [source, info] of Object.entries(body.sources)) {
       if (info?.qualitys?.length) sources[source] = { qualitys: info.qualitys }
@@ -126,7 +147,12 @@ export const initShiyinConfigClient = async(): Promise<boolean> => {
   // 提示态+自愈定时链兜底；无缓存断网同落空集（2026-10-30 拍板修订，原「默认集兜底」退役）
   applySources(cached?.sources ?? {})
   // 后台刷新（SWR 每启核对，I-C 保留项）：成功非空 resetEmptyRetry、成功空集续链、
-  // 失败静默保持当前值——TTL 过期/无缓存不再阻塞闸门（I-3 两挂起窗口随 F-1 收口）
-  void fetchShiyinConfig().catch(() => {})
+  // 失败静默保持当前值——TTL 过期/无缓存不再阻塞闸门（I-3 两挂起窗口随 F-1 收口）。
+  // then 内挂 ⑤ 强更判定（R6：仅冷启动路径，运行期重拉不触发）
+  void fetchShiyinConfig()
+    .then(() => {
+      if (lastConfigMeta) checkUpgradeRequired(lastConfigMeta)
+    })
+    .catch(() => {})
   return true
 }

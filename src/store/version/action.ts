@@ -10,6 +10,10 @@ export default {
     state.ignoreVersion = version
     global.state_event.versionInfoIgnoreVersionUpdated(version)
   },
+  setUpgradeRequired(info: InitState['upgradeRequired']) {
+    state.upgradeRequired = info
+    global.state_event.upgradeRequiredUpdated(info)
+  },
   setVisibleModal(visible: boolean) {
     if (state.showModal == visible) return
     state.showModal = visible

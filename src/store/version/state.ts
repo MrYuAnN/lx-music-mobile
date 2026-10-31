@@ -19,6 +19,8 @@ export interface InitState {
     status: SY.UpdateStatus
   }
   ignoreVersion: string | null
+  /** ⑤ min_client_version 强更（批2）：/config 冷启动一次判定（config.ts），可关闭弹窗+跳 upgrade_url */
+  upgradeRequired: { required: boolean, url: string }
 }
 
 const state: InitState = {
@@ -33,6 +35,7 @@ const state: InitState = {
     status: 'checking',
   },
   ignoreVersion: null,
+  upgradeRequired: { required: false, url: '' },
 }
 
 
