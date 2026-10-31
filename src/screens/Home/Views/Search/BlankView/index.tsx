@@ -3,8 +3,8 @@ import { useI18n } from '@/lang'
 import { useSettingValue } from '@/store/setting/hook'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react'
-import { Animated, View, type ScrollView } from 'react-native'
+import { forwardRef, useImperativeHandle, useMemo, useRef, useState, type ComponentRef } from 'react'
+import { Animated, View, ScrollView } from 'react-native'
 import HistorySearch, { type HistorySearchType } from './HistorySearch'
 import HotSearch, { type HotSearchType } from './HotSearch'
 import { SPACING } from '@/config/spacing'
@@ -26,7 +26,7 @@ export default forwardRef<BlankViewType, BlankViewProps>(({ onSearch, scrollYAni
   const [visible, setVisible] = useState(false)
   const hotSearchRef = useRef<HotSearchType>(null)
   const historySearchRef = useRef<HistorySearchType>(null)
-  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollViewRef = useRef<ComponentRef<typeof ScrollView>>(null)
   const isShowHotSearch = useSettingValue('search.isShowHotSearch')
   const isShowHistorySearch = useSettingValue('search.isShowHistorySearch')
   const t = useI18n()

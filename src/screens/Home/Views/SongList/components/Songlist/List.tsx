@@ -168,7 +168,7 @@ export default forwardRef<ListType, ListProps>(({ onRefresh, onLoadMore, onOpenD
                 onEndReachedThreshold={0.6}
                 onEndReached={handleLoadMore}
                 refreshControl={refreshControl}
-                ListFooterComponent={footerComponent}
+                ListFooterComponent={footerComponent ?? undefined}
                 showsVerticalScrollIndicator={false}
               />
             )

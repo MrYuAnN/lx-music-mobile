@@ -1,5 +1,5 @@
 import { playList } from '@/core/player/player'
-import { useMemo, useRef, useState, useEffect, forwardRef, useImperativeHandle, useCallback } from 'react'
+import { useMemo, useRef, useState, useEffect, forwardRef, useImperativeHandle, useCallback, type ComponentRef } from 'react'
 import { Animated, View, FlatList, type NativeSyntheticEvent, type NativeScrollEvent, type FlatListProps } from 'react-native'
 import ReAnimated from 'react-native-reanimated'
 
@@ -72,8 +72,8 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
   const theme = useTheme()
   // 底部穿行契约（2026-10-20）：占位块改悬浮后列表延伸到屏底，让位保证末行可滚出迷你条
   const bottomInset = usePlayerBarBottomInset()
-  const flatListRef = useRef<FlatList>(null)
-  const listWrapperRef = useRef<View>(null)
+  const flatListRef = useRef<FlatList<SY.Music.MusicInfo>>(null)
+  const listWrapperRef = useRef<ComponentRef<typeof View>>(null)
   const [currentList, setListState] = useState<SY.List.ListMusics>([])
   // 拖拽会话与落位转正的数据同步点：state 写入必须同步 ref（拖拽启动快照/落位回调取实时列表，
   // 防回调闭包 stale——方案 §三.3）
@@ -545,7 +545,7 @@ const List = forwardRef<ListType, ListProps>(({ onShowMenu, onMuiltSelectMode, o
         renderItem={renderItem}
         keyExtractor={getkey}
         extraData={activeViewIndex}
-        ListHeaderComponent={headerElement}
+        ListHeaderComponent={headerElement ?? undefined}
         getItemLayout={getItemLayout}
         showsVerticalScrollIndicator={false}
         // 拖拽中禁手势滚动（自动滚动由 hook 程序化驱动，scrollToOffset 不受 scrollEnabled 影响）

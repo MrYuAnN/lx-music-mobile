@@ -51,7 +51,7 @@ export const onScreenStateChange = (handler: (state: 'ON' | 'OFF') => void): () 
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const eventEmitter = new NativeEventEmitter(UtilsModule)
   const eventListener = eventEmitter.addListener('screen-state', event => {
-    handler(event.state as 'ON' | 'OFF')
+    handler((event as { state: string }).state as 'ON' | 'OFF')
   })
 
   return () => {
@@ -112,7 +112,7 @@ export const onDialogImeChange = (handler: (imeBottom: number) => void): () => v
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const eventEmitter = new NativeEventEmitter(UtilsModule)
   const eventListener = eventEmitter.addListener('dialog-ime-changed', event => {
-    handler(event.imeBottom as number)
+    handler((event as { imeBottom: number }).imeBottom)
   })
 
   return () => {
@@ -146,7 +146,8 @@ export const onWindowInsetsChange = (handler: (insets: { navBarBottom: number, n
   // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   const eventEmitter = new NativeEventEmitter(UtilsModule)
   const eventListener = eventEmitter.addListener('window-insets-changed', event => {
-    handler({ navBarBottom: event.navBarBottom, navBarRight: event.navBarRight, imeBottom: event.imeBottom })
+    const insets = event as { navBarBottom: number, navBarRight: number, imeBottom: number }
+    handler({ navBarBottom: insets.navBarBottom, navBarRight: insets.navBarRight, imeBottom: insets.imeBottom })
   })
 
   return () => {

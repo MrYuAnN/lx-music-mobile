@@ -1,4 +1,4 @@
-import { useRef, useEffect, memo } from 'react'
+import { useRef, useEffect, memo, type ComponentRef } from 'react'
 import { View, TouchableOpacity } from 'react-native'
 import { createStyle } from '@/utils/tools'
 import { type ListInfoItem } from '@/store/songlist/state'
@@ -26,7 +26,7 @@ export default memo(({ item, index, width, showSource, onPress }: {
   const theme = useTheme()
   const t = useI18n()
   // 封面飞入源侧（RNN sharedElement fromId 的替代）：挂载时注册测距，push 时实测源矩形
-  const sourceRef = useRef<View>(null)
+  const sourceRef = useRef<ComponentRef<typeof View>>(null)
   useEffect(() => {
     if (!item.source) return
     return registerCoverSource(item.id, cb => {

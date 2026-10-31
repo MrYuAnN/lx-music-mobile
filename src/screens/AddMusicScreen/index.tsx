@@ -435,7 +435,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
                   keyExtractor={keyExtractor}
                   getItemLayout={getItemLayout}
                   renderItem={renderItem}
-                  ListEmptyComponent={listEmpty}
+                  ListEmptyComponent={listEmpty ?? undefined}
                   onEndReachedThreshold={0.5}
                   showsVerticalScrollIndicator={false}
                 />
@@ -467,7 +467,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
                     keyExtractor={keyExtractor}
                     getItemLayout={getItemLayout}
                     renderItem={renderItem}
-                    ListEmptyComponent={listEmpty}
+                    ListEmptyComponent={listEmpty ?? undefined}
                     showsVerticalScrollIndicator={false}
                   />
                 )

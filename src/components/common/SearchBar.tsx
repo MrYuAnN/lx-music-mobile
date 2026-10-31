@@ -1,4 +1,4 @@
-import { memo, forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { memo, forwardRef, useImperativeHandle, useRef, useState, type ComponentRef } from 'react'
 import { StyleSheet, TextInput, TouchableOpacity, View, type StyleProp, type ViewStyle } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import { useTheme } from '@/store/theme/hook'
@@ -28,7 +28,7 @@ const SearchBar = forwardRef<SearchBarType, {
   autoFocus?: boolean
 }>(({ placeholder, value, onChangeText, onSubmit, onClear, onBlur, onTouchStart, prefix, tone = 'plain', style, autoFocus }, ref) => {
       const theme = useTheme()
-      const inputRef = useRef<TextInput>(null)
+      const inputRef = useRef<ComponentRef<typeof TextInput>>(null)
       const [innerValue, setInnerValue] = useState('')
       const isControlled = value != null
       const text = isControlled ? (value) : innerValue

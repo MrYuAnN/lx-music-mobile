@@ -313,9 +313,9 @@ const List = forwardRef<ListType, ListProps>(({
       onEndReachedThreshold={0.5}
       onEndReached={handleLoadMore}
       progressViewOffset={progressViewOffset}
-      ListHeaderComponent={listHeader}
+      ListHeaderComponent={listHeader ?? undefined}
       refreshControl={refreshControl}
-      ListFooterComponent={footerComponent}
+      ListFooterComponent={footerComponent ?? undefined}
       showsVerticalScrollIndicator={false}
     />
   )

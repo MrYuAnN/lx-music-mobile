@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState, type RefObject } from 'react'
+import { memo, useEffect, useRef, useState, type RefObject, type ComponentRef } from 'react'
 import { Image, StyleSheet, View } from 'react-native'
 import Animated, { Easing, runOnJS, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated'
 
@@ -73,8 +73,8 @@ let controller: {
 // 目标矩形用相对该祖先的布局测量，布局真源运行时获取，不依赖调用方手工镜像偏移
 // （真机反馈：parentOffset 手工补偏漏算状态栏高度致封面飞抵点悬在头图上方，审查 S-3 根治）。
 // targetRadius：目标圆角（hero 改版后详情头为直角 0，源列表封面恒 4dp，飞行层圆角随程过渡）
-export const useCoverFlyTarget = (id: string, relativeTo: RefObject<View | null>, targetRadius = 4) => {
-  const ref = useRef<View>(null)
+export const useCoverFlyTarget = (id: string, relativeTo: RefObject<ComponentRef<typeof View> | null>, targetRadius = 4) => {
+  const ref = useRef<ComponentRef<typeof View>>(null)
   const measuredRef = useRef(false)
   const [settled, setSettled] = useState(!pendingFly || pendingFly.id !== id)
 

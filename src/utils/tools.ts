@@ -1,4 +1,4 @@
-import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appearance, PermissionsAndroid, AppState, StyleSheet, type ScaledSize } from 'react-native'
+import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appearance, PermissionsAndroid, AppState, StyleSheet, type ScaledSize, type ViewStyle, type TextStyle, type ImageStyle, type StyleProp } from 'react-native'
 // import ExtraDimensions from 'react-native-extra-dimensions-android'
 import Clipboard from '@react-native-clipboard/clipboard'
 import { storageDataPrefix } from '@/config/constant'
@@ -422,7 +422,12 @@ export function debounceBackgroundTimer<Args extends any[]>(fn: (...args: Args) 
   }
 }
 
-type Styles = StyleSheet.NamedStyles<Record<string, {}>>
+// RN 0.88 退役 StyleSheet.NamedStyles 导出（strict types 迁移），本地同名 shim 保住
+// createStyle 的泛型约束口径。有意放宽（0.88 代码审查 S-2）：官方原定义为裸联合
+// { [P in keyof T]: ViewStyle | TextStyle | ImageStyle }，此处 StyleProp 包裹以兼容
+// 数组/falsy 形态——存量调用全为对象字面量，放宽无实际触达面
+type NamedStyles<T> = { [K in keyof T]: StyleProp<ViewStyle | TextStyle | ImageStyle> }
+type Styles = NamedStyles<Record<string, {}>>
 type Style = Styles[keyof Styles]
 // 样式数值口径 = dp 直译（2026-10-11 拍板）：写入值即渲染值，不做屏幕/字号缩放。
 // 历史上的等比缩放管线（trasformeProps + scaleSize* 调用）已随 dp 直译拍板退役。
@@ -430,13 +435,13 @@ export const trasformeStyle = <T extends Style>(styles: T): T => {
   return styles
 }
 
-export const createStyle = <T extends StyleSheet.NamedStyles<T>>(styles: T | StyleSheet.NamedStyles<T>): T => {
+export const createStyle = <T extends NamedStyles<T>>(styles: T | NamedStyles<T>): T => {
   const newStyle: Record<string, Style> = { ...styles }
   for (const [n, s] of Object.entries(newStyle)) {
     newStyle[n] = trasformeStyle(s)
   }
   // @ts-expect-error
-  return StyleSheet.create(newStyle as StyleSheet.NamedStyles<T>)
+  return StyleSheet.create(newStyle as NamedStyles<T>)
 }
 
 export const isHorizontalMode = (width: number, height: number): boolean => {

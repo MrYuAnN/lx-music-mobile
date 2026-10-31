@@ -9,7 +9,7 @@
  * @format
  */
 
-import { forwardRef } from 'react'
+import { forwardRef, type ComponentRef } from 'react'
 import {
   View,
   StyleSheet,
@@ -49,7 +49,7 @@ export interface ImageBackgroundProps extends Omit<_ImageBackgroundProps, 'sourc
   source?: _ImageBackgroundProps['source'] | null
 }
 
-export default forwardRef<View, ImageBackgroundProps>(({
+export default forwardRef<ComponentRef<typeof View>, ImageBackgroundProps>(({
   children,
   style,
   imageStyle,

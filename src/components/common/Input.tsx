@@ -1,4 +1,4 @@
-import { useRef, useImperativeHandle, forwardRef, useCallback } from 'react'
+import { useRef, useImperativeHandle, forwardRef, useCallback, type ComponentRef } from 'react'
 import { TextInput, View, TouchableOpacity, StyleSheet, type TextInputProps } from 'react-native'
 import { Icon } from '@/components/common/Icon'
 import { createStyle } from '@/utils/tools'
@@ -61,7 +61,7 @@ export interface InputType {
 }
 
 export default forwardRef<InputType, InputProps>(({ onChangeText, onClearText, clearBtn, style, size = 14, ...props }, ref) => {
-  const inputRef = useRef<TextInput>(null)
+  const inputRef = useRef<ComponentRef<typeof TextInput>>(null)
   const theme = useTheme()
   // const scaleClearBtn = useRef(new Animated.Value(0)).current
 

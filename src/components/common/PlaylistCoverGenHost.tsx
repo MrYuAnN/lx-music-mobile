@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentRef } from 'react'
 import { Image, View } from 'react-native'
 import { captureRef } from 'react-native-view-shot'
 import { defaultHeaders } from '@/components/common/Image'
@@ -67,7 +67,7 @@ const CollageCover = ({ urls, onMainLoaded }: { urls: string[], onMainLoaded: (o
 }
 
 const PlaylistCoverGenHost = () => {
-  const viewRef = useRef<View>(null)
+  const viewRef = useRef<ComponentRef<typeof View>>(null)
   const [task, setTask] = useState<{ listId: string, picUrls: string[] } | null>(null)
   const [nonce, setNonce] = useState(0)
   const settleRef = useRef<((ok: boolean) => void) | null>(null)

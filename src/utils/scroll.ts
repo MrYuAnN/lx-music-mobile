@@ -100,8 +100,10 @@ const handleScrollY = (element: ScrollElement<FlatList<any>>, info: NativeSynthe
     } else {
       if (element.lx_scrollNextParams) {
         const [_element, info, _to, duration, fn] = element.lx_scrollNextParams
-        if (to > _to && info.contentOffset.y < val) info.contentOffset.y = val
-        info.contentOffset.y = val
+        // NativeScrollEvent 0.88 起 contentOffset 只读（类型层）；运行时沿用原对象就地改写
+        const offset = info.contentOffset as { y: number }
+        if (to > _to && offset.y < val) offset.y = val
+        offset.y = val
         clean()
         handleScrollY(_element, info, _to, duration, fn)
       } else {

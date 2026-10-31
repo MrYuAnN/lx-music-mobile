@@ -50,7 +50,7 @@ const Image = memo(({ url, cache, resizeMode = 'cover', style, onError, nativeID
     setError(false)
   }, [url])
   let uri = typeof url == 'number'
-    ? FastImage.resolveAssetSource(url).uri
+    ? FastImage.resolveAssetSource(url)?.uri
     : url?.startsWith('/')
       ? 'file://' + url
       : url

@@ -1,4 +1,4 @@
-import { useRef, useImperativeHandle, forwardRef, useState, useCallback, memo, useEffect } from 'react'
+import { useRef, useImperativeHandle, forwardRef, useState, useCallback, memo, useEffect, type ComponentRef } from 'react'
 import Text from '@/components/common/Text'
 import { createStyle } from '@/utils/tools'
 import Dialog, { type DialogType } from '@/components/common/Dialog'
@@ -32,7 +32,7 @@ const Tabs = <T extends SY.OnlineSource>({ list, source, onChangeSource }: {
 }) => {
   const list_t = useSourceListI18n(list)
   const theme = useTheme()
-  const scrollViewRef = useRef<ScrollView>(null)
+  const scrollViewRef = useRef<ComponentRef<typeof ScrollView>>(null)
 
   return (
     <ScrollView ref={scrollViewRef} style={styles.tabContainer} keyboardShouldPersistTaps={'always'} horizontal showsVerticalScrollIndicator={false}>

@@ -122,7 +122,7 @@ const List = forwardRef<ListType, ListProps>(({
       // refreshing={refreshing}
       onEndReached={handleLoadMore}
       refreshControl={refreshControl}
-      ListFooterComponent={footerComponent}
+      ListFooterComponent={footerComponent ?? undefined}
       showsVerticalScrollIndicator={false}
     />
   )
