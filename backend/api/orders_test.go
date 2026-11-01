@@ -270,8 +270,19 @@ func TestPanelFlow(t *testing.T) {
 	if code != 200 {
 		t.Fatalf("order_codes: %d %v", code, body)
 	}
-	if body["order_modal_actions"] == nil || body["preset_tags"] == nil {
-		t.Fatalf("order_codes 聚合缺字段: %v", bodyKeys(body))
+	// 顶层键集合 ≡ 净屏扁平契约（单源=净屏 admin/panel.go order_codes 响应；平台
+	// bp.js orderDetailHTML 读顶层字段）。嵌套 order{} 首版曾致详情头全 undefined
+	// （2026-11-02 对齐），此断言防再漂移——改响应键必须两仓成对改。
+	wantKeys := []string{"order_no", "status", "channel", "tag", "amount",
+		"created_at", "paid_at", "delivered_at", "reduce_estimate",
+		"codes", "devices", "events", "preset_tags", "actions"}
+	if len(body) != len(wantKeys) {
+		t.Fatalf("order_codes 顶层键数=%d want %d: %v", len(body), len(wantKeys), bodyKeys(body))
+	}
+	for _, k := range wantKeys {
+		if _, ok := body[k]; !ok {
+			t.Fatalf("order_codes 缺键 %s: %v", k, bodyKeys(body))
+		}
 	}
 	// cfg 保存回读
 	if code, resp := post(t, base+"/panel/action", "ptok", `{"action_id":"config_set","values":{"xianyu_item_url":"https://m.tb.cn/new","contact_url":"https://c","service_hours":"9:00-21:00","native_checkout":true}}`); code != 200 || resp["ok"] != true {

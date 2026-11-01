@@ -249,6 +249,7 @@ func (ps *PanelServer) cfgSection() map[string]any {
 		{"name": "xianyu_item_url", "label": "闲鱼商品链接（淘口令短链；支付引导页拉起目标）", "value": ps.St.Setting("xianyu_item_url")},
 		{"name": "contact_url", "label": "客服链接（App 关于页「联系客服」读取）", "value": ps.St.Setting("contact_url")},
 		{"name": "service_hours", "label": "客服时段文案", "value": ps.St.Setting("service_hours")},
+		{"name": "combo_rates", "label": "组合折扣表 JSON（千分比；空=回退内置 8折/7.5折…；例 2个95折/3个9折/4个不折：[{\"n\":2,\"r\":950},{\"n\":3,\"r\":900},{\"n\":4,\"r\":1000}]）", "value": ps.St.Setting("combo_rates")},
 		{"name": "native_checkout", "label": "开放 App 内下单（关=暂停下单通道，下单返回 409；应急开关）", "type": "checkbox", "value": ps.St.Setting("native_checkout") == "1"},
 	}
 	sec["forms"] = []map[string]any{form}
@@ -613,17 +614,17 @@ func (ps *PanelServer) handleOrderCodes(w http.ResponseWriter, q map[string][]st
 		estimate = 0
 	}
 	presetTags := ps.St.PresetTags()
+	// 顶层扁平契约，单源=净屏 order_codes 响应（tomato backend/admin/panel.go；
+	// 平台 bp.js orderDetailHTML 读顶层字段）——批2 首版嵌套 order{} 形状致详情头
+	// 全 undefined，2026-11-02 对齐；键集合回归锁见 api TestPanelFlow。
 	writeJSON(w, http.StatusOK, map[string]any{
-		"order": map[string]any{
-			"order_no": o.OrderNo, "status": o.Status, "channel": o.Channel,
-			"tag": o.Tag, "contact": o.Contact, "qty": o.Qty,
-			"amount": fmt.Sprintf("%.2f", float64(o.Amount)/100),
-			"desc":   ps.describeOrder(o),
-			"time":   osv.FmtTimeCST(o.CreatedAt)},
-		"codes": codes, "devices": devices, "events": evs,
-		"reduce_estimate_cents": estimate,
-		"preset_tags":           presetTags,
-		"order_modal_actions":   orderModalActions(presetTags)})
+		"order_no": o.OrderNo, "status": o.Status, "channel": o.Channel,
+		"tag": o.Tag, "amount": fmt.Sprintf("%.2f", float64(o.Amount)/100),
+		"created_at": o.CreatedAt, "paid_at": o.PaidAt, "delivered_at": o.DeliveredAt,
+		"reduce_estimate": fmt.Sprintf("%.2f", float64(estimate)/100),
+		"codes":           codes, "devices": devices, "events": evs,
+		"preset_tags": presetTags,
+		"actions":     orderModalActions(presetTags)})
 }
 
 // searchOrders 订单搜索（q 空=按状态列表；q 形似订单号=精确；其余联系方式模糊）。
@@ -849,7 +850,7 @@ func (ps *PanelServer) handleAction(w http.ResponseWriter, r *http.Request) {
 		// 运营配置保存（meta 表 KV；native_checkout checkbox=「1」/「0」显式落值）。
 		// 逐键 upsert 非原子（批2 代码审 S7，单人运营低频接受）——失败显式回报
 		// 已保存进度，不留「看起来全存了」的静默半保存
-		keys := []string{"xianyu_item_url", "contact_url", "service_hours"}
+		keys := []string{"xianyu_item_url", "contact_url", "service_hours", "combo_rates"}
 		for i, k := range keys {
 			if err := ps.St.SettingSet(k, val(k)); err != nil {
 				respond(false, fmt.Sprintf("保存失败于 %s（前 %d 项已保存）：%v", k, i, err), nil)
@@ -861,7 +862,7 @@ func (ps *PanelServer) handleAction(w http.ResponseWriter, r *http.Request) {
 			nc = "1"
 		}
 		if err := ps.St.SettingSet("native_checkout", nc); err != nil {
-			respond(false, "保存失败于 native_checkout（前 3 项已保存）："+err.Error(), nil)
+			respond(false, "保存失败于 native_checkout（此前各项已保存）："+err.Error(), nil)
 			return
 		}
 		respond(true, "配置已保存", nil)
