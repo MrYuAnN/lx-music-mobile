@@ -17,6 +17,7 @@ import { getLocalFilePath, toLocalFileUrl } from '@/utils/music'
 import { readLyric, readPic } from '@/utils/localMediaMetadata'
 import { stat, privateStorageDirectoryPath, mkdir, downloadFile, copyFile, existsFile } from '@/utils/fs'
 import { getMusicUrl as getOnlineMusicUrl, type MusicUrlQualityMeta } from './online'
+import { restoreFileHeader } from '@/utils/nativeModules/crypto'
 
 const getOtherSourceByLocal = async<T>(musicInfo: SY.Music.MusicInfoLocal, handler: (infos: SY.Music.MusicInfoOnline[]) => Promise<T>) => {
   let result = await getOtherSource(musicInfo)
@@ -77,6 +78,9 @@ export const getMusicUrl = async({ musicInfo, isRefresh, allowToggleSource = tru
   if (!isRefresh) {
     const path = await getLocalFilePath(musicInfo)
     if (path) {
+      // ⑦b（2026-11-01 拍板）：下载文件 .shy 混淆头播放前还原（幂等——普通音频文件/
+      // 已明头 resolve(false) 无操作；私有目录+.shy 双隔离下明头暴露面可控）
+      await restoreFileHeader(path).catch(() => {})
       // 实际播放档（2026-10-29 题1）：本地文件档=回填单档（下载曲），裸文件无档不上报（UI 回退全局档）
       const localQuality = Object.keys(musicInfo.meta._qualitys ?? {})[0] as SY.Quality | undefined
       if (localQuality) onQualityResolved?.({ quality: localQuality, isLocal: true })

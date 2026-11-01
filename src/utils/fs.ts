@@ -21,6 +21,9 @@ export const extname = (name: string) => name.lastIndexOf('.') > 0 ? name.substr
 
 export const temporaryDirectoryPath = Dirs.CacheDir
 export const externalStorageDirectoryPath = Dirs.SDCardDir
+/** app 私有外部目录（/storage/emulated/0/Android/data/<pkg>/files）：其他 app/系统媒体库
+ *  不可访问（⑦b 下载独占的承载目录，2026-11-01） */
+export const RNFSExternalDirectoryPath = RNFS.ExternalDirectoryPath
 export const privateStorageDirectoryPath = Dirs.DocumentDir
 
 export const getExternalStoragePaths = async(is_removable?: boolean) => _getExternalStoragePaths(is_removable)

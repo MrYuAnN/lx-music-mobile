@@ -3,7 +3,8 @@ import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import settingState from '@/store/setting/state'
 import { getMusicUrl, getLyricInfo } from '@/core/music/online'
-import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath } from '@/utils/fs'
+import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath, RNFSExternalDirectoryPath } from '@/utils/fs'
+import { obfuscateFileHeader } from '@/utils/nativeModules/crypto'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
 import { writeMetadata as lmWriteMetadata, writePic as lmWritePic } from '@/utils/localMediaMetadata'
@@ -27,8 +28,16 @@ const QUALITY_EXT: Record<(typeof DOWNLOAD_QUALITY_CHAIN)[number], SY.Download.F
   '128k': 'mp3',
 }
 
-// 写入公共 Music/拾音/（scanFile 入系统媒体库后天然被本地音乐白名单扫描到）
-export const DOWNLOAD_DIR = `${externalStorageDirectoryPath}/Music/拾音`
+// ⑦b 下载文件独占（2026-11-01 用户拍板 A+头加密）：写 app 私有外部目录
+// （Android/data/<pkg>/files，其他 app/系统媒体库完全不可访问——scanFile 入库退役）+
+// .shy 私有扩展名 + 文件头 16B AES 混淆（CryptoModule.obfuscateFileHeader，破坏魔数防改
+// 后缀直接播放；播放前 restoreFileHeader 幂等还原）。旧公共 Music/拾音/ 存量由
+// migrateLegacyDownloads 启动搬移（downloadList 内有记录的；scanFile 不再需要）
+export const DOWNLOAD_DIR = `${RNFSExternalDirectoryPath}/Music/拾音`
+/** 旧公共目录（迁移源判定：store 内历史 filePath 含此中段即旧条目） */
+const LEGACY_DOWNLOAD_DIR_MARK = '/Music/拾音/'
+/** 旧公共目录绝对路径（搬移源；Dirs.SDCardDir=externalStorageDirectoryPath 同源） */
+const LEGACY_DOWNLOAD_DIR = `${externalStorageDirectoryPath}/Music/拾音`
 
 let downloadList: SY.Download.ListItem[] = []
 const runningJobs = new Map<string, number>()
@@ -93,6 +102,40 @@ const migrateEmbedTags = async(): Promise<void> => {
   await saveData(storageDataPrefix.localTagEmbedMigrationDone, '1')
 }
 
+/** ⑦b 存量迁移（2026-11-01）：旧公共 Music/拾音/ 的已下载文件搬入私有目录+加 .shy+混淆头
+ *  （仅 downloadList 内有记录的条目按 filePath 判定；无记录孤儿留在公共目录=用户自管理文件）。
+ *  尽力而为：单文件失败不断链；完成后 saveList 持久化新路径 */
+const migrateLegacyDownloads = async(): Promise<void> => {
+  const legacy = downloadList.filter(t => t.metadata.filePath?.includes(LEGACY_DOWNLOAD_DIR_MARK))
+  let moved = 0
+  for (const task of legacy) {
+    const old = task.metadata.filePath
+    if (!old.startsWith(LEGACY_DOWNLOAD_DIR)) continue
+    try {
+      if (!(await existsFile(old))) continue
+      await mkdir(DOWNLOAD_DIR).catch(() => {})
+      const newPath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
+      await unlink(newPath).catch(() => {})
+      await moveFile(old, newPath)
+      await obfuscateFileHeader(newPath).catch(() => {})
+      task.metadata.filePath = newPath
+      moved++
+    } catch (err) {
+      console.warn('legacy download migrate failed:', old, err)
+    }
+  }
+  // 全量兜底混淆：播放还原过头（明头窗口=本会话）的 .shy 回到混淆态（冷启动常态=全混淆）
+  for (const task of downloadList) {
+    if (task.status != 'completed') continue
+    const p = task.metadata.filePath
+    if (p?.endsWith('.shy')) await obfuscateFileHeader(p).catch(() => {})
+  }
+  if (moved > 0) {
+    saveList()
+    global.state_event.downloadStateChanged([...downloadList])
+  }
+}
+
 /**
  * 启动恢复任务表（幂等）：进程死时 run→waiting；清理无主 .tmp（S⑨）；
  * 不自动 pump 续跑（避免启动后台静默流量，进管理页或新任务触发调度）
@@ -110,11 +153,15 @@ export const initDownloadList = async(): Promise<void> => {
     }
     try {
       // 重启后不存在进行中任务，遗留 .tmp 均为孤儿文件
+      await mkdir(DOWNLOAD_DIR).catch(() => {})
       const entries = await readDir(DOWNLOAD_DIR)
       for (const entry of entries) {
         if (entry.isFile && entry.name.endsWith('.tmp')) await unlink(entry.path).catch(() => {})
       }
     } catch {}
+    void migrateLegacyDownloads().catch(err => {
+      console.warn('legacy downloads migration failed', err)
+    })
     global.state_event.downloadStateChanged([...downloadList])
     void migrateEmbedTags().catch(err => {
       console.warn('embed tags migration failed', err)
@@ -156,7 +203,8 @@ const applyResolved = (task: SY.Download.ListItem, resolved: { url: string, qual
   task.metadata.quality = resolved.quality
   task.metadata.ext = resolved.ext
   task.metadata.fileName = buildFileName(task.metadata.musicInfo, resolved.ext)
-  task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}`
+  // .shy 私有扩展名（⑦b：fileName 保留原名供展示/搜索，落盘文件加私有后缀双隔离）
+  task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
 }
 
 const formatSpeed = (bytesPerSec: number) => {
@@ -196,9 +244,11 @@ const runDownload = async(task: SY.Download.ListItem) => new Promise<void>((reso
     if (res && res.statusCode >= 400) {
       throw new Error(`${global.i18n.t('download_failed_audio')}（HTTP ${res.statusCode}）`)
     }
-    // .tmp → 成品（重下载同名场景先清目标）
+    // .tmp → 成品（重下载同名场景先清目标）；⑦b：完成即混淆文件头（破坏魔数，
+    // 播放前 restoreFileHeader 幂等还原）
     await unlink(task.metadata.filePath).catch(() => {})
     await moveFile(tmpPath, task.metadata.filePath)
+    await obfuscateFileHeader(task.metadata.filePath).catch(() => {})
   }).then(() => { resolve() }).catch(reject)
 })
 
@@ -247,9 +297,7 @@ const postProcess = async(task: SY.Download.ListItem) => {
       throw new Error(`${global.i18n.t('download_failed_cover')}（HTTP ${res.statusCode}）`)
     }
   }
-  try {
-    await NativeModules.DownloadSupport?.scanFile?.(filePath)
-  } catch {}
+  // ⑦b：scanFile 入系统媒体库退役——私有目录不暴露给其他 app（独占目的本身）
 }
 
 const startTask = async(task: SY.Download.ListItem) => {

@@ -18,9 +18,11 @@ import { pushMyKeysScreen } from '@/navigation/navigation'
 // 独立查态每次都过。免费面五项不经取链不受影响，恰好只锁播放（方案 §8「锁播放」拍板）。
 // 权威层=服务端 token 内嵌到期校验（改设备时间续命绕不过本层但绕得过此层）。
 // 弹窗存续期守卫（审查 S3 命名修正，原「会话级」措辞失准）：防换源链同一次遍历重弹；
-// 结算即复位，用户取消后下次播放会再弹（锁播放语义下可辩护，重弹节流=另立产品决策）
+// 结算即复位，用户取消后下次播放会再弹（锁播放语义下可辩护，重弹节流=另立产品决策）。
+// ⑧ 导出供 player.handlePlay 入口拦截复用（2026-11-01 用户拍板：拦截前移到播放入口，
+// 过期不进入播放流程——取链层拦截会留下「逐首失败→队列跳光」体验）
 let expiryGuideShowing = false
-const guideEntitlementExpired = (isTrial: boolean): void => {
+export const guideEntitlementExpired = (isTrial: boolean): void => {
   if (expiryGuideShowing) return
   expiryGuideShowing = true
   void confirmDialog({

@@ -18,6 +18,9 @@ export interface ActivationStateInfo {
   state: ActivationState
   /** 本 app 到期 unix 秒；0=永久；unactivated=null */
   expiry: number | null
+  /** 生效范围全集（app 键→到期 unix 秒，0=永久）；unactivated=null。
+   *  Home 横幅多源「最早到期 app 归因」数据源（净屏审查 I8 同语义，2026-11-01） */
+  expiries: Record<string, number> | null
   isTrial: boolean
   /** 主 key（最近激活；试用码亦写主 key——claim persist 即 storedKey） */
   key: string

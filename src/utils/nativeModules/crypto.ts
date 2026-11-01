@@ -88,3 +88,13 @@ export const hashSHA1 = async(text: any) => {
     throw error
   }
 }
+
+/** ⑦b 下载文件头混淆（2026-11-01 拍板 A+头加密；原生 CryptoModule 16B AES-ECB+幂等魔数判别）：
+ *  obfuscate=明→暗（下载完成链），restore=暗→明（播放前）；已达目标态 resolve(false) 幂等跳过 */
+export const obfuscateFileHeader = async(path: string): Promise<boolean> => {
+  return CryptoModule.obfuscateFileHeader(path)
+}
+
+export const restoreFileHeader = async(path: string): Promise<boolean> => {
+  return CryptoModule.restoreFileHeader(path)
+}
