@@ -84,9 +84,18 @@ const ActionRow = ({ page }: ActionRowProps) => {
   }, [playMusicInfo])
   const identityIsBareLocal = identityMusicInfo?.source == 'local'
 
+  // 实际在播条目（换源盲区修复 2026-11-02）：换源产物挂 meta.toggleMusicInfo、列表身份稳定是
+  // 基座设计——摘源后原源不在 qualityList，按条目源取数的入口全瞎（下载误报无音质/音质面板
+  // 置灰/任务态与已下载标记错位）。展示与操作统一按实际在播条目取数；无换源上下文时零行为变化。
+  // 渲染期直算而非 memo：挂载是 meta 原地突变（不改 playMusicInfo 引用、不发事件），memo 依赖
+  // 不变即永不重算（代码审查 I-3）——直算保证换源成功当下即可见。
+  const actualMusicInfo = identityMusicInfo
+    ? identityMusicInfo.meta.toggleMusicInfo ?? identityMusicInfo
+    : null
+
   // 在途下载任务态（判定单源=snapshot 派生，仅筛当前曲 taskId 防 2Hz 整表重渲——审查 S-3）
-  const taskId = identityMusicInfo && !identityIsBareLocal
-    ? `download__${identityMusicInfo.source}__${identityMusicInfo.id}`
+  const taskId = actualMusicInfo && !identityIsBareLocal
+    ? `download__${actualMusicInfo.source}__${actualMusicInfo.id}`
     : null
   const [taskState, setTaskState] = useState<{ status: SY.Download.DownloadTaskStatus, progress: number } | null>(null)
   useEffect(() => {
@@ -145,8 +154,8 @@ const ActionRow = ({ page }: ActionRowProps) => {
 
   const qualityOptions = useMemo<readonly CheckSheetItem[]>(() => {
     // 已下载曲按原曲在线身份展示可切档位（toOnlineIdentity 单源归一），切档经 reloadCurrentWithQuality 在线重链
-    // （无业界对标，本产品自定：免重下载在线试听新档，审查 I-3）
-    const musicInfo = identityMusicInfo
+    // （无业界对标，本产品自定：免重下载在线试听新档，审查 I-3）；取数按实际在播条目（换源盲区修复，见 actualMusicInfo）
+    const musicInfo = actualMusicInfo
     const sourceQualityList = musicInfo ? global.sy.qualityList[musicInfo.source] : undefined
     // 本地歌曲等无在线音质元数据的场景：选项集为空 → 音质入口置灰（缺失能力不上界面，拍板原则）
     const songQualitys = musicInfo
@@ -163,7 +172,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
         label: qualityLabelMarked(q, downloadedQuality, t),
         disabled: !songQualitys?.[q],
       }))
-  }, [identityMusicInfo, identityIsBareLocal, t])
+  }, [actualMusicInfo, identityIsBareLocal, t])
   const hasQualityOptions = qualityOptions.length > 0
 
   const handleQualityChange = useCallback((item: CheckSheetItem) => {
@@ -222,11 +231,11 @@ const ActionRow = ({ page }: ActionRowProps) => {
             : t('download_failed')
       return { icon: 'download-2', label, disabled: false, onPress: openDownloadManager }
     }
-    if (downloadedSet.has(downloadedAction.getDownloadedKey(identityMusicInfo.source, identityMusicInfo.id))) {
+    if (actualMusicInfo && downloadedSet.has(downloadedAction.getDownloadedKey(actualMusicInfo.source, actualMusicInfo.id))) {
       return { icon: 'check-circle', label: t('download_mark_downloaded'), disabled: false, onPress: showQualityModal }
     }
     return { icon: 'download-2', label: t('download_action'), disabled: false, onPress: showQualityModal }
-  }, [identityMusicInfo, identityIsBareLocal, taskState, downloadedSet, actualQuality, t, openDownloadManager])
+  }, [identityMusicInfo, actualMusicInfo, identityIsBareLocal, taskState, downloadedSet, actualQuality, t, openDownloadManager])
 
   // 封面页动作组（参考图1：收藏/评论/下载/音质/更多）
   const coverActions = useMemo<ActionItem[]>(() => {

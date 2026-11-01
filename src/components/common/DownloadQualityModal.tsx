@@ -27,18 +27,22 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
 
   useImperativeHandle(ref, () => ({
     show(musicInfo, defaultQuality) {
-      const available = PLAY_QUALITY_LIST.filter(q => musicInfo.meta._qualitys[q] && global.sy.qualityList[musicInfo.source]?.includes(q))
+      // 换源盲区修复（2026-11-02）：换源产物挂 meta.toggleMusicInfo、列表身份稳定是基座设计——
+      // 摘源后原源不在 qualityList（如 kw），按条目源算交集恒空误报「无可用音质」（实际在播
+      // 链路完好）。下载语义=「下正在听的这版」：交集/入队/已下载标记统一按实际在播条目取数。
+      const actualInfo = musicInfo.meta.toggleMusicInfo ?? musicInfo
+      const available = PLAY_QUALITY_LIST.filter(q => actualInfo.meta._qualitys[q] && global.sy.qualityList[actualInfo.source]?.includes(q))
       if (!available.length) {
         toast(global.i18n.t('download_no_available_quality'))
         return
       }
-      infoRef.current = musicInfo
+      infoRef.current = actualInfo
       const fallback = defaultQuality ?? settingState.setting['download.quality']
       // 默认档不在可用集（如账号/源差异）时落到最高可用档
       const selected = available.includes(fallback) ? fallback : available[0]
       setValue(selected)
       // 已下载档标记（2026-10-29 题1 拍板2，单源 getDownloadedQuality）：点它 toast 已存在，选未下载档=换档重下
-      const downloadedQuality = downloadedAction.getDownloadedQuality(musicInfo.source, musicInfo.id)
+      const downloadedQuality = downloadedAction.getDownloadedQuality(actualInfo.source, actualInfo.id)
       setOptions(available.map(q => ({
         action: q,
         label: qualityLabelMarked(q, downloadedQuality, t),
