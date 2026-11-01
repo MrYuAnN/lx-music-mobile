@@ -5,12 +5,15 @@ import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
 import { pushMyKeysScreen } from '@/navigation/navigation'
-import { useActivationState, isExpiredAt, isExpiringSoonAt } from '@/core/shiyin/activation'
+import { useActivationState, APP_CN, isExpiredAt, isExpiringSoonAt } from '@/core/shiyin/activation'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
 // +30s tick+事件驱动双刷，拾音对应物=首页横幅）。两态：即将到期（≤3 天，金）/已到期（红），
 // 点击直达我的激活码。无到期概念（未激活/永久）不渲染。
+// 多源归因（2026-11-01 用户多源提示需求；净屏审查 I8 口径=「文案按最早到期 app 归因——
+// per-app 混合权益不失真」）：bridge getState 下发 expiries 全集，横幅取「过期源优先、
+// 其次最早临期」单归因显示 {app}会员；全部同窗时用户续费最早源即可，详情码卡页逐源可见。
 // 配色=HIG 语义色硬编码（主题无 warning/error token，明暗两态均可读；后续主题扩 token 时收编）
 // S8 时区注（审查）：dateText 走 dateFormat（设备本地时区）——与 remainHint 的 Asia/Shanghai
 // 口径在海外机可能差一天；横幅仅日期表述无天差计算，偏差知情接受（remainHint 天差才需固定时区）
@@ -21,17 +24,26 @@ const BANNER_COLORS = {
   danger: 'rgb(255, 59, 48)',
 } as const
 
-/** Active 且最早到期落窗（≤3 天）/Expired → 横幅状态；其余（未激活/永久/远期）= null。
- *  S2（审查）：窗口判定单源=isExpiringSoonAt/isExpiredAt（activation.ts）；
- *  S9（优化师席）：active 态 expiry 已过而权益事件未达时本地收敛 danger（30s tick 自愈翻红，
- *  不依赖原生事件节奏） */
-const bannerState = (info: ActivationStateInfo | null): 'warning' | 'danger' | null => {
-  if (info == null) return null
-  if (info.state == 'expired') return 'danger'
-  if (info.state != 'active') return null
-  if (info.expiry == null || info.expiry == 0) return null // 永久/无记录
-  if (isExpiredAt(info.expiry)) return 'danger'
-  return isExpiringSoonAt(info.expiry) ? 'warning' : null
+interface BannerPick {
+  app: string
+  exp: number
+  expired: boolean
+}
+
+/** 归因：per-app expiries 全集中「过期源优先、其次最早临期（≤3 天）」；无命中=null */
+const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
+  if (info.expiries == null) return null
+  let pick: BannerPick | null = null
+  for (const [app, exp] of Object.entries(info.expiries)) {
+    if (exp == 0) continue // 永久不提醒
+    const expired = isExpiredAt(exp)
+    const soon = !expired && isExpiringSoonAt(exp)
+    if (!expired && !soon) continue
+    if (pick == null || (expired && !pick.expired) || (expired == pick.expired && exp < pick.exp)) {
+      pick = { app, exp, expired }
+    }
+  }
+  return pick
 }
 
 export default () => {
@@ -42,22 +54,20 @@ export default () => {
   // S9（审查）：横幅不可见态停表——绝大多数用户（未激活/永久/远期）零空转
   const [, setHasTick] = useState(false)
   useEffect(() => {
-    const active = bannerState(info) != null
+    const active = info != null && pickBannerApp(info) != null
     setHasTick(active)
     if (!active) return
     const timer = setInterval(() => { setHasTick(true) }, 30_000)
     return () => { clearInterval(timer) }
   }, [info])
 
-  const mode = bannerState(info)
-
-  if (mode == null || info == null || info.expiry == null) return null
-  const isDanger = mode == 'danger'
-  // S4（审查）：expired 模板无 {date} 占位——仅 warning 分支计算/传参
-  const dateText = isDanger ? '' : dateFormat(info.expiry * 1000, 'Y-M-D')
-  const label = isDanger
-    ? global.i18n.t('home_banner_expired')
-    : global.i18n.t('home_banner_expiring', { date: dateText })
+  const pick = info != null ? pickBannerApp(info) : null
+  if (pick == null || info == null) return null
+  const appName = APP_CN[pick.app] ?? pick.app
+  const dateText = pick.expired ? '' : dateFormat(pick.exp * 1000, 'Y-M-D')
+  const label = pick.expired
+    ? global.i18n.t('home_banner_expired', { app: appName })
+    : global.i18n.t('home_banner_expiring', { app: appName, date: dateText })
 
   return (
     <TouchableOpacity
@@ -67,8 +77,8 @@ export default () => {
       accessibilityRole="button"
       accessibilityLabel={label}
     >
-      <View style={[styles.dot, { backgroundColor: BANNER_COLORS[mode] }]} />
-      <Text size={13} color={BANNER_COLORS[mode]} numberOfLines={1}>{label}</Text>
+      <View style={[styles.dot, { backgroundColor: BANNER_COLORS[pick.expired ? 'danger' : 'warning'] }]} />
+      <Text size={13} color={BANNER_COLORS[pick.expired ? 'danger' : 'warning']} numberOfLines={1}>{label}</Text>
     </TouchableOpacity>
   )
 }

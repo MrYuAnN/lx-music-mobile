@@ -177,7 +177,9 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
     }
   }
 
-  // 激活态快照：{state, expiry, isTrial, key}。expiry=本 app 到期 unix 秒（0=永久，null=无权益）
+  // 激活态快照：{state, expiry, expiries, isTrial, key}。expiry=本 app 到期 unix 秒（0=永久，
+  // null=无权益）；expiries=生效范围全集（app 键→到期，净屏 entitlementRows 口径；Home 横幅
+  // 多源「最早到期 app 归因」数据源，净屏审查 I8 同语义，2026-11-01 用户多源提示需求）
   @ReactMethod
   fun getState(promise: Promise) {
     try {
@@ -186,16 +188,23 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
         is State.Unactivated -> {
           map.putString("state", "unactivated")
           map.putNull("expiry")
+          map.putNull("expiries")
           map.putBoolean("isTrial", false)
         }
         is State.Active -> {
           map.putString("state", "active")
           map.putDouble("expiry", (s.e.expiries[appKey] ?: 0L).toDouble())
+          val all: WritableMap = Arguments.createMap()
+          for ((app, exp) in s.e.expiries) all.putDouble(app, exp.toDouble())
+          map.putMap("expiries", all)
           map.putBoolean("isTrial", s.e.isTrial())
         }
         is State.Expired -> {
           map.putString("state", "expired")
           map.putDouble("expiry", (s.e.expiries[appKey] ?: 0L).toDouble())
+          val all: WritableMap = Arguments.createMap()
+          for ((app, exp) in s.e.expiries) all.putDouble(app, exp.toDouble())
+          map.putMap("expiries", all)
           map.putBoolean("isTrial", s.e.isTrial())
         }
       }
