@@ -11,6 +11,7 @@ import { getBoardsList } from '@/core/leaderboard'
 import { handleCollect, handlePlay } from '../listAction'
 import boardState from '@/store/leaderboard/state'
 import SourcesOfflineTip from '@/components/common/SourcesOfflineTip'
+import { ensureShiyinSources } from '@/core/shiyin/config'
 
 // 排行榜竖屏页（拍板定稿）：顶栏单胶囊 + 级联 sheet 取代原「音源下拉+榜单名按钮+侧抽屉」；
 // DrawerLayoutFixed 与 BoardsList 引用已摘除（BoardsList 组件保留，横屏 LeftBar 仍在用）。
@@ -85,26 +86,45 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
       let { source, boardId } = setting
       // boundInfo 写入与 loadList 同样纳入 seq 守卫：用户在途选榜/切源不被 init 各阶段覆盖
       // （三席审查 #7 守卫补全，此前只包 setBound）
-      // 边界②（批1 阶段2）：持久化源已被摘（不在 /config 开启集）→重置首项
+      // 边界②（批1 阶段2）：持久化源已被摘（不在 /config 开启集）→重置首项（boardId 不在此
+      // 落盘——与源耦合的旧 id 属脏组合，待下方目录 resolve 有效后统一落盘）
       if (!boardState.sources.includes(source) && boardState.sources.length) {
         source = boardState.sources[0]
-        void saveLeaderboardSetting({ source, boardId })
       }
+      // 绑定组合校验（qq unknown 根治）：榜 id 与源耦合（{source}__{bangId}），为空或跨源前缀
+      // 必无效——摘除停发请求，待目录返回回退该源第一榜；?. 防持久化畸形值非 string 崩溃
+      // （审查 S2）
+      if (!boardId?.startsWith(`${source}__`)) boardId = ''
       if (seq == sourceChangeSeqRef.current) {
         boundInfo.current = { source, id: boardId }
       }
       // 空源期（边界①）：绑定已写（持久化值，恢复分支消费），短路加载——不发任何请求，
       // 页面走 SourcesOfflineTip（走查 F-2/F-3：占位源对摘源发请求报 unknown 的根治）
       if (!boardState.sources.length) return
-      if (seq == sourceChangeSeqRef.current) {
+      if (boardId && seq == sourceChangeSeqRef.current) {
         musicListRef.current?.loadList(source, boardId)
       }
       void getBoardsList(source).then(list => {
         if (seq != sourceChangeSeqRef.current) return // init 迟到响应不覆盖已切换状态
-        const bound = list.find(l => l.id == boardId)
-        headerBarRef.current?.setBound(source, boardId, bound?.name ?? 'Unknown')
+        const bound = list.find(l => l.id == boardId) ?? list[0]
+        if (!bound || bound.id == boardId) {
+          if (bound) headerBarRef.current?.setBound(source, boardId, bound.name ?? 'Unknown')
+          // boardId 已清空时 loadList 从未调用，主列表会停留无反馈空态（审查 I-1：原注释
+          // 「由 loadList 自行进 error 态」仅对有效 id 成立）——显式发空 id 请求走 error 链
+          if (!boardId) musicListRef.current?.loadList(source, boardId)
+          return
+        }
+        // 组合无效（新装默认源被摘/boardId 空/同源榜 id 过期）→回退该源第一榜（对齐摘源恢复
+        // 分支 find ?? list[0] 口径）：修正显示+补加载+落盘，不再渲染 Unknown
+        boardId = bound.id
+        boundInfo.current = { source, id: boardId }
+        headerBarRef.current?.setBound(source, boardId, bound.name ?? 'Unknown')
+        musicListRef.current?.loadList(source, boardId)
+        void saveLeaderboardSetting({ source, boardId })
       }).catch(() => {
-        // 榜单目录拉取失败：胶囊维持空名，主列表由 loadList 自行进 error 态
+        // 榜单目录拉取失败：有效组合已由上方 loadList 进 error 态；boardId 已清空时
+        // loadList 从未调用（审查 I-1）——显式发空 id 请求走 error 链，不留无反馈空态
+        if (!boardId) musicListRef.current?.loadList(source, boardId)
       })
     })
 
@@ -183,6 +203,8 @@ export default ({ scrollYAnimated, contentPaddingTop }: LeaderboardVerticalProps
   // 边界①（批1 阶段2）：空源集切「全源不可用」提示态（sourcesUpdated 已订阅 bump 重渲染）
   const [, bumpRender] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
+    // 空集即拉（新装空窗反馈）：进页若无源集立即补一次 /config，不等自愈链节拍
+    ensureShiyinSources()
     const listener = () => bumpRender()
     global.state_event.on('sourcesUpdated', listener)
     return () => {

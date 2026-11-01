@@ -52,10 +52,13 @@ let refreshing: Promise<void> | null = null
 
 // 空集自愈（审查 I-E，拍板=自动重拉+手动重试；复审 R1-v3 定形态）：空集态取链快速失败到不了
 // 403 重拉分支，运行期唯一自愈源=本定时链——成功空集（applySources）与网络失败（catch）均
-// 「先 schedule 消费当前 count 再递增」，30s 起指数退避上限 8min；恢复非空即广播复位四页
+// 「先 schedule 消费当前 count 再递增」，3s 起步倍增封顶 8min（2026-11-01 新装空窗反馈提速：
+// 原 30s 起步对首启拉取失败的裸奔窗口过长，搜索等页裸等半分钟。对标=通用指数退避重试惯例
+// ——配置面 SDK 先例〔Firebase Remote Config〕并无秒级快重形态，3s/8min 为本产品自定阈值，
+// 依据=新装空窗真机实测，审查 I-1 更正）；恢复非空即广播复位四页
 let emptyRetryTimer: ReturnType<typeof setTimeout> | null = null
 let emptyRetryCount = 0
-const EMPTY_RETRY_BASE = 30_000
+const EMPTY_RETRY_BASE = 3_000
 const EMPTY_RETRY_MAX = 8 * 60_000
 
 export const resetEmptyRetry = () => {
@@ -68,7 +71,7 @@ export const resetEmptyRetry = () => {
 
 const scheduleEmptyRetry = () => {
   if (emptyRetryTimer) return
-  const delay = Math.min(EMPTY_RETRY_BASE * 2 ** Math.min(emptyRetryCount, 4), EMPTY_RETRY_MAX)
+  const delay = Math.min(EMPTY_RETRY_BASE * 2 ** emptyRetryCount, EMPTY_RETRY_MAX)
   emptyRetryTimer = setTimeout(() => {
     emptyRetryTimer = null
     // 成功空集的续链/退避由 applySources 空集分支承担；此处仅网络失败需自行续链
@@ -83,6 +86,14 @@ const scheduleEmptyRetry = () => {
 
 export const getShiyinSources = (): Record<string, ShiyinSourceInfo> => {
   return currentSources
+}
+
+// 消费页空集即拉（2026-11-01 新装空窗反馈）：搜索/排行/歌单/加歌四页挂载时调用——
+// 空集且无在途刷新即补一次 /config；失败不另起退避（空集期自愈链定时器恒在，见
+// applySources 空集分支），成功非空走 applySources 广播复位
+export const ensureShiyinSources = () => {
+  if (Object.keys(currentSources).length || refreshing) return
+  void fetchShiyinConfig().catch(() => {})
 }
 
 // 规范化序列化（审查 S-8）：键排序后比较，同内容异键序不误判 changed
@@ -101,7 +112,7 @@ const applySources = (sources: Record<string, ShiyinSourceInfo>) => {
   if (Object.keys(sources).length) {
     resetEmptyRetry()
   } else {
-    // 先 schedule（消费当前 count）再递增（复审 R1-v3）：序列 30s→60s→…封顶 8min
+    // 先 schedule（消费当前 count）再递增（复审 R1-v3）：序列 3s→6s→12s→…封顶 8min
     scheduleEmptyRetry()
     emptyRetryCount++
   }

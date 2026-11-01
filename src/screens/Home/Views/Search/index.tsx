@@ -18,6 +18,7 @@ import TipList, { type TipListType } from './TipList'
 import List, { type ListType } from './List'
 import SourcesOfflineTip from '@/components/common/SourcesOfflineTip'
 import { addHistoryWord } from '@/core/search/search'
+import { ensureShiyinSources } from '@/core/shiyin/config'
 
 
 interface SearchInfo {
@@ -50,6 +51,8 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
+    // 空集即拉（新装空窗反馈）：进页若无源集立即补一次 /config，不等自愈链节拍
+    ensureShiyinSources()
     void getSearchSetting().then(info => {
       // info.type = 'music'
       searchInfo.current.temp_source = info.temp_source

@@ -35,6 +35,7 @@ import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { SPACING } from '@/config/spacing'
+import { ensureShiyinSources } from '@/core/shiyin/config'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
 // （搜索/最近播放/下载/其他歌单，y.qq.com 官方说明）+ 本地音乐（2026-10-20 迭代拍板：本项目无独立本地
@@ -187,6 +188,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   // 订阅 sourcesUpdated 触发重算（批1 阶段2：源集 /config 化后随摘源变化）
   const [sourcesVersion, bumpSourcesVersion] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
+    // 空集即拉（新装空窗反馈）：进页若无源集立即补一次 /config，不等自愈链节拍
+    ensureShiyinSources()
     const handleSourcesUpdated = () => {
       bumpSourcesVersion()
       // 边界②：当前选中源已被摘→重置首项（空集=边界①保持上一有效值）

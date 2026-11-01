@@ -13,6 +13,7 @@ import { getSongListSetting, saveSongListSetting } from '@/utils/data'
 import { createStyle, toast } from '@/utils/tools'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
+import { ensureShiyinSources } from '@/core/shiyin/config'
 
 type TagsStatus = 'loading' | 'error' | 'ready'
 
@@ -260,6 +261,8 @@ export default ({ scrollYAnimated, contentPaddingTop }: SongListContentProps) =>
   // 边界①（批1 阶段2）：空源集切「全源不可用」提示态（sourcesUpdated 已订阅 bump 重渲染）
   const [, bumpRender] = useReducer((n: number) => n + 1, 0)
   useEffect(() => {
+    // 空集即拉（新装空窗反馈）：进页若无源集立即补一次 /config，不等自愈链节拍
+    ensureShiyinSources()
     const listener = () => bumpRender()
     global.state_event.on('sourcesUpdated', listener)
     return () => {
