@@ -35,7 +35,7 @@
 | D 整域（SKU/订单/支付/闲鱼归因） | 不做 | 灰度=人工发码；**闲鱼归因=无闲鱼渠道，不接**（2026-10-31 审计后补拍板） |
 | E 到期提醒 Worker 族 | **已实现（D2 拍板 2026-11-01，审查修复同日）**：宿主 24h 周期 Worker 读本地 Receipt，**双窗双 key**（pre：试用<36h/正价 7d「即将到期」；post：试用 3d/正价 7d「已过期」独立文案——对标业界订阅多次触达，替代净屏单窗单次），键域过滤（APP_CN 白名单）+UPDATE 幂等+专用白 alpha 图标+点击 deep link（`shiyin://activation/open`→我的激活码）+原生文案三语（zh/en/zh-rTW）；POST_NOTIFICATIONS 未授权静默跳过（授权入口=RN 首播一次性请求+设置页找回，既有拍板） | 审计 D2 闭环；**继承边界登记**：isTrial 单值锚 SDK 聚合元数据（首个未停权码），混合码并存残留边角=SDK 聚合改 paid>trial 优先级（单源待办，pruneOrphanedKeys/merge 吸收/6h 巡检停权三层兜底已实证） |
 | F 客服 | 捷径版已实施（About「联系客服」行 openUrl 官网 FAQ，2026-10-31）；完整版随 D3 | 官网 FAQ 页内容仍【上线前补】占位（运营内容） |
-| G 权益门 | 取链隐式墙+快抛链（净屏开关墙） | 产品形态：免费面五项永久免费拍板；指路文案已修正（**F5 已修 2026-10-31**：路径改「设置→关于→激活管理」+删试用领取承诺+官网教程同步） |
+| G 权益门 | **双层入口闸+服务端权威（2026-11-02 ⑦⑧ 批实装）**：客户端 `guardEntitlementGate`（client.ts，本地态零网络）前置拦截——handlePlay 播放入口（过期=引导+停机不进流程，拦截先于播放状态落库）/下载全入口（3 处音质弹窗 show 前置+addDownloadTask 唯一入队闸）；取链前置+服务端 token exp_ts（fork 层，堵 TTL≤24h 黄金窗）；**下载文件独占**：私有目录+.shy+文件头 16B AES 混淆（CryptoModule），存量物理扫描迁移，scanFile 退役；多源归因=bridge expiries 全集+横幅最早到期源 | 产品形态：免费面五项永久免费拍板；**到期=播放/下载全锁，裸本地文件随入口级拦截一并锁定**（2026-11-01 用户拍板「所有需要权限的入口统一拦截」，裸本地细化未拍板）；F5 已修 2026-10-31 |
 | G 到期停拦钩子 | 不接 enforceExpiry | 到期处置=取链 403 快抛链承担；v3 落字 |
 | H init 同步段纪律 | 已按序接线；**权益协程=refreshOnStart→未激活 restore 前置→claimTrial（2026-11-01 补）** | claim 契约「restore 先行」宿主侧落实；召回不再单点依赖 claim 409 分支（trial_min_client_ver 门槛 426 不再拦召回） |
 | H 6h 巡检 Worker | **已调度（2026-11-01 随 D2）**：MainApplication 启动段 `EntitlementSyncScheduler.schedule`（UPDATE 幂等，CONNECTED 约束） | 旧「不调度」落字作废；止损窗口 TTL≤24h→6h；Worker 内 enforceExpiry 空跑（宿主无钩子，见下行） |
