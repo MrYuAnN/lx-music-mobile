@@ -74,12 +74,13 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
-      {/* 品牌头（定案#3 头部横向两行）：图标 48dp 左+名称/版本右两行；版本号归此单点 */}
+      {/* 品牌头（定案#3，严格对齐净屏 SettingsActivity 品牌区尺寸比例）：图标 app 封面式
+          圆角矩形 60dp；名称 18 与版本 13 紧贴（净屏两行几乎连排）；整行垂直居中 */}
       <View style={styles.brand}>
         <Image source={appIcon} style={styles.brandIcon} />
         <View style={styles.brandText}>
-          <Text style={styles.brandName} size={16}>{t('about_app_name')}</Text>
-          <Text size={11} color={theme['c-font-label']}>{currentVer}</Text>
+          <Text style={styles.brandName} size={18}>{t('about_app_name')}</Text>
+          <Text size={13} color={theme['c-font-label']}>v{currentVer}</Text>
         </View>
       </View>
 
@@ -135,21 +136,23 @@ const styles = createStyle({
     flex: 0,
   },
   brand: {
-    // 定案#3 头部横向两行：图标 48dp 左+名称/版本右两行（原 64dp 三段居中堆叠系关于页
-    // 版式误留）；上下 s16 紧凑版式
+    // 定案#3 头部横向两行（严格对齐净屏品牌区尺寸比例）：图标 60dp 封面式+两行紧贴垂直居中
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.s12,
+    gap: SPACING.s14,
     paddingTop: SPACING.s16,
     paddingBottom: SPACING.s16,
   },
   brandIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 12,
+    // app 封面式圆角矩形 60dp（净屏品牌图标区实测比例）
+    width: 60,
+    height: 60,
+    borderRadius: 14,
   },
   brandText: {
-    gap: 2,
+    // 名称/版本紧贴（净屏两行几乎连排，间距由行高自然形成）
+    gap: 1,
+    justifyContent: 'center',
   },
   brandName: {
     fontFamily: FontFamilies.medium,
