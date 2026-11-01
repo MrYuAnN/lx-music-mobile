@@ -362,6 +362,9 @@ export const playListById = async(listId: string, id: string) => {
   setPlayListId(listId)
   const musicInfo = getList(listId).find(m => m.id == id)
   if (!musicInfo) return
+  // ⑧ 拦截前移（2026-11-02 用户反馈：拦在 handlePlay 时 setPlayMusicInfo/addPlayedList
+  // 已落库——最近播放出现未真正播放的歌）：点击入口在写播放状态前拦截
+  if (await guardEntitlementGate()) return
   setPlayMusicInfo(listId, musicInfo)
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
@@ -376,6 +379,8 @@ export const playListById = async(listId: string, id: string) => {
 export const playList = async(listId: string, index: number) => {
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
+  // ⑧ 拦截前移（同 playListById：先于 setPlayMusicInfo/addPlayedList 落库）
+  if (await guardEntitlementGate()) return
   setPlayMusicInfo(listId, getList(listId)[index])
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
