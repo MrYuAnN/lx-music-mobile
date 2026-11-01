@@ -595,5 +595,5 @@
   "setting_root_section_activation": "激活",
   "setting_root_section_general": "通用",
   "setting_root_section_about": "关于",
-  "setting_root_about_app": "关于拾音"
+  "version_row_new": "新版本 v{version}"
 }

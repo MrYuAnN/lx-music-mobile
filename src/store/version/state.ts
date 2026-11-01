@@ -32,7 +32,7 @@ const state: InitState = {
     reCheck: false,
     isUnknown: false,
     isLatest: false,
-    status: 'checking',
+    status: 'idle',
   },
   ignoreVersion: null,
   upgradeRequired: { required: false, url: '' },

@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import { Animated, Image, ScrollView, View } from 'react-native'
 
-import { createStyle, openUrl } from '@/utils/tools'
+import { createStyle, openUrl, toast } from '@/utils/tools'
 import Text, { FontFamilies } from '@/components/common/Text'
 import SelectRow from '../components/SelectRow'
 import SettingSection from '../components/SettingSection'
@@ -59,6 +59,14 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
 
   const activationValue = formatActivationState(info, t)
 
+  // 定案#2 微信式：已最新补 toast；有新版 VersionModal 自弹；失败态 toast 在 checkUpdate
+  // 内（7 天抑制），检查中态由 store checking 驱动行 value
+  const handleCheckUpdate = useCallback(() => {
+    void checkUpdate().then(res => {
+      if (res == 'latest') toast(t('version_tip_latest'))
+    })
+  }, [t])
+
   return (
     <AnimatedScrollView
       contentContainerStyle={{ ...styles.content, paddingTop: contentPaddingTop ?? 0, paddingBottom: bottomInset }}
@@ -66,10 +74,13 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       scrollEventThrottle={16}
       showsVerticalScrollIndicator={false}
     >
+      {/* 品牌头（定案#3 头部横向两行）：图标 48dp 左+名称/版本右两行；版本号归此单点 */}
       <View style={styles.brand}>
         <Image source={appIcon} style={styles.brandIcon} />
-        <Text style={styles.brandName} size={24}>{t('about_app_name')}</Text>
-        <Text size={12} color={theme['c-font-label']}>{currentVer}</Text>
+        <View style={styles.brandText}>
+          <Text style={styles.brandName} size={16}>{t('about_app_name')}</Text>
+          <Text size={11} color={theme['c-font-label']}>{currentVer}</Text>
+        </View>
       </View>
 
       <SettingSection title={t('setting_root_section_activation')} first>
@@ -98,10 +109,16 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       </SettingSection>
 
       <SettingSection title={t('setting_root_section_about')}>
-        <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={() => { void checkUpdate() }} />
+        {/* 定案#2 微信式：value 仅新版未忽略时显示，点击短暂检查中→弹窗/已最新 toast */}
+        <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={handleCheckUpdate} />
         <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { if (componentId) navigations.pushChangelogScreen(componentId) }} />
-        <SelectRow icon="music" label={t('setting_root_about_app')} value='' onPress={() => { if (componentId) navigations.pushAboutScreen(componentId) }} />
+        {/* 定案#1 关于组去重：「关于拾音」行删除（独立 About 页退役），补联系客服直达 */}
+        <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq.html`) }} />
       </SettingSection>
+      {/* 定案#3：版权落列表尾部 */}
+      <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
+        {t('about_copyright', { year: new Date().getFullYear() })}
+      </Text>
     </AnimatedScrollView>
   )
 }
@@ -118,18 +135,27 @@ const styles = createStyle({
     flex: 0,
   },
   brand: {
+    // 定案#3 头部横向两行：图标 48dp 左+名称/版本右两行（原 64dp 三段居中堆叠系关于页
+    // 版式误留）；上下 s16 紧凑版式
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: SPACING.s24,
-    paddingBottom: SPACING.s24,
+    gap: SPACING.s12,
+    paddingTop: SPACING.s16,
+    paddingBottom: SPACING.s16,
   },
   brandIcon: {
-    width: 64,
-    height: 64,
-    borderRadius: 14,
-    marginBottom: SPACING.s12,
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+  },
+  brandText: {
+    gap: 2,
   },
   brandName: {
     fontFamily: FontFamilies.medium,
-    marginBottom: SPACING.s4,
+  },
+  copyright: {
+    textAlign: 'center',
+    paddingTop: SPACING.s16,
   },
 })

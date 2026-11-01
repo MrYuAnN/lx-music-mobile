@@ -595,5 +595,5 @@
   "setting_root_section_activation": "Activation",
   "setting_root_section_general": "General",
   "setting_root_section_about": "About",
-  "setting_root_about_app": "About Shiyin"
+  "version_row_new": "New version v{version}"
 }

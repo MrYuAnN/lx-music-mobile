@@ -15,7 +15,6 @@ import {
   DOWNLOAD_SCREEN,
   ADD_MUSIC_SCREEN,
   DISLIKE_MANAGE_SCREEN,
-  ABOUT_SCREEN,
   MY_KEYS_SCREEN,
   CHANGELOG_SCREEN,
   SETTING_SECTION_SCREEN,
@@ -102,7 +101,6 @@ export function pushCommentScreen(componentId: string) {
 
 // 「关于」独立页（2026-10-23 设置关于节重设计；批 R 形态修订：设置页已改净屏式根菜单，
 // 本屏=关于组行 + 横屏关于节双入口）
-export const pushAboutScreen = (componentId: string) => { void componentId; pushAmScreen(ABOUT_SCREEN) }
 export const pushMyKeysScreen = (componentId: string) => { void componentId; pushAmScreen(MY_KEYS_SCREEN) }
 export const pushChangelogScreen = (componentId: string) => { void componentId; pushAmScreen(CHANGELOG_SCREEN) }
 

@@ -2,29 +2,46 @@ import { memo, useCallback } from 'react'
 
 import SettingSection from '../../components/SettingSection'
 import SelectRow from '../../components/SelectRow'
+import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import commonState from '@/store/common/state'
 import { navigations } from '@/navigation'
+import { useTheme } from '@/store/theme/hook'
+import { checkUpdate } from '@/core/version'
+import { useUpdateStatusText } from '@/utils/hooks/useUpdateStatusText'
+import { createStyle, openUrl, toast } from '@/utils/tools'
+import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
 
-const currentVer = process.versions.app
-
-// 关于节（2026-10-23 重设计：两行带图标行退役，改入口行 push 独立关于页——品牌区+检查更新+版权，
-// 对标网易云设置「关于网易云音乐」入口行进独立页；设置页八节平铺架构不变。
-// 状态机与品牌区已迁 screens/About。SettingSection 组卡包裹与其他节同构（首轮实现漏包裹致裸行））。
-// 批 R 形态修订（2026-11-01）：竖屏设置页改净屏式根菜单，「关于拾音」行入根菜单关于组直达，
-// 本节组件转**横屏专用**（SETTING_COMPONENTS 双端共用查表，横屏 Main 切换器仍渲染；
-// 竖屏不再引用——D8 收口，文件保留勿删）
+// 关于节（横屏专用；竖屏根菜单关于组为同构三行——定案#1 去重后双端同语言）：检查更新
+// （微信式 value，定案#2）+更新日志+联系客服。原「关于拾音」入口行与独立 About 页已随
+// 定案#1 退役（2026-11-01）；版权小字归竖屏列表尾/横屏节尾。
 export default memo(() => {
   const t = useI18n()
+  const theme = useTheme()
+  const statusText = useUpdateStatusText()
+  const componentId = commonState.componentIds.setting
 
-  const handlePress = useCallback(() => {
-    const componentId = commonState.componentIds.setting
-    if (componentId) navigations.pushAboutScreen(componentId)
-  }, [])
+  const handleCheckUpdate = useCallback(() => {
+    void checkUpdate().then(res => {
+      if (res == 'latest') toast(t('version_tip_latest'))
+    })
+  }, [t])
 
   return (
     <SettingSection title={t('setting_about')}>
-      <SelectRow label={t('setting_about')} value={currentVer} onPress={handlePress} />
+      <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={handleCheckUpdate} />
+      <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { if (componentId) navigations.pushChangelogScreen(componentId) }} />
+      <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq.html`) }} />
+      <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
+        {t('about_copyright', { year: new Date().getFullYear() })}
+      </Text>
     </SettingSection>
   )
+})
+
+const styles = createStyle({
+  copyright: {
+    textAlign: 'center',
+    paddingTop: 12,
+  },
 })

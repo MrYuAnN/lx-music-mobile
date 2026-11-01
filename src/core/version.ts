@@ -20,13 +20,17 @@ export const hideModal = () => {
 }
 
 // 每日自动检查节流（批1 阶段4；方案拍板）：init 链 24h 内跳过；手动「检查更新」走
-// checkUpdate(force) 不受限
+// checkUpdate(force) 不受限。返回值（2026-11-01 定案#2 微信式）：latest=已最新（点击方
+// 补 toast）/update=有新版（VersionModal 已自弹）/notPublished=未发版（同 latest 语义）/
+// failed=失败（catch 内 7 天抑制 toast）/suppressed=节流命中（仅 force=false init 链）
 const DAILY_INTERVAL = 24 * 60 * 60 * 1000
 
-export const checkUpdate = async(force = true) => {
+export type CheckUpdateResult = 'latest' | 'update' | 'notPublished' | 'failed' | 'suppressed'
+
+export const checkUpdate = async(force = true): Promise<CheckUpdateResult> => {
   if (!force) {
     const last = await getLastVersionCheckTime()
-    if (last && Date.now() - last < DAILY_INTERVAL) return
+    if (last && Date.now() - last < DAILY_INTERVAL) return 'suppressed'
   }
   // A-5（净屏审计 P1）：节流标记移至成功路径末尾——原「请求前写入+失败不回滚」致当日
   // 首查失败即全天不自动重查（净屏 JingpingGuides S4 同坑重蹈）；失败提示 7 天抑制独立保留
@@ -43,7 +47,7 @@ export const checkUpdate = async(force = true) => {
       versionInfo.status = 'idle'
       versionActions.setVersionInfo(versionInfo)
       void saveLastVersionCheckTime(Date.now()) // A-5：notPublished=服务端正常应答，同落标记
-      return
+      return 'latest'
     }
     versionInfo.newVersion = {
       version: info.version,
@@ -58,10 +62,10 @@ export const checkUpdate = async(force = true) => {
     versionInfo.status = 'error'
     versionActions.setVersionInfo(versionInfo)
     const time = await getIgnoreVersionFailTipTime()
-    if (Date.now() - time < 7 * 86400000) return
+    if (Date.now() - time < 7 * 86400000) return 'failed'
     saveIgnoreVersionFailTipTime(Date.now())
     toast(global.i18n.t('version_tip_unknown'))
-    return
+    return 'failed'
   }
 
   versionInfo.status = 'idle'
@@ -74,6 +78,7 @@ export const checkUpdate = async(force = true) => {
   if (!versionInfo.isLatest && versionInfo.newVersion.version != await getIgnoreVersion()) {
     showModal()
   }
+  return versionInfo.isLatest ? 'latest' : 'update'
 }
 
 // 更新日志页静默刷新（KeyInfo 批，方案 §2.6；代码审查 I-B/S3/S5 修订）：独立于

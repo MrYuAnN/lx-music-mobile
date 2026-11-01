@@ -15,7 +15,6 @@ import {
   type LOCAL_MUSIC_GROUP_SCREEN,
   type ADD_MUSIC_SCREEN,
   type DISLIKE_MANAGE_SCREEN,
-  type ABOUT_SCREEN,
   type MY_KEYS_SCREEN,
   type CHANGELOG_SCREEN,
   type SETTING_SECTION_SCREEN,
@@ -41,7 +40,6 @@ export type RootStackParamList = {
   [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string, list: SY.Music.MusicInfoLocal[] }
   [ADD_MUSIC_SCREEN]: { listId: string, listName: string }
   [DISLIKE_MANAGE_SCREEN]: undefined
-  [ABOUT_SCREEN]: undefined
   [MY_KEYS_SCREEN]: undefined
   [CHANGELOG_SCREEN]: undefined
   [SETTING_SECTION_SCREEN]: { id: SettingSectionTarget }
