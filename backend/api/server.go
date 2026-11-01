@@ -2,10 +2,10 @@
 //
 // 端点职责（方案 doc/plans/self-hosted-music-server.md §七）：
 //   - GET /latest   App 升级通道：{version,url,note,releases[≤30]}，全空 404
-//                   （客户端静默跳过）；CORS 开放供官网跨域读「当前版本」。
-//                   永不设版本门槛（版本过低的客户端恰靠它获知升级地址）。
+//     （客户端静默跳过）；CORS 开放供官网跨域读「当前版本」。
+//     永不设版本门槛（版本过低的客户端恰靠它获知升级地址）。
 //   - GET /dash     看板页：服务端代理 license-platform /srv/dash
-//                   （X-Product + X-Product-Token 鉴权），浏览器经 ?token= 访问。
+//     （X-Product + X-Product-Token 鉴权），浏览器经 ?token= 访问。
 //   - 其余路径      官网静态页（web/ 目录，移动优先零依赖）。
 //
 // 网关侧（nginx-gateway 拾音专用 server block）按 path 分流到本服务与取链
@@ -18,7 +18,9 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"time"
@@ -52,6 +54,7 @@ func (s *Server) Handler() http.Handler {
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 	mux.HandleFunc("GET /latest", s.handleLatest)
+	mux.HandleFunc("GET /dl/latest", s.handleLatestApk)
 	mux.HandleFunc("GET /dash", s.handleDash)
 	mux.Handle("/", s.staticHandler())
 	return logMiddleware(mux)
@@ -60,6 +63,8 @@ func (s *Server) Handler() http.Handler {
 // handleLatest 升级通道（发布唯一数据源 app_releases 表首=最新；全空 404）。
 // 无版本门槛、无鉴权——与净屏 handleLatest 同构；response shape 变更须同步
 // App 批1 更新检查实现与官网 download 页两处消费方。
+// url 恒为稳定入口（2026-11-01 历史版本下载面收敛，与净屏同款：版本化直链
+// 已收进 nginx internal 不可拼接；登记值保留版本化供审计可溯）。
 func (s *Server) handleLatest(w http.ResponseWriter, _ *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	rels, err := s.St.ListReleases(30)
@@ -74,9 +79,47 @@ func (s *Server) handleLatest(w http.ResponseWriter, _ *http.Request) {
 	}
 	latest := rels[0]
 	writeJSON(w, http.StatusOK, map[string]any{
-		"version": latest.Version, "url": latest.URL, "note": latest.Note,
+		"version": latest.Version, "url": latestStableURL(latest.URL), "note": latest.Note,
 		"releases": rels,
 	})
+}
+
+// latestStableURL 登记 url 派生稳定下载入口（保 scheme+host、path 换 /dl/latest
+// ——域名无关：对外域 shiyinbox.top 与回源域变化零代码改动）。
+func latestStableURL(releaseURL string) string {
+	u, err := url.Parse(releaseURL)
+	if err != nil || u.Host == "" {
+		return releaseURL
+	}
+	return u.Scheme + "://" + u.Host + "/dl/latest"
+}
+
+// handleLatestApk APK 稳定下载入口数据面（2026-11-01，与净屏同款收敛）：
+// X-Accel-Redirect 内部重定向到 nginx /dl/（internal）真实版本化文件——外网
+// 直连任何 /dl/shiyin-vX.apk 一律 404，拼接失效。Content-Disposition 显式
+// 版本化文件名（落盘名不随入口退化）；no-store 防稳定入口缓存滞留旧包。
+func (s *Server) handleLatestApk(w http.ResponseWriter, _ *http.Request) {
+	rels, err := s.St.ListReleases(30)
+	if err != nil {
+		log.Printf("latest-apk: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+		return
+	}
+	if len(rels) == 0 {
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_configured"})
+		return
+	}
+	u, err := url.Parse(rels[0].URL)
+	if err != nil || !strings.HasPrefix(u.Path, "/dl/") {
+		// 登记值异常（非本站 dl 路径）：不猜下载面，404 静默；日志留痕
+		log.Printf("latest-apk: 异常登记 url %q，拒绝下发", rels[0].URL)
+		writeJSON(w, http.StatusNotFound, map[string]string{"error": "not_configured"})
+		return
+	}
+	w.Header().Set("X-Accel-Redirect", u.Path)
+	w.Header().Set("Content-Disposition", `attachment; filename="`+path.Base(u.Path)+`"`)
+	w.Header().Set("Cache-Control", "no-store")
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleDash 看板页：轻服务代理平台 /srv/dash（srv token 只存服务端，
