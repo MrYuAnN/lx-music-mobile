@@ -16,7 +16,11 @@ import {
   type ADD_MUSIC_SCREEN,
   type DISLIKE_MANAGE_SCREEN,
   type ABOUT_SCREEN,
+  type MY_KEYS_SCREEN,
+  type CHANGELOG_SCREEN,
+  type SETTING_SECTION_SCREEN,
 } from './screenNames'
+import { type SettingSectionTarget } from '@/screens/Home/Views/Setting/Main'
 
 // RNN passProps → 路由参数（N1 迁移）；键复用 screenNames 常量（与 RNN 组件名 1:1，屏名不变）。
 // 用 type 别名而非 interface：对象字面量别名才有隐式索引签名，满足 react-navigation ParamListBase 约束
@@ -38,4 +42,7 @@ export type RootStackParamList = {
   [ADD_MUSIC_SCREEN]: { listId: string, listName: string }
   [DISLIKE_MANAGE_SCREEN]: undefined
   [ABOUT_SCREEN]: undefined
+  [MY_KEYS_SCREEN]: undefined
+  [CHANGELOG_SCREEN]: undefined
+  [SETTING_SECTION_SCREEN]: { id: SettingSectionTarget }
 }

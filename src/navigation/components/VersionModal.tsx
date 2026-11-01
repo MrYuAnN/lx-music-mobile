@@ -4,6 +4,7 @@ import { View, ScrollView } from 'react-native'
 import { compareVer } from '@/utils'
 
 import Button from '@/components/common/Button'
+import ChangelogNote from '@/components/common/ChangelogNote'
 import { createStyle } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { type VersionInfo } from '@/store/version/state'
@@ -14,11 +15,13 @@ import ModalContent from './ModalContent'
 import { checkUpdate, downloadUpdate, hideModal, setIgnoreVersion } from '@/core/version'
 import { SPACING } from '@/config/spacing'
 
+// note 分组渲染（批 R·D5 三端同规则）：主 desc 与 history 条目同走 ChangelogNote
+// （此前两处平铺 Text；history 元素 desc 映射见 utils/version.js）
 const VersionItem = ({ version, desc }: VersionInfo) => {
   return (
     <View style={styles.versionItem}>
       <Text style={styles.label}>v{version}</Text>
-      <Text selectable style={styles.desc}>{desc}</Text>
+      <ChangelogNote note={desc} />
     </View>
   )
 }
@@ -50,7 +53,7 @@ const Content = memo(({ title, newVersionInfo }: {
                 <View>
                   <Text style={styles.label}>{t('version_label_change_log')}</Text>
                   <View style={{ paddingLeft: SPACING.s10, marginTop: SPACING.s6 }}>
-                    <Text selectable style={styles.desc}>{newVersionInfo.desc}</Text>
+                    <ChangelogNote note={newVersionInfo.desc} />
                   </View>
                 </View>
               )
@@ -210,10 +213,6 @@ const styles = createStyle({
   label: {
     fontSize: 14,
     marginBottom: SPACING.s2,
-  },
-  desc: {
-    fontSize: 13,
-    lineHeight: 18,
   },
   tip: {
     paddingLeft: SPACING.s16,

@@ -19,6 +19,9 @@ import {
   AddMusicScreen,
   DislikeManage,
   About,
+  MyKeys,
+  Changelog,
+  SettingSectionScreen,
 } from '@/screens'
 import {
   HOME_SCREEN,
@@ -37,6 +40,9 @@ import {
   ADD_MUSIC_SCREEN,
   DISLIKE_MANAGE_SCREEN,
   ABOUT_SCREEN,
+  MY_KEYS_SCREEN,
+  CHANGELOG_SCREEN,
+  SETTING_SECTION_SCREEN,
 } from './screenNames'
 import { type RootStackParamList } from './types'
 
@@ -74,6 +80,9 @@ const SCREENS: Array<{ name: keyof RootStackParamList, Component: React.Componen
   { name: ADD_MUSIC_SCREEN, Component: AddMusicScreen },
   { name: DISLIKE_MANAGE_SCREEN, Component: DislikeManage },
   { name: ABOUT_SCREEN, Component: About },
+  { name: MY_KEYS_SCREEN, Component: MyKeys },
+  { name: CHANGELOG_SCREEN, Component: Changelog },
+  { name: SETTING_SECTION_SCREEN, Component: SettingSectionScreen },
 ]
 
 const WRAPPED: Array<{ name: keyof RootStackParamList, component: React.ComponentType<any> }> = SCREENS.map(({ name, Component }) => ({ name, component: makeWrapper(Component) }))

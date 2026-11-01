@@ -16,7 +16,11 @@ import {
   ADD_MUSIC_SCREEN,
   DISLIKE_MANAGE_SCREEN,
   ABOUT_SCREEN,
+  MY_KEYS_SCREEN,
+  CHANGELOG_SCREEN,
+  SETTING_SECTION_SCREEN,
 } from './screenNames'
+import { type SettingSectionTarget } from '@/screens/Home/Views/Setting/Main'
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
 import { markSkipIntro } from './transitions/intro'
@@ -96,6 +100,11 @@ export function pushCommentScreen(componentId: string) {
   pushRoute(COMMENT_SCREEN)
 }
 
-// 「关于」独立页（2026-10-23 设置关于节重设计）：设置平铺架构不变（对标网易云设置），
-// 关于节改入口行 push 本屏
+// 「关于」独立页（2026-10-23 设置关于节重设计；批 R 形态修订：设置页已改净屏式根菜单，
+// 本屏=关于组行 + 横屏关于节双入口）
 export const pushAboutScreen = (componentId: string) => { void componentId; pushAmScreen(ABOUT_SCREEN) }
+export const pushMyKeysScreen = (componentId: string) => { void componentId; pushAmScreen(MY_KEYS_SCREEN) }
+export const pushChangelogScreen = (componentId: string) => { void componentId; pushAmScreen(CHANGELOG_SCREEN) }
+
+// 设置二级页（批 R·I-7：单屏+passProps 传节 id；id 类型收窄七节，竖屏根菜单专用）
+export const pushSettingSectionScreen = (componentId: string, id: SettingSectionTarget) => { void componentId; pushAmScreen(SETTING_SECTION_SCREEN, { id }) }
