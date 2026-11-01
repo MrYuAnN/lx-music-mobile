@@ -156,19 +156,19 @@ export default memo(() => {
                   </ScrollView>
                   <View style={styles.logBtns}>
                     <Button
-                      style={{ ...styles.logBtn, backgroundColor: theme['c-button-background'] }}
+                      style={{ ...styles.logBtn, backgroundColor: theme['c-chip-background'] }}
                       onPress={() => { popupRef.current?.setVisible(false) }}
                     >
-                      <Text size={14} color={theme['c-button-font']}>{t('setting_other_log_btn_hide')}</Text>
+                      <Text size={14} color={theme['c-font']}>{t('setting_other_log_btn_hide')}</Text>
                     </Button>
                     {
                       logText
                         ? (
                             <Button
-                              style={{ ...styles.logBtn, backgroundColor: theme['c-button-background'] }}
+                              style={{ ...styles.logBtn, backgroundColor: theme['c-chip-background'] }}
                               onPress={handleCleanLog}
                             >
-                              <Text size={14} color={theme['c-primary-font']}>{t('setting_other_log_btn_clean')}</Text>
+                              <Text size={14} color={theme['c-font']}>{t('setting_other_log_btn_clean')}</Text>
                             </Button>
                           )
                         : null

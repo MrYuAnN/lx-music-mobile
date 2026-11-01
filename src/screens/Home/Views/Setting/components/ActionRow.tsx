@@ -10,8 +10,11 @@ import { DESTRUCTIVE_RED, ICON_SIZE } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 
 // 动作行（治理批 P12/P13/P14 共用单源，审查 S-5 拍板共建）：iOS/AM button-row 形态
-// （组卡内动作的统一载体，替代旧 SubTitle+填充矩形按钮）；行尾动作=软主色胶囊小钮
-// （走查拍板替代裸文字，微信清理钮范式·印象级对标，审查 S-2）；icon 可选前置行图标（关于节走查拍板）
+// （组卡内动作的统一载体，替代旧 SubTitle+填充矩形按钮）；行尾动作=胶囊小钮（走查拍板
+// 形态保留；色彩 2026-11-01 批 R 拍板中性化——推翻原「软主色胶囊（审查 S-2）」的用色部分；
+// 首版误用 c-button-background（实为主色粉系派生 token，审查 C-I-4 定点核实），终态=
+// c-chip-background 中性灰底+c-font 字成对，disabled 态以 c-font-label 文字色区分）；
+// icon 可选前置行图标（关于节走查拍板）
 export default memo(({ label, value, actionLabel, icon, onPress, disabled = false, destructive = false }: {
   label: string
   /** 右侧值文本（如缓存大小/条数），缺省为纯动作行 */
@@ -45,8 +48,8 @@ export default memo(({ label, value, actionLabel, icon, onPress, disabled = fals
       {
         actionLabel != null
           ? (
-              <View style={{ ...styles.action, backgroundColor: disabled ? theme['c-button-background'] : theme['c-primary-alpha-900'] }}>
-                <Text size={13} color={disabled ? theme['c-font-label'] : theme['c-primary-font']}>
+              <View style={{ ...styles.action, backgroundColor: theme['c-chip-background'] }}>
+                <Text size={13} color={disabled ? theme['c-font-label'] : theme['c-font']}>
                   {actionLabel}
                 </Text>
               </View>
