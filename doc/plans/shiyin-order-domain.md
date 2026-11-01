@@ -52,7 +52,8 @@ RN 购买面(选购页/支付引导/订单中心) ──HTTP(X-Product=shiyin)�
 - **实施记录（2026-11-02）**：order-core 新仓 17 文件+净屏 14 文件改引用（+285/−2952）；双侧全量测试绿；三席代码审查 0C（3I+9S 全修：迁移器基线一次性化+回归锁/README seam 修正/死门面清理/srv 缺席修正状态断言）；净屏原码潜伏 panic 随搬运修正 1 处（CreateManualChannelOrder srv nil，审查席复核语义等价）。
 
 ### 批2｜shiyin-server 订单域接线（服务端可运营）
-- 动工前置：**用户甄别拾音仓未提交改动**；**渠道值域确认（批1 代码审 S4 挂账）：拾音仅 manual/native，「小店」文案应不可达——若出现 web 渠道行再考虑文案 seam 化**。
+- 动工前置：**用户甄别拾音仓未提交改动**（已甄别提交 94debf06）；**渠道值域确认：拾音仅 manual/native，「小店」筛选项裁掉（已确认 2026-11-02）**。
+- **实施记录（2026-11-02）**：拾音 backend 订单域接线（store embed Domain/api 四路由/admin 精简 panel/cron 三 loop/main 装配）+平台 panel-set CLI+网关三 location 双仓同步；集成测试 10 项绿（含 /api/skus 九字段契约/凭证分级/面板动线/平台载荷回调/限频/补发关单）；三席代码审查 0C→**1C+6I+12S 全修**（C1=trial_order_create 载荷契约断裂·平台 grant_id number 双形态容错+fixture 测试；I-1=补装设备 360 三 query kind·平台设备页跨产品消费方实证；I-2=clientIP 补 X-Real-IP 优先层；余=seam 落 ordercore/部署步骤落字/测试补五分支/conf 双仓 diff 校验）。**勘误与自定注记**：①rulepack_content=显式 400（非「返回空」，代码审 S1 认可现状）②dash 卡「实收内嵌/今日付款订单」为拾音自定展示组合（数据出自 OrderSalesStats 单源，代码审 S3 注记）③cfg 表单 action=form id=config_set 对齐净屏。
 - `lxmusic-custom/backend/`：orders 表迁移（order-core 迁移序列）+订单 API（create/list/cancel，mock=manual 模式）+`/api/skus`（全套契约字段+503 语义+平台 /srv/skus 单源 5min 只读缓存；下发过滤 enabled=1 且排 trial/auto3 档）+panel 三端点（**仅装配 ordersTbl，裁 channelTbl/legacy_replay；rulepack_content 返回空；query kinds 通用 7 种**；**增精简 cfg 分区**承载 xianyu_url/contact_url/service_hours/native_checkout 等运营字段）+manual 建单+trial_sync+cron（补发+48h 关单；对账不注册）+闲鱼 resolver。
 - 平台侧：platform-admin 补 `panel-set`（含 `--clear` 清空语义，列验收点）；panel_url=`http://172.20.0.1:8090`+panel_token 注册。
 - 网关：shiyin-api.conf 三条 location（合法形态：`location = /api/skus`、`location /api/order/`、`location = /api/orders`——精确匹配防劫持 /api/skus/install 与 /api/trial-claim）+**逐条 include shiyin-sec-headers.conf**+双仓 conf 同步。
@@ -70,7 +71,8 @@ RN 购买面(选购页/支付引导/订单中心) ──HTTP(X-Product=shiyin)�
 - 回滚=不发版即零影响。
 
 ### 批4｜收尾登记
-- INTEGRATIONS.md D 域拍板翻转落字；商品上架/改价/补货运营步骤单（**正式上架先于/伴随 App 发版**）；「闲鱼链接→resolver→itemId」配置闭环；闲鱼文案/客服内容占位（运营内容待用户补）；净屏 native channel 落库缺口修复（独立小 commit）+**看板渠道口径跳变注记**。
+- INTEGRATIONS.md D 域拍板翻转落字；商品上架/改价/补货运营步骤单（**正式上架先于/伴随 App 发版**）；「闲鱼链接→resolver→itemId」配置闭环；闲鱼文案/客服内容占位（运营内容待用户补）；净屏 native channel 落库缺口修复（**改法升级：ordercore CreateManualOrder INSERT 单源修 channel（uid 非空→native），净屏/拾音同批生效**+**看板渠道口径跳变注记**）。
+- **批2 代码审挂账（2026-11-02）**：①净屏 trial_order_create 同分支 val() 纯 string 断言对平台 grant_id number 载荷同样失败——净屏即时路疑似已静默失效被 cron 掩盖（优化师席外溢发现，本批拾音侧已修+fixture 锁，净屏侧同法修）②净屏 /api/order/create 同样无 trial 档入口过滤（净屏 trial 已 retire 暂无实害，ordercore 修 channel 时一并加 tier 闸更稳）③ordercore 事件 kind 字面量（return/void）收口常量单源 ④ordercore xianyu resolver.loop 持锁调 urlFn（锁内走宿主 Setting→DB 查询；量级无实害，对齐 refresh() 锁外取值）。
 
 ## 五、风险与对策
 
