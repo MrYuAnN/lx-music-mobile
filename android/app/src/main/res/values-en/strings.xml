@@ -1,0 +1,14 @@
+<resources>
+    <!-- 三语补齐（审查 S-4，2026-11-01）：宿主原生层文案对齐 RN 侧三语（zh 默认/en/zh-rTW）；
+         术语对齐 src/lang/en-us.json（激活码=activation code） -->
+    <string name="activation_restored_toast">Activation restored on this device</string>
+    <string name="expiry_notify_channel">Membership expiry reminders</string>
+    <string name="expiry_notify_title">Membership expiring soon</string>
+    <string name="expiry_notify_body">%1$s membership expires on %2$s. Enter a new activation code to renew.</string>
+    <string name="expiry_expired_title">Membership expired</string>
+    <string name="expiry_expired_body">%1$s membership expired on %2$s. Enter a new activation code to continue.</string>
+    <string name="trial_expiry_notify_title">Trial ending soon</string>
+    <string name="trial_expiry_notify_body">%1$s trial is ending soon. Enter a new activation code to extend.</string>
+    <string name="trial_expired_title">Trial ended</string>
+    <string name="trial_expired_body">%1$s trial has ended. Enter a new activation code to continue.</string>
+</resources>

@@ -5,6 +5,7 @@ import { handlePlayerAction, type PlayerAction } from './playerAction'
 import { handleSonglistAction } from './songlistAction'
 import { extname, stat } from '@/utils/fs'
 import { handleFileMusicAction, handleListFileAction } from './fileAction'
+import { pushMyKeysScreen } from '@/navigation/navigation'
 
 
 const handleLinkAction = async(link: string) => {
@@ -37,6 +38,11 @@ const handleLinkAction = async(link: string) => {
       break
     case 'player':
       await handlePlayerAction(action as PlayerAction)
+      break
+    case 'activation':
+      // D2 到期通知点击直达（2026-11-01 审查 S-3）：shiyin://activation/open →
+      // 我的激活码；pushRoute 内有 isReady 保护，冷启动点击不崩
+      pushMyKeysScreen('')
       break
     // default: throw new Error('Unknown type: ' + type)
   }

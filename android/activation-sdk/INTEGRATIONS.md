@@ -33,7 +33,7 @@
 | I 更新日志 | **已建独立页（2026-10-31）**：关于页行→Changelog 屏全量渲染 releases（静默拉取不弹窗） | 净屏 rowChangelog 对标；空态/失败态分显 |
 | SDK 消费（errCode） | **SDK v1.4 已消费（2026-10-31）**：releaseDeviceEx/releaseRemoteEx 结构化 errCode→RN i18n 三语映射 | 审计 A-4 残留①提前清账（用户拍板）；净屏零影响（旧签名保留） |
 | D 整域（SKU/订单/支付/闲鱼归因） | 不做 | 灰度=人工发码；**闲鱼归因=无闲鱼渠道，不接**（2026-10-31 审计后补拍板） |
-| E 到期提醒 Worker 族 | **已实现（D2 拍板，2026-11-01）**：宿主 24h 周期 Worker 读本地 Receipt，试用<36h/正价[已到期,+7d] 分窗，防重 key，POST_NOTIFICATIONS 未授权静默跳过 | 审计 D2 闭环；通知图标暂用 ic_launcher，放量前换专用白 alpha 图标 |
+| E 到期提醒 Worker 族 | **已实现（D2 拍板 2026-11-01，审查修复同日）**：宿主 24h 周期 Worker 读本地 Receipt，**双窗双 key**（pre：试用<36h/正价 7d「即将到期」；post：试用 3d/正价 7d「已过期」独立文案——对标业界订阅多次触达，替代净屏单窗单次），键域过滤（APP_CN 白名单）+UPDATE 幂等+专用白 alpha 图标+点击 deep link（`shiyin://activation/open`→我的激活码）+原生文案三语（zh/en/zh-rTW）；POST_NOTIFICATIONS 未授权静默跳过（授权入口=RN 首播一次性请求+设置页找回，既有拍板） | 审计 D2 闭环；**继承边界登记**：isTrial 单值锚 SDK 聚合元数据（首个未停权码），混合码并存残留边角=SDK 聚合改 paid>trial 优先级（单源待办，pruneOrphanedKeys/merge 吸收/6h 巡检停权三层兜底已实证） |
 | F 客服 | 捷径版已实施（About「联系客服」行 openUrl 官网 FAQ，2026-10-31）；完整版随 D3 | 官网 FAQ 页内容仍【上线前补】占位（运营内容） |
 | G 权益门 | 取链隐式墙+快抛链（净屏开关墙） | 产品形态：免费面五项永久免费拍板；指路文案已修正（**F5 已修 2026-10-31**：路径改「设置→关于→激活管理」+删试用领取承诺+官网教程同步） |
 | G 到期停拦钩子 | 不接 enforceExpiry | 到期处置=取链 403 快抛链承担；v3 落字 |
