@@ -18,6 +18,15 @@ export const getVersionInfo = async() => {
     version: info.version,
     url: info.url,
     desc: info.note ?? '',
-    history: Array.isArray(info.releases) ? info.releases : [],
+    // releases 元素={version,url,note,released_at}（store.go）：映射为消费方
+    // （日志页/更新弹窗）读写的历史条目——desc 映射缺失曾致正文恒空白（审查 R-I-3）；
+    // released_at 为 unix 秒，×1000 对齐 dateFormat 毫秒语义（R-I-2）
+    history: Array.isArray(info.releases)
+      ? info.releases.map(r => ({
+        version: r.version,
+        desc: r.note ?? '',
+        releasedAt: r.released_at != null ? r.released_at * 1000 : undefined,
+      }))
+      : [],
   }
 }

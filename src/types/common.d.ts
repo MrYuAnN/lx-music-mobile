@@ -13,5 +13,7 @@ declare namespace SY {
   interface VersionInfo {
     version: string
     desc: string
+    /** history 条目专属：发布时间（unix 毫秒；顶层最新版无此字段） */
+    releasedAt?: number
   }
 }

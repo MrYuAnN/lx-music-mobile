@@ -124,6 +124,8 @@ const EXTRA_NAMES = [
   // 重扫钮精化（2026-10-30 走查：双箭头笔画密显粗糙，换单箭头对标 SF arrow.clockwise /
   // Material refresh 的业界 refresh 主流形态）
   { names: ['arrow-clockwise'], p: 'arrow-clockwise' },
+  // 激活入口行图标（批 R·净屏 KeyInfoActivity 钥匙语义对标，D1/D3）
+  { names: ['key'], p: 'key' },
 ]
 
 // ---------- 读取 selection.json 校验映射覆盖（断言 a：全量覆盖/显式 SKIP） ----------
