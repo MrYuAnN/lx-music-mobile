@@ -93,7 +93,7 @@ func cmdLatestSet(args []string) error {
 	dbPath := fs.String("db", "shiyin.db", "SQLite 路径")
 	version := fs.String("version", "", "版本号（如 1.0.0）")
 	url := fs.String("url", "", "APK 下载地址（必须 https）")
-	note := fs.String("note", "", "更新说明（≤4000 字节）")
+	note := fs.String("note", "", "更新说明（≤4000 字节；逐行「新增：/修复：/优化：」前缀，展示端按前缀分组——规则单源 src/utils/changelog.ts，无前缀归「更新」组）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}

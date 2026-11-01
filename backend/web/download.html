@@ -43,16 +43,55 @@
 </footer>
 </div>
 
+<style>
+/* 更新日志分组样式（批 R·D5 行前缀分组；规则单源=App 端 src/utils/changelog.ts） */
+.note-groups { margin-top: 8px; display: grid; gap: 10px; }
+.note-group ul { margin: 6px 0 0; padding-left: 18px; }
+.note-group li { margin: 2px 0; }
+.note-badge { display: inline-block; font-size: 12px; line-height: 1; padding: 4px 8px; border-radius: 6px; border: 1px solid; }
+</style>
+
 <script>
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmtDate = ts => new Date(ts * 1000).toLocaleDateString('zh-CN', {year: 'numeric', month: '2-digit', day: '2-digit'});
+// note 行前缀分组（批 R·D5）：与 App 端 src/utils/changelog.ts 同规则——前缀「新增/修复/优化」
+// （容错半角冒号与前导空白）、「更新」前缀剥除归默认组、无前缀行归「更新」、空行忽略、
+// 组序恒 add→fix→improve→other；对拍锚点=src/utils/changelog.test.mts 末组用例。
+// 规则改动操作链：先改 changelog.ts+用例，再同步本文件实现，最后跑
+// `node --test src/utils/changelog.test.mts`+本文件锚点用例双侧对拍
+const NOTE_PREFIXES = [['新增','add'],['修复','fix'],['优化','improve'],['更新','other']];
+const NOTE_ORDER = ['add','fix','improve','other'];
+const parseNote = note => {
+  const groups = new Map();
+  for (const raw of String(note ?? '').split(/\r?\n/)) {
+    const line = raw.trim();
+    if (!line) continue;
+    const matched = NOTE_PREFIXES.find(([p]) => line.startsWith(p) && (line[p.length] === '：' || line[p.length] === ':'));
+    const key = matched ? matched[1] : 'other';
+    const text = matched ? line.slice(matched[0].length + 1).trim() : line;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(text);
+  }
+  return NOTE_ORDER.filter(k => groups.has(k)).map(k => ({key: k, lines: groups.get(k)}));
+};
+const NOTE_LABEL = {add:'新增', fix:'修复', improve:'优化', other:'更新'};
+const NOTE_COLOR = {add:'#1e8e3e', fix:'#b26a00', improve:'#1a73e8', other:'#5f6368'};
+const renderNote = note => {
+  const groups = parseNote(note);
+  if (!groups.length) return '';
+  return '<div class="note-groups">' + groups.map(g => {
+    const c = NOTE_COLOR[g.key];
+    return '<div class="note-group"><span class="note-badge" style="color:' + c + ';border-color:' + c + '55;background:' + c + '14">' + NOTE_LABEL[g.key] + '</span>' +
+      '<ul>' + g.lines.map(l => '<li>' + esc(l) + '</li>').join('') + '</ul></div>';
+  }).join('') + '</div>';
+};
 fetch('/latest', {signal: AbortSignal.timeout(8000)}).then(r => r.ok ? r.json() : Promise.reject(r.status)).then(d => {
   document.getElementById('ver').textContent = 'v' + d.version;
   document.getElementById('dl-main').href = d.url;
   const list = document.getElementById('releases');
   list.innerHTML = (d.releases || []).map(r =>
     '<div class="card"><b>v' + esc(r.version) + '</b> <span class="muted">' + fmtDate(r.released_at) + '</span>' +
-    (r.note ? '<p class="muted" style="white-space:pre-line">' + esc(r.note) + '</p>' : '') +
+    renderNote(r.note) +
     '</div>').join('') || '<p class="muted">暂无历史版本</p>';
 }).catch(() => {
   document.getElementById('ver').textContent = '暂未发布';

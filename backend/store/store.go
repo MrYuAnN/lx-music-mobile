@@ -23,9 +23,11 @@ var ErrInvalidRelease = errors.New("invalid release")
 
 var releaseVerRe = regexp.MustCompile(`^\d+(\.\d+){0,3}$`)
 
-// Release 一条版本发布记录。note 为平铺文本（App 弹窗/官网渲染共用）；
-// 首版未引入净屏的 entries 结构化双字段（App「更新日志」页需求出现时按
-// 净屏 008 迁移模式加列，/latest 契约向前兼容）。
+// Release 一条版本发布记录。note 为平铺文本（App 弹窗/官网渲染共用）；展示端按
+// 行前缀「新增：/修复：/优化：」分组（规则单源=App 端 src/utils/changelog.ts，
+// 官网 download.html 同规则对拍；无前缀行归「更新」组，容错半角冒号）——
+// 后端零解析零结构化（首版未引入净屏的 entries 结构化双字段，App「更新日志」页
+// 需求以行前缀约定落地，/latest 契约向前兼容）。
 type Release struct {
 	Version    string `json:"version"`
 	URL        string `json:"url"`
