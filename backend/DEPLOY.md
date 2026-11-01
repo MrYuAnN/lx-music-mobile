@@ -83,6 +83,12 @@ WantedBy=multi-user.target
 ```
 
 发布版本：`./shiyin-server latest-set -db shiyin.db -version 1.0.0 -url https://【对外域】/dl/shiyin-1.0.0.apk -note "首个版本"`。
+
+**发版前 checklist（批 R·代码审查 C-I-5，versionCode 重置 1 后的闸门）**：
+1. 核实 app_releases 表无 1.9.x 及以上残留记录（/dash 或查库）——否则 1.0.0 客户端 checkUpdate 会判「已落后」弹窗引导下载旧高版本号 APK（实际=回滚）；录入 1.0.0 且 released_at 晚于一切旧记录（表首=最新语义）即可消除。
+2. 确认无 versionCode>1003（=1.0.0 arm64 派生值）的外发装机存量——Android 禁止 versionCode 降级覆盖安装，此类设备永远无法 OTA 到 1.0.0，只能卸载重装（灰度测试机已拍板手工换装 1.0.0 包）。
+3. 后续任何发版 package.json versionCode 必须 >1（产物 arm64 派生值 >1003）单调递增，重置不可逆。
+
 APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `location /dl/ { alias /root/shiyin/apk/; }`（大文件走 CDN 缓存可留 EdgeOne 默认策略）。
 
 ## 3. 网关 server block（**2026-10-27 已上线**，netgate 仓 commit 7e2eda1+691660b+a2990db）
@@ -184,3 +190,10 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 > 3. **trial_min_client_ver per-product 化**（2026-11-01 已记）：现全局单键 meta（缺省 1.7.0
 >    曾掐断拾音 1.0.0 召回链，已临时调 1.0.0，备份在案）——新增低版本产品接入必须先调 meta；
 >    长期改 products 列/按产品 meta 键，免「上线即断链」暗雷复发。
+> 4. **多源到期口径复核**（2026-11-01 三角色审查 I3 补）：`/srv/key-entitlement` 的
+>    `expires_at`=store.Key v1 聚合（**min 非零到期**，licenses.go:87）是 key 级跨 app 口径，
+>    取链服务已把它写进 token record 做 /url 全局拦截——多源码「A 源到期 B 源在期」会把
+>    在期 B 源播放一并锁死（客户端码卡/横幅按 per-app 到期展示，两侧口径矛盾）。多源
+>    发码前须：平台按产品维度下发到期（`expires_by_app` 或按 X-Product 过滤）+取链按源
+>    校验；并复核 min 聚合是否参与平台 status 判定（若参与，status 本身已在多源码失真，
+>    属平台既有语义需一并对拍）。

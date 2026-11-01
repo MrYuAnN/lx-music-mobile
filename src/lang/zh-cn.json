@@ -604,5 +604,7 @@
   "home_banner_expired": "会员已到期 · 点击续费",
   "activation_welcome_trial_title": "已获得 3 天免费试用 🎉",
   "activation_welcome_trial_body": "3 天全功能免费试用已生效，到期时间可在「我的激活码」查看。到期后搜索、榜单、歌单、歌词、封面永久免费，播放需激活码。",
-  "activation_welcome_trial_btn": "开始使用"
+  "activation_welcome_trial_btn": "开始使用",
+  "shiyin_trial_expired_guide_title": "免费试用已结束",
+  "shiyin_trial_expired_guide_body": "3 天免费试用已结束。输入激活码即可继续使用全部功能。"
 }

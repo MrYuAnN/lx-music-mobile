@@ -5,7 +5,7 @@
 // 426→强更弹窗（F5 直达：UpgradeRequiredModal 统一出口）/ 429→提示不自动重试 / 其余（5xx·网络）→可重试（交换源链）。
 import { httpFetch } from '@/utils/request'
 import { requestMsg } from '@/utils/message'
-import { ensureAuth, signRequest } from './auth'
+import { ensureAuth, signRequest, clearStoredAuth } from './auth'
 import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL } from './config'
 import versionActions from '@/store/version/action'
 import { activationModule } from '@/utils/nativeModules/activation'
@@ -17,14 +17,16 @@ import { pushMyKeysScreen } from '@/navigation/navigation'
 // 设备旧 token TTL≤24h 内 ensureAuth 直接过、取链照常 200（用户装机实测），故取链入口
 // 独立查态每次都过。免费面五项不经取链不受影响，恰好只锁播放（方案 §8「锁播放」拍板）。
 // 权威层=服务端 token 内嵌到期校验（改设备时间续命绕不过本层但绕得过此层）。
+// 弹窗存续期守卫（审查 S3 命名修正，原「会话级」措辞失准）：防换源链同一次遍历重弹；
+// 结算即复位，用户取消后下次播放会再弹（锁播放语义下可辩护，重弹节流=另立产品决策）
 let expiryGuideShowing = false
-const guideEntitlementExpired = (): void => {
-  // 会话级守卫：换源链对同一首歌多源遍历会多次进入，弹一次即可；引导直达输码页
+const guideEntitlementExpired = (isTrial: boolean): void => {
   if (expiryGuideShowing) return
   expiryGuideShowing = true
   void confirmDialog({
-    title: global.i18n.t('shiyin_expired_guide_title'),
-    message: global.i18n.t('shiyin_expired_guide_body'),
+    // S5（审查）：试用用户未购会员，「会员已到期」落在转化漏斗第一触点措辞失准——isTrial 分化
+    title: global.i18n.t(isTrial ? 'shiyin_trial_expired_guide_title' : 'shiyin_expired_guide_title'),
+    message: global.i18n.t(isTrial ? 'shiyin_trial_expired_guide_body' : 'shiyin_expired_guide_body'),
     confirmButtonText: global.i18n.t('shiyin_expired_guide_go'),
     bgClose: false,
   }).then(confirmed => {
@@ -38,7 +40,7 @@ const guideEntitlementExpired = (): void => {
 const checkEntitlementBeforeUrl = async(): Promise<void> => {
   const st = await activationModule.getState().catch(() => null)
   if (st?.state != 'expired') return
-  guideEntitlementExpired()
+  guideEntitlementExpired(st.isTrial)
   throw shiyinEntitlementExpiredError()
 }
 
@@ -110,6 +112,16 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
       resp = await (request = requestUrl(nextAuth, source, songId, targetQuality, isRefresh)).promise
     }
 
+    // I1（审查）403 expired 自愈：record 内嵌 exp_ts 是注册时刻快照——续费后紧随的
+    // ensureAuth(true) 瞬时网络失败时 keychain 旧 token（旧 exp_ts）复用至 TTL 尽，
+    // 每次播放误弹「已到期」。同 401 模式强刷重放一次：新 token 带新 exp_ts；真无权益
+    // 时平台核验 403 → ShiyinEntitlementInvalid 快速失败不循环
+    if (resp.statusCode == 403 && (resp.body as unknown as UrlResponse).message == 'expired') {
+      await clearStoredAuth()
+      const nextAuth = await ensureAuth(true)
+      resp = await (request = requestUrl(nextAuth, source, songId, targetQuality, isRefresh)).promise
+    }
+
     const body = resp.body as unknown as UrlResponse
     switch (resp.statusCode) {
       case 200:
@@ -118,11 +130,12 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
         if (body.url) return { url: body.url, type: targetQuality, expire: body.expire }
         throw new Error(requestMsg.fail)
       case 403:
-        // ⑥ expired=服务端 token 内嵌到期校验拒（双层权益门·权威层信号）——与前置拦截
-        // 同引导；其余 403=摘源（cookie 失效自动摘/开关关闭）：不自动重试，立即重拉
-        // /config 收敛本地源集
+        // ⑥ expired=服务端 token 内嵌到期校验拒（I1 自愈重放后仍 expired=真到期）——
+        // 与前置拦截同引导；其余 403=摘源（cookie 失效自动摘/开关关闭）：不自动重试，
+        // 立即重拉 /config 收敛本地源集
         if (body.message == 'expired') {
-          guideEntitlementExpired()
+          const st = await activationModule.getState().catch(() => null)
+          guideEntitlementExpired(st?.isTrial ?? false)
           throw shiyinEntitlementExpiredError()
         }
         void fetchShiyinConfig().catch(() => {})

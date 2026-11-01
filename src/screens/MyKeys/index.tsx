@@ -40,6 +40,7 @@ import {
   unbindRemoteDevice,
   detectClipboardCandidate,
   formatRemainHint,
+  isExpiredAt,
   APP_CN,
 } from '@/core/shiyin/activation'
 
@@ -345,10 +346,11 @@ const KeyCard = memo(({
   // 生效范围行（净屏 entitlementRows 对齐，2026-11-01 拍板）：按源收费→逐源行「音源 · 有效期」；
   // expiries 键=产品 app 键（APP_CN 映射显示名）；日期口径=净屏 app_row 同款 date-only（剩余递进
   // 由 remainHint 承担）。状态分态（2026-11-01 用户装机反馈：过期码卡曾恒显「试用中」；
-  // 净屏 :445 口径——已到期标签优先于码级档位，与设置页 formatActivationState Expired 态同源）
+  // 净屏 :445 口径——已到期标签优先于码级档位，与设置页 formatActivationState Expired 态同源）。
+  // S2（审查）：expired 判定单源=isExpiredAt（activation.ts）
   const renderExpiryRow = (app: string, exp: number) => {
     const remain = formatRemainHint(exp, t)
-    const expired = exp != 0 && exp * 1000 <= Date.now()
+    const expired = isExpiredAt(exp)
     const expiryPhrase = exp == 0
       ? t('activation_permanent')
       : `${expired ? `${t('activation_state_expired')} · ` : entry.isTrial ? `${t('activation_state_trial')} · ` : ''}${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}${remain ? ` · ${remain}` : ''}`
@@ -386,10 +388,11 @@ const KeyCard = memo(({
           ))
           : (
             // 旧 native 桥接无 expiries 时的兜底（reload 窗口期）：单值 expiry 行
+            // S6（审查）：同步④分态口径——过期加「已到期」标签（净屏 :445 同源）
             <Text size={15} color={theme['c-font']} style={styles.expiryText}>
               {entry.expiry == 0
                 ? t('activation_permanent')
-                : `${t('activation_until')} ${dateFormat(entry.expiry * 1000, 'Y-M-D')}${fallbackRemain ? ` · ${fallbackRemain}` : ''}`}
+                : `${isExpiredAt(entry.expiry) ? `${t('activation_state_expired')} · ` : ''}${t('activation_until')} ${dateFormat(entry.expiry * 1000, 'Y-M-D')}${fallbackRemain ? ` · ${fallbackRemain}` : ''}`}
             </Text>
           ))}
       </TouchableOpacity>

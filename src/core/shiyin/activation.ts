@@ -8,6 +8,7 @@ import { activationModule, onEntitlementChanged, type ActivationStateInfo } from
 import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
+import versionState from '@/store/version/state'
 import type { Message } from '@/lang'
 
 // 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；按源收费口径）：产品 app 键→
@@ -175,20 +176,39 @@ export const unbindRemoteDevice = async(key: string, deviceId: string, onDone: (
   }
 }
 
+// 到期档位单源（三角色审查 S2：bannerState/formatRemainHint/renderExpiryRow 三处分散收口；
+// 时区恒 Asia/Shanghai=净屏拍板口径，海外机「会员至 X」与天数同源不失真）
+const SH_TZ = 'Asia/Shanghai'
+// S1（审查）：Intl.DateTimeFormat 构建昂贵（MDN 建议复用），模块级缓存
+const shDayFmt = new Intl.DateTimeFormat('en-US', { timeZone: SH_TZ, year: 'numeric', month: '2-digit', day: '2-digit' })
+// 某时刻在 Asia/Shanghai 的自然日序数（C1 修复：原 YYYYMMDD 十进制数字差跨月即错——
+// 20261201-20261130=71 而真差 1 天；Date.UTC 差÷86400000=真自然日差）
+const shDayNumber = (unixSec: number): number => {
+  const map: Record<string, string> = {}
+  for (const p of shDayFmt.formatToParts(new Date(unixSec * 1000))) {
+    if (p.type != 'literal') map[p.type] = p.value
+  }
+  return Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day)) / 86400000
+}
+/** 是否已过期（码卡/兜底行分态单源判据，秒级） */
+export const isExpiredAt = (expiry: number): boolean => {
+  return expiry != 0 && expiry * 1000 <= Date.now()
+}
+/** 是否即将到期（≤3 天未过期；ExpiryBanner 金色窗，净屏 expiringSoon 同口径） */
+export const isExpiringSoonAt = (expiry: number): boolean => {
+  if (expiry == 0 || isExpiredAt(expiry)) return false
+  return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
+}
+
 /** 到期剩余时长递进提示（净屏 remainHint 口径对齐+分钟延伸，2026-11-01 用户拍板）：
- *  天=自然日差（Asia/Shanghai，净屏 10-14 修复口径：服务端 72h 整+钟偏移叠加下 ceil
- *  秒差会跨上界多显一天，自然日差稳定）→小时（向上取整不低估）→分钟（用户要求新增，
- *  净屏 <1h 即显「即将到期」无此档）→<1min 即将到期；永久(0)/已过期 不提示 */
+ *  天=自然日差（Asia/Shanghai，净屏 10-14 修复口径，shDayNumber 单源）→小时（向上取整
+ *  不低估）→分钟（用户要求新增，净屏 <1h 即显「即将到期」无此档）→<1min 即将到期；
+ *  永久(0)/已过期 不提示 */
 export const formatRemainHint = (expiry: number, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
   if (expiry == 0) return '' // 0=永久（KeyEntry.expiry 恒 number，审查 S11 收口）
   const remainSec = expiry - Math.floor(Date.now() / 1000)
   if (remainSec <= 0) return ''
-  if (remainSec >= 86400) {
-    const zone = 'Asia/Shanghai'
-    const today = Number(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replaceAll('-', ''))
-    const expDay = Number(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(expiry * 1000)).replaceAll('-', ''))
-    return t('keyinfo_remain_days', { n: Math.max(expDay - today, 0) })
-  }
+  if (remainSec >= 86400) return t('keyinfo_remain_days', { n: Math.max(shDayNumber(expiry) - shDayNumber(Math.floor(Date.now() / 1000)), 0) })
   if (remainSec >= 3600) return t('keyinfo_remain_hours', { n: Math.ceil(remainSec / 3600) })
   if (remainSec >= 60) return t('keyinfo_remain_minutes', { n: Math.ceil(remainSec / 60) })
   return t('keyinfo_remain_soon')
@@ -201,10 +221,17 @@ export const formatRemainHint = (expiry: number, t: (k: keyof Message, p?: Recor
 export const useTrialWelcome = (): void => {
   useEffect(() => {
     let subscription: { remove: () => void } | null = null
+    let delayedShow: ReturnType<typeof setTimeout> | null = null
     const consume = () => {
+      // 强更错峰（审查 I2 修订）：强更在途先不消费——consume 即清标志，消费后跳过=
+      // 欢迎永久丢失；不消费则下个前台 AppState active 自然重试。2s 延迟窗口内强更
+      // 恰好出现的小概率残留可接受（叠加一次，不丢内容）。
+      // S9 知情偏离注：consume 先清后 2s 延迟弹，窗口内进程被杀则欢迎丢失——一次性
+      // 内容低概率，接受（净屏原生 dialog 无此窗口）
+      if (versionState.upgradeRequired.required) return
       void activationModule.consumeTrialWelcomePending().then(granted => {
         if (!granted) return
-        setTimeout(() => {
+        delayedShow = setTimeout(() => {
           void confirmDialog({
             title: global.i18n.t('activation_welcome_trial_title'),
             message: global.i18n.t('activation_welcome_trial_body'),
@@ -220,6 +247,8 @@ export const useTrialWelcome = (): void => {
     })
     return () => {
       subscription?.remove()
+      // S9（审查）：卸载清理延迟弹（当前挂载点 Home 常驻影响≈0，防未来改挂可卸载屏）
+      if (delayedShow != null) clearTimeout(delayedShow)
     }
   }, [])
 }
