@@ -1,0 +1,506 @@
+// 订单中心（批3，方案 §四批3 v1.2；效果图 v2/v4 定稿）。五态徽章（D3 拍板）：待支付橙/
+// 待发码灰转圈/已发码绿/已完成·已关闭灰，已关闭折叠「历史订单」分组；「已完成」=delivered
+// 且该单码已全部在本地 keys 命中（服务端仅四态，客户端推断——审查 I8）。待支付卡=继续支付
+// （同 token+同 skuIds 幂等重放取回闲鱼链接齐发响应，服务端同 token 返回原单契约）+取消
+// （审查 I7，/api/order/cancel 现成）。一键激活复用 activateByCode 编排链（审查 S2：
+// ensureAuth(true) 取链重建防「激活成功但取链仍旧 token」）；组合单多码=D4 弹层（「叠加
+// 激活 N 张」主钮）后逐张 activate(code, true) 同 App 融合叠加。轮询=15-30s 挡位+AppState
+// 后台暂停（优化师 S5；对齐 ExpiryBanner 可见性停表先例）。
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AppState, ActivityIndicator, Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+
+import ScreenHeader from '@/components/common/ScreenHeader'
+import PageContent from '@/components/PageContent'
+import Text from '@/components/common/Text'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { createStyle, toast, confirmDialog } from '@/utils/tools'
+import { hapticSelection } from '@/utils/haptic'
+import { useTheme } from '@/store/theme/hook'
+import { useI18n } from '@/lang'
+import { SPACING } from '@/config/spacing'
+import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { useStatusbarHeight } from '@/store/common/hook'
+import { dateFormat } from '@/utils'
+import {
+  syncOrders,
+  cancelOrder,
+  createOrder,
+  orderErrorKey,
+  yuan,
+  type OrderRecord,
+} from '@/core/shiyin/order'
+import { activationModule } from '@/utils/nativeModules/activation'
+import { ensureAuth } from '@/core/shiyin/auth'
+import { pushCheckoutScreen } from '@/navigation/navigation'
+
+const POLL_INTERVAL_MS = 20000
+
+export default ({ componentId }: { componentId: string }) => {
+  const theme = useTheme()
+  const t = useI18n()
+  const statusBarHeight = useStatusbarHeight()
+  const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
+  const scrollY = useRef(new Animated.Value(0)).current
+
+  const [orders, setOrders] = useState<OrderRecord[]>([])
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  const [actingNo, setActingNo] = useState<string | null>(null)
+  const [showHistory, setShowHistory] = useState(false)
+  const mounted = useRef(true)
+  const timer = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pollBusy = useRef(false)
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+      if (timer.current != null) clearInterval(timer.current)
+    }
+  }, [])
+
+  const refresh = useCallback((silent = false) => {
+    if (!silent) setLoading(true)
+    void syncOrders().then(list => {
+      if (!mounted.current) return
+      setOrders(list)
+      setLoading(false)
+      setFailed(false)
+    }).catch(() => {
+      if (!mounted.current) return
+      setLoading(false)
+      if (!silent) setFailed(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    refresh()
+  }, [refresh])
+
+  // 轮询：AppState active 才挂表（后台暂停，优化师 S5）；20s 挡；busy 只在 tick 内防重入
+  // (批3代码审 I4/F：start 不再查 busy——后台快速往返后 syncOrders 在途会令 start 恒 return,
+  // 轮询表永久挂不上）
+  useEffect(() => {
+    const start = () => {
+      if (timer.current != null) return
+      timer.current = setInterval(() => {
+        if (pollBusy.current || AppState.currentState != 'active') return
+        pollBusy.current = true
+        void syncOrders().then(list => {
+          pollBusy.current = false
+          if (mounted.current) setOrders(list)
+        }).catch(() => {
+          pollBusy.current = false
+        })
+      }, POLL_INTERVAL_MS)
+    }
+    const stop = () => {
+      if (timer.current != null) {
+        clearInterval(timer.current)
+        timer.current = null
+      }
+    }
+    if (AppState.currentState == 'active') start()
+    const sub = AppState.addEventListener('change', state => {
+      if (state == 'active') {
+        refresh(true)
+        start()
+      } else stop()
+    })
+    return () => {
+      stop()
+      sub.remove()
+    }
+  }, [refresh])
+
+  // 五态映射（D3/审查 I8）：服务端四态+客户端「已完成」推断（delivered 且码全在本地 keys 命中）
+  const [boundCodes, setBoundCodes] = useState<string[]>([])
+  useEffect(() => {
+    void activationModule.getKeys().then(keys => {
+      if (!mounted.current) return
+      setBoundCodes(keys.map(k => k.trim().toUpperCase()))
+    }).catch(() => {})
+  }, [orders])
+
+  // 五态推断（D3/审查 I8 单源收口：delivered 且码全在本地 keys 命中=已完成）
+  const statusOf = useCallback((o: OrderRecord): string => {
+    if (o.status == 'delivered' && o.codes.length > 0 &&
+      o.codes.every(c => boundCodes.includes(c.trim().toUpperCase()))) return 'completed'
+    return o.status
+  }, [boundCodes])
+
+  const { activeList, historyList } = useMemo(() => {
+    const active: OrderRecord[] = []
+    const history: OrderRecord[] = []
+    for (const o of orders) {
+      ;(statusOf(o) == 'closed' ? history : active).push(o)
+    }
+    return { activeList: active, historyList: history }
+  }, [orders, statusOf])
+
+  const handleCancel = useCallback((o: OrderRecord) => {
+    hapticSelection()
+    void confirmDialog({
+      title: t('orders_cancel_confirm_title'),
+      message: t('orders_cancel_confirm_msg'),
+    }).then(confirmed => {
+      if (!confirmed) return
+      void cancelOrder(o.orderNo).then(ok => {
+        if (ok) {
+          toast(t('orders_cancel_done'))
+          refresh(true)
+        } else {
+          toast(t('orders_cancel_failed'))
+        }
+      }).catch(() => { toast(t('orders_cancel_failed')) })
+    }).catch(() => {})
+  }, [t, refresh])
+
+  // 继续支付（批3代码审 I3/A）：快照原 clientToken+同 skuIds 幂等重放（服务端同 token 返回
+  // 原单）——跨进程（杀 App 重启）仍命中原单，token_conflict=原单已闭合轮换重建一次闭环；
+  // 本地无 skuIds 的单（换机找回）不可重放，提示走客服
+  const handleResumePay = useCallback((o: OrderRecord) => {
+    hapticSelection()
+    if (!o.skuIds || !o.clientToken) {
+      toast(t('orders_resume_no_local'))
+      return
+    }
+    void createOrder(o.skuIds, { clientToken: o.clientToken }).then(order => {
+      if (!mounted.current) return
+      pushCheckoutScreen(componentId, order)
+    }).catch(err => {
+      if (!mounted.current) return
+      toast(t(orderErrorKey(err as Error)))
+    })
+  }, [componentId, t])
+
+  // 一键激活（D4 拍板补齐，批3代码审 PM C-2：检测本地其它 delivered 单的未激活码——
+  // 主钮=叠加激活全部（本单+跨单），次钮=仅激活本单；逐张 activate(code, true) 同 App
+  // 融合叠加。部分失败（审查 I5）：任一张成功即 ensureAuth(true)+refresh（防「已激活但
+  // 取链仍旧 token」复发），失败反馈 i18n 含进度。跨单码激活复用 rebindKey 同款直调
+  // activate 语义（确认框已知情，不进 activateByCode 二次融合确认））
+  const handleActivate = useCallback((o: OrderRecord) => {
+    hapticSelection()
+    if (!o.codes.length || actingNo != null) return
+    setActingNo(o.orderNo)
+    void (async() => {
+      try {
+        // 跨单可用码检测（D4）：本地其它 delivered 单的、尚未在 keys 命中的码
+        const bound = await activationModule.getKeys().then(ks => ks.map(k => k.trim().toUpperCase())).catch(() => [] as string[])
+        const boundSet = new Set(bound)
+        const own = o.codes.map(c => c.trim()).filter(c => !boundSet.has(c.toUpperCase()))
+        const extra: string[] = []
+        for (const other of orders) {
+          if (other.orderNo == o.orderNo || other.status != 'delivered') continue
+          for (const c of other.codes.map(x => x.trim())) {
+            if (!boundSet.has(c.toUpperCase()) && !own.includes(c) && !extra.includes(c)) extra.push(c)
+          }
+        }
+        const n = own.length
+        if (n == 0) {
+          toast(t('orders_activate_already'))
+          return
+        }
+        // D4 双钮两段式（confirmDialog 双钮限制）：有跨单码时主弹层=「叠加全部」，取消
+        // 落到次弹层=「仅激活本单」，再取消=放弃；无跨单码时单弹层（本单 N 张）
+        let list: string[]
+        if (extra.length > 0) {
+          const all = await confirmDialog({
+            title: t('orders_activate_confirm_title'),
+            message: t('orders_activate_confirm_stack', { n, extra: extra.length }),
+            bgClose: false,
+          }).catch(() => false)
+          if (all) {
+            list = [...own, ...extra]
+          } else {
+            const only = await confirmDialog({
+              title: t('orders_activate_only_title'),
+              message: t('orders_activate_only_msg', { n }),
+              confirmButtonText: t('orders_activate_only_btn'),
+              bgClose: false,
+            }).catch(() => false)
+            if (!only) return
+            list = own
+          }
+        } else {
+          const one = await confirmDialog({
+            title: t('orders_activate_confirm_title'),
+            message: n > 1 ? t('orders_activate_confirm_combo', { n }) : t('orders_activate_confirm_one'),
+            bgClose: false,
+          }).catch(() => false)
+          if (!one) return
+          list = own
+        }
+        let okCount = 0
+        let lastErrMsg: string | null = null
+        for (const code of list) {
+          const r = await activationModule.activate(code, true)
+          if (r.ok) okCount++
+          else lastErrMsg = r.message
+        }
+        if (okCount > 0) {
+          // 任一张成功即重建取链+刷新（审查 I5：防「已激活但取链仍旧 token」复发）
+          void ensureAuth(true).catch(() => {})
+          refresh(true)
+        }
+        if (lastErrMsg == null) toast(t('orders_activate_done'))
+        else toast(t('orders_activate_partial', { ok: okCount, total: list.length, msg: lastErrMsg || t('activation_failed') }))
+      } finally {
+        if (mounted.current) setActingNo(null)
+      }
+    })()
+  }, [actingNo, t, refresh, orders])
+
+  const handleToggleHistory = useCallback(() => {
+    hapticSelection()
+    setShowHistory(prev => !prev)
+  }, [])
+
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
+
+  return (
+    <PageContent>
+      <View style={[styles.container, { paddingTop: headerTotal }]}>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          <View style={styles.pollHint}>
+            <Text size={12} color={theme['c-font-label']}>{t('orders_poll_hint')}</Text>
+          </View>
+          {loading
+            ? (
+              <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_loading')}</Text></View>
+              )
+            : failed
+              ? (
+                <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_failed')}</Text></View>
+                )
+                : activeList.length == 0 && historyList.length == 0
+                  ? (
+                    <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('orders_empty')}</Text></View>
+                    )
+                    : (
+                      <>
+                        {activeList.map(o => (
+                          <OrderCard
+                            key={o.orderNo || o.maskedNo}
+                            order={o}
+                            status={statusOf(o)}
+                            acting={actingNo == o.orderNo}
+                            theme={theme}
+                            t={t}
+                            onResumePay={handleResumePay}
+                            onCancel={handleCancel}
+                            onActivate={handleActivate}
+                          />
+                        ))}
+                        {historyList.length > 0 && (
+                          <>
+                            <TouchableOpacity style={styles.historyToggle} activeOpacity={0.7} onPress={handleToggleHistory}>
+                              <Text size={13} color={theme['c-font-label']}>
+                                {t('orders_history_toggle', { n: historyList.length })}
+                              </Text>
+                              <Text size={12} color={theme['c-font-label']}>{showHistory ? '▲' : '▼'}</Text>
+                            </TouchableOpacity>
+                            {showHistory && historyList.map(o => (
+                              <OrderCard
+                                key={o.orderNo || o.maskedNo}
+                                order={o}
+                                status={statusOf(o)}
+                                acting={actingNo == o.orderNo}
+                                theme={theme}
+                                t={t}
+                                onResumePay={handleResumePay}
+                                onCancel={handleCancel}
+                                onActivate={handleActivate}
+                              />
+                            ))}
+                          </>
+                        )}
+                      </>
+                    )}
+          <View style={styles.tail} />
+        </ScrollView>
+        <PlayerBarPlaceholder />
+      </View>
+      <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} alwaysShowTitle={false} />
+    </PageContent>
+  )
+}
+
+// 五态徽章配色（D3 拍板）：待支付橙/待发码灰+spinner/已发码绿/已完成·已关闭灰
+const STATUS_VIEW: Record<string, { key: string, color: string, bgAlpha: number }> = {
+  pending: { key: 'orders_status_pending', color: 'rgb(255,149,10)', bgAlpha: 0.15 },
+  paid: { key: 'orders_status_paid', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+  delivered: { key: 'orders_status_delivered', color: 'rgb(52,199,89)', bgAlpha: 0.14 },
+  completed: { key: 'orders_status_completed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+  closed: { key: 'orders_status_closed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+}
+
+const OrderCard = memo(({ order, status, acting, theme, t, onResumePay, onCancel, onActivate }: {
+  order: OrderRecord
+  status: string
+  acting: boolean
+  theme: any
+  t: (k: any, p?: any) => string
+  onResumePay: (o: OrderRecord) => void
+  onCancel: (o: OrderRecord) => void
+  onActivate: (o: OrderRecord) => void
+}) => {
+  const view = STATUS_VIEW[status] ?? STATUS_VIEW.closed
+  const bg = view.color.startsWith('rgb')
+    ? view.color.replace('rgb(', 'rgba(').replace(')', `,${view.bgAlpha})`)
+    : view.color
+  const noText = order.orderNo || order.maskedNo
+  return (
+    <View style={[styles.card, { backgroundColor: theme['c-content-background'] }]}>
+      <View style={styles.cardHead}>
+        <Text size={12} color={theme['c-font-label']} style={styles.orderNo}>{noText}</Text>
+        <View style={[styles.statusBadge, { backgroundColor: bg }]}>
+          <Text size={11} color={view.color}>{t(view.key)}</Text>
+          {/* 待发码转圈（D3/审查 I6：ActivityIndicator 替代静态圆环） */}
+          {status == 'paid' && <ActivityIndicator size="small" color={view.color} />}
+        </View>
+      </View>
+      <View style={styles.skuRow}>
+        <Text size={15} style={styles.skuName}>{order.desc}</Text>
+        <Text size={16}>{`¥${yuan(order.amountCents)}`}</Text>
+      </View>
+      {status == 'delivered' && order.codes.length > 0 && (
+        <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>
+          {t('orders_codes_hint', { n: order.codes.length })}
+        </Text>
+      )}
+      {status == 'completed' && (
+        <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>{t('orders_completed_hint')}</Text>
+      )}
+      <Text size={11} color={theme['c-font-label']} style={styles.timeText}>
+        {order.createdAt > 0 ? dateFormat(order.createdAt * 1000, 'Y-M-D h:m') : ''}
+      </Text>
+      {status == 'pending' && (
+        <View style={styles.ops}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme['c-primary'] }, acting && { opacity: 0.6 }]}
+            activeOpacity={0.7}
+            disabled={acting}
+            onPress={() => { onResumePay(order) }}
+          >
+            <Text size={14} color={theme['c-on-primary']}>{t('orders_resume_pay')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.ghostBtn, { borderColor: theme['c-border-background'] }]}
+            activeOpacity={0.7}
+            onPress={() => { onCancel(order) }}
+          >
+            <Text size={14} color={theme['c-font-label']}>{t('orders_cancel')}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      {status == 'delivered' && order.codes.length > 0 && (
+        <View style={styles.ops}>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { backgroundColor: theme['c-primary'] }, acting && { opacity: 0.6 }]}
+            activeOpacity={0.7}
+            disabled={acting}
+            onPress={() => { onActivate(order) }}
+          >
+            <Text size={14} color={theme['c-on-primary']}>
+              {order.codes.length > 1 ? t('orders_activate_combo', { n: order.codes.length }) : t('orders_activate_one')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  )
+})
+
+const styles = createStyle({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: SPACING.s28,
+  },
+  pollHint: {
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s10,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 120,
+    paddingHorizontal: SPACING.s16,
+  },
+  card: {
+    borderRadius: 16,
+    padding: SPACING.s16,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s10,
+  },
+  cardHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: SPACING.s8,
+  },
+  orderNo: {
+    flexShrink: 1,
+  },
+  statusBadge: {
+    borderRadius: 999,
+    paddingHorizontal: SPACING.s10,
+    paddingVertical: 3,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  skuRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s10,
+  },
+  skuName: {
+    flex: 1,
+  },
+  codesHint: {
+    marginTop: SPACING.s8,
+  },
+  timeText: {
+    marginTop: SPACING.s8,
+  },
+  ops: {
+    flexDirection: 'row',
+    gap: SPACING.s10,
+    marginTop: SPACING.s12,
+  },
+  primaryBtn: {
+    flex: 1,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: SPACING.s10,
+  },
+  ghostBtn: {
+    flex: 1,
+    borderWidth: 1,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: SPACING.s8,
+  },
+  historyToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: SPACING.s16,
+    marginVertical: SPACING.s8,
+    paddingHorizontal: SPACING.s4,
+  },
+  tail: {
+    height: SPACING.s8,
+  },
+})

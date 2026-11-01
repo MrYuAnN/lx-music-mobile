@@ -6,14 +6,17 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
+	osv "ordercore/orderstore"
 	osrv "ordercore/srv"
 	orderxianyu "ordercore/xianyu"
 
@@ -87,6 +90,29 @@ func cmdServe(args []string) error {
 	// 刷新周期生效；解析失败退现状不阻塞主链路）
 	xy := orderxianyu.NewResolver(func() string { return st.Setting("xianyu_item_url") })
 	xy.Start()
+	// 结算折扣源注入（批3代码审 C-C 同源化）：实时读 meta combo_rates（管理台可调，
+	// [{"n":2,"r":950}] 千分比），阶梯取档语义与内置表一致（n<=count 的最大 n 档）；
+	// 空/非法=回退 ordercore 内置表。仅注入本进程——净屏不注入零行为变化；与
+	// /api/skus 下发的 comboRates()（orders.go）同一配置源，保证「下发什么就按什么结算」。
+	osv.SetDiscountOverride(func(n int) int {
+		if raw := st.Setting("combo_rates"); raw != "" {
+			var rates []struct {
+				N int `json:"n"`
+				R int `json:"r"`
+			}
+			if err := json.Unmarshal([]byte(raw), &rates); err == nil && len(rates) > 0 {
+				sort.Slice(rates, func(i, j int) bool { return rates[i].N < rates[j].N })
+				best := 1000
+				for _, r := range rates {
+					if r.N >= 2 && r.N <= n {
+						best = r.R
+					}
+				}
+				return best
+			}
+		}
+		return osv.DiscountPerMille(n)
+	})
 	// 后台 loop（SKU 刷新/试用补单/paid 补发+48h 关单）
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

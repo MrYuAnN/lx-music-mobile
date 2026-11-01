@@ -16,6 +16,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"sort"
 	"strings"
 
 	osv "ordercore/orderstore"
@@ -107,7 +108,7 @@ func (s *Server) skuExt() map[string]any {
 		// 组合折扣表服务端单一事实源下发（App 本地实时算价）；native_checkout
 		// 灰度 flag（meta 可配，关=/api/order/create 409——暂停 App 下单通道）；
 		// 闲鱼商品链接+itemId（fleamarket:// 唤端，空=退链接现状）；客服时段/链接。
-		"combo_rates":     comboRates(),
+		"combo_rates":     s.comboRates(),
 		"native_checkout": s.St.Setting("native_checkout") == "1",
 		"xianyu_url":      s.St.Setting("xianyu_item_url"),
 		"xianyu_item_id":  itemID,
@@ -122,9 +123,20 @@ type comboRate struct {
 	R int `json:"r"`
 }
 
-// comboRates 折扣表下发（单源 ordercore DiscountPerMille——净屏 2026-10-14
-// 拍板表值随包共享：800/750/…/500）。
-func comboRates() []comboRate {
+// comboRates 折扣表下发（批3 方案审 C1-A 配置化拍板）：meta "combo_rates" 非空=按
+// 配置 JSON 下发（[{"n":2,"r":950}] 千分比；管理台运营可调——95折/9折/n4=1000）；
+// 空/非法=回退 ordercore DiscountPerMille 现表（净屏 2026-10-14 拍板表值随包共享：
+// 800/750/…/500）。净屏侧 api.go 同名逻辑不动（配置化仅拾音实例承载）。
+func (s *Server) comboRates() []comboRate {
+	if raw := s.St.Setting("combo_rates"); raw != "" {
+		var cfg []comboRate
+		if err := json.Unmarshal([]byte(raw), &cfg); err == nil && len(cfg) > 0 {
+			// 排序（批3代码审 I2）：客户端 rateFor 倒序取档依赖 n 升序不变量——旧实现
+			// for n:=2..8 天然升序，配置化后须服务端重建
+			sort.Slice(cfg, func(i, j int) bool { return cfg[i].N < cfg[j].N })
+			return cfg
+		}
+	}
 	out := make([]comboRate, 0, 7)
 	for n := 2; n <= 8; n++ {
 		out = append(out, comboRate{N: n, R: osv.DiscountPerMille(n)})
@@ -220,6 +232,8 @@ func (s *Server) orderCreateResponse(o osv.Order) map[string]any {
 		"xianyu_url":     s.St.Setting("xianyu_item_url"),
 		"xianyu_item_id": itemID,
 		"service_hours":  s.serviceHours(),
+		// 批3代码审 I1/B：支付引导客服行消费（空回退 faq.html 在客户端），购买面生效
+		"contact_url": s.St.Setting("contact_url"),
 	}
 }
 

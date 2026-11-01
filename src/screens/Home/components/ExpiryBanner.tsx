@@ -4,13 +4,13 @@ import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
-import { pushMyKeysScreen } from '@/navigation/navigation'
+import { pushPurchaseScreen } from '@/navigation/navigation'
 import { useActivationState, APP_CN, isExpiredAt, isExpiringSoonAt } from '@/core/shiyin/activation'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
 // +30s tick+事件驱动双刷，拾音对应物=首页横幅）。两态：即将到期（≤3 天，金）/已到期（红），
-// 点击直达我的激活码。无到期概念（未激活/永久）不渲染。
+// 点击直达选购页（批3 v1.2：续费动线一步到位，原 MyKeys 两跳改直跳）。无到期概念（未激活/永久）不渲染。
 // 多源归因（2026-11-01 用户多源提示需求；净屏审查 I8 口径=「文案按最早到期 app 归因——
 // per-app 混合权益不失真」）：bridge getState 下发 expiries 全集，横幅取「过期源优先、
 // 其次最早临期」单归因显示 {app}会员；全部同窗时用户续费最早源即可，详情码卡页逐源可见。
@@ -73,7 +73,7 @@ export default () => {
     <TouchableOpacity
       activeOpacity={0.7}
       style={[styles.banner, { backgroundColor: theme['c-content-background'] }]}
-      onPress={() => { pushMyKeysScreen('') }}
+      onPress={() => { pushPurchaseScreen('') }}
       accessibilityRole="button"
       accessibilityLabel={label}
     >

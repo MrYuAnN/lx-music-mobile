@@ -5,28 +5,61 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 
 import { activationModule, onEntitlementChanged, type ActivationStateInfo } from '@/utils/nativeModules/activation'
-import { ensureAuth, clearStoredAuth } from './auth'
+import { ensureAuth, clearStoredAuth, getDeviceId } from './auth'
+import { httpFetch } from '@/utils/request'
+import { SHIYIN_BASE_URL, getClientVersion } from './config'
 import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
 import versionState from '@/store/version/state'
 import type { Message } from '@/lang'
 
-// 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；按源收费口径）：产品 app 键→
-// 音源显示名。键=平台 keys.apps 登记值（当前唯一 shiyin=QQ音乐源权益）；后续按源拆分收费
-// （tx/kw…）在此扩表，净屏同款 PlanSkus.APP_CN 单源位
+// 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；批3 v1.2 音源收费模型扩表）：
+// 产品 app 键→音源显示名。shiyin 翻转为全源兜底语义（审查 I1：旧值「QQ音乐」随全源拍板作废
+// ——全源码用户原会看到「QQ音乐会员即将到期」），音源键=product_apps 登记（tx/wy/kg/kw），
+// 命名与 self-hosted-music-server.md §五音质映射表同源
 export const APP_CN: Record<string, string> = {
-  shiyin: 'QQ音乐',
+  shiyin: '全部音源',
+  tx: 'QQ音乐',
+  wy: '网易云音乐',
+  kg: '酷狗音乐',
+  kw: '酷我音乐',
 }
 
-// 状态行文案（About 页消费）：state+expiry → 展示文本
-export const formatActivationState = (info: ActivationStateInfo | null, t: (k: keyof Message) => string): string => {
+// 音源权益判定（批3 v1.2 拍板：shiyin key=全源兜底）：先查 expiries["shiyin"]，命中（未过期
+// 或永久）=全源放行；否则查具体音源键。单源码用户无 shiyin 键自然落逐源判定。
+export const unlockSource = (source: string, expiries: Record<string, number> | null): boolean => {
+  if (expiries == null) return false
+  const all = expiries.shiyin
+  if (all != null && (all == 0 || all * 1000 > Date.now())) return true
+  const own = expiries[source]
+  return own != null && (own == 0 || own * 1000 > Date.now())
+}
+
+// 状态行文案（About 页消费）：state+expiry → 展示文本。
+// 批3 单源态适配（审查 I1）：bridge expiry=expiries["shiyin"]?:0 的 elvis 兜底，纯音源
+// 码用户（expiries 无 shiyin 键）被渲染成「已激活 · 永久」——此处按 expiries 全集重算：
+// 无 shiyin 键时 active 显单源名+日期（1 源）或 N 音源摘要（多源），expired 不带日期。
+export const formatActivationState = (info: ActivationStateInfo | null, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
   if (info == null) return ''
+  const hasAllKey = info.expiries != null && 'shiyin' in info.expiries
   switch (info.state) {
     case 'unactivated':
       return t('activation_state_unactivated')
     case 'expired':
-      return `${t('activation_state_expired')}${formatExpiry(info.expiry, t)}`
+      return `${t('activation_state_expired')}${hasAllKey ? formatExpiry(info.expiry, t) : ''}`
     default:
+      if (!info.isTrial && !hasAllKey) {
+        const live = Object.entries(info.expiries ?? {})
+          .filter(([, exp]) => exp == 0 || exp * 1000 > Date.now())
+        if (live.length == 1) {
+          const [src, exp] = live[0]
+          return `${t('activation_state_active')} · ${APP_CN[src] ?? src}${exp == 0 ? '' : ` · ${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}`}`
+        }
+        if (live.length > 1) {
+          return `${t('activation_state_active')} · ${t('activation_state_n_sources', { n: live.length })}`
+        }
+        return t('activation_state_active')
+      }
       return info.isTrial
         ? `${t('activation_state_trial')}${formatExpiry(info.expiry, t)}`
         : `${t('activation_state_active')}${formatExpiry(info.expiry, t)}`
@@ -72,28 +105,61 @@ export const detectClipboardCandidate = (text: string | null | undefined): strin
   return candidate
 }
 
+/** 多码融合按源重叠查询（⑥件②方案①前置查码，2026-11-02）：激活前调平台
+ *  /api/code-overlap——overlap=新码源键 ∩ 本机在绑码源键（服务端 mergeSameApp 会真实
+ *  并入的源）。null=查询失败（保守回退旧粗触发确认框）；空数组=纯跨源/无在绑（不弹，
+ *  直接激活）。响应只含源键，防枚举在端点侧（Gate 门槛+IP 限流）。 */
+const queryCodeOverlap = async(code: string): Promise<string[] | null> => {
+  const deviceId = await getDeviceId().catch(() => '')
+  if (!deviceId) return null
+  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/code-overlap`, {
+    method: 'post',
+    headers: {
+      'X-Product': 'shiyin',
+      'X-Client-Version': getClientVersion(),
+    },
+    body: { code, device_id: deviceId },
+  }).promise
+  if (resp.statusCode != 200) return null
+  const body = resp.body as { overlap?: unknown }
+  return Array.isArray(body?.overlap) ? (body.overlap as string[]) : null
+}
+
 /** 输码激活（F.3）：多码融合确认（审计 A-2）→ activateOrRedeem → 成功 toast+立即建
  *  注册链；失败 toast SDK 本地化文案 */
 export const activateByCode = async(input: string, onDone: () => void): Promise<void> => {
   const code = normalizeCode(input)
   if (!code) return
-  // 多码融合确认（净屏 JingpingSheets#doActivate 对齐；2026-11-01 文案中性化）：JP- 码且
-  // 本机存在其他在绑码 → 融合确认后带 merge 提交。服务端=mergeSameApp 按 App 融合（跨 App
-  // 互不影响各自成卡），同 App 才发生「剩余时长并入新码、旧码停用」——确认框保留是防同源
-  // 换码烧旧码零知情（审计 A-2），文案按源口径中性化（跨源场景旧描述「旧码停用」不符）。
-  // 判定排除当前输入码自身（防误确认绕过 SDK「已使用过」拦截）；getKeys 失败=保守直接
-  // 激活（不融合，服务端首兑自动语义）
+  // 多码融合按源精准确认（⑥件②方案①，2026-11-02）：JP- 码+本机有其他在绑码时先查
+  // code-overlap——overlap 非空=同源融合真实发生，弹精准文案（APP_CN 指名源）；空数组=
+  // 纯跨源/无同源在绑，不弹直接激活（服务端 mergeSameApp 跨 App 互不影响，旧粗触发的
+  // 中性文案「剩余时长将并入」在跨源场景不实——⑥摸底实证）；查询失败（null）保守回退
+  // 旧粗触发确认框（fail-open 保留「防同源烧旧码零知情」审计 A-2 原始关切）。判定排除
+  // 当前输入码自身（防误确认绕过 SDK「已使用过」拦截）；CZ- 充值码跳过（续费不融合）
   let merge = false
   if (!code.startsWith('CZ-')) {
     const keys = await activationModule.getKeys().catch(() => null)
     if (keys != null && keys.some(k => normalizeCode(k) !== code)) {
-      const confirmed = await confirmDialog({
-        title: global.i18n.t('activation_merge_confirm_title'),
-        message: global.i18n.t('activation_merge_confirm_msg'),
-        bgClose: false,
-      }).catch(() => false)
-      if (!confirmed) return
-      merge = true
+      const overlap = await queryCodeOverlap(code)
+      if (overlap === null) {
+        const confirmed = await confirmDialog({
+          title: global.i18n.t('activation_merge_confirm_title'),
+          message: global.i18n.t('activation_merge_confirm_msg'),
+          bgClose: false,
+        }).catch(() => false)
+        if (!confirmed) return
+        merge = true
+      } else if (overlap.length) {
+        const srcNames = overlap.map(s => APP_CN[s] ?? s).join('、')
+        const confirmed = await confirmDialog({
+          title: global.i18n.t('activation_merge_confirm_title'),
+          message: global.i18n.t('activation_merge_confirm_msg_src', { src: srcNames }),
+          bgClose: false,
+        }).catch(() => false)
+        if (!confirmed) return
+        merge = true
+      }
+      // overlap 为空数组：纯跨源/无同源在绑——不弹不 merge（服务端不会融合）
     }
   }
   const r = await activationModule.activate(code, merge)

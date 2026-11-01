@@ -5,8 +5,6 @@ import SelectRow from '../../components/SelectRow'
 import { useI18n } from '@/lang'
 import commonState from '@/store/common/state'
 import { navigations } from '@/navigation'
-import { openUrl } from '@/utils/tools'
-import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
 import { formatActivationState, useActivationState } from '@/core/shiyin/activation'
 
 // 激活码节（KeyInfo 批，方案 §2.4）：设置页直通入口——「我的激活码」（value=状态摘要）+
@@ -25,7 +23,9 @@ export default memo(() => {
   }, [])
 
   const handleGetCode = useCallback(() => {
-    void openUrl(`${SHIYIN_BASE_URL}/tutorial.html`)
+    // 批3 v1.2：应用内选购页直达（替换 tutorial.html 外链）
+    const componentId = commonState.componentIds.setting
+    if (componentId) navigations.pushPurchaseScreen(componentId)
   }, [])
 
   return (

@@ -1,0 +1,503 @@
+// 选购页（批3，方案 doc/plans/shiyin-order-domain.md §四批3 v1.2 修订节；效果图 v4 定稿
+// doc/mockups/shiyin-purchase-screens-v4.html）。形态 A=音源胶囊 tab×档位纵向列表（对标
+// Apple 订阅页分段选择）；分态权益卡；跨 tab 多选购物车式组合（同音源替换/跨音源叠加/
+// 点已选取消/切 tab 不清，审查 I5 拍板=全源×单源硬互斥——选中全源禁单源 tab，Apple One
+// 「已包含」形态）；组合折扣按音源数打折不设档位门槛（方案 C），吸底栏实时算价
+// （comboTotalCents 与服务端 DiscountPerMille HALF_UP 同口径）。
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+
+import ScreenHeader from '@/components/common/ScreenHeader'
+import PageContent from '@/components/PageContent'
+import Text from '@/components/common/Text'
+import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import { createStyle, toast } from '@/utils/tools'
+import { useTheme } from '@/store/theme/hook'
+import { useI18n } from '@/lang'
+import { SPACING } from '@/config/spacing'
+import { SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
+import { useStatusbarHeight } from '@/store/common/hook'
+import { useActivationState, APP_CN, formatRemainHint, isExpiringSoonAt } from '@/core/shiyin/activation'
+import {
+  fetchSkus,
+  comboTotalCents,
+  rateFor,
+  createOrder,
+  orderErrorKey,
+  yuan,
+  isForeverSku,
+  SOURCE_KEYS,
+  type Sku,
+  type SkusCatalog,
+  type SourceKey,
+} from '@/core/shiyin/order'
+import { pushCheckoutScreen } from '@/navigation/navigation'
+import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
+import type { Message } from '@/lang'
+
+type TabKey = 'shiyin' | SourceKey
+type Translate = (k: keyof Message, p?: Record<string, string | number | boolean>) => string
+
+// 折扣率 → i18n 占位（zh「{r} 折」/ en「{p}% off」）：950→{r:9.5,p:5}。zh 恒除 100
+// (批3代码审 C-A：非整百分支 /1000 会把 950 显成「0.95 抷」，错一个数量级）
+const rateArgs = (rate: number): { r: string, p: string } => {
+  const zh = String(rate / 100)
+  const off = String((1000 - rate) / 10)
+  return { r: zh, p: off }
+}
+
+export default ({ componentId }: { componentId: string }) => {
+  const theme = useTheme()
+  const t = useI18n()
+  const statusBarHeight = useStatusbarHeight()
+  const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
+  const { info } = useActivationState()
+
+  const [catalog, setCatalog] = useState<SkusCatalog | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [failed, setFailed] = useState(false)
+  // 购物车：sku.id → Sku（跨 tab 不清；同源替换；点已选取消）
+  const [cart, setCart] = useState<Record<string, Sku>>({})
+  const [activeTab, setActiveTab] = useState<TabKey>('shiyin')
+  const [submitting, setSubmitting] = useState(false)
+  const mounted = useRef(true)
+  useEffect(() => {
+    mounted.current = true
+    return () => { mounted.current = false }
+  }, [])
+  const scrollY = useRef(new Animated.Value(0)).current
+
+  const load = useCallback(() => {
+    setLoading(true)
+    setFailed(false)
+    void fetchSkus().then(next => {
+      if (!mounted.current) return
+      setCatalog(next)
+      setLoading(false)
+    }).catch(() => {
+      if (!mounted.current) return
+      setFailed(true)
+      setLoading(false)
+    })
+  }, [])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const cartItems = useMemo(() => Object.values(cart), [cart])
+  const hasAllSource = useMemo(() => cartItems.some(s => s.apps[0] == 'shiyin'), [cartItems])
+  const hasSingleSource = useMemo(() => cartItems.some(s => s.apps[0] != 'shiyin'), [cartItems])
+  const sourceCount = useMemo(() => new Set(cartItems.map(s => s.apps[0])).size, [cartItems])
+  const rawTotal = useMemo(() => cartItems.reduce((acc, s) => acc + s.priceCents, 0), [cartItems])
+  const totalCents = catalog != null && cartItems.length > 0
+    ? comboTotalCents(catalog, cartItems.map(s => s.priceCents), sourceCount)
+    : 0
+  const currentRate = catalog != null && cartItems.length > 0 ? rateFor(catalog, sourceCount) : 1000
+  const rate = rateArgs(currentRate)
+
+  // 硬互斥（审查 I5 拍板）：全源与单源不同车；同源替换；点已选取消
+  const toggleSku = useCallback((sku: Sku) => {
+    const source = sku.apps[0]
+    setCart(prev => {
+      if (source == 'shiyin' && Object.values(prev).some(s => s.apps[0] != 'shiyin')) return prev
+      if (source != 'shiyin' && Object.values(prev).some(s => s.apps[0] == 'shiyin')) return prev
+      const next = { ...prev }
+      for (const id of Object.keys(next)) {
+        if (next[id].apps[0] == source && id != sku.id) delete next[id]
+      }
+      if (next[sku.id] != null) delete next[sku.id]
+      else next[sku.id] = sku
+      return next
+    })
+  }, [])
+
+  const handlePay = useCallback(() => {
+    if (!cartItems.length || catalog == null || submitting) return
+    // native_checkout 应急闸前置拦截（批2 契约：关=建单 409；409 兜底文案仍在 orderErrorKey）
+    if (!catalog.nativeCheckout) {
+      toast(t('order_err_paused'))
+      return
+    }
+    setSubmitting(true)
+    void createOrder(cartItems.map(i => i.id).join('+')).then(order => {
+      if (!mounted.current) return
+      setSubmitting(false)
+      pushCheckoutScreen(componentId, order)
+    }).catch(err => {
+      if (!mounted.current) return
+      setSubmitting(false)
+      toast(t(orderErrorKey(err as Error)))
+    })
+  }, [cartItems, catalog, submitting, componentId, t])
+
+  const tabEntries = useMemo(() => {
+    const badgeOf = (source: string) => cartItems.filter(s => s.apps[0] == source).length
+    const list: Array<{ key: TabKey, label: string, disabled: boolean, badge: number }> = [{
+      key: 'shiyin',
+      label: t('purchase_tab_all'),
+      disabled: hasSingleSource,
+      badge: badgeOf('shiyin'),
+    }]
+    for (const key of SOURCE_KEYS) {
+      list.push({ key, label: APP_CN[key] ?? key, disabled: hasAllSource, badge: badgeOf(key) })
+    }
+    return list
+  }, [t, hasSingleSource, hasAllSource, cartItems])
+
+  const tiers = useMemo(() => {
+    if (catalog == null) return []
+    return activeTab == 'shiyin' ? catalog.allSource : (catalog.bySource[activeTab] ?? [])
+  }, [catalog, activeTab])
+  // 当前 tab 被互斥锁（对立来源在车）→ 档位行只读
+  const tabLocked = activeTab == 'shiyin' ? hasSingleSource : hasAllSource
+
+  const handleRetry = useCallback(() => { load() }, [load])
+  const isEmpty = catalog != null && catalog.allSource.length == 0 &&
+    SOURCE_KEYS.every(k => (catalog.bySource[k]?.length ?? 0) == 0)
+
+  const handleScroll = useMemo(() => Animated.event(
+    [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+    { useNativeDriver: true },
+  ), [scrollY])
+
+  return (
+    <PageContent>
+      <View style={[styles.container, { paddingTop: headerTotal }]}>
+        <ScrollView
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
+        >
+          {loading
+            ? (
+              <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_loading')}</Text></View>
+              )
+            : failed || catalog == null
+              ? (
+                <View style={styles.center}>
+                  <Text size={13} color={theme['c-font-label']}>{t('purchase_failed')}</Text>
+                  <TouchableOpacity style={[styles.retryBtn, { backgroundColor: theme['c-primary'] }]} onPress={handleRetry}>
+                    <Text size={13} color={theme['c-on-primary']}>{t('shiyin_retry')}</Text>
+                  </TouchableOpacity>
+                </View>
+                )
+                : isEmpty
+                  ? (
+                    <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_empty')}</Text></View>
+                    )
+                    : (
+                      <>
+                        <EntitlementCard info={info} t={t} />
+                        <View style={styles.tabs}>
+                          {tabEntries.map(entry => (
+                            <TouchableOpacity
+                              key={entry.key}
+                              style={[
+                                styles.tab,
+                                { backgroundColor: theme['c-content-background'], borderColor: theme['c-border-background'] },
+                                entry.key == activeTab && { backgroundColor: theme['c-primary'], borderColor: theme['c-primary'] },
+                                entry.disabled && styles.tabDisabled,
+                              ]}
+                              disabled={entry.disabled}
+                              activeOpacity={0.7}
+                              onPress={() => { setActiveTab(entry.key) }}
+                            >
+                              <Text
+                                size={13}
+                                style={{ fontWeight: entry.key == activeTab ? '700' : '500' }}
+                                color={entry.key == activeTab ? theme['c-on-primary'] : theme['c-font-label']}
+                              >
+                                {entry.label}
+                              </Text>
+                              {entry.badge > 0 && (
+                                <View style={[styles.tabBadge, { backgroundColor: entry.key == activeTab ? theme['c-on-primary'] : theme['c-primary'] }]}>
+                                  <Text size={10} color={entry.key == activeTab ? theme['c-primary'] : theme['c-on-primary']}>
+                                    {entry.badge}
+                                  </Text>
+                                </View>
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                        <PromoStrip catalog={catalog} t={t} primaryColor={theme['c-primary']} />
+                        {tiers.map(sku => (
+                          <TierRow
+                            key={sku.id}
+                            sku={sku}
+                            selected={cart[sku.id] != null}
+                            locked={tabLocked}
+                            theme={theme}
+                            t={t}
+                            onToggle={toggleSku}
+                          />
+                        ))}
+                        <View style={styles.listTail} />
+                      </>
+                    )}
+        </ScrollView>
+        <PlayerBarPlaceholder />
+      </View>
+      {catalog != null && cartItems.length > 0 && (
+        <View style={[styles.paybar, { backgroundColor: theme['c-content-background'], borderTopColor: theme['c-border-background'] }]}>
+          <View style={styles.paySums}>
+            <Text size={11} color={theme['c-font-label']}>
+              {currentRate < 1000
+                ? t('purchase_selected_discount', { n: cartItems.length, r: rate.r, p: rate.p })
+                : t('purchase_selected_n', { n: cartItems.length })}
+            </Text>
+            <View style={styles.payPriceRow}>
+              {currentRate < 1000 && <Text size={12} color={theme['c-font-label']} style={styles.priceOld}>{`¥${yuan(rawTotal)}`}</Text>}
+              <Text size={20} color={theme['c-primary']}>{`¥${yuan(totalCents)}`}</Text>
+              {currentRate < 1000 && (
+                <View style={[styles.saveBadge, { backgroundColor: theme['c-primary'] }]}>
+                  <Text size={10} color={theme['c-on-primary']}>
+                    {t('purchase_save', { amount: yuan(rawTotal - totalCents) })}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            style={[styles.payBtn, { backgroundColor: submitting ? theme['c-primary-dark-100'] : theme['c-primary'] }]}
+            activeOpacity={0.7}
+            onPress={handlePay}
+            disabled={submitting}
+          >
+            <Text size={16} color={theme['c-on-primary']}>
+              {submitting ? t('purchase_submitting') : t('purchase_pay')}
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <ScreenHeader componentId={componentId} title={t('purchase_title')} progress={scrollY} alwaysShowTitle={false} />
+    </PageContent>
+  )
+}
+
+// 分态权益卡（批3 v1.2）：未激活/永久=隐藏；试用=🎁剩 N 天全源；全源=✅至 date（≤3 天
+// 警示橙，审查 I-C 补拍板态）；纯音源权益=单源名+日期或 N 源摘要（exp==0 永久=生效中
+// 计入，批3代码审 I4 同批口径统一）。数据=SDK expiries，shiyin 兜底判定 unlockSource 同源
+const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t: Translate }) => {
+  const theme = useTheme()
+  if (info == null || info.expiries == null || info.state != 'active') return null
+  const warningColor = 'rgb(255,149,10)' // HIG systemOrange（主题无 warning token，ExpiryBanner 同款）
+  const successColor = theme.isDark ? SUCCESS_GREEN.dark : SUCCESS_GREEN.light
+  const allExp = info.expiries.shiyin
+  if (info.isTrial && allExp != null) {
+    const hint = formatRemainHint(allExp, t)
+    if (!hint) return null
+    return (
+      <View style={[styles.entCard, { backgroundColor: theme['c-content-background'] }]}>
+        <Text size={13} color={theme['c-font-label']}>{t('purchase_ent_trial', { hint })}</Text>
+      </View>
+    )
+  }
+  if (allExp != null) {
+    if (allExp == 0) return null // 永久不提示
+    const soon = isExpiringSoonAt(allExp)
+    return (
+      <View style={[styles.entCard, { backgroundColor: theme['c-content-background'] }]}>
+        <Text size={13} color={soon ? warningColor : successColor}>
+          {soon ? t('purchase_ent_all_soon', { date: fmtDate(allExp) }) : t('purchase_ent_all', { date: fmtDate(allExp) })}
+        </Text>
+      </View>
+    )
+  }
+  // live 含永久（exp==0=生效中，批3代码审 I4：与 activation.ts 同批口径统一）
+  const live: Array<[string, number]> = Object.entries(info.expiries).filter(([, exp]) => exp == 0 || exp * 1000 > Date.now())
+  if (!live.length) return null
+  const first = live[0]
+  const label = live.length == 1
+    ? t('purchase_ent_source', { name: APP_CN[first[0]] ?? first[0], date: first[1] == 0 ? t('activation_permanent') : fmtDate(first[1]) })
+    : t('purchase_ent_sources', { n: live.length })
+  const anySoon = live.some(([, exp]) => exp != 0 && isExpiringSoonAt(exp))
+  return (
+    <View style={[styles.entCard, { backgroundColor: theme['c-content-background'] }]}>
+      <Text size={13} color={anySoon ? warningColor : successColor}>{label}</Text>
+    </View>
+  )
+})
+
+const fmtDate = (unixSec: number): string => {
+  const d = new Date(unixSec * 1000)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+// 促销横幅（动态渲染全部折扣档 r<1000，优化师 S1：配置化后不锁 n2-n3 硬窗口）
+const PromoStrip = memo(({ catalog, t, primaryColor }: { catalog: SkusCatalog, t: Translate, primaryColor: string }) => {
+  const parts: string[] = []
+  for (const rate of catalog.comboRates) {
+    if (rate.n >= 2 && rate.r < 1000) {
+      const args = rateArgs(rate.r)
+      parts.push(t('purchase_promo_tier', { n: rate.n, r: args.r, p: args.p }))
+    }
+  }
+  if (!parts.length) return null
+  return (
+    <View style={styles.promoStrip}>
+      <Text size={12} color={primaryColor}>
+        {t('purchase_promo', { offers: parts.join(' · ') })}
+      </Text>
+    </View>
+  )
+})
+
+// 档位行卡（形态 A 纵向列表）：勾选圆点+档名+meta（音源归属/设备数）+价格
+const TierRow = memo(({ sku, selected, locked, theme, t, onToggle }: {
+  sku: Sku
+  selected: boolean
+  locked: boolean
+  theme: any
+  t: Translate
+  onToggle: (sku: Sku) => void
+}) => {
+  const sourceLabel = sku.apps[0] == 'shiyin' ? t('purchase_ent_all_badge') : (APP_CN[sku.apps[0]] ?? sku.apps[0])
+  return (
+    <TouchableOpacity
+      style={[styles.tierRow, { backgroundColor: theme['c-content-background'] }, selected && { borderColor: theme['c-primary'], borderWidth: 1.5 }]}
+      activeOpacity={locked ? 1 : 0.7}
+      onPress={() => { if (!locked) onToggle(sku) }}
+      disabled={locked}
+    >
+      <View style={[styles.tick, { backgroundColor: selected ? theme['c-primary'] : theme['c-border-background'] }]}>
+        {selected && <Text size={12} color={theme['c-on-primary']}>✓</Text>}
+      </View>
+      <View style={styles.tierInfo}>
+        <Text size={15} style={{ fontWeight: '600' }}>{sku.name}</Text>
+        <Text size={12} color={theme['c-font-label']} style={styles.tierMeta}>
+          {t('purchase_tier_meta', { source: sourceLabel, devices: sku.deviceLimit })}
+        </Text>
+      </View>
+      {/* 永久档=「永久 ¥x」并排（S6 简化：单一条件渲染，¥ 字号口径统一小字+大额） */}
+      <Text size={18} color={theme['c-primary']} style={{ fontWeight: '700' }}>
+        {isForeverSku(sku) && <Text size={12}>{t('purchase_price_forever')} </Text>}
+        <Text size={12}>¥</Text>{yuan(sku.priceCents)}
+      </Text>
+    </TouchableOpacity>
+  )
+})
+
+const styles = createStyle({
+  container: {
+    flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: SPACING.s28,
+  },
+  center: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 120,
+    paddingHorizontal: SPACING.s16,
+    gap: SPACING.s12,
+  },
+  retryBtn: {
+    borderRadius: 999,
+    paddingHorizontal: SPACING.s20,
+    paddingVertical: SPACING.s10,
+  },
+  entCard: {
+    borderRadius: 12,
+    paddingHorizontal: SPACING.s14,
+    paddingVertical: SPACING.s10,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s12,
+  },
+  tabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: SPACING.s8,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s8,
+  },
+  tab: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: SPACING.s14,
+    paddingVertical: SPACING.s8,
+  },
+  tabDisabled: {
+    opacity: 0.35,
+  },
+  tabBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -4,
+    minWidth: 17,
+    height: 17,
+    borderRadius: 999,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+  },
+  promoStrip: {
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s12,
+    paddingVertical: SPACING.s8,
+    paddingHorizontal: SPACING.s12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(250,35,59,0.08)',
+  },
+  tierRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s12,
+    borderRadius: 16,
+    padding: SPACING.s16,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s10,
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  tick: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tierInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  tierMeta: {
+    marginTop: 2,
+  },
+  listTail: {
+    height: SPACING.s8,
+  },
+  paybar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s14,
+    paddingHorizontal: SPACING.s16,
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s26,
+    borderTopWidth: 0.5,
+  },
+  paySums: {
+    flexShrink: 0,
+  },
+  payPriceRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s6,
+    marginTop: 2,
+  },
+  priceOld: {
+    textDecorationLine: 'line-through',
+  },
+  saveBadge: {
+    borderRadius: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  payBtn: {
+    flex: 1,
+    borderRadius: 999,
+    alignItems: 'center',
+    paddingVertical: SPACING.s12,
+  },
+})

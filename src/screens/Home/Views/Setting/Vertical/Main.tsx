@@ -95,7 +95,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
           icon="help"
           label={t('setting_get_code')}
           value=''
-          onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/tutorial.html`) }}
+          onPress={() => { if (componentId) navigations.pushPurchaseScreen(componentId) }}
         />
       </SettingSection>
 

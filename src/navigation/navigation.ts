@@ -18,8 +18,12 @@ import {
   MY_KEYS_SCREEN,
   CHANGELOG_SCREEN,
   SETTING_SECTION_SCREEN,
+  PURCHASE_SCREEN,
+  CHECKOUT_SCREEN,
+  ORDERS_SCREEN,
 } from './screenNames'
 import { type SettingSectionTarget } from '@/screens/Home/Views/Setting/Main'
+import { type CreateOrderResult } from '@/core/shiyin/order'
 import { navigationRef } from './navigationRef'
 import { markPendingBlacklist } from './currentScreen'
 import { markSkipIntro } from './transitions/intro'
@@ -103,6 +107,14 @@ export function pushCommentScreen(componentId: string) {
 // 本屏=关于组行 + 横屏关于节双入口）
 export const pushMyKeysScreen = (componentId: string) => { void componentId; pushAmScreen(MY_KEYS_SCREEN) }
 export const pushChangelogScreen = (componentId: string) => { void componentId; pushAmScreen(CHANGELOG_SCREEN) }
+
+// 购买面三屏（批3：选购/支付引导/订单中心，方案 §四批3 v1.2）
+export const pushPurchaseScreen = (componentId: string) => { void componentId; pushAmScreen(PURCHASE_SCREEN) }
+export const pushOrdersScreen = (componentId: string) => { void componentId; pushAmScreen(ORDERS_SCREEN) }
+export const pushCheckoutScreen = (componentId: string, order: CreateOrderResult) => {
+  void componentId
+  pushAmScreen(CHECKOUT_SCREEN, { order })
+}
 
 // 设置二级页（批 R·I-7：单屏+passProps 传节 id；id 类型收窄七节，竖屏根菜单专用）
 export const pushSettingSectionScreen = (componentId: string, id: SettingSectionTarget) => { void componentId; pushAmScreen(SETTING_SECTION_SCREEN, { id }) }

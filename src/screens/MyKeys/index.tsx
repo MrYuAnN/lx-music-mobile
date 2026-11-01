@@ -19,7 +19,7 @@ import Button from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import InputSheet, { type InputSheetType } from '@/components/common/InputSheet'
-import { createStyle, openUrl, toast } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
@@ -28,8 +28,8 @@ import { BorderWidths } from '@/theme'
 import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { getGlassHairlineColor } from '@/components/common/GlassSurface'
-import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
 import { dateFormat } from '@/utils'
+import { pushPurchaseScreen, pushOrdersScreen } from '@/navigation/navigation'
 import { onEntitlementChanged, BINDING_MARK, type KeyEntry, type BindingInfo } from '@/utils/nativeModules/activation'
 import { activationModule } from '@/utils/nativeModules/activation'
 import {
@@ -258,18 +258,30 @@ export default ({ componentId }: { componentId: string }) => {
               </TouchableOpacity>
               )}
 
-          {/* 未购且无码在手：获取激活码引导（灰度期人工发码=官网/客服，D5 同链路）；
-              码在手（停权/解绑态）不再引导 */}
+          {/* 未购且无码在手：获取激活码引导（批3 v1.2：应用内选购页直达，替换 tutorial.html
+              外链——方案 §四批3 入口拍板）；码在手（停权/解绑态）不再引导 */}
           {unactivated && !entries.length
             ? (
               <View style={[styles.card, { backgroundColor: theme['c-content-background'] }]}>
                 <Text size={12} color={theme['c-font-label']} style={styles.emptyText}>{t('keyinfo_no_keys')}</Text>
-                <TouchableOpacity style={styles.emptyLink} onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/tutorial.html`) }}>
+                <TouchableOpacity style={styles.emptyLink} onPress={() => { pushPurchaseScreen(componentId) }}>
                   <Text size={13}>{t('keyinfo_get_code_hint')}</Text>
                 </TouchableOpacity>
               </View>
               )
             : null}
+          {/* 购买记录入口行（审查 I9 拍板：订单中心常驻入口，与激活码管理同域） */}
+          <TouchableOpacity
+            style={[styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
+            activeOpacity={0.6}
+            onPress={() => { pushOrdersScreen(componentId) }}
+          >
+            <View style={[styles.entryIconBg, { backgroundColor: theme['c-primary-light-900-alpha-200'] }]}>
+              <Icon name="playlist-music" size={14} color={theme['c-primary']} />
+            </View>
+            <Text style={styles.entryLabel} size={14}>{t('orders_entry')}</Text>
+            <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+          </TouchableOpacity>
           {/* 生效码卡（2026-11-01 审查 I-4 拍板放宽）：全停权（唯一码 OTHER/unbound→state
               Unactivated）也渲染——OTHER 换机自助远程解绑/UNBOUND 绑回是唯一自助路径，对齐
               净屏码卡常显口径；与输码卡并存不互斥 */}

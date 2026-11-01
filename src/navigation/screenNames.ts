@@ -16,3 +16,7 @@ export const DISLIKE_MANAGE_SCREEN = 'lxm.DislikeManageScreen'
 export const MY_KEYS_SCREEN = 'lxm.MyKeysScreen'
 export const CHANGELOG_SCREEN = 'lxm.ChangelogScreen'
 export const SETTING_SECTION_SCREEN = 'lxm.SettingSectionScreen'
+// 购买面三屏（批3：选购/支付引导/订单中心，方案 §四批3 v1.2）
+export const PURCHASE_SCREEN = 'lxm.PurchaseScreen'
+export const CHECKOUT_SCREEN = 'lxm.CheckoutScreen'
+export const ORDERS_SCREEN = 'lxm.OrdersScreen'

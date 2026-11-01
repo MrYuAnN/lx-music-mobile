@@ -129,6 +129,9 @@ export const storageDataPrefix = {
   shiyinAuth: '@shiyin_auth',
   shiyinConfig: '@shiyin_config',
   shiyinDeviceId: '@shiyin_device_id',
+  // 订单域（批3）：本地订单快照（order_no 强凭证，审查 I2）+待支付提醒已提记录（6h/40h 去重）
+  shiyinOrders: '@shiyin_orders',
+  shiyinOrderRemind: '@shiyin_order_remind',
 } as const
 
 // v0.x.x 版本的 data keys

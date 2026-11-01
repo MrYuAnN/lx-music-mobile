@@ -18,8 +18,12 @@ import {
   type MY_KEYS_SCREEN,
   type CHANGELOG_SCREEN,
   type SETTING_SECTION_SCREEN,
+  type PURCHASE_SCREEN,
+  type CHECKOUT_SCREEN,
+  type ORDERS_SCREEN,
 } from './screenNames'
 import { type SettingSectionTarget } from '@/screens/Home/Views/Setting/Main'
+import { type CreateOrderResult } from '@/core/shiyin/order'
 
 // RNN passProps → 路由参数（N1 迁移）；键复用 screenNames 常量（与 RNN 组件名 1:1，屏名不变）。
 // 用 type 别名而非 interface：对象字面量别名才有隐式索引签名，满足 react-navigation ParamListBase 约束
@@ -43,4 +47,8 @@ export type RootStackParamList = {
   [MY_KEYS_SCREEN]: undefined
   [CHANGELOG_SCREEN]: undefined
   [SETTING_SECTION_SCREEN]: { id: SettingSectionTarget }
+  // 购买面三屏（批3）：Checkout 携建单响应（闲鱼链接齐发，免二次拉取）
+  [PURCHASE_SCREEN]: undefined
+  [CHECKOUT_SCREEN]: { order: CreateOrderResult }
+  [ORDERS_SCREEN]: undefined
 }

@@ -21,6 +21,9 @@ import {
   MyKeys,
   Changelog,
   SettingSectionScreen,
+  Purchase,
+  Checkout,
+  Orders,
 } from '@/screens'
 import {
   HOME_SCREEN,
@@ -41,6 +44,9 @@ import {
   MY_KEYS_SCREEN,
   CHANGELOG_SCREEN,
   SETTING_SECTION_SCREEN,
+  PURCHASE_SCREEN,
+  CHECKOUT_SCREEN,
+  ORDERS_SCREEN,
 } from './screenNames'
 import { type RootStackParamList } from './types'
 
@@ -80,6 +86,9 @@ const SCREENS: Array<{ name: keyof RootStackParamList, Component: React.Componen
   { name: MY_KEYS_SCREEN, Component: MyKeys },
   { name: CHANGELOG_SCREEN, Component: Changelog },
   { name: SETTING_SECTION_SCREEN, Component: SettingSectionScreen },
+  { name: PURCHASE_SCREEN, Component: Purchase },
+  { name: CHECKOUT_SCREEN, Component: Checkout },
+  { name: ORDERS_SCREEN, Component: Orders },
 ]
 
 const WRAPPED: Array<{ name: keyof RootStackParamList, component: React.ComponentType<any> }> = SCREENS.map(({ name, Component }) => ({ name, component: makeWrapper(Component) }))
