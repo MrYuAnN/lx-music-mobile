@@ -1,4 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
+import { Linking, NativeModules } from 'react-native'
 
 import CheckSheet, { type CheckSheetType, type CheckSheetItem } from '@/components/common/CheckSheet'
 import { useI18n } from '@/lang'
@@ -7,6 +8,7 @@ import { qualityLabel, qualityLabelMarked } from '@/utils/music'
 import { addDownloadTask } from '@/core/download'
 import { action as downloadedAction } from '@/store/downloaded'
 import { toast } from '@/utils/tools'
+import { ensureStoragePermission } from '@/utils/permissions'
 import settingState from '@/store/setting/state'
 
 export interface DownloadQualityModalType {
@@ -58,15 +60,29 @@ export default forwardRef<DownloadQualityModalType>((_, ref) => {
     setVisible(false)
     const musicInfo = infoRef.current
     if (!musicInfo) return
-    // 三态 toast（2026-10-29 ①-3 定稿）：downloaded 带实际落地档（回退链下请求档≠落地档，
-    // 审查 I-F），对标 Apple Music 显示实际已下载版本；error=权益闸门拦截（⑧ 引导已弹，静默）
-    void addDownloadTask(musicInfo, item.action as SY.Quality).then(({ status, downloadedQuality }) => {
-      if (status == 'error') return
-      if (status == 'downloaded') {
-        toast(global.i18n.t('download_done', { quality: qualityLabel(downloadedQuality ?? '128k', t) }))
-      } else {
-        toast(global.i18n.t(status == 'exists' ? 'download_exists' : 'download_added'))
+    // 存储权限前置引导（2026-11-02）：无权限任务会以 error 态入队而 toast 仍报「已添加」（误导，
+    // 用户要到失败列表才见「无存储权限」）——当场拦截+跳「所有文件访问」开关页（本地音乐页
+    // 同款分级兜底）；API<30 由 ensureStoragePermission 直接弹运行时请求
+    void ensureStoragePermission().then(granted => {
+      if (!granted) {
+        toast(global.i18n.t('download_no_storage_permission'), 'long')
+        const open = NativeModules.DownloadSupport?.openAllFilesAccessSettings?.()
+        void (open ?? Promise.reject(new Error('DownloadSupport unavailable'))).catch(async() => {
+          toast(global.i18n.t('storage_permission_manual_guide'), 'long')
+          return Linking.openSettings().catch(() => {})
+        })
+        return
       }
+      // 三态 toast（2026-10-29 ①-3 定稿）：downloaded 带实际落地档（回退链下请求档≠落地档，
+      // 审查 I-F），对标 Apple Music 显示实际已下载版本；error=权益闸门拦截（⑧ 引导已弹，静默）
+      void addDownloadTask(musicInfo, item.action as SY.Quality).then(({ status, downloadedQuality }) => {
+        if (status == 'error') return
+        if (status == 'downloaded') {
+          toast(global.i18n.t('download_done', { quality: qualityLabel(downloadedQuality ?? '128k', t) }))
+        } else {
+          toast(global.i18n.t(status == 'exists' ? 'download_exists' : 'download_added'))
+        }
+      })
     })
   }
 
