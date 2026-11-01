@@ -166,3 +166,21 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 - **AGP ≥9 = 结构性硬前提**（实证）：SDK build.gradle 的 plugins 仅 `com.android.library`、无 Kotlin 插件，`kotlin{}` 块依赖 AGP 9 内置 Kotlin——AGP ≤8 下该文件无法编译 Kotlin；license-platform git 史 `6d16f55` 记录原 kotlin-android 老形态**在净屏宿主（AGP 9）实测编译不过**才改的现形态；前提行成文于批次4 三席审查修复批（`1ee40d4`）。
 - **compileSdk ≥37 = 宿主对齐值，非元数据硬强制**（实证）：SDK 依赖 WorkManager 2.11.2 的 AAR metadata 实测 minCompileSdk=**35**、minAGP=8.6；SDK 源码框架 API 仅 Keystore/Base64/Log/WorkManager 基础件（minSdk 23 全有）；37=与净屏宿主 compileSdk 对齐（源码分发形态下 SDK 在宿主构建内编译）。理论上可降 35/36，但=改平台仓 SDK 源=引入第三形态，违背单源纪律，不做。
 - 对拾音：升 RN ≥0.87 后两前提自然满足，无需动 SDK、无需改方案拍板 #25。
+
+## 8. ⑥ 平台批（多源收费扩展）待办清单（2026-11-01 记入）
+
+> 触发背景：11-01 激活码页对齐净屏后确立「按源收费」口径——每源独立 app 键、一码一卡、
+> 生效范围行逐源展示。客户端已就绪（bridge expiries 全集下发 + `APP_CN` 显示名映射 + 净屏式
+> 码卡/输码 InputSheet）；多源真实发码前，下列各项同批落地：
+>
+> 1. **多源 app 键登记+发码入池**：平台 products/apps 注册新源键（如 `wy`）→ 管理台建对应
+>    SKU（apps=新键）→ pool-issue 发码；客户端 `APP_CN` 扩表
+>    （`src/core/shiyin/activation.ts`，如 `wy: '网易云'`）。
+> 2. **多码融合确认按音源精确触发**（现=v6 中性文案粗触发：本机有任何其他在绑码即弹）：
+>    服务端二选一——①前置查码端点（如 `POST /api/code-overlap {code,device_id}→{overlap}`，
+>    带 X-Client-Version 门槛+IP 限流防码枚举探测面）；②`/activate` 契约加 `merge_required`
+>    409 分支（乐观并发：先试→409→精准确认→带 merge 重提；契约净屏共用，需净屏同步评估）。
+>    落地后客户端确认文案改回同源精准措辞（「旧码剩余时长将并入并停用」）。
+> 3. **trial_min_client_ver per-product 化**（2026-11-01 已记）：现全局单键 meta（缺省 1.7.0
+>    曾掐断拾音 1.0.0 召回链，已临时调 1.0.0，备份在案）——新增低版本产品接入必须先调 meta；
+>    长期改 products 列/按产品 meta 键，免「上线即断链」暗雷复发。
