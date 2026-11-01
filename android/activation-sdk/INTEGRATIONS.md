@@ -33,12 +33,12 @@
 | I 更新日志 | **已建独立页（2026-10-31）**：关于页行→Changelog 屏全量渲染 releases（静默拉取不弹窗） | 净屏 rowChangelog 对标；空态/失败态分显 |
 | SDK 消费（errCode） | **SDK v1.4 已消费（2026-10-31）**：releaseDeviceEx/releaseRemoteEx 结构化 errCode→RN i18n 三语映射 | 审计 A-4 残留①提前清账（用户拍板）；净屏零影响（旧签名保留） |
 | D 整域（SKU/订单/支付/闲鱼归因） | 不做 | 灰度=人工发码；**闲鱼归因=无闲鱼渠道，不接**（2026-10-31 审计后补拍板） |
-| E 到期提醒 Worker 族 | 未实现，划后续批 | v3 F 表拍板；放量前+架构拍板（审计 D2） |
+| E 到期提醒 Worker 族 | **已实现（D2 拍板，2026-11-01）**：宿主 24h 周期 Worker 读本地 Receipt，试用<36h/正价[已到期,+7d] 分窗，防重 key，POST_NOTIFICATIONS 未授权静默跳过 | 审计 D2 闭环；通知图标暂用 ic_launcher，放量前换专用白 alpha 图标 |
 | F 客服 | 捷径版已实施（About「联系客服」行 openUrl 官网 FAQ，2026-10-31）；完整版随 D3 | 官网 FAQ 页内容仍【上线前补】占位（运营内容） |
 | G 权益门 | 取链隐式墙+快抛链（净屏开关墙） | 产品形态：免费面五项永久免费拍板；指路文案已修正（**F5 已修 2026-10-31**：路径改「设置→关于→激活管理」+删试用领取承诺+官网教程同步） |
 | G 到期停拦钩子 | 不接 enforceExpiry | 到期处置=取链 403 快抛链承担；v3 落字 |
 | H init 同步段纪律 | 已按序接线；**权益协程=refreshOnStart→未激活 restore 前置→claimTrial（2026-11-01 补）** | claim 契约「restore 先行」宿主侧落实；召回不再单点依赖 claim 409 分支（trial_min_client_ver 门槛 426 不再拦召回） |
-| H 6h 巡检 Worker | 不调度 | 止损靠重注册重核 ≤TTL 24h；**放量前重估**；v3 落字 |
+| H 6h 巡检 Worker | **已调度（2026-11-01 随 D2）**：MainApplication 启动段 `EntitlementSyncScheduler.schedule`（UPDATE 幂等，CONNECTED 约束） | 旧「不调度」落字作废；止损窗口 TTL≤24h→6h；Worker 内 enforceExpiry 空跑（宿主无钩子，见下行） |
 | H install 上报 | 关闭 | 网关无 /app 分流；开启前置=配 location（审计 D6） |
 | H 权益事件 UI 刷新 | 已实现（bridge NativeEventEmitter 转发+注销+useActivationState 订阅，事件名 entitlement-changed） | **A-7 已修 2026-10-31** |
 | I /latest | 自建轻服务（无 meta 三键回退） | 全新建库表即权威；10-26 拍板裁剪 |

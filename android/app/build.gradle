@@ -235,6 +235,9 @@ dependencies {
     // F-1 无白屏（方案 §一 + 用户拍板 A）：splash 保持到内容就绪（AndroidX 官方库，
     // 非拍板⑤否决的 react-native-bootsplash 社区库）
     implementation("androidx.core:core-splashscreen:1.0.1")
+    // D2 到期提醒 Worker（原生 WorkManager 整套，版本对齐 activation-sdk）：
+    // SDK 内 implementation 不传递，宿主侧 Worker 文件同需显式依赖
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
     // implementation "androidx.javascriptengine:javascriptengine:1.0.0-alpha07"
     // implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.3")
     implementation 'wang.harlon.quickjs:wrapper-android:2.4.0'

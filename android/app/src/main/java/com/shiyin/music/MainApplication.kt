@@ -16,6 +16,7 @@ import com.shiyin.music.cache.CachePackage
 import com.shiyin.music.crypto.CryptoPackage
 import com.shiyin.music.download.DownloadPackage
 import com.shiyin.music.lyric.LyricPackage
+import com.shiyin.music.scheduler.ExpiryReminderScheduler
 import com.shiyin.music.utils.UtilsPackage
 
 import kotlinx.coroutines.CoroutineScope
@@ -25,6 +26,7 @@ import kotlinx.coroutines.launch
 
 import top.astock.activation.ActivationSdk
 import top.astock.activation.EntitlementManager
+import top.astock.activation.EntitlementSyncScheduler
 
 import java.net.InetAddress
 import java.net.InetSocketAddress
@@ -92,14 +94,21 @@ class MainApplication : Application(), ReactApplication {
     // 首启试用资格待弹标志（净屏 :187 同款）：同步判定先于 claim；RN 侧经
     // consumeTrialWelcomePending 消费（AppState active 每次前台，审查 N3）
     EntitlementManager.markTrialWelcomePendingIfEligible(this)
+    // D2 双调度（2026-11-01 拍板：原生 WorkManager 整套；旧「不接 6h 巡检 Worker」
+    // 落字作废，权益止损窗口 TTL≤24h→6h）：SDK 6h 巡检（refreshOnStart/claimTrial
+    // 重试兜底，CONNECTED 约束）+ 宿主 24h 到期本地提醒（读本地 Receipt 零服务端
+    // 依赖）。均幂等不重复入队；Worker 内 enforceExpiry 因宿主未注册
+    // onAppNotEntitled 钩子空跑（SDK `?: return`），到期处置维持取链 403→重注册
+    // 快速失败链（SDK「钩子未注册=宿主只消费 State 自行判定亦合法」）
+    EntitlementSyncScheduler.schedule(this)
+    ExpiryReminderScheduler.schedule(this)
     // 权益启动协程（净屏 :232-243 同款）：巡检刷新 → 未激活先 restore 按设备锚找回（claim
     // 调用契约「restore 先行」的宿主侧落实——正价重装召回不再单点依赖 claim 409 分支，
     // trial_min_client_ver 门槛 426 掐断试用链时召回链仍通）→ 首启自动领 3 天试用
     // （Unactivated 才领，SDK 内部幂等+退避节流；失败静默，无网首启联网后自动开始）。
-    // 不接（落字，审查 S6/复审）：enforceExpiry 钩子（拾音到期处置=取链 403→重注册快速
-    // 失败链承担）、6h 巡检 Worker（权益止损靠 /register 重注册重核，≤TTL 24h）、
-    // PlanSkus.fetch（已核实 claim 直连 /api/trial-claim 不依赖 SKU 缓存，fetch 属净屏
-    // SKU 展示面）
+    // 仍不接（落字，审查 S6/复审）：enforceExpiry 宿主钩子（拾音到期处置=取链 403→
+    // 重注册快速失败链承担，见上 D2 注）、PlanSkus.fetch（已核实 claim 直连
+    // /api/trial-claim 不依赖 SKU 缓存，fetch 属净屏 SKU 展示面）
     appScope.launch {
       try {
         EntitlementManager.refreshOnStart(this@MainApplication)

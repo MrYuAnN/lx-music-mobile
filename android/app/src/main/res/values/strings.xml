@@ -5,4 +5,10 @@
     <string name="desktop_lyric_locked_text">点击「解锁」恢复歌词操作</string>
     <string name="desktop_lyric_unlock">解锁</string>
     <string name="activation_restored_toast">已恢复本机激活</string>
+    <!-- D2 到期提醒（原生 WorkManager 整套）：宿主原生层中文单层先例=activation_restored_toast -->
+    <string name="expiry_notify_channel">会员到期提醒</string>
+    <string name="expiry_notify_title">会员即将到期</string>
+    <string name="expiry_notify_body">%1$s 会员将于 %2$s 到期，续费请输入新激活码</string>
+    <string name="trial_expiry_notify_title">试用即将结束</string>
+    <string name="trial_expiry_notify_body">%1$s 试用即将结束，输入新激活码可续期</string>
 </resources>
