@@ -18,6 +18,18 @@ const getOtherSourcePromises = new Map()
 export const existTimeExp = /\[\d{1,2}:.*\d{1,4}\]/
 const otherSourceCache = new Map<string, SY.Music.MusicInfoOnline[]>()
 
+// 源收敛方案件3（2026-11-02 用户拍板「配了哪些源哪些才生效」）：配置外源条目判定——跳过
+// 第一跳直连（必败白耗超时）与缓存层，换源候选无视 allowToggleSource 门控（直连已被拦死，
+// 换源是唯一出路）。与 assertApiSupport 同口径（tools.ts 先例）。导出供 online.ts 缓存层
+// 复用（审查 S-2 判定单点化）。
+export const isSourceDisabled = (musicInfo: SY.Music.MusicInfoOnline): boolean => !assertApiSupport(musicInfo.source)
+
+// 源收敛方案件4：有效换源候选判定——配置源集合（qualityList 键集合）排除条目自身源后非空。
+// 空集时换源搜索必然空手而归，短路省一次候选搜索（单源配置下同源条目在此短路）；
+// 口径单源=qualityList 键集合，与件1 搜索白名单同数据源。
+const hasToggleCandidate = (musicInfo: SY.Music.MusicInfoOnline): boolean =>
+  Object.keys(global.sy.qualityList ?? {}).some(id => id != musicInfo.source)
+
 export const getOtherSource = async(musicInfo: SY.Music.MusicInfo | SY.Download.ListItem, isRefresh = false): Promise<SY.Music.MusicInfoOnline[]> => {
   // if (!isRefresh) {
   //   const cachedInfo = await getOtherSourceFromStore(musicInfo.id)
@@ -315,16 +327,25 @@ export const handleGetOnlineMusicUrl = async({ musicInfo, quality, onToggleSourc
   const targetQuality = quality ?? getPlayQuality(settingState.setting['player.playQuality'], musicInfo)
 
   let reqPromise
-  try {
-    reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), targetQuality, isRefresh).promise
-  } catch (err: any) {
-    reqPromise = Promise.reject(err)
+  if (isSourceDisabled(musicInfo)) {
+    // 件3：配置外源条目跳过第一跳直连（配置外源不产生任何请求，直连必败白耗超时）
+    reqPromise = Promise.reject(new Error('source disabled'))
+  } else {
+    try {
+      reqPromise = musicSdk[musicInfo.source].getMusicUrl(toOldMusicInfo(musicInfo), targetQuality, isRefresh).promise
+    } catch (err: any) {
+      reqPromise = Promise.reject(err)
+    }
   }
   return reqPromise.then(({ url, type, expire }: { url: string, type: SY.Quality, expire?: number }) => {
     return { musicInfo, url, quality: type, isFromCache: false, expire }
   }).catch(async(err: any) => {
     console.log(err)
-    if (!allowToggleSource || err.message == requestMsg.tooManyRequests) throw err
+    // 件3 旁路：配置外源条目换源候选无视 allowToggleSource 门控（直连已被谓词拦死，换源是
+    // 唯一出路）；tooManyRequests 支保持直抛（快速失败族）
+    if ((!allowToggleSource && !isSourceDisabled(musicInfo)) || err.message == requestMsg.tooManyRequests) throw err
+    // 件4：有效候选源集为空（配置源集合∖条目源=∅）直接失败，不发候选搜索
+    if (!hasToggleCandidate(musicInfo)) throw err
     onToggleSource()
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     return getOtherSource(musicInfo).then(otherSource => {
@@ -358,8 +379,9 @@ export const getOnlineOtherSourcePicUrl = async({ musicInfos, onToggleSource, is
   // eslint-disable-next-line no-cond-assign
   while (musicInfo = (musicInfos.shift()!)) {
     if (retryedSource.includes(musicInfo.source)) continue
+    // 源收敛审查 I-2：候选同样过配置源闸（otherSourceCache 可能持有摘源前的候选）——与取链版候选段对齐
+    if (!assertApiSupport(musicInfo.source)) continue
     retryedSource.push(musicInfo.source)
-    // if (!assertApiSupport(musicInfo.source)) continue
     console.log('try toggle to: ', musicInfo.source, musicInfo.name, musicInfo.singer, musicInfo.interval)
     onToggleSource(musicInfo)
     break
@@ -399,16 +421,23 @@ export const handleGetOnlinePicUrl = async({ musicInfo, isRefresh, onToggleSourc
 }> => {
   // console.log(musicInfo.source)
   let reqPromise
-  try {
-    reqPromise = musicSdk[musicInfo.source].getPic(toOldMusicInfo(musicInfo))
-  } catch (err) {
-    reqPromise = Promise.reject(err)
+  if (isSourceDisabled(musicInfo)) {
+    // 件3：配置外源条目跳过第一跳直连（源收敛方案，配置外源不产生任何请求）
+    reqPromise = Promise.reject(new Error('source disabled'))
+  } else {
+    try {
+      reqPromise = musicSdk[musicInfo.source].getPic(toOldMusicInfo(musicInfo))
+    } catch (err) {
+      reqPromise = Promise.reject(err)
+    }
   }
   return reqPromise.then((url: string) => {
     return { musicInfo, url, isFromCache: false }
   }).catch(async(err: any) => {
     console.log(err)
-    if (!allowToggleSource) throw err
+    // 件3 旁路：配置外源条目换源候选无视 allowToggleSource 门控
+    if (!allowToggleSource && !isSourceDisabled(musicInfo)) throw err
+    if (!hasToggleCandidate(musicInfo)) throw err
     onToggleSource()
     // eslint-disable-next-line @typescript-eslint/promise-function-async
     return getOtherSource(musicInfo).then(otherSource => {
@@ -441,8 +470,10 @@ export const getOnlineOtherSourceLyricInfo = async({ musicInfos, onToggleSource,
   // eslint-disable-next-line no-cond-assign
   while (musicInfo = (musicInfos.shift()!)) {
     if (retryedSource.includes(musicInfo.source)) continue
+    // 源收敛审查 I-2：候选同样过配置源闸（otherSourceCache 可能持有摘源前的候选，缓存命中
+    // 路径不经 searchMusic 白名单）——与取链版候选段对齐
+    if (!assertApiSupport(musicInfo.source)) continue
     retryedSource.push(musicInfo.source)
-    // if (!assertApiSupport(musicInfo.source)) continue
     console.log('try toggle to: ', musicInfo.source, musicInfo.name, musicInfo.singer, musicInfo.interval)
     onToggleSource(musicInfo)
     break
@@ -490,11 +521,16 @@ export const handleGetOnlineLyricInfo = async({ musicInfo, onToggleSource, isRef
 }> => {
   // console.log(musicInfo.source)
   let reqPromise
-  try {
-    // TODO: remove any type
-    reqPromise = (musicSdk[musicInfo.source].getLyric(toOldMusicInfo(musicInfo))).promise
-  } catch (err) {
-    reqPromise = Promise.reject(err)
+  if (isSourceDisabled(musicInfo)) {
+    // 件3：配置外源条目跳过第一跳直连（源收敛方案，配置外源不产生任何请求）
+    reqPromise = Promise.reject(new Error('source disabled'))
+  } else {
+    try {
+      // TODO: remove any type
+      reqPromise = (musicSdk[musicInfo.source].getLyric(toOldMusicInfo(musicInfo))).promise
+    } catch (err) {
+      reqPromise = Promise.reject(err)
+    }
   }
   return reqPromise.then(async(lyricInfo: SY.Music.LyricInfo) => {
     return existTimeExp.test(lyricInfo.lyric) ? {
@@ -504,7 +540,9 @@ export const handleGetOnlineLyricInfo = async({ musicInfo, onToggleSource, isRef
     } : Promise.reject(new Error('failed'))
   }).catch(async(err: any) => {
     console.log(err)
-    if (!allowToggleSource) throw err
+    // 件3 旁路：配置外源条目换源候选无视 allowToggleSource 门控
+    if (!allowToggleSource && !isSourceDisabled(musicInfo)) throw err
+    if (!hasToggleCandidate(musicInfo)) throw err
 
     onToggleSource()
     // eslint-disable-next-line @typescript-eslint/promise-function-async

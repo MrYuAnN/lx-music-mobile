@@ -13,6 +13,7 @@ import {
   handleGetOnlineMusicUrl,
   handleGetOnlinePicUrl,
   getCachedLyricInfo,
+  isSourceDisabled,
 } from './utils'
 
 /* export const setMusicUrl = ({ musicInfo, type, url }: {
@@ -60,8 +61,11 @@ export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSou
 
   //   // return Promise.reject(new Error('该歌曲没有可播放的音频'))
   // }
+  // 源收敛方案件3：配置外源条目跳过缓存读/写（读回=「kw 身份播 tx 链」旧链残留；写入=「kw
+  // 身份存 tx 链」同构残留，架构复核 S-1；候选条目自身写入不受影响）
+  const sourceDisabled = isSourceDisabled(musicInfo)
   const targetQuality = quality ?? getPlayQuality(settingState.setting['player.playQuality'], musicInfo)
-  const cachedUrl = await getStoreMusicUrl(musicInfo, targetQuality)
+  const cachedUrl = sourceDisabled ? null : await getStoreMusicUrl(musicInfo, targetQuality)
   if (cachedUrl && !isRefresh) {
     onQualityResolved?.({ quality: targetQuality, isLocal: false })
     return cachedUrl
@@ -69,20 +73,22 @@ export const getMusicUrl = async({ musicInfo, quality, isRefresh, allowToggleSou
 
   return handleGetOnlineMusicUrl({ musicInfo, quality, onToggleSource, isRefresh, allowToggleSource }).then(({ url, quality: finalQuality, musicInfo: targetMusicInfo, isFromCache, expire }) => {
     if (targetMusicInfo.id != musicInfo.id && !isFromCache) void saveMusicUrl(targetMusicInfo, finalQuality, url, expire)
-    void saveMusicUrl(musicInfo, finalQuality, url, expire)
+    if (!sourceDisabled) void saveMusicUrl(musicInfo, finalQuality, url, expire)
     onQualityResolved?.({ quality: finalQuality, isLocal: false })
     return url
   })
 }
 
-export const getPicUrl = async({ musicInfo, listId, isRefresh, allowToggleSource = true, onToggleSource = () => {} }: {
+export const getPicUrl = async({ musicInfo, listId, isRefresh, allowToggleSource = false, onToggleSource = () => {} }: {
   musicInfo: SY.Music.MusicInfoOnline
   listId?: string | null
   isRefresh: boolean
   allowToggleSource?: boolean
   onToggleSource?: (musicInfo?: SY.Music.MusicInfoOnline) => void
 }): Promise<string> => {
-  if (musicInfo.meta.picUrl && !isRefresh) return musicInfo.meta.picUrl
+  // 源收敛方案件3：picUrl 为条目源 CDN 图链（kw 图床死链率高+严格零请求口径），配置外源条目
+  // 跳过字段直读，进换源取图（知情清单：kw 存量条目封面无图属预期）
+  if (musicInfo.meta.picUrl && !isRefresh && !isSourceDisabled(musicInfo)) return musicInfo.meta.picUrl
   return handleGetOnlinePicUrl({ musicInfo, onToggleSource, isRefresh, allowToggleSource }).then(({ url, musicInfo: targetMusicInfo, isFromCache }) => {
     // picRequest = null
     if (listId) {
@@ -93,13 +99,16 @@ export const getPicUrl = async({ musicInfo, listId, isRefresh, allowToggleSource
     return url
   })
 }
-export const getLyricInfo = async({ musicInfo, isRefresh, allowToggleSource = true, onToggleSource = () => {} }: {
+export const getLyricInfo = async({ musicInfo, isRefresh, allowToggleSource = false, onToggleSource = () => {} }: {
   musicInfo: SY.Music.MusicInfoOnline
   isRefresh: boolean
   allowToggleSource?: boolean
   onToggleSource?: (musicInfo?: SY.Music.MusicInfoOnline) => void
 }): Promise<SY.Player.LyricInfo> => {
-  if (!isRefresh) {
+  // 源收敛方案件3：配置外源条目跳过缓存读（读回=旧源词缓存残留）；写侧无需处理——直连被拦后
+  // saveLyric 目标恒为换源产物（配置内条目）或同源直连成功条目，天然无跨源残留
+  const sourceDisabled = isSourceDisabled(musicInfo)
+  if (!isRefresh && !sourceDisabled) {
     const lyricInfo = await getCachedLyricInfo(musicInfo)
     if (lyricInfo) return buildLyricInfo(lyricInfo)
   }

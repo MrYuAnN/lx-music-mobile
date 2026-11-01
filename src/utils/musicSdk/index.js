@@ -66,16 +66,21 @@ export const searchMusic = async({ name, singer, source: s, limit = 25 }) => {
   const buildTasks = () => {
     const tasks = []
     for (const source of sources.sources) {
-      // 注意：跨源搜索/匹配/歌词/封面=SDK 直连免费面（方案 §六），范围独立于 /config 取链开启集——
-      // 摘源摘的是「链」，源搜索能力仍在（取链面由换源层 assertApiSupport 收敛，见 core/music/utils.ts:255）
-      if (!sources[source.id].musicSearch || source.id == s || excludeSource.includes(source.id)) continue
+      // 配置源白名单（源收敛方案件1，2026-11-02 用户拍板「配了哪些源哪些才生效」，推翻此处旧注释
+      // 「摘链不摘搜」）：搜索/换源候选/本地匹配三链同路本函数，白名单后自动收敛到 /config 下发
+      // 源集合（qualityList 键集合，与 assertApiSupport 同源；global.sy 为运行时挂载对象访问，
+      // 非 ES import，不违「global 勿 import」红线）。空集期（F-1 空集放行契约）搜索面全灭=
+      // 拍板①的一致推论，自愈链恢复后随之恢复。
+      if (!global.sy?.qualityList?.[source.id] || source.id == s || excludeSource.includes(source.id)) continue
+      if (!sources[source.id].musicSearch) continue
       tasks.push(() => sources[source.id].musicSearch.search(`${musicName} ${singer || ''}`.trim(), 1, limit).catch(() => null))
     }
     return tasks
   }
   // 分批并发（走查反馈：五源同时并发搜索触发接口限频空结果）+全空重试一轮：
   // 重试必须重建任务重新发起（复用已 settle 的 promise 结果必然相同）；预算守卫——首轮已耗超
-  // 7s 放弃重试，防叠加上层 12s 匹配超时被截断（审查 C-1b）
+  // 7s 放弃重试，防叠加上层 12s 匹配超时被截断（审查 C-1b）；白名单滤空（任务集为空）跳过重试，
+  // 省一轮 1.5s 空等（源收敛方案件4）
   const runBatched = async() => {
     const tasks = buildTasks()
     const out = []
@@ -87,7 +92,9 @@ export const searchMusic = async({ name, singer, source: s, limit = 25 }) => {
   }
   const startedAt = Date.now()
   let results = await runBatched()
-  if (!results.length && Date.now() - startedAt < 7_000) {
+  // 白名单滤空（任务集为空）跳过重试：配置源全滤/空集期重搜必然同空，省一轮 1.5s 空等（件4；
+  // buildTasks 为惰性 thunk 收集，重复调用不发起请求）
+  if (!results.length && buildTasks().length > 0 && Date.now() - startedAt < 7_000) {
     await new Promise(resolve => setTimeout(resolve, 1500))
     results = await runBatched()
   }

@@ -104,12 +104,51 @@ const isRequestStale = (musicInfo: SY.Music.MusicInfo | SY.Download.ListItem, al
     ? musicInfo.id != playerState.playMusicInfo.musicInfo?.id
     : diffCurrentMusicInfo(musicInfo)
 }
+// 条目形态归一（源收敛审查 S-1 单点化）：下载列表条目顶层无 meta，归一到 metadata.musicInfo；
+// 返回联合含 local 形态（挂载字段在 MusicInfoMetaBase，各形态 meta 皆有）
+const getRawOnlineInfo = (musicInfo: SY.Music.MusicInfo | SY.Download.ListItem): SY.Music.MusicInfo => {
+  return 'progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo
+}
+
+// 换源成功后的词图重取（源收敛方案件0b，2026-11-02）：以挂载的实际在播条目为起点重新
+// 拉词图并刷新播放态——首次换源的当次播放词图随实际源（词图与取链并发发起时起点还是
+// 原条目，被件3 谓词拦截后当次无词图，这里补齐）。guard 比对用原条目 id（播放器条目
+// 身份稳定=原源，挂载条目 id=实际源，两者本就不同，比对挂载条目会被恒拦）；比对必须
+// 实时读取 playerState（审查 I-1：闭包快照在切歌（playMusicInfo 整体替换）后恒相等，
+// 旧歌词图会写入新歌播放态）。
+const refreshToggledMusicContent = (musicInfo: SY.Music.MusicInfo | SY.Download.ListItem, toggled: SY.Music.MusicInfoOnline) => {
+  const listId = playerState.playMusicInfo.listId
+  const isStaleSong = () => playerState.playMusicInfo.musicInfo?.id != musicInfo.id
+  if (isStaleSong()) return
+  void getPicPath({ musicInfo: toggled, listId }).then((url: string) => {
+    if (isStaleSong() || playerState.musicInfo.pic == url) return
+    setMusicInfo({ pic: url })
+    updateRecentPlayPic(musicInfo as SY.Music.MusicInfo, url)
+    global.app_event.picUpdated()
+  }).catch((err) => {
+    console.log(err)
+  })
+  void getLyricInfo({ musicInfo: toggled }).then((lyricInfo) => {
+    if (isStaleSong()) return
+    setMusicInfo({
+      lrc: lyricInfo.lyric,
+      tlrc: lyricInfo.tlyric,
+      lxlrc: lyricInfo.lxlyric,
+      rlrc: lyricInfo.rlyric,
+      rawlrc: lyricInfo.rawlrcInfo.lyric,
+    })
+    global.app_event.lyricUpdated()
+  }).catch((err) => {
+    console.log(err)
+  })
+}
+
 const getMusicPlayUrl = async(musicInfo: SY.Music.MusicInfo | SY.Download.ListItem, isRefresh = false, isRetryed = false, allowReload = false, onQualityResolved?: (meta: { quality: SY.Quality, isLocal: boolean }) => void): Promise<string | null> => {
   setStatusText(global.i18n.t('player__getting_url'))
   addLoadTimeout()
 
   // const type = getPlayType(settingState.setting['player.isPlayHighQuality'], musicInfo)
-  let toggleMusicInfo = ('progress' in musicInfo ? musicInfo.metadata.musicInfo : musicInfo).meta.toggleMusicInfo
+  let toggleMusicInfo = getRawOnlineInfo(musicInfo).meta.toggleMusicInfo
 
   return (toggleMusicInfo ? getMusicUrl({
     musicInfo: toggleMusicInfo,
@@ -123,11 +162,24 @@ const getMusicPlayUrl = async(musicInfo: SY.Music.MusicInfo | SY.Download.ListIt
       onQualityResolved,
       onToggleSource(mInfo) {
         if (isRequestStale(musicInfo, allowReload)) return
+        // 换源产物挂载（源收敛方案件0，2026-11-02）：自动换源原本只回传取链调用方后丢弃
+        // （c7a6d01e 删除了旧挂载写入，读取/剥离/类型三端悬空）——补写回原条目 meta 激活
+        // 半成品机制：下载/音质面板回退取数（方案A）与词图随实际源（件2）以此为前提。
+        // 判空防无参调用点（utils.ts 直连失败段）清掉已有挂载。
+        const raw = getRawOnlineInfo(musicInfo)
+        if (mInfo) raw.meta.toggleMusicInfo = mInfo
         setStatusText(global.i18n.t('toggle_source_try'))
       },
     })
   }).then(url => {
     if (global.sy.isPlayedStop || isRequestStale(musicInfo, allowReload)) return null
+
+    // 换源成功终态（源收敛方案件0b）：挂载已就位，触发词图重取——首次换源的当次播放
+    // 词图随实际源（词图与取链并发发起时起点还是原条目，件3 谓词拦后当次无词图，这里补齐）
+    const finalRaw = getRawOnlineInfo(musicInfo)
+    if (url && !toggleMusicInfo && finalRaw.meta.toggleMusicInfo) {
+      void refreshToggledMusicContent(musicInfo, finalRaw.meta.toggleMusicInfo)
+    }
 
     return url
   }).catch(async err => {
@@ -236,7 +288,11 @@ const handleRestorePlay = async(restorePlayInfo: SY.Player.SavedPlayInfo) => {
 
   void initTrackInfo(musicInfo, playerState.musicInfo)
 
-  void getPicPath({ musicInfo, listId: playMusicInfo.listId }).then((url: string) => {
+  // 词图随实际源（源收敛方案件2）：换源在播歌从挂载条目取词图（guard/快照仍按原条目身份）
+  const rawForContent = getRawOnlineInfo(musicInfo)
+  const contentMusicInfo = rawForContent.meta.toggleMusicInfo ?? rawForContent
+
+  void getPicPath({ musicInfo: contentMusicInfo, listId: playMusicInfo.listId }).then((url: string) => {
     if (
       musicInfo.id != playMusicInfo.musicInfo?.id ||
       playerState.musicInfo.pic == url ||
@@ -248,7 +304,7 @@ const handleRestorePlay = async(restorePlayInfo: SY.Player.SavedPlayInfo) => {
     global.app_event.picUpdated()
   })
 
-  void getLyricInfo({ musicInfo }).then((lyricInfo) => {
+  void getLyricInfo({ musicInfo: contentMusicInfo }).then((lyricInfo) => {
     if (musicInfo.id != playMusicInfo.musicInfo?.id) return
     setMusicInfo({
       lrc: lyricInfo.lyric,
@@ -275,7 +331,11 @@ const debouncePlay = debounceBackgroundTimer(() => {
   if (!musicInfo) return
   setMusicUrl(musicInfo)
 
-  void getPicPath({ musicInfo, listId: playerState.playMusicInfo.listId }).then((url: string) => {
+  // 词图随实际源（源收敛方案件2）：换源在播歌从挂载条目取词图（guard/快照仍按原条目身份）
+  const rawForContent = getRawOnlineInfo(musicInfo)
+  const contentMusicInfo = rawForContent.meta.toggleMusicInfo ?? rawForContent
+
+  void getPicPath({ musicInfo: contentMusicInfo, listId: playerState.playMusicInfo.listId }).then((url: string) => {
     if (
       musicInfo.id != playerState.playMusicInfo.musicInfo?.id ||
       playerState.musicInfo.pic == url ||
@@ -286,7 +346,7 @@ const debouncePlay = debounceBackgroundTimer(() => {
     global.app_event.picUpdated()
   })
 
-  void getLyricInfo({ musicInfo }).then((lyricInfo) => {
+  void getLyricInfo({ musicInfo: contentMusicInfo }).then((lyricInfo) => {
     if (musicInfo.id != playerState.playMusicInfo.musicInfo?.id) return
     setMusicInfo({
       lrc: lyricInfo.lyric,
