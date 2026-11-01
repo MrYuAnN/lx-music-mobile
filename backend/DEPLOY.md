@@ -243,3 +243,19 @@ stdout 只有净屏域——查拾音请求别 grep 错日志；
 （同版登记=检查更新静默不弹无发版语义；note 中文**经 ssh 参数必乱码，必须 `<<'EOF'` stdin+
 `$(cat)` 传**；note 逐行「新增：/修复：/优化：」前缀分组，规则单源 App `src/utils/changelog.ts`，
 无前缀归「更新」组——94debf06 起 App 弹窗/更新日志页/官网 download.html 三端同规则）。
+
+## 批2 订单域部署步骤（2026-11-02，方案 doc/plans/shiyin-order-domain.md §四批2）
+
+> 前置红线：禁跑 `platform-admin srv-token-set --product shiyin`（取链/轻服务两处在用=吊销）。
+
+| # | 步骤 | 命令/动作 |
+|---|---|---|
+| 1 | 生成面板 token（一次性明文） | `openssl rand -hex 24` |
+| 2 | 更新服务器 systemd unit：`ExecStart` 追加 `-panel-token <值>`（或 `Environment=SHIYIN_PANEL_TOKEN=<值>`）→ daemon-reload | ssh 手工 |
+| 3 | 平台注册面板（**token 经脚本/env 传入防 shell history**，批2 代码审 S11）：`platform-admin panel-set --db platform.db --product shiyin --url http://172.20.0.1:8090 --token <值>` | 平台仓 |
+| 4 | 部署拾音后端（编译含 order-core：**committed replace `../../order-core`——构建机须两仓同级**） | go build → scp → restart |
+| 5 | **网关 conf 部署前校验（批2 代码审 I-6 双仓同步防线）**：`diff nginx-gateway/nginx/conf.d/shiyin-api.conf lxmusic-custom/backend/deploy/shiyin-api.conf` 必须为零差异 → 网关仓部署 + `nginx -s reload` | 两仓 |
+| 6 | **EdgeOne 控制台禁缓存规则核实/配置（方案 I-D 双保险）**：`/api/skus`、`/api/order/*`、`/api/orders` 必须禁缓存（服务端 no-store 已带，控制台侧=用户动作） | 用户控制台 |
+| 7 | 冒烟验收：①shiyinbox.top 存量端点逐条 curl 回归（/activate /redeem /device/ /url/ /register /config /latest /dash /dl/）②/api/skus 200+九字段 ③建单→闲鱼拍下模拟→panel confirm_paid→发码 ④管理台拾音产品订单 tab 出现 ⑤净屏域名回归（同 nginx 实例 reload 爆炸半径） | curl+浏览器 |
+
+回滚（**窗口=批3 App 发版前**）：摘网关三 location（`location = /api/skus`、`location /api/order/`、`location = /api/orders`）→ reload（流量回平台 8080）+ `platform-admin panel-set --product shiyin --clear`（tab 隐藏）→ 停服务可选。**不清理数据**（已发码激活链不依赖订单域）；发版后不得摘 location（另定降级预案）。

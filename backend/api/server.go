@@ -25,6 +25,9 @@ import (
 	"strings"
 	"time"
 
+	orderxianyu "ordercore/xianyu"
+
+	"shiyin/backend/admin"
 	"shiyin/backend/store"
 )
 
@@ -36,6 +39,11 @@ type Server struct {
 	DashToken    string // 看板页访问令牌（空=/dash 404 隐藏入口）
 	WebDir       string // 官网静态页根目录
 	HTTP         *http.Client
+	// XY 闲鱼 itemId 解析器（批2：/api/skus 与下单返回体下发 xianyu_item_id；
+	// nil=空串退现状——解析器永远不阻塞主链路）
+	XY *orderxianyu.Resolver
+	// Panel 业务面板（批2；PanelToken 空=面板路由不注册）
+	PanelToken string
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -47,7 +55,8 @@ func writeJSON(w http.ResponseWriter, status int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
-// Handler 装配全部路由。
+// Handler 装配全部路由（批2 追加：订单/商品 API+业务面板——8090 mux 并入，
+// 方案选型 B：零进程结构变更，回滚=摘网关 location 即回平台 8080）。
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, _ *http.Request) {
@@ -56,6 +65,15 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /latest", s.handleLatest)
 	mux.HandleFunc("GET /dl/latest", s.handleLatestApk)
 	mux.HandleFunc("GET /dash", s.handleDash)
+	// 订单/商品 API（网关精确路径接管：=/api/skus、/api/order/、=/api/orders）
+	mux.HandleFunc("GET /api/skus", s.handleApiSkus)
+	mux.HandleFunc("POST /api/order/create", s.handleNativeOrderCreate)
+	mux.HandleFunc("GET /api/orders", s.handleNativeOrders)
+	mux.HandleFunc("POST /api/order/cancel", s.handleNativeOrderCancel)
+	// 业务面板（X-Panel-Token 服务间鉴权；平台管理台 per-product 代理接入）
+	if s.PanelToken != "" {
+		admin.RegisterPanelRoutes(mux, &admin.PanelServer{St: s.St, Token: s.PanelToken})
+	}
 	mux.Handle("/", s.staticHandler())
 	return logMiddleware(mux)
 }

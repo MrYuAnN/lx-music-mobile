@@ -5,6 +5,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"flag"
 	"fmt"
@@ -13,7 +14,11 @@ import (
 	"os"
 	"time"
 
+	osrv "ordercore/srv"
+	orderxianyu "ordercore/xianyu"
+
 	"shiyin/backend/api"
+	"shiyin/backend/cron"
 	"shiyin/backend/store"
 )
 
@@ -65,6 +70,7 @@ func cmdServe(args []string) error {
 	platformBase := fs.String("platform-base", "http://172.20.0.1:8080", "license-platform 内网基址")
 	srvToken := fs.String("srv-token", os.Getenv("SHIYIN_SRV_TOKEN"), "平台 srv API 凭证")
 	dashToken := fs.String("dash-token", os.Getenv("SHIYIN_DASH_TOKEN"), "看板页访问令牌")
+	panelToken := fs.String("panel-token", os.Getenv("SHIYIN_PANEL_TOKEN"), "业务面板凭证（与平台 products.panel_token 同值；空=面板路由不注册）")
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
@@ -73,11 +79,24 @@ func cmdServe(args []string) error {
 		return err
 	}
 	defer st.Close()
+	// 订单域装配（批2）：平台 srv 客户端（token=现有 SHIYIN_SRV_TOKEN 复用——
+	// 禁跑 srv-token-set 重签发，取链/轻服务两处在用）+ SKU 缓存启动 seed
+	st.SetSRV(osrv.New(*platformBase, *srvToken, api.ProductID))
+	st.RefreshSKUsQuiet()
+	// 闲鱼 itemId 后台解析器（urlFn=运营配置 xianyu_item_url，改链接最长一个
+	// 刷新周期生效；解析失败退现状不阻塞主链路）
+	xy := orderxianyu.NewResolver(func() string { return st.Setting("xianyu_item_url") })
+	xy.Start()
+	// 后台 loop（SKU 刷新/试用补单/paid 补发+48h 关单）
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	cron.Start(ctx, st)
 	srv := &api.Server{
 		St: st, PlatformBase: *platformBase, SrvToken: *srvToken,
 		DashToken: *dashToken, WebDir: *webDir,
+		XY: xy, PanelToken: *panelToken,
 	}
-	log.Printf("拾音轻服务启动 addr=%s web=%s", *addr, *webDir)
+	log.Printf("拾音轻服务启动 addr=%s web=%s panel=%v", *addr, *webDir, *panelToken != "")
 	// 显式超时防慢连接堆积（2026-10-26 审查 S-8；只绑内网，读头/空闲超时足够）
 	hs := &http.Server{
 		Addr:              *addr,

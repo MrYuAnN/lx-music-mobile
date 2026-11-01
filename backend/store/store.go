@@ -13,9 +13,12 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
 	_ "modernc.org/sqlite"
+
+	osv "ordercore/orderstore"
 )
 
 // ErrInvalidRelease 发布参数不合法（版本号形态 / URL 非 https / 超长）。
@@ -35,19 +38,32 @@ type Release struct {
 	ReleasedAt int64  `json:"released_at"` // unix 秒
 }
 
-// Store 轻服务数据库句柄（单库单写者：服务进程 + latest-set CLI 不并发，
-// SQLite 默认串行即可；WAL 打开以容忍官网页读、CLI 写的偶发交错）。
+// Store 轻服务数据库句柄（单库单写者：服务进程 + latest-set CLI 不并发；
+// WAL+单连接串行化不变量——批2 起订单域经 ordercore Domain 共用同一句柄，
+// I-C 决策：禁双连接池）。
 type Store struct {
-	db *sql.DB
+	*osv.Domain
+	db    *sql.DB
+	skuMu sync.RWMutex
+	skus  map[string]SKU
 }
 
 // Open 打开（不存在则建）数据库并跑迁移。
 func Open(path string) (*Store, error) {
-	db, err := sql.Open("sqlite", path+"?_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)")
+	db, err := sql.Open("sqlite", path+"?_pragma=busy_timeout(10000)&_pragma=journal_mode(WAL)&_pragma=synchronous(NORMAL)&_pragma=foreign_keys(ON)")
 	if err != nil {
 		return nil, err
 	}
-	s := &Store{db: db}
+	db.SetMaxOpenConns(1)
+	s := &Store{db: db, skus: map[string]SKU{}}
+	s.Domain = osv.NewDomain(db, s, shiyinOrderCfg)
+	s.Domain.AppCN = AppCN
+	s.Domain.TierCN = TierCN
+	// Audit 缝不装配（nil）：mock/manual 模式无渠道回调路径，markPaid 复活审计
+	// 不触发（AdminConfirmPaid 走自有事务不含审计——与净屏行为一致）。
+	// trial_sync 游标记账缝=本地 meta 表。
+	s.Domain.MetaGet = s.metaGet
+	s.Domain.MetaSet = s.metaSet
 	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS app_releases(
 		version TEXT PRIMARY KEY,
 		url TEXT NOT NULL,
@@ -57,11 +73,45 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS meta(
+		key TEXT PRIMARY KEY,
+		value TEXT NOT NULL
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	// ordercore 订单域迁移（独立记账 ordercore_migrations；拾音新库按序执行
+	// 0001/0002 建终态 orders——批2 首启即建，无基线分支）
+	if err := s.Domain.Migrate(); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("order migrate: %w", err)
+	}
 	return s, nil
 }
 
+// metaGet/metaSet meta 表读写（Domain.MetaGet/MetaSet 缝落点；Setting 运营
+// 配置与 trial_sync 游标共用本表）。
+func (s *Store) metaGet(key string) string {
+	var v string
+	_ = s.db.QueryRow(`SELECT value FROM meta WHERE key=?`, key).Scan(&v)
+	return v
+}
+
+func (s *Store) metaSet(key, val string) error {
+	_, err := s.db.Exec(`INSERT INTO meta(key,value) VALUES(?,?)
+		ON CONFLICT(key) DO UPDATE SET value=excluded.value`, key, val)
+	return err
+}
+
+// MetaGet/MetaSet 导出面（批2 panel cfg 分区与诊断用；缝同名直通）。
+func (s *Store) MetaGet(key string) string     { return s.metaGet(key) }
+func (s *Store) MetaSet(key, val string) error { return s.metaSet(key, val) }
+
 // Close 关闭底层句柄。
 func (s *Store) Close() error { return s.db.Close() }
+
+// DB 底层句柄（测试用；批2 回归测试回填订单时刻需要）。
+func (s *Store) DB() *sql.DB { return s.db }
 
 // PublishRelease 发布/修正一条版本记录（最新版指针语义=表首，released_at 倒序）：
 //   - 新版本号：入库（releasedAt<=0 取当前时间）；
