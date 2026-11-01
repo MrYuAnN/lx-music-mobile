@@ -14,6 +14,18 @@
 
 ## 1. license-platform 接入（产品注册→SKU→发码→srv token）
 
+> **⚠️ 勘误（2026-10-31 代码级澄清，11-02 回写）**：本节为接入期（2026-10-26）CLI 命令模板，
+> 产品注册实际已完成；其中三处与生产实况不符，**勿照抄**：
+> ① **试用 SKU 免建也建不了**——trial-claim 自包含（平台 store/trial.go：`TrialTier="auto3"`/
+> `TrialDays=3` 代码常量，claim 直接 INSERT pool+keys，auto3 行仅为管理台显示壳）；且
+> sku-add/sku-save 的 tier 白名单均无 auto3（=d7/m1/m6/y1/perm/trial7/trial3/test），
+> 下方第 2 步执行必报错；
+> ② **SKU 与日常发码全在管理台**——sku-save 直接新增（「运营初始化在管理台完成，免 CLI」）；
+> 补码入池=管理台 pool-issue 一步在线签发（VPS 实例持有 issuance.private，选 SKU+数量 ≤500
+> 即新码直接入池，净屏日常发码同此路）；gen-pool/import-pool 离线批量日常不需要；
+> ③ **第 5 步 srv-token-set 禁跑**——shiyin api_token 现网两处在用（取链 config.json+轻服务
+> systemd），重跑=吊销重签发、取链全断；确需轮换须三处同步窗口。
+
 在 license-platform 仓、对生产库执行（SKU 价格/N 值归运营自助，下列为命令模板）：
 
 ```bash
@@ -24,12 +36,12 @@ go run ./cmd/platform-admin product-add --db jingping.db \
   --id shiyin --name "拾音" --salt shiyin-device-v1 \
   --app shiyin:com.shiyin.music:拾音
 
-# 2) 试用 SKU（3 天，auto3 试用期契约；-1 价=不零售仅试用通道则按平台口径）
+# 2) 试用 SKU（⚠️ 勿执行——见顶部勘误①：trial-claim 自包含免建，白名单无 auto3 必报错）
 go run ./cmd/platform-admin sku-add --db jingping.db \
   --id shiyin-auto3 --name "拾音·3天试用" --apps shiyin --tier auto3 --days 3 \
   --dl 2 --price-cents 0
 
-# 3) 月/年 SKU（价格【运营自助】：--price-cents 定；dl 建议 2）
+# 3) 月/年 SKU（价格【运营自助】：--price-cents 定；dl 建议 2；日常推荐=管理台 sku-save，见勘误②）
 go run ./cmd/platform-admin sku-add --db jingping.db \
   --id shiyin-m1 --name "拾音·月卡" --apps shiyin --tier m1 --days 31 \
   --dl 2 --price-cents 【定价】
@@ -37,14 +49,14 @@ go run ./cmd/platform-admin sku-add --db jingping.db \
   --id shiyin-y1 --name "拾音·年卡" --apps shiyin --tier y1 --days 365 \
   --dl 2 --price-cents 【定价】
 
-# 4) 离线机生成卡池 → 导入（issuance.private 只在离线机）
+# 4) 离线机生成卡池 → 导入（⚠️ 日常勿用——见顶部勘误②：补码=管理台 pool-issue 在线签发）
 go run ./cmd/platform-admin gen-pool --priv secrets/issuance.private \
   --kind key --sku shiyin-m1 --apps shiyin --tier m1 --days 31 --dl 2 \
   --count 50 --out pool-shiyin-m1.json
 go run ./cmd/platform-admin import-pool --db jingping.db \
   --pub secrets/issuance.public --pool pool-shiyin-m1.json
 
-# 5) srv token（供取链服务/轻服务消费 /srv/*；输出一次性明文）
+# 5) srv token（⚠️ 禁跑——见顶部勘误③：重跑=吊销现网 token；现网 token 直接复用注入）
 go run ./cmd/platform-admin srv-token-set --db jingping.db --product shiyin
 ```
 
@@ -129,8 +141,8 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 - **待实施**（2026-10-28 tx cookie 配置后余项）：
   1. ~~tx 主力号 cookie~~ **已完成（2026-10-28）**：用户主力号系**微信登录**（tmeLoginType=微信，QQ 互联 psrf_* 全空）——按微信映射填入（uin=wxuin / openId=wxopenid / refreshToken=wxrefresh_token / token=qm_keyst），refreshLogin=true，保活首跑**刷新成功+token 回写**（TME 统一登录接口接受微信字段集）。**已知偏差**：check_vip 对微信登录态查不到 VIP 标识（显示 normal，账号实为豪华绿钻在期）——vipType 仅记录字段不拦取链，实际音质以账号权益为准；FastAPI 短路复核（S-7）；
   2. 告警通道密钥（Server酱 sendKey/TG token+chat_id → `data/config.json` notify 节 + `/root/shiyin/notify.env` 两处）+ 试发验证；
-  3. `/register` 全链冒烟（需先建 SKU+拿激活码——§1 SKU 建档灰度前批执行）；
-  4. `/config` 下发内容与 App 批1 消费契约冻结（本批 /register 含 server_time；/config 形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障）。
+  3. `/register` 全链冒烟（**App 侧对接已随批2 完成，见 §9；冒烟动作归⑥ 批**——需管理台建月/年 SKU[勘误②]+发测试码[池内真码，dev key 已删]，暂缓）；
+  4. ~~`/config` 下发内容与 App 批1 消费契约冻结~~ **已完成并上线**（批1 直连换心 10-28 起消费；形状：`{code, sources:{<源>:{qualitys:[...]}}, server_time, min_client_version, upgrade_url}`；错误码含 503=Redis 故障；min_client_version 消费带纯数字门槛）。
 - **部署实况（2026-10-27）**：取链双容器（shiyin-apiserver+shiyin-redis healthy）运行于 `/root/shiyin/apiserver/`，/config 公开面全链通（经 EdgeOne）；构建镜像坑两枚已修：①uv.lock 的 workspace member 仍为 fork 前旧名 `ikun-music-api-server`（改名时未重生）→钉 system Python `uv lock --python` 重生成（uv 0.9.30 对旧名直接 Missing workspace member 拒装）；②uv sync 需 README.md 随层（pyproject readme 元数据引用）。源码树=VPS `/root/shiyin/apiserver-src/`（git archive 导出，compose build context 指向它；.env 双变量切换开发/生产 build 形态）。
 - **2026-10-27 批次3 已实施**（摘源告警链+部署件，fork 仓；三席审查 3C/12I/22S 全修）：
   1. docker-compose（`deploy/`，apiserver 端口只绑 172.20.0.1:8091+加入 gateway-net，redis 不发布端口+requirepass+maxmemory 128mb，双容器 mem_limit 416MB，日志轮转 10m×3，redis healthcheck）+ Dockerfile（python:3.12-slim+uv sync --frozen 腾讯源）+ 生产 `data/config.json` 模板（`config.prod.example.json`：sources 开关/kg token/tx 多账号/wy cookie/srv_token/admin_token 占位，`platform_base=http://172.20.0.1:8080` 非 localhost；**占位账号 `refreshLogin` 一律 false，填实值后才开 true**）；
@@ -197,3 +209,37 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 >    发码前须：平台按产品维度下发到期（`expires_by_app` 或按 X-Product 过滤）+取链按源
 >    校验；并复核 min 聚合是否参与平台 status 判定（若参与，status 本身已在多源码失真，
 >    属平台既有语义需一并对拍）。
+
+## 9. 批2 直连商业化实施记录与运维事件（2026-10-31~11-02 回写）
+
+**App 侧实施（已分批入库 am-redesign；实施单源 `.review-bundle/2026-10-31/context-b2-plan.md` v3）**：
+c1=`6b715dde` SDK 接线版（android/activation-sdk 活源拷入+净屏同款编排+build.host.gradle 接线版）
+→ c2=`b7bc88d0` 激活域功能批（auth.ts 重写：key=getStoredKey/无码轮询等 claim 12s/Expired+403
+not_entitled·device_limit 快速失败不进退避[isShiyinFastFail 单源]/keychain 迁移；About ActivationCard；
+lang 三语 26 键；含审计 P0 修复终态）→ c4=`f1b11090` 审计报告落档 → 后续演进：净屏交互批
+`ed31a97f`+`8d1c74d7`、D2 到期提醒 Worker `78eceb5e`+`708e1073`、⑦⑧ 权益锁播放闭环
+`6884af94`~`b2d3041c`、KeyInfo 收尾 `ffd989f0`、审计 P1 三项 A-5/A-6/F5 直达 `526ab344`。
+验证全绿（tsc/eslint/assembleStage/bundle 字节探针：新键 8 命中+dev key 明文零残留）。
+
+**dev key 已删（2026-11-02 核实）**：平台库 key_not_found。服务端冒烟一律改用池内真码
+（VPS `sqlite3 -readonly` 取码+测后 `POST /admin/revoke` 清席位，不耗解绑月限）；
+外部探针无副作用形态只可用 426（版本头 1.0.0+无效设备得 400 区分）与只读 restore
+——合法格式假 device_id 会真领试用码污染生产（11-01 实例 JP-C95MR 已 revoke，假 trial_grants 行惰性残留）。
+
+**11-01 版本门槛断链事故（三条机制教训，发版/运维必读）**：
+平台 09:16 部署含 trial_min_client_ver 门槛的新 platform-server 后，拾音 1.0.0 claim 全量 426
+静默断召回（restore 唯一触发点在 claim 409 分支=门槛一拦整链哑火）。处置：meta
+trial_min_client_ver=1.7.0→1.0.0（全局单键，即时生效免重启；备份
+`/root/platform/backups/pre-trial-min-ver-2026-11-01.db`；长期 per-product 化=§8 件③）。
+① **新产品接入/发版检查项：VERSION_NAME ≥ trial_min_client_ver**——低版本新产品上线即断链暗雷；
+② 拾音流量日志=nginx 容器 `/var/log/nginx/shiyin_edge.log`（shiyin_edge 自定格式），docker logs
+stdout 只有净屏域——查拾音请求别 grep 错日志；
+③ 外部探针纪律见上 dev key 节。
+
+**测试包分发链 SOP（2026-11-01 收口）**：`/dl/` 已 nginx internal 收敛——版本化 APK 直链一律 404，
+唯一入口 `https://shiyinbox.top/dl/latest`（轻服务 X-Accel 转发 app_releases 表首条）。外发测试包：
+上传 `/root/shiyin/apk/`（容器内 `/srv/shiyin-apk`）→ `/root/shiyin/shiyin-server latest-set
+-db /root/shiyin/shiyin.db -version <不升则同版> -url https://shiyinbox.top/dl/<file> -note ...`
+（同版登记=检查更新静默不弹无发版语义；note 中文**经 ssh 参数必乱码，必须 `<<'EOF'` stdin+
+`$(cat)` 传**；note 逐行「新增：/修复：/优化：」前缀分组，规则单源 App `src/utils/changelog.ts`，
+无前缀归「更新」组——94debf06 起 App 弹窗/更新日志页/官网 download.html 三端同规则）。
