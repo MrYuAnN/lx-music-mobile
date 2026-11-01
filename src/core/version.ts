@@ -28,7 +28,8 @@ export const checkUpdate = async(force = true) => {
     const last = await getLastVersionCheckTime()
     if (last && Date.now() - last < DAILY_INTERVAL) return
   }
-  void saveLastVersionCheckTime(Date.now())
+  // A-5（净屏审计 P1）：节流标记移至成功路径末尾——原「请求前写入+失败不回滚」致当日
+  // 首查失败即全天不自动重查（净屏 JingpingGuides S4 同坑重蹈）；失败提示 7 天抑制独立保留
 
   versionActions.setVersionInfo({ status: 'checking' })
   let versionInfo: InitState['versionInfo'] = { ...versionState.versionInfo }
@@ -41,6 +42,7 @@ export const checkUpdate = async(force = true) => {
       versionInfo.isUnknown = false
       versionInfo.status = 'idle'
       versionActions.setVersionInfo(versionInfo)
+      void saveLastVersionCheckTime(Date.now()) // A-5：notPublished=服务端正常应答，同落标记
       return
     }
     versionInfo.newVersion = {
@@ -67,6 +69,7 @@ export const checkUpdate = async(force = true) => {
   versionInfo.isLatest = compareVer(versionInfo.version, versionInfo.newVersion.version) != -1
 
   versionActions.setVersionInfo(versionInfo)
+  void saveLastVersionCheckTime(Date.now()) // A-5：成功才落标记，失败态次日 init 链自动重查
 
   if (!versionInfo.isLatest && versionInfo.newVersion.version != await getIgnoreVersion()) {
     showModal()

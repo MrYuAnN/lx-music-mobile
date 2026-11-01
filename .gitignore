@@ -76,3 +76,7 @@ scan-line.ps1
 .tmp-*.png
 .tmp-*.xml
 backend/dist/
+
+# 本地冒烟/误落产物（2026-11-01 审查批清理）
+.smoke-tmp/
+android/assets/

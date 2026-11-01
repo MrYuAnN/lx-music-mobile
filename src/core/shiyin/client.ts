@@ -2,12 +2,12 @@
 // getMusicUrl 返回 {promise, cancelHttp} 对齐现消费契约（musicSdk 各源 index 透传，
 // 消费端 .promise.then(({url, type}) => …)）。
 // 异常分类：401→重注册后重放一次 / 403 source_disabled→不自动重试+触发 /config 立即重拉 /
-// 426→升级引导跳 upgrade_url / 429→提示不自动重试 / 其余（5xx·网络）→可重试（交换源链）。
+// 426→强更弹窗（F5 直达：UpgradeRequiredModal 统一出口）/ 429→提示不自动重试 / 其余（5xx·网络）→可重试（交换源链）。
 import { httpFetch } from '@/utils/request'
 import { requestMsg } from '@/utils/message'
-import { openUrl } from '@/utils/tools'
-import { ensureAuth, getClientVersion, signRequest } from './auth'
-import { fetchShiyinConfig, getShiyinSources, SHIYIN_BASE_URL } from './config'
+import { ensureAuth, signRequest } from './auth'
+import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL } from './config'
+import versionActions from '@/store/version/action'
 
 // per-source songId 提取（旧形态 songInfo=toOldMusicInfo 输出，字段逐源核对 utils/index.ts）
 const getSongId = (source: string, songInfo: Record<string, any>): string => {
@@ -80,9 +80,9 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
         void fetchShiyinConfig().catch(() => {})
         throw new Error(global.i18n.t('shiyin_source_disabled'))
       case 426: {
-        // 强升：引导跳转升级地址（/latest 与 upgrade_url 由服务端下发）
-        const upgradeUrl = body.url ?? ''
-        if (upgradeUrl) void openUrl(upgradeUrl).catch(() => {})
+        // 强升（F5 直达，并入 A-6 机制）：复用 UpgradeRequiredModal（versionState 驱动，
+        // 唯一强更出口免双弹窗）；原 openUrl 跳浏览器退役（审计 F5 P1 落法）
+        versionActions.setUpgradeRequired({ required: true, url: body.url ?? '' })
         throw new Error(global.i18n.t('shiyin_upgrade_required'))
       }
       case 429:

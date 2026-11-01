@@ -15,6 +15,10 @@ import versionActions from '@/store/version/action'
 
 export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 
+// 客户端版本名（平台 Gate/trial 门槛与 A-6 /register 补头共用；驻 config 解 auth↔config
+// import 环——净屏审计 A-6 落法，activation-audit-jingping.md §四）
+export const getClientVersion = (): string => process.versions.app
+
 export interface ShiyinSourceInfo {
   qualitys: SY.Quality[]
 }

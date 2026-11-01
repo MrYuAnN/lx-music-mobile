@@ -14,7 +14,9 @@ import { getData, removeData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import * as Keychain from 'react-native-keychain'
 import { activationModule } from '@/utils/nativeModules/activation'
-import { SHIYIN_BASE_URL } from './config'
+import { SHIYIN_BASE_URL, getClientVersion } from './config'
+import versionActions from '@/store/version/action'
+import versionState from '@/store/version/state'
 
 interface ShiyinAuth {
   token: string
@@ -51,7 +53,8 @@ export const isShiyinFastFail = (err: unknown): boolean => {
   const name = (err as Error)?.name ?? ''
   return (
     name == 'ShiyinRegisterFailed' || name == 'ShiyinNotActivated' ||
-    name == 'ShiyinEntitlementExpired' || name == 'ShiyinEntitlementInvalid'
+    name == 'ShiyinEntitlementExpired' || name == 'ShiyinEntitlementInvalid' ||
+    name == 'ShiyinUpgradeRequired'
   )
 }
 
@@ -61,14 +64,9 @@ export const getDeviceId = async(): Promise<string> => {
   // eslint-disable-next-line @typescript-eslint/promise-function-async
   return activationModule.getDeviceId()
 }
-
 // HMAC-SHA256（方案 §四：基串=METHOD\npath\nts\ndevice_id，hex 小写）
 export const signRequest = (secret: string, method: string, path: string, ts: string, deviceId: string): string => {
   return sha256.hmac(secret, `${method}\n${path}\n${ts}\n${deviceId}`)
-}
-
-export const getClientVersion = (): string => {
-  return process.versions.app
 }
 
 let auth: ShiyinAuth | null = null
@@ -138,6 +136,11 @@ const doRegister = async(): Promise<ShiyinAuth> => {
   }
   const resp = await httpFetch(`${SHIYIN_BASE_URL}/register`, {
     method: 'post',
+    headers: {
+      // A-6（净屏审计 P1）：/register 原缺版本头致 fork 层强升闸（products.min_client_ver）
+      // 恒空转——补头后旧版强升收敛生效（/config 缺头=有意设计「恒可达」，不动）
+      'X-Client-Version': getClientVersion(),
+    },
     body: { key, device_id: deviceId },
   }).promise
   const body = resp.body as unknown as {
@@ -146,6 +149,16 @@ const doRegister = async(): Promise<ShiyinAuth> => {
     device_secret?: string
     expires_in?: number
     message?: string
+    url?: string
+    upgrade_url?: string
+  }
+  // 426 强升（A-6 配套）：版本低于 products.min_client_ver——置强更态（UpgradeRequiredModal
+  // 消费，会话级守卫防重）+快速失败（进 isShiyinFastFail 名单防换源链空转）
+  if (resp.statusCode == 426) {
+    if (!versionState.upgradeRequired.required) {
+      versionActions.setUpgradeRequired({ required: true, url: body.url ?? body.upgrade_url ?? '' })
+    }
+    throw shiyinError('ShiyinUpgradeRequired', global.i18n.t('shiyin_upgrade_required'))
   }
   // 403 权益失效族（R1）：服务端核验失败/设备满——快速失败不进退避（每次必败重试还空耗
   // 注册 IP 日限），文案区分失效与设备满
