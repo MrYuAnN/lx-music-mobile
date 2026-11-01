@@ -97,16 +97,80 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
     }
   }
 
-  // 解绑本机（方案 F.4）：成功后 JS 侧负责清取链 token（删 AUTH_KEY）与未激活态引导
+  // 码卡列表六字段（KeyInfo 页）：到期（0=永久）/expiries 全集（2026-11-01 净屏式生效范围行——
+  // 按源收费口径码卡逐源行展示；app 键→到期 unix 秒）/试用标/绑定标记（本地 SP 读，null=本机
+  // 在绑——三态即时渲染初值）/设备限额（「已绑 n/limit 台」数据源）。expiry 单值保留（兼容）
   @ReactMethod
-  fun releaseDevice(promise: Promise) {
+  fun getKeyEntries(promise: Promise) {
+    try {
+      val entries = Arguments.createArray()
+      EntitlementManager.keyEntries(reactContext).forEach { (key, e) ->
+        val m: WritableMap = Arguments.createMap()
+        m.putString("key", key)
+        val expiriesMap = Arguments.createMap()
+        e.expiries.forEach { (app, exp) -> expiriesMap.putDouble(app, exp.toDouble()) }
+        m.putMap("expiries", expiriesMap)
+        m.putDouble("expiry", (e.expiries[appKey] ?: 0L).toDouble())
+        m.putBoolean("isTrial", e.isTrial())
+        val mark = EntitlementManager.bindingState(reactContext, key)
+        if (mark != null) m.putString("mark", mark) else m.putNull("mark")
+        m.putInt("deviceLimit", e.deviceLimit)
+        entries.pushMap(m)
+      }
+      promise.resolve(entries)
+    } catch (e: Exception) {
+      promise.reject("get_key_entries", e.message, e)
+    }
+  }
+
+  // 按码绑定态网络校验（/api/binding-check，RN 侧 60s/码节流）：mark+在绑设备列表
+  // （deviceId 完整盐化哈希仅持码可见，RN 展示尾段截断）
+  @ReactMethod
+  fun getBindingInfo(key: String, promise: Promise) {
     scope.launch {
       try {
-        val r = EntitlementManager.releaseDevice(reactContext)
-        r.fold(
-          onSuccess = { promise.resolve(result(ok = true, message = "", errCode = null)) },
-          onFailure = { promise.resolve(result(ok = false, message = it.message ?: "", errCode = null)) },
-        )
+        val info = EntitlementManager.bindingCheckNow(reactContext, key)
+        val m: WritableMap = Arguments.createMap()
+        val mark = info.mark
+        if (mark != null) m.putString("mark", mark) else m.putNull("mark")
+        val devices = Arguments.createArray()
+        info.devices.forEach { d ->
+          val dm: WritableMap = Arguments.createMap()
+          dm.putString("deviceId", d.deviceId)
+          dm.putString("deviceName", d.deviceName)
+          dm.putDouble("boundAt", d.boundAt.toDouble())
+          dm.putBoolean("isSelf", d.isSelf)
+          devices.pushMap(dm)
+        }
+        m.putArray("devices", devices)
+        promise.resolve(m)
+      } catch (e: Exception) {
+        promise.reject("get_binding_info", e.message, e)
+      }
+    }
+  }
+
+  // 远程解绑他机（SDK v1.4 结构化：errCode 供 RN i18n，message 中文兜底）
+  @ReactMethod
+  fun releaseRemote(key: String, deviceId: String, promise: Promise) {
+    scope.launch {
+      try {
+        val r = EntitlementManager.releaseRemoteEx(reactContext, key, deviceId)
+        promise.resolve(result(ok = r.ok, message = if (r.ok) "" else r.userMessage, errCode = r.errCode))
+      } catch (e: Exception) {
+        promise.reject("release_remote", e.message, e)
+      }
+    }
+  }
+
+  // 解绑本机（方案 F.4+KeyInfo 按码）：key 空串=解主 key（兼容默认调用）；SDK v1.4 结构化
+  // 返回（errCode 供 RN i18n）。成功后 JS 侧负责凭证分支清理（仅无在绑码才断取链链路）
+  @ReactMethod
+  fun releaseDevice(key: String, promise: Promise) {
+    scope.launch {
+      try {
+        val r = EntitlementManager.releaseDeviceEx(reactContext, key.ifEmpty { null })
+        promise.resolve(result(ok = r.ok, message = if (r.ok) "" else r.userMessage, errCode = r.errCode))
       } catch (e: Exception) {
         promise.reject("release_device", e.message, e)
       }

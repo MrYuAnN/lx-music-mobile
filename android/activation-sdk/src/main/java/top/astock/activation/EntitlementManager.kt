@@ -152,6 +152,27 @@ object EntitlementManager {
     /** 单码绑定态快照：mark 同 bindingState 口径（null=本机在绑）；devices=当前在绑设备 */
     data class BindingInfo(val mark: String?, val devices: List<BoundDevice>)
 
+    /** 解绑结构化结果（v1.4）：errCode 三值+null（网络异常与非结构化应答统归 null）——
+     *  多语言宿主 i18n 消费；userMessage 保持中文原文（旧宿主文案通道+兜底双轨） */
+    data class ReleaseOutcome(val ok: Boolean, val errCode: String?, val userMessage: String)
+
+    // v1.4：服务端错误串→结构化码；非三值（空/未识别）归 null=网络或非结构化应答
+    internal fun releaseErrCode(err: String): String? = when (err) {
+        "not_bound", "trial_no_release", "release_limit" -> err
+        else -> null
+    }
+
+    // v1.4：解绑失败文案单源（原 releaseDevice/releaseRemote when 分支原样迁入，
+    // 逐字回归锚点——旧宿主消费 Result.message/String? 即此文案；remote 仅影响 not_bound 措辞）
+    internal fun releaseFailMessage(err: String, httpCode: Int, remote: Boolean): String = when (err) {
+        "not_bound" ->
+            if (remote) "该设备已不在此码名下，刷新后查看最新列表"
+            else "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
+        "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
+        "release_limit" -> "本月解绑次数已用完（每月限 1 次），请联系客服协助"
+        else -> "服务异常（$httpCode），请稍后再试"
+    }
+
     sealed class AuthResult {
         data class Success(val e: Entitlement, val devices: List<BoundDevice> = emptyList()) : AuthResult()
         data class Failure(
@@ -825,46 +846,69 @@ object EntitlementManager {
     /** 解绑指定 key 的本机设备（多码模型：KeyInfoSheet 指定码解绑）；成功后清除该
      *  key 本地权益。每月限 1 次由服务端控制。体验卡（trial7/trial3）除外：服务端
      *  禁止自助解绑（一码一用锁首绑设备，2026-10-24），仅管理台客诉通道可解。
-     *  key 本地权益，激活码可在新设备重新激活（用户侧每月限 1 次，服务端控制） */
-    suspend fun releaseDevice(context: Context, keyOverride: String? = null): Result<Unit> = withContext(Dispatchers.IO) {
-        runCatching {
-            val key = keyOverride ?: storedKey(context)
-            check(key.isNotEmpty()) { "本机未开通会员，无需解绑" }
-            val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
-            val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/device/release").openConnection() as HttpURLConnection
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            conn.doOutput = true
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
-            conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
-            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-            val code = conn.responseCode
-            val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
-                ?.bufferedReader()?.use { it.readText() } ?: ""
-            conn.disconnect()
-            if (code != 200) {
-                val err = runCatching { JSONObject(respBody).optString("error") }.getOrDefault("")
-                error(
-                    when (err) {
-                        "not_bound" -> "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
-                        "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
-                        "release_limit" -> "本月解绑次数已用完（每月限 1 次），请联系客服协助"
-                        else -> "服务异常（$code），请稍后再试"
-                    }
-                )
-            }
-            clearKey(context, key)
-        }
+     *  key 本地权益，激活码可在新设备重新激活（用户侧每月限 1 次，服务端控制）
+     *  v1.4：委托 releaseDeviceEx（行为等价；唯一有意差异=网络异常 message 为 null 时
+     *  补「网络异常」兜底文案，旧版此路径 message=null，服务端三文案逐字不变） */
+    suspend fun releaseDevice(context: Context, keyOverride: String? = null): Result<Unit> {
+        val r = releaseDeviceEx(context, keyOverride)
+        return if (r.ok) Result.success(Unit) else Result.failure(IllegalStateException(r.userMessage))
     }
+
+    /** 结构化解绑本机（v1.4）：成功路径与旧 releaseDevice 完全一致（含 clearKey 清
+     *  receipt+mark+primary 迁移）；失败给 errCode（not_bound/trial_no_release/
+     *  release_limit/null）+中文原文双通道 */
+    suspend fun releaseDeviceEx(context: Context, keyOverride: String? = null): ReleaseOutcome =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val key = keyOverride ?: storedKey(context)
+                check(key.isNotEmpty()) { "本机未开通会员，无需解绑" }
+                val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
+                val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/device/release").openConnection() as HttpURLConnection
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.doOutput = true
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
+                conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                val code = conn.responseCode
+                val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() } ?: ""
+                conn.disconnect()
+                if (code != 200) {
+                    val err = runCatching { JSONObject(respBody).optString("error") }.getOrDefault("")
+                    return@runCatching ReleaseOutcome(
+                        ok = false,
+                        errCode = releaseErrCode(err),
+                        userMessage = releaseFailMessage(err, code, remote = false),
+                    )
+                }
+                clearKey(context, key)
+                ReleaseOutcome(ok = true, errCode = null, userMessage = "")
+            }.fold(
+                { it },
+                { e ->
+                    Log.w(TAG, "release failed: ${e.message}")
+                    // check 短路文案（本机未开通会员…）与网络异常英文 message 均透传；null 补兜底
+                    ReleaseOutcome(ok = false, errCode = null, userMessage = e.message ?: "网络异常，请稍后再试")
+                },
+            )
+        }
 
     /**
      * 远程解绑他机占用（2026-08-27 设备管理面板）：/device/release 本无「仅本机」
      * 约束——key 即凭证的自助换绑模型，服务端同一月限口径管控。与 releaseDevice
      * 同请求骨架，但目标非本机，不清本地任何权益状态。成功返回 null，失败返回用户文案。
+     * v1.4：委托 releaseRemoteEx（行为等价）。
      */
-    suspend fun releaseRemote(context: Context, key: String, targetDeviceId: String): String? =
+    suspend fun releaseRemote(context: Context, key: String, targetDeviceId: String): String? {
+        val r = releaseRemoteEx(context, key, targetDeviceId)
+        return if (r.ok) null else r.userMessage
+    }
+
+    /** 结构化远程解绑（v1.4）：不清本地权益；失败 errCode+中文原文双通道 */
+    suspend fun releaseRemoteEx(context: Context, key: String, targetDeviceId: String): ReleaseOutcome =
         withContext(Dispatchers.IO) {
             runCatching {
                 val body = JSONObject(mapOf("key" to key, "device_id" to targetDeviceId))
@@ -883,20 +927,20 @@ object EntitlementManager {
                 conn.disconnect()
                 if (code != 200) {
                     val err = runCatching { JSONObject(respBody).optString("error") }.getOrDefault("")
-                    error(
-                        when (err) {
-                            "not_bound" -> "该设备已不在此码名下，刷新后查看最新列表"
-                            "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
-                            "release_limit" -> "本月解绑次数已用完（每月限 1 次），请联系客服协助"
-                            else -> "服务异常（$code），请稍后再试"
-                        }
+                    return@runCatching ReleaseOutcome(
+                        ok = false,
+                        errCode = releaseErrCode(err),
+                        userMessage = releaseFailMessage(err, code, remote = true),
                     )
                 }
-                null
-            }.getOrElse { e ->
-                Log.w(TAG, "release remote failed: ${e.message}")
-                e.message ?: "网络异常，请稍后再试"
-            }
+                ReleaseOutcome(ok = true, errCode = null, userMessage = "")
+            }.fold(
+                { it },
+                { e ->
+                    Log.w(TAG, "release remote failed: ${e.message}")
+                    ReleaseOutcome(ok = false, errCode = null, userMessage = e.message ?: "网络异常，请稍后再试")
+                },
+            )
         }
 
     /**

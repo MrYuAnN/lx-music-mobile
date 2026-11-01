@@ -10,6 +10,13 @@ import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
 import type { Message } from '@/lang'
 
+// 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；按源收费口径）：产品 app 键→
+// 音源显示名。键=平台 keys.apps 登记值（当前唯一 shiyin=QQ音乐源权益）；后续按源拆分收费
+// （tx/kw…）在此扩表，净屏同款 PlanSkus.APP_CN 单源位
+export const APP_CN: Record<string, string> = {
+  shiyin: 'QQ音乐',
+}
+
 // 状态行文案（About 页消费）：state+expiry → 展示文本
 export const formatActivationState = (info: ActivationStateInfo | null, t: (k: keyof Message) => string): string => {
   if (info == null) return ''
@@ -69,10 +76,12 @@ export const detectClipboardCandidate = (text: string | null | undefined): strin
 export const activateByCode = async(input: string, onDone: () => void): Promise<void> => {
   const code = normalizeCode(input)
   if (!code) return
-  // 多码融合确认（净屏 JingpingSheets#doActivate 对齐）：JP- 码且本机存在其他在绑码 →
-  // 「剩余时长并入」确认后带 merge 提交——服务端对换码是无条件融合+烧毁旧码，无确认
-  // =付费资产零知情处置。判定排除当前输入码自身（防误确认绕过 SDK「已使用过」拦截）；
-  // getKeys 失败=保守直接激活（不融合，服务端首兑自动语义）
+  // 多码融合确认（净屏 JingpingSheets#doActivate 对齐；2026-11-01 文案中性化）：JP- 码且
+  // 本机存在其他在绑码 → 融合确认后带 merge 提交。服务端=mergeSameApp 按 App 融合（跨 App
+  // 互不影响各自成卡），同 App 才发生「剩余时长并入新码、旧码停用」——确认框保留是防同源
+  // 换码烧旧码零知情（审计 A-2），文案按源口径中性化（跨源场景旧描述「旧码停用」不符）。
+  // 判定排除当前输入码自身（防误确认绕过 SDK「已使用过」拦截）；getKeys 失败=保守直接
+  // 激活（不融合，服务端首兑自动语义）
   let merge = false
   if (!code.startsWith('CZ-')) {
     const keys = await activationModule.getKeys().catch(() => null)
@@ -96,22 +105,85 @@ export const activateByCode = async(input: string, onDone: () => void): Promise<
   }
 }
 
-/** 解绑本机（F.4）：确认 → releaseDevice → 清取链凭证立即断链（N4）→ 未激活态引导 */
-export const unbindDevice = async(onDone: () => void): Promise<void> => {
+/** 解绑本机（F.4+KeyInfo 按码，审查 I-1）：确认 → releaseDevice(key) → 凭证分支清理
+ *  （重拉码列表，存在 mark==null 的在绑码才保留取链，否则 clearStoredAuth 断链——
+ *  判定口径=「有本机在绑码」而非「列表非空」，防停权态码残留 token，复审 S-复3） */
+export const unbindDevice = async(key: string | null, onDone: () => void): Promise<void> => {
   const confirmed = await confirmDialog({
     title: global.i18n.t('activation_btn_unbind'),
     message: global.i18n.t('activation_unbind_confirm'),
   }).catch(() => false)
   if (!confirmed) return
-  const r = await activationModule.releaseDevice()
+  const r = await activationModule.releaseDevice(key ?? '')
   if (r.ok) {
-    // 解绑即断链：旧 token 若只清内存不落盘删除，下次取链仍复用至 TTL 尽（复审 N4）
-    await clearStoredAuth()
+    // 凭证分支：解绑的码已 clearKey 消失；仍剩本机在绑码则取链继续用旧 token
+    const entries = await activationModule.getKeyEntries().catch(() => null)
+    const stillBound = entries?.some(e => e.mark == null) ?? false
+    if (!stillBound) await clearStoredAuth()
     toast(global.i18n.t('activation_toast_unbound'))
+    onDone()
+  } else {
+    toast(releaseErrMsg(r.errCode))
+  }
+}
+
+/** UNBOUND 态码卡「绑定本机」（审查 I-3）：直调 activate(key, false) 绕过融合确认
+ *  编排（净屏 KeyInfoActivity:214-215 同款单参语义；多码场景融合确认会诱导烧码）+
+ *  成功后重建取链。该入口唯一产生路径=他机/管理台解绑后巡检置 mark（SDK:490-493） */
+export const rebindKey = async(key: string, onDone: () => void): Promise<void> => {
+  const confirmed = await confirmDialog({
+    title: global.i18n.t('keyinfo_bind_this'),
+    message: global.i18n.t('keyinfo_bind_confirm'),
+  }).catch(() => false)
+  if (!confirmed) return
+  const r = await activationModule.activate(key, false)
+  if (r.ok) {
+    toast(global.i18n.t('activation_toast_activated'))
+    void ensureAuth(true).catch(() => {})
     onDone()
   } else {
     toast(r.message || global.i18n.t('activation_failed'))
   }
+}
+
+/** 解绑 errCode → i18n（SDK v1.4 结构化通道）；无映射（null=网络异常/非结构化应答）
+ *  走通用失败文案（审查 I-E：SDK 中文原文与英文网络异常文本均不透传多语言用户，
+ *  方案 §2.1 拍板「兜底用通用『操作失败』而非『网络异常』」）；remote=远程解绑
+ *  not_bound 专用措辞（审查 I-D：SDK releaseFailMessage remote 分化对齐） */
+const releaseErrMsg = (errCode: string | null, remote = false): string => {
+  switch (errCode) {
+    case 'not_bound': return global.i18n.t(remote ? 'release_err_not_bound_remote' : 'release_err_not_bound')
+    case 'release_limit': return global.i18n.t('release_err_release_limit')
+    case 'trial_no_release': return global.i18n.t('release_err_trial_no_release')
+    default: return global.i18n.t('activation_failed')
+  }
+}
+
+/** 远程解绑他机设备（KeyInfo 设备列表行，双要素确认，审查 S-PM5） */
+export const unbindRemoteDevice = async(key: string, deviceId: string, onDone: () => void): Promise<void> => {
+  const confirmed = await confirmDialog({
+    title: global.i18n.t('keyinfo_unbind_device'),
+    message: global.i18n.t('keyinfo_remote_unbind_confirm'),
+  }).catch(() => false)
+  if (!confirmed) return
+  const r = await activationModule.releaseRemote(key, deviceId)
+  if (r.ok) {
+    toast(global.i18n.t('keyinfo_unbind_remote_done')) // 成功反馈（审查 S6：破坏性操作完成应有确认，非仅靠行消失）
+    onDone()
+  } else {
+    toast(releaseErrMsg(r.errCode, true))
+  }
+}
+
+/** 到期剩余时长递进提示（净屏 remainHint 同款：天粒度；≤3 天转小时粒度专治临期感知；
+ *  永久(0)/无记录(null)/已过期 不提示） */
+export const formatRemainHint = (expiry: number, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
+  if (expiry == 0) return '' // 0=永久（KeyEntry.expiry 恒 number，审查 S11 收口）
+  const remainSec = expiry - Math.floor(Date.now() / 1000)
+  if (remainSec <= 0) return ''
+  const hours = Math.floor(remainSec / 3600)
+  if (hours <= 72) return t('keyinfo_remain_hours', { n: Math.max(hours, 1) })
+  return t('keyinfo_remain_days', { n: Math.floor(hours / 24) })
 }
 
 /** 首启试用欢迎提示（F.1，净屏 pending 消费对齐）：AppState active 每次前台消费一次，
