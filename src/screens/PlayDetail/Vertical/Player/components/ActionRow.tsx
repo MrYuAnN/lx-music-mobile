@@ -20,6 +20,7 @@ import { updateSetting } from '@/core/common'
 import { toggleTranslation } from '@/core/lyric'
 import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { reloadCurrentWithQuality } from '@/core/player/player'
+import { guardEntitlementGate } from '@/core/shiyin/client'
 import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
 import { createStyle } from '@/utils/tools'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
@@ -202,8 +203,11 @@ const ActionRow = ({ page }: ActionRowProps) => {
   const downloadSlot = useMemo(() => {
     const showQualityModal = () => {
       if (!identityMusicInfo || identityIsBareLocal) return
-      // 弹音质选择，默认选中当前播放档（actualQuality 即实际在播档）
-      downloadQualityModalRef.current?.show(identityMusicInfo, actualQuality ?? settingState.setting['player.playQuality'])
+      // 弹音质选择，默认选中当前播放档（actualQuality 即实际在播档）；⑧ 入口权益闸前置
+      void guardEntitlementGate().then(blocked => {
+        if (blocked) return
+        downloadQualityModalRef.current?.show(identityMusicInfo, actualQuality ?? settingState.setting['player.playQuality'])
+      })
     }
     if (!identityMusicInfo || identityIsBareLocal) {
       return { icon: 'download-2', label: t('download_action'), disabled: true, onPress: () => {} }

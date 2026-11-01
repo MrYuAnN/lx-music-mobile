@@ -5,6 +5,7 @@ import settingState from '@/store/setting/state'
 import { getMusicUrl, getLyricInfo } from '@/core/music/online'
 import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath, RNFSExternalDirectoryPath } from '@/utils/fs'
 import { obfuscateFileHeader } from '@/utils/nativeModules/crypto'
+import { guardEntitlementGate } from '@/core/shiyin/client'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
 import { writeMetadata as lmWriteMetadata, writePic as lmWritePic } from '@/utils/localMediaMetadata'
@@ -102,35 +103,41 @@ const migrateEmbedTags = async(): Promise<void> => {
   await saveData(storageDataPrefix.localTagEmbedMigrationDone, '1')
 }
 
-/** ⑦b 存量迁移（2026-11-01）：旧公共 Music/拾音/ 的已下载文件搬入私有目录+加 .shy+混淆头
- *  （仅 downloadList 内有记录的条目按 filePath 判定；无记录孤儿留在公共目录=用户自管理文件）。
- *  尽力而为：单文件失败不断链；完成后 saveList 持久化新路径 */
+/** ⑦b 存量迁移（2026-11-01）：旧公共 Music/拾音/ 全部文件搬入私有目录（音频加 .shy+混淆头，
+ *  lrc/封面跟随不加壳）。装机实测修正：原 store 记录判定会静默漏搬（downloadList 可能为空/
+ *  记录缺失），改物理扫描不依赖 store；store 内仍指旧目录的任务按 fileName 映射同步更新。
+ *  尽力而为：单文件失败不断链 */
 const migrateLegacyDownloads = async(): Promise<void> => {
-  const legacy = downloadList.filter(t => t.metadata.filePath?.includes(LEGACY_DOWNLOAD_DIR_MARK))
+  let entries
+  try {
+    entries = await readDir(LEGACY_DOWNLOAD_DIR)
+  } catch { return } // 旧目录不存在=无存量
+  if (!entries.length) return
+  await mkdir(DOWNLOAD_DIR).catch(() => {})
   let moved = 0
-  for (const task of legacy) {
-    const old = task.metadata.filePath
-    if (!old.startsWith(LEGACY_DOWNLOAD_DIR)) continue
+  for (const entry of entries) {
+    if (!entry.isFile) continue
+    const isLrc = entry.name.endsWith('.lrc')
+    const newPath = `${DOWNLOAD_DIR}/${entry.name}${isLrc ? '' : '.shy'}`
     try {
-      if (!(await existsFile(old))) continue
-      await mkdir(DOWNLOAD_DIR).catch(() => {})
-      const newPath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
       await unlink(newPath).catch(() => {})
-      await moveFile(old, newPath)
-      await obfuscateFileHeader(newPath).catch(() => {})
-      task.metadata.filePath = newPath
+      await moveFile(entry.path, newPath)
+      if (!isLrc) await obfuscateFileHeader(newPath).catch(() => {})
       moved++
     } catch (err) {
-      console.warn('legacy download migrate failed:', old, err)
+      console.warn('legacy download migrate failed:', entry.name, err)
     }
   }
-  // 全量兜底混淆：播放还原过头（明头窗口=本会话）的 .shy 回到混淆态（冷启动常态=全混淆）
+  // store 内仍指旧目录的任务：按 fileName 映射新路径（fileName 与搬移前音频名同源）
+  let storeUpdated = 0
   for (const task of downloadList) {
-    if (task.status != 'completed') continue
     const p = task.metadata.filePath
-    if (p?.endsWith('.shy')) await obfuscateFileHeader(p).catch(() => {})
+    if (p?.includes(LEGACY_DOWNLOAD_DIR_MARK)) {
+      task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
+      storeUpdated++
+    }
   }
-  if (moved > 0) {
+  if (moved > 0 || storeUpdated > 0) {
     saveList()
     global.state_event.downloadStateChanged([...downloadList])
   }
@@ -406,6 +413,10 @@ export const revalidateWifiWaiting = async() => {
  * 判定遍历全部 completed 同 id 任务（S10，filter 多条共存先例）
  */
 export const addDownloadTask = async(musicInfo: SY.Music.MusicInfoOnline, quality?: SY.Quality): Promise<SY.Download.AddDownloadResult> => {
+  // ⑧ 下载闸门（2026-11-01 用户拍板「所有需要权限的入口统一前置拦截」）：过期不入队。
+  // UI 层弹窗 show 前已拦（体验：点下载即引导，不弹音质选择）；此为唯一入队闸防漏网
+  // （下载管理页「重新下载」等直调路径）。引导已弹，返回 error 语义（消费方静默）
+  if (await guardEntitlementGate()) return { status: 'error' }
   await initDownloadList()
   const taskId = getTaskId(musicInfo)
   const requestedQuality = quality ?? settingState.setting['download.quality']

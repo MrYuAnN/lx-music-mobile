@@ -8,6 +8,7 @@ import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } fr
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
 import { handlePlay, handlePlayLater, handleShare, handleCopyLink } from './listAction'
+import { guardEntitlementGate } from '@/core/shiyin/client'
 import { createStyle } from '@/utils/tools'
 
 export interface OnlineListProps {
@@ -138,7 +139,9 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
         onShare={info => { handleShare(info.musicInfo) }}
         onCopyLink={info => { handleCopyLink(info.musicInfo) }}
         onAdd={handleAddMusic}
-        onDownload={info => {
+        onDownload={async info => {
+          // ⑧ 入口权益闸（过期=引导，不弹音质选择）
+          if (await guardEntitlementGate()) return
           downloadQualityModalRef.current?.show(info.musicInfo)
         }}
       />

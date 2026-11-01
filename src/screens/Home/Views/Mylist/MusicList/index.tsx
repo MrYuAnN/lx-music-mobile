@@ -5,6 +5,7 @@ import { getListCoverPic } from '../listCoverSource'
 import ListMenu, { type ListMenuType, type Position, type SelectInfo } from './ListMenu'
 import { guardWritableList, handleCloneList, handlePlay as handlePlayMusic, handlePlayLater, handleRemove as handleRemoveMusic, handleCopyLink, handleShare, handleUpdateMusicInfo, isReadonlyList } from './listAction'
 import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
+import { guardEntitlementGate } from '@/core/shiyin/client'
 import ListManageMenu, { type ListManageMenuType } from './ListManageMenu'
 import ListNameEdit, { type ListNameEditType } from '../manage/ListNameEdit'
 import ListMusicSort, { type ListMusicSortType } from '../manage/ListMusicSort'
@@ -338,7 +339,9 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
         onMove={handleMoveMusic}
         onEditMetadata={handleEditMetadata}
         onToggleSource={info => { if (!guardWritableList(info.listId)) return; musicToggleModalRef.current?.show(info) }}
-        onDownload={info => {
+        onDownload={async info => {
+          // ⑧ 入口权益闸（过期=引导，不弹音质选择）
+          if (await guardEntitlementGate()) return
           // 下载曲 local 条目按在线身份弹选档（2026-10-29 题3：菜单下载项已随身份归一可见）
           const identity = toOnlineIdentity(info.musicInfo)
           if (identity.source == 'local') return

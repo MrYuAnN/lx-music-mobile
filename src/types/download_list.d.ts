@@ -16,7 +16,7 @@ declare namespace SY {
 
     /** 新增下载任务三态结果（2026-10-29 ①-3 定稿）：added=入队 / exists=任务在途 /
      * downloaded=已完成同档（对标 Apple Music/QQ音乐已下载 no-op） */
-    type AddDownloadStatus = 'added' | 'exists' | 'downloaded'
+    type AddDownloadStatus = 'added' | 'exists' | 'downloaded' | 'error'
     interface AddDownloadResult {
       status: AddDownloadStatus
       /** status=downloaded 时返回命中任务的实际落地档（toast 展示用，审查 I-F 回退链口径） */

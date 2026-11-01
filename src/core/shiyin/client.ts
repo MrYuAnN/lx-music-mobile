@@ -40,10 +40,28 @@ export const guideEntitlementExpired = (isTrial: boolean): void => {
 }
 
 const checkEntitlementBeforeUrl = async(): Promise<void> => {
+  if (await guardEntitlementGate()) throw shiyinEntitlementExpiredError()
+}
+
+/** 本地态过期判定（零网络，SDK「State 判定纯本地时间戳」契约——负载模型：播放 N 次=本地读
+ *  N 次微秒级+取链本身，无新增请求） */
+export const isEntitlementExpired = async(): Promise<boolean> => {
   const st = await activationModule.getState().catch(() => null)
-  if (st?.state != 'expired') return
-  guideEntitlementExpired(st.isTrial)
-  throw shiyinEntitlementExpiredError()
+  return st?.state == 'expired'
+}
+
+const isTrialEntitlement = async(): Promise<boolean> => {
+  const st = await activationModule.getState().catch(() => null)
+  return st?.isTrial ?? false
+}
+
+/** ⑧ 入口权益闸（2026-11-01 用户拍板「所有需要权限的入口统一前置拦截」）：expired=引导一次
+ *  并返回 true（blocked）。消费方=handlePlay（播放）/下载音质弹窗 show×3/addDownloadTask
+ *  闸门/取链前置（兜底层） */
+export const guardEntitlementGate = async(): Promise<boolean> => {
+  if (!(await isEntitlementExpired())) return false
+  guideEntitlementExpired(await isTrialEntitlement())
+  return true
 }
 
 // 快拓名单 name（auth.isShiyinFastFail）：换源链对过期设备直接终止不空转退避
