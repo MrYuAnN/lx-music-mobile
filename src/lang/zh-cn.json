@@ -582,7 +582,6 @@
   "activation_merge_confirm_msg": "本机已有其他激活码。若新码与其包含相同音源，旧码剩余时长将并入新码、旧码随之停用；不同音源互不影响，各自独立展示。确定继续？",
   "activation_toast_activated": "激活成功",
   "activation_toast_unbound": "已解绑本机，重新激活可恢复权益",
-  "activation_welcome_trial": "已获得 3 天免费试用，全部功能已开放",
   "activation_failed": "操作失败，请稍后重试",
   "changelog_group_add": "新增",
   "changelog_group_fix": "修复",
@@ -595,5 +594,15 @@
   "setting_root_section_activation": "激活",
   "setting_root_section_general": "通用",
   "setting_root_section_about": "关于",
-  "version_row_new": "新版本 v{version}"
+  "version_row_new": "新版本 v{version}",
+  "shiyin_expired_guide_title": "会员已到期",
+  "shiyin_expired_guide_body": "播放权益已到期。续费或输入新激活码后即可继续使用。",
+  "shiyin_expired_guide_go": "去续费",
+  "keyinfo_remain_minutes": "剩 {n} 分钟",
+  "keyinfo_remain_soon": "即将到期",
+  "home_banner_expiring": "会员至 {date} 即将到期 · 点击续费",
+  "home_banner_expired": "会员已到期 · 点击续费",
+  "activation_welcome_trial_title": "已获得 3 天免费试用 🎉",
+  "activation_welcome_trial_body": "3 天全功能免费试用已生效，到期时间可在「我的激活码」查看。到期后搜索、榜单、歌单、歌词、封面永久免费，播放需激活码。",
+  "activation_welcome_trial_btn": "开始使用"
 }

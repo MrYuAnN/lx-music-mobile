@@ -175,25 +175,43 @@ export const unbindRemoteDevice = async(key: string, deviceId: string, onDone: (
   }
 }
 
-/** 到期剩余时长递进提示（净屏 remainHint 同款：天粒度；≤3 天转小时粒度专治临期感知；
- *  永久(0)/无记录(null)/已过期 不提示） */
+/** 到期剩余时长递进提示（净屏 remainHint 口径对齐+分钟延伸，2026-11-01 用户拍板）：
+ *  天=自然日差（Asia/Shanghai，净屏 10-14 修复口径：服务端 72h 整+钟偏移叠加下 ceil
+ *  秒差会跨上界多显一天，自然日差稳定）→小时（向上取整不低估）→分钟（用户要求新增，
+ *  净屏 <1h 即显「即将到期」无此档）→<1min 即将到期；永久(0)/已过期 不提示 */
 export const formatRemainHint = (expiry: number, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
   if (expiry == 0) return '' // 0=永久（KeyEntry.expiry 恒 number，审查 S11 收口）
   const remainSec = expiry - Math.floor(Date.now() / 1000)
   if (remainSec <= 0) return ''
-  const hours = Math.floor(remainSec / 3600)
-  if (hours <= 72) return t('keyinfo_remain_hours', { n: Math.max(hours, 1) })
-  return t('keyinfo_remain_days', { n: Math.floor(hours / 24) })
+  if (remainSec >= 86400) {
+    const zone = 'Asia/Shanghai'
+    const today = Number(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date()).replaceAll('-', ''))
+    const expDay = Number(new Intl.DateTimeFormat('en-CA', { timeZone: zone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(expiry * 1000)).replaceAll('-', ''))
+    return t('keyinfo_remain_days', { n: Math.max(expDay - today, 0) })
+  }
+  if (remainSec >= 3600) return t('keyinfo_remain_hours', { n: Math.ceil(remainSec / 3600) })
+  if (remainSec >= 60) return t('keyinfo_remain_minutes', { n: Math.ceil(remainSec / 60) })
+  return t('keyinfo_remain_soon')
 }
 
 /** 首启试用欢迎提示（F.1，净屏 pending 消费对齐）：AppState active 每次前台消费一次，
- *  claim 在途时 SDK 返 false 不清（下个前台再试，审查 N3）；轻 toast 非模态（防与强更弹叠加） */
+ *  claim 在途时 SDK 返 false 不清（下个前台再试，审查 N3）。展示形态=模态卡片弹窗
+ *  （2026-11-01 用户拍板对齐净屏 JingpingDialogs.iconCard 三段式，推翻批2 v3 F 表
+ *  「轻 toast」落字——防与强更弹窗叠加改错峰承担：延迟 2s 弹，强更弹窗优先呈现） */
 export const useTrialWelcome = (): void => {
   useEffect(() => {
     let subscription: { remove: () => void } | null = null
     const consume = () => {
       void activationModule.consumeTrialWelcomePending().then(granted => {
-        if (granted) toast(global.i18n.t('activation_welcome_trial'))
+        if (!granted) return
+        setTimeout(() => {
+          void confirmDialog({
+            title: global.i18n.t('activation_welcome_trial_title'),
+            message: global.i18n.t('activation_welcome_trial_body'),
+            confirmButtonText: global.i18n.t('activation_welcome_trial_btn'),
+            bgClose: false,
+          }).catch(() => {})
+        }, 2000)
       }).catch(() => {})
     }
     consume()

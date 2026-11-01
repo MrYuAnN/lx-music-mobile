@@ -8,6 +8,46 @@ import { requestMsg } from '@/utils/message'
 import { ensureAuth, signRequest } from './auth'
 import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL } from './config'
 import versionActions from '@/store/version/action'
+import { activationModule } from '@/utils/nativeModules/activation'
+import { confirmDialog } from '@/utils/tools'
+import { pushMyKeysScreen } from '@/navigation/navigation'
+
+// ⑥ 双层权益门·客户端层（2026-11-01 拍板）：本地 Expired 态（SDK 纯本地时间判定）取链
+// 前置拦截——doRegister 的本地快抛只护无码分支（auth.ts:126-132 有 key 即跳过），过期
+// 设备旧 token TTL≤24h 内 ensureAuth 直接过、取链照常 200（用户装机实测），故取链入口
+// 独立查态每次都过。免费面五项不经取链不受影响，恰好只锁播放（方案 §8「锁播放」拍板）。
+// 权威层=服务端 token 内嵌到期校验（改设备时间续命绕不过本层但绕得过此层）。
+let expiryGuideShowing = false
+const guideEntitlementExpired = (): void => {
+  // 会话级守卫：换源链对同一首歌多源遍历会多次进入，弹一次即可；引导直达输码页
+  if (expiryGuideShowing) return
+  expiryGuideShowing = true
+  void confirmDialog({
+    title: global.i18n.t('shiyin_expired_guide_title'),
+    message: global.i18n.t('shiyin_expired_guide_body'),
+    confirmButtonText: global.i18n.t('shiyin_expired_guide_go'),
+    bgClose: false,
+  }).then(confirmed => {
+    expiryGuideShowing = false
+    if (confirmed) pushMyKeysScreen('')
+  }).catch(() => {
+    expiryGuideShowing = false
+  })
+}
+
+const checkEntitlementBeforeUrl = async(): Promise<void> => {
+  const st = await activationModule.getState().catch(() => null)
+  if (st?.state != 'expired') return
+  guideEntitlementExpired()
+  throw shiyinEntitlementExpiredError()
+}
+
+// 快拓名单 name（auth.isShiyinFastFail）：换源链对过期设备直接终止不空转退避
+const shiyinEntitlementExpiredError = (): Error => {
+  const err = new Error(global.i18n.t('shiyin_entitlement_expired'))
+  err.name = 'ShiyinEntitlementExpired'
+  return err
+}
 
 // per-source songId 提取（旧形态 songInfo=toOldMusicInfo 输出，字段逐源核对 utils/index.ts）
 const getSongId = (source: string, songInfo: Record<string, any>): string => {
@@ -58,6 +98,8 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
     if (!songId) throw new Error('song id missing')
     // 快速失败：源不在 /config 下发集（兜住 findMusic 跨源遍历的必败请求，方案 #12 知情残余）
     if (getShiyinSources()[source] == null) throw new Error(requestMsg.unachievable)
+    // ⑥ 权益前置拦截（双层权益门·客户端层）：Expired 态引导续费不发请求
+    await checkEntitlementBeforeUrl()
 
     const auth = await ensureAuth()
     let resp = await (request = requestUrl(auth, source, songId, targetQuality, isRefresh)).promise
@@ -76,7 +118,13 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
         if (body.url) return { url: body.url, type: targetQuality, expire: body.expire }
         throw new Error(requestMsg.fail)
       case 403:
-        // 摘源（cookie 失效自动摘/开关关闭）：不自动重试，立即重拉 /config 收敛本地源集
+        // ⑥ expired=服务端 token 内嵌到期校验拒（双层权益门·权威层信号）——与前置拦截
+        // 同引导；其余 403=摘源（cookie 失效自动摘/开关关闭）：不自动重试，立即重拉
+        // /config 收敛本地源集
+        if (body.message == 'expired') {
+          guideEntitlementExpired()
+          throw shiyinEntitlementExpiredError()
+        }
         void fetchShiyinConfig().catch(() => {})
         throw new Error(global.i18n.t('shiyin_source_disabled'))
       case 426: {

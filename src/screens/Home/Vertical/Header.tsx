@@ -7,6 +7,7 @@ import StatusBar from '@/components/common/StatusBar'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
 import commonState from '@/store/common/state'
 import Text, { FontFamilies } from '@/components/common/Text'
+import ExpiryBanner from '../components/ExpiryBanner'
 import { navigations } from '@/navigation'
 import { ICON_SIZE } from '@/config/constant'
 import { setSpText } from '@/utils/pixelRatio'
@@ -64,6 +65,8 @@ const Header = ({ children }: { children: React.ReactNode }) => {
             <Text size={34} style={{ ...styles.largeTitle, color: theme['c-font'] }}>{APP_NAME}</Text>
           </Animated.View>
         </View>
+        {/* 到期警示横幅（2026-11-01 用户拍板对齐净屏「打开即见」：即将到期金/已到期红，点击直达激活码） */}
+        <ExpiryBanner />
         {children}
       </Animated.ScrollView>
       {/* 固定栏：滚动收缩后玻璃与小标题渐显（未滚动时透明，露出内容区大标题）；双圆钮常驻此栏 */}

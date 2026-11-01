@@ -344,12 +344,14 @@ const KeyCard = memo(({
 
   // 生效范围行（净屏 entitlementRows 对齐，2026-11-01 拍板）：按源收费→逐源行「音源 · 有效期」；
   // expiries 键=产品 app 键（APP_CN 映射显示名）；日期口径=净屏 app_row 同款 date-only（剩余递进
-  // 由 remainHint 承担）
+  // 由 remainHint 承担）。状态分态（2026-11-01 用户装机反馈：过期码卡曾恒显「试用中」；
+  // 净屏 :445 口径——已到期标签优先于码级档位，与设置页 formatActivationState Expired 态同源）
   const renderExpiryRow = (app: string, exp: number) => {
     const remain = formatRemainHint(exp, t)
+    const expired = exp != 0 && exp * 1000 <= Date.now()
     const expiryPhrase = exp == 0
       ? t('activation_permanent')
-      : `${entry.isTrial ? `${t('activation_state_trial')} · ` : ''}${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}${remain ? ` · ${remain}` : ''}`
+      : `${expired ? `${t('activation_state_expired')} · ` : entry.isTrial ? `${t('activation_state_trial')} · ` : ''}${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}${remain ? ` · ${remain}` : ''}`
     return `${APP_CN[app] ?? app} · ${expiryPhrase}`
   }
   // 试用标=码级属性：多源扩表（⑥平台批）时逐行重复口径需复核（DEPLOY.md §8 锚点）
