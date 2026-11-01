@@ -13,7 +13,10 @@ import (
 
 // shiyinOrderCfg 拾音订单域产品参数（ordercore 单源注入；值=批2 接线拍板——
 // 单号前缀 SY/SYTRIAL- 与净屏 JP/JPTRIAL- 区分，试用 SKU=runbook 已建
-// shiyin-auto3（3 天 dl2），组合禁入档位=净屏同款+auto3（体验档不参与组合）。
+// shiyin-auto3（3 天 dl2）。
+// 组合禁入档位=产品自有规则（批3 用户拍板推翻批2「净屏同款」照抄：d7 是拾音
+// 主售档，须可参与组合；trial7/trial3 为净屏 trial 档名，拾音无此档留着无害，
+// auto3 体验档保留禁入——试用额度不应被组合购入套走）。
 // 金额/标签/文案纪律与净屏逐项对齐：金额统计禁实时 JOIN 当前价（快照单源）。
 var shiyinOrderCfg = osv.Config{
 	ProductID:            "shiyin",
@@ -24,7 +27,7 @@ var shiyinOrderCfg = osv.Config{
 	TrialDesc:            "免费试用(3天)",
 	TrialCreateDesc:      "自动试用发放（首启免费试用 3 天）",
 	FreeTags:             []string{"送人", "活动赠送"},
-	ComboRestrictedTiers: []string{"trial7", "trial3", "d7", "auto3"},
+	ComboRestrictedTiers: []string{"trial7", "trial3", "auto3"},
 }
 
 // AppCN 拾音受管 app 的 key→中文名（描述快照数据源；product_apps 注册表拾音行
