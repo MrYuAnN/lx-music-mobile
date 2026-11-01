@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<title>拾音选购页 v3 — 权益卡 + 档位排列两形态对比</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e8ed; font-family:-apple-system,"PingFang SC","Segoe UI","Microsoft YaHei",sans-serif; padding:32px; }
+  h1 { font-size:22px; color:#1a1a1a; margin-bottom:6px; }
+  .sub { font-size:13px; color:#6b6b70; margin-bottom:24px; line-height:1.7; max-width:900px; }
+  .pair { display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start; }
+  .form-tag { font-size:14px; font-weight:700; color:#1a1a1a; margin-bottom:10px; }
+  .form-tag small { font-weight:400; color:#8a8a8e; }
+
+  .phone { width:390px; border-radius:44px; border:11px solid #141414; overflow:hidden; position:relative;
+           box-shadow:0 10px 34px rgba(0,0,0,.22); background:#F2F2F7; color:#000; }
+  .statusbar { height:44px; display:flex; justify-content:space-between; align-items:center;
+               padding:0 24px 0 30px; font-size:14px; font-weight:600; }
+  .notch { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:118px; height:26px;
+           background:#141414; border-radius:14px; z-index:9; }
+  .page { min-height:640px; display:flex; flex-direction:column; --card:#FFFFFF; --sep:rgba(60,60,67,.12);
+          --label:#8A8A8E; --primary:#FA233B; --orange:#FF950A; --chip:#F2F2F7; }
+  .hdr { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:17px; font-weight:700; }
+  .hdr .back { font-size:20px; width:28px; text-align:center; opacity:.9; }
+  .card { background:var(--card); border-radius:16px; padding:14px 16px; margin:0 16px 10px; }
+  .pill { display:inline-block; font-size:11px; font-weight:600; border-radius:999px; padding:3px 10px; }
+  .pill.gray { background:var(--chip); color:var(--label); }
+  .pill.org { background:rgba(255,149,10,.15); color:var(--orange); }
+  .btn-primary { background:var(--primary); color:#fff; border-radius:999px; text-align:center;
+                 font-size:16px; font-weight:700; padding:14px 0; }
+  .note { border:1.5px dashed #e6a817; background:rgba(255,214,90,.28); color:#7a5b00; border-radius:10px;
+          font-size:12px; line-height:1.65; padding:9px 12px; margin:12px 16px 4px; }
+  .note b { color:#5d4600; }
+
+  /* 权益卡 */
+  .ent-card { display:flex; align-items:center; gap:10px; padding:11px 14px; font-size:13px; }
+  .ent-card.warn { background:rgba(255,149,10,.12); }
+  .ent-ico { font-size:15px; }
+
+  /* 形态A:音源 tab + 档位列表 */
+  .src-tabs { display:flex; gap:8px; margin:2px 16px 12px; overflow-x:auto; padding-bottom:2px; }
+  .src-tab { flex:none; border:1px solid var(--sep); border-radius:999px; padding:8px 15px;
+             font-size:13px; font-weight:600; color:var(--label); background:var(--card); }
+  .src-tab.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .tier-row { display:flex; align-items:center; gap:12px; padding:13px 16px; }
+  .tier-row.sel { outline:1.5px solid var(--primary); outline-offset:-1.5px; }
+  .tier-name { font-size:15px; font-weight:700; }
+  .tier-meta { font-size:12px; color:var(--label); margin-top:2px; }
+  .tier-price { margin-left:auto; font-size:18px; font-weight:800; color:var(--primary); white-space:nowrap; }
+  .tier-price small { font-size:12px; }
+  .tick { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          font-size:12px; color:#fff; background:#E5E5EA; color:transparent; flex:none; }
+  .tier-row.sel .tick { background:var(--primary); color:#fff; }
+  .paybar { margin-top:auto; border-top:.5px solid var(--sep); background:var(--card);
+            padding:12px 16px 26px; display:flex; align-items:center; gap:14px; }
+  .paybar .sum { font-size:13px; color:var(--label); white-space:nowrap; }
+  .paybar .sum b { font-size:20px; color:var(--primary); }
+  .paybar .btn-primary { flex:1; padding:13px 0; }
+
+  /* 形态B:一音源一卡+卡内档位 chips */
+  .src-badge { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+               font-size:17px; font-weight:800; color:#fff; flex:none; }
+  .src-all { background:linear-gradient(135deg,#FA233B 50%,#FB7B3C 50%); }
+  .src-tx { background:#31C27C; } .src-wy { background:#DD001B; } .src-kg { background:#2CA6F4; } .src-kw { background:#FFC337; }
+  .tier-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:10px; }
+  .chip { border:1px solid var(--sep); border-radius:8px; padding:5px 9px; font-size:11px; color:var(--label); }
+  .chip.on { border-color:var(--primary); color:var(--primary); font-weight:700; }
+</style>
+</head>
+<body>
+
+<h1>拾音选购页 v3 — 权益卡 + 档位排列两形态对比</h1>
+<div class="sub">
+  回应两个问题：①标题下提示升级为<b>「当前权益卡」分态容器</b>（图中已画试用态+多音源已激活态两种渲染）；②档位排列给两形态——<b>形态 A：音源 tab × 档位纵向列表</b>（对标 Apple 订阅/iCloud+，档位任意扩一屏从容）vs <b>形态 B：一音源一卡 × 卡内档位 chips</b>（紧凑，档位多则挤）。回复「A 权益卡按 X 态」即可定稿。
+</div>
+
+<div class="pair">
+  <!-- ====== 形态 A ====== -->
+  <div>
+    <div class="form-tag">形态 A｜音源 tab × 档位列表 <small>（推荐 · 对标 Apple 订阅页/iCloud+ 分段选择）</small></div>
+    <div class="phone"><div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+      <div class="page">
+        <div class="hdr"><span class="back">‹</span>获取激活码</div>
+
+        <!-- 当前权益卡:试用态 -->
+        <div class="card ent-card"><span class="ent-ico">🎁</span>试用中 · 剩 2 天 · 全音源可用<span class="pill gray" style="margin-left:auto;">详情 ›</span></div>
+        <!-- 权益卡另一态示例(多音源已激活,警示)——静态示意:
+        <div class="card ent-card warn"><span class="ent-ico">⚠️</span>QQ 至 11-08 · 网易云 至 11-14<span class="pill org" style="margin-left:auto;">续费 ›</span></div> -->
+
+        <div class="src-tabs">
+          <span class="src-tab on">全源</span><span class="src-tab">QQ</span><span class="src-tab">网易云</span><span class="src-tab">酷狗</span><span class="src-tab">酷我</span>
+        </div>
+
+        <div class="card tier-row sel">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">7 天</span><div class="tier-meta">全音源 · 1 台设备 · 即时发货</div></span>
+          <span class="tier-price"><small>¥</small>1.99</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">月卡</span><div class="tier-meta">全音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>5.99</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">季卡</span><div class="tier-meta">全音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>15.99</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">年卡</span><div class="tier-meta">全音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>49.99</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">永久</span><div class="tier-meta">全音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>99.99</span>
+        </div>
+
+        <div class="note"><b>权益卡分态</b>：未激活=隐藏；试用=🎁剩 N 天全源；已激活单源=✅QQ 至日期；多源=✅QQ 11-08 · 网易云 11-14（一行收敛，详情进 MyKeys）；≤3 天变警示橙+「续费」直达。数据=SDK expiries（音源 key+shiyin 兜底），零新接口。</div>
+        <div class="paybar">
+          <span class="sum">全源 · 7 天<br><b>¥1.99</b></span>
+          <div class="btn-primary">去支付</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== 形态 B ====== -->
+  <div>
+    <div class="form-tag">形态 B｜一音源一卡 × 卡内档位 chips <small>（紧凑；档位 ≤3 舒适，5 档起挤）</small></div>
+    <div class="phone"><div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+      <div class="page">
+        <div class="hdr"><span class="back">‹</span>获取激活码</div>
+
+        <div class="card ent-card"><span class="ent-ico">🎁</span>试用中 · 剩 2 天 · 全音源可用<span class="pill gray" style="margin-left:auto;">详情 ›</span></div>
+
+        <div class="card" style="outline:1.5px solid var(--primary); outline-offset:-1.5px;">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="src-badge src-all">拾</div>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;">全源</div>
+              <div style="font-size:12px;color:var(--label);">QQ / 网易云 / 酷狗 / 酷我 全解锁</div>
+            </div>
+            <div style="font-size:19px;font-weight:800;color:var(--primary);"><small style="font-size:12px;">¥</small>1.99</div>
+          </div>
+          <div class="tier-chips">
+            <span class="chip on">7天 ¥1.99</span><span class="chip">月 ¥5.99</span><span class="chip">季 ¥15.99</span><span class="chip">年 ¥49.99</span><span class="chip">永久 ¥99.99</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="src-badge src-tx">Q</div>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;">QQ音乐</div>
+              <div style="font-size:12px;color:var(--label);">仅解锁 QQ 音源</div>
+            </div>
+            <div style="font-size:19px;font-weight:800;color:var(--primary);"><small style="font-size:12px;">¥</small>1.49</div>
+          </div>
+          <div class="tier-chips">
+            <span class="chip on">7天 ¥1.49</span><span class="chip">月 ¥4.49</span><span class="chip">季 ¥11.99</span><span class="chip">年 ¥39.99</span><span class="chip">永久 ¥79.99</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="src-badge src-wy">网</div>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;">网易云音乐</div>
+              <div style="font-size:12px;color:var(--label);">仅解锁网易云音源</div>
+            </div>
+            <div style="font-size:19px;font-weight:800;color:var(--primary);"><small style="font-size:12px;">¥</small>1.49</div>
+          </div>
+          <div class="tier-chips">
+            <span class="chip on">7天 ¥1.49</span><span class="chip">月 ¥4.49</span><span class="chip">季 ¥11.99</span><span class="chip">年 ¥39.99</span><span class="chip">永久 ¥79.99</span>
+          </div>
+        </div>
+
+        <div class="card">
+          <div style="display:flex;gap:12px;align-items:center;">
+            <div class="src-badge src-kg">狗</div>
+            <div style="flex:1;">
+              <div style="font-size:15px;font-weight:700;">酷狗音乐</div>
+              <div style="font-size:12px;color:var(--label);">仅解锁酷狗音源</div>
+            </div>
+            <div style="font-size:19px;font-weight:800;color:var(--primary);"><small style="font-size:12px;">¥</small>1.49</div>
+          </div>
+          <div class="tier-chips">
+            <span class="chip on">7天 ¥1.49</span><span class="chip">月 ¥4.49</span><span class="chip">季 ¥11.99</span><span class="chip">年 ¥39.99</span><span class="chip">永久 ¥79.99</span>
+          </div>
+        </div>
+
+        <div class="note"><b>形态 B 代价</b>：每卡 5 档 chips 已到舒适上限；档位行无权益描述位（meta 只能省）；未来加档（如周卡）chips 换行挤。好处=全部音源×价格一屏纵览，比价直观。</div>
+        <div class="paybar">
+          <span class="sum">全源 · 7 天<br><b>¥1.99</b></span>
+          <div class="btn-primary">去支付</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

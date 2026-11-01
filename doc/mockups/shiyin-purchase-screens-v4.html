@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<title>拾音选购页 v4 — 形态A定稿 + 组合促销显示</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e8ed; font-family:-apple-system,"PingFang SC","Segoe UI","Microsoft YaHei",sans-serif; padding:32px; }
+  h1 { font-size:22px; color:#1a1a1a; margin-bottom:6px; }
+  .sub { font-size:13px; color:#6b6b70; margin-bottom:24px; line-height:1.7; max-width:900px; }
+  .pair { display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start; }
+  .form-tag { font-size:14px; font-weight:700; color:#1a1a1a; margin-bottom:10px; }
+  .form-tag small { font-weight:400; color:#8a8a8e; }
+
+  .phone { width:390px; border-radius:44px; border:11px solid #141414; overflow:hidden; position:relative;
+           box-shadow:0 10px 34px rgba(0,0,0,.22); background:#F2F2F7; color:#000; }
+  .phone.dk { background:#000; color:#fff; --card:#1C1C1E; --sep:rgba(84,84,88,.40); --label:#98989F;
+              --primary:#FB4B54; --orange:#FF950A; --chip:#2C2C2E; }
+  .statusbar { height:44px; display:flex; justify-content:space-between; align-items:center;
+               padding:0 24px 0 30px; font-size:14px; font-weight:600; }
+  .notch { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:118px; height:26px;
+           background:#141414; border-radius:14px; z-index:9; }
+  .page { min-height:680px; display:flex; flex-direction:column; --card:#FFFFFF; --sep:rgba(60,60,67,.12);
+          --label:#8A8A8E; --primary:#FA233B; --orange:#FF950A; --chip:#F2F2F7; }
+  .hdr { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:17px; font-weight:700; }
+  .hdr .back { font-size:20px; width:28px; text-align:center; opacity:.9; }
+  .card { background:var(--card); border-radius:16px; padding:14px 16px; margin:0 16px 10px; }
+  .pill { display:inline-block; font-size:11px; font-weight:600; border-radius:999px; padding:3px 10px; }
+  .pill.gray { background:var(--chip); color:var(--label); }
+
+  .ent-card { display:flex; align-items:center; gap:10px; padding:11px 14px; font-size:13px; }
+  .ent-ico { font-size:15px; }
+
+  .src-tabs { display:flex; gap:8px; margin:2px 16px 8px; }
+  .src-tab { flex:none; position:relative; border:1px solid var(--sep); border-radius:999px; padding:8px 15px;
+             font-size:13px; font-weight:600; color:var(--label); background:var(--card); }
+  .src-tab.on { background:var(--primary); border-color:var(--primary); color:#fff; }
+  .tab-badge { position:absolute; top:-6px; right:-4px; min-width:17px; height:17px; border-radius:999px;
+               background:var(--primary); color:#fff; font-size:10px; font-weight:800;
+               display:flex; align-items:center; justify-content:center; padding:0 4px; }
+  .src-tab.on .tab-badge { background:#fff; color:var(--primary); }
+
+  .promo-strip { display:flex; align-items:center; gap:6px; margin:0 16px 12px; padding:8px 12px;
+                 border-radius:10px; background:rgba(250,35,59,.08); color:var(--primary);
+                 font-size:12px; font-weight:600; }
+
+  .tier-row { display:flex; align-items:center; gap:12px; padding:13px 16px; }
+  .tier-row.sel { outline:1.5px solid var(--primary); outline-offset:-1.5px; }
+  .tier-name { font-size:15px; font-weight:700; }
+  .tier-meta { font-size:12px; color:var(--label); margin-top:2px; }
+  .tier-price { margin-left:auto; font-size:18px; font-weight:800; color:var(--primary); white-space:nowrap; }
+  .tier-price small { font-size:12px; }
+  .tick { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+          font-size:12px; flex:none; background:#E5E5EA; color:transparent; }
+  .tier-row.sel .tick { background:var(--primary); color:#fff; }
+
+  .paybar { margin-top:auto; border-top:.5px solid var(--sep); background:var(--card);
+            padding:12px 16px 26px; display:flex; align-items:center; gap:14px; }
+  .paybar .sums { white-space:nowrap; }
+  .paybar .cnt { font-size:11px; color:var(--label); }
+  .paybar .old { font-size:12px; color:var(--label); text-decoration:line-through; }
+  .paybar .now { font-size:20px; font-weight:800; color:var(--primary); }
+  .paybar .save { display:inline-block; font-size:10px; font-weight:700; color:#fff; background:var(--orange);
+                  border-radius:6px; padding:2px 6px; margin-left:4px; vertical-align:2px; }
+  .paybar .btn-primary { flex:1; padding:13px 0; }
+  .note { border:1.5px dashed #e6a817; background:rgba(255,214,90,.28); color:#7a5b00; border-radius:10px;
+          font-size:12px; line-height:1.65; padding:9px 12px; margin:12px 16px 4px; }
+  .note b { color:#5d4600; }
+</style>
+</head>
+<body>
+
+<h1>拾音选购页 v4 — 形态 A 定稿 + 组合促销显示</h1>
+<div class="sub">
+  形态 A（音源 tab × 档位列表）定稿落地；组合促销=<b>跨 tab 多选购物车式</b>：tab 带已选角标、促销横幅触达、吸底栏实时算折扣。
+  图中为<b>已选 2 音源的组合态</b>（当前停在网易云 tab，QQ tab 角标 1）。浅色+深色各一。
+</div>
+
+<div class="pair">
+  <div>
+    <div class="form-tag">浅色 · 组合选中态 <small>（QQ·7天 已选 → 切到网易云 tab 再选网易云·7天）</small></div>
+    <div class="phone"><div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+      <div class="page">
+        <div class="hdr"><span class="back">‹</span>获取激活码</div>
+
+        <div class="card ent-card"><span class="ent-ico">🎁</span>试用中 · 剩 2 天 · 全音源可用<span class="pill gray" style="margin-left:auto;">详情 ›</span></div>
+
+        <div class="src-tabs">
+          <span class="src-tab">全源</span>
+          <span class="src-tab" style="position:relative;">QQ<span class="tab-badge">1</span></span>
+          <span class="src-tab on" style="position:relative;">网易云<span class="tab-badge">1</span></span>
+          <span class="src-tab">酷狗</span>
+          <span class="src-tab">酷我</span>
+        </div>
+
+        <div class="promo-strip">✨ 任选 2 个音源 95 折 · 3 个 9 折（自动计算，无需领取）</div>
+
+        <div class="card tier-row sel">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">7 天</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>1.49</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">月卡</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>4.49</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">季卡</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>11.99</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">永久</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>79.99</span>
+        </div>
+
+        <div class="note"><b>交互规则</b>：同音源内点档=替换（单选）；跨音源=叠加（多选）。切 tab 不清已选；点已选中的档=取消该项。全部取消回到单选态。</div>
+
+        <div class="paybar">
+          <div class="sums">
+            <div class="cnt">已选 2 项 · 已享 95 折</div>
+            <div><span class="old">¥2.98</span><span class="now">¥2.83</span><span class="save">省 ¥0.15</span></div>
+          </div>
+          <div class="btn-primary">去支付</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="form-tag">深色 · 同一组合态</div>
+    <div class="phone dk"><div class="notch"></div>
+      <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+      <div class="page">
+        <div class="hdr"><span class="back">‹</span>获取激活码</div>
+
+        <div class="card ent-card"><span class="ent-ico">🎁</span>试用中 · 剩 2 天 · 全音源可用<span class="pill gray" style="margin-left:auto;">详情 ›</span></div>
+
+        <div class="src-tabs">
+          <span class="src-tab">全源</span>
+          <span class="src-tab" style="position:relative;">QQ<span class="tab-badge">1</span></span>
+          <span class="src-tab on" style="position:relative;">网易云<span class="tab-badge">1</span></span>
+          <span class="src-tab">酷狗</span>
+          <span class="src-tab">酷我</span>
+        </div>
+
+        <div class="promo-strip">✨ 任选 2 个音源 95 折 · 3 个 9 折（自动计算，无需领取）</div>
+
+        <div class="card tier-row sel">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">7 天</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>1.49</span>
+        </div>
+        <div class="card tier-row">
+          <span class="tick">✓</span>
+          <span><span class="tier-name">月卡</span><div class="tier-meta">网易云音源 · 1 台设备</div></span>
+          <span class="tier-price"><small>¥</small>4.49</span>
+        </div>
+
+        <div class="paybar">
+          <div class="sums">
+            <div class="cnt">已选 2 项 · 已享 95 折</div>
+            <div><span class="old">¥2.98</span><span class="now">¥2.83</span><span class="save">省 ¥0.15</span></div>
+          </div>
+          <div class="btn-primary">去支付</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="max-width:900px;margin-top:20px;">
+  <div class="note" style="margin:0;"><b>组合态下游衔接（机制已就绪）</b>：「去支付」→ 下单 sku=<code>tx-d7+wy-d7</code> 一笔单（金额=折后 ¥2.38 服务端 DiscountPerMille 同口径结算）→ 闲鱼人工链路 → 管理台 confirm/manual 发<b>两张码</b>（各池划码）→ 订单中心该单展示「已发码 ×2」+ 一键激活走「多码融合确认」弹层（批3 方案既有设计）。服务端唯一动作=管理台调 combo_rates 折扣档数值。</div>
+</div>
+
+</body>
+</html>

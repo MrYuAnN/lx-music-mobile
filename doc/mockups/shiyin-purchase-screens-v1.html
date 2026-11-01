@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<title>拾音购买面三屏效果图 v1 — 选购 / 支付引导 / 订单中心</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e8ed; font-family:-apple-system,"PingFang SC","Segoe UI","Microsoft YaHei",sans-serif; padding:32px; }
+  h1 { font-size:22px; color:#1a1a1a; margin-bottom:6px; }
+  .sub { font-size:13px; color:#6b6b70; margin-bottom:24px; line-height:1.7; }
+  .legend { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:28px; }
+  .legend span { font-size:12px; color:#48484d; background:#fff; border:1px solid #d5d5da; border-radius:6px; padding:4px 10px; }
+  .legend b { font-weight:600; }
+
+  .screen-group { margin-bottom:48px; }
+  .screen-title { font-size:17px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .screen-desc { font-size:13px; color:#6b6b70; margin-bottom:14px; line-height:1.7; }
+  .pair { display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start; }
+  .theme-tag { font-size:11px; color:#8a8a8e; margin-bottom:6px; }
+
+  /* ---- phone frame ---- */
+  .phone { width:390px; border-radius:44px; border:11px solid #141414; overflow:hidden; position:relative;
+           box-shadow:0 10px 34px rgba(0,0,0,.22); }
+  .statusbar { height:44px; display:flex; justify-content:space-between; align-items:center;
+               padding:0 24px 0 30px; font-size:14px; font-weight:600; }
+  .notch { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:118px; height:26px;
+           background:#141414; border-radius:14px; z-index:9; }
+  .page { min-height:560px; display:flex; flex-direction:column; }
+
+  /* ---- themes ---- */
+  .lt { background:#F2F2F7; color:#000; } .lt .statusbar { color:#000; }
+  .dk { background:#000; color:#fff; } .dk .statusbar { color:#fff; }
+
+  /* ---- shared components ---- */
+  .hdr { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:17px; font-weight:700; }
+  .hdr .back { font-size:20px; width:28px; text-align:center; opacity:.9; }
+
+  .card { background:var(--card); border-radius:16px; padding:16px; margin:0 16px 10px; }
+  .lt { --card:#FFFFFF; --sep:rgba(60,60,67,.12); --label:#8A8A8E; --primary:#FA233B; --green:#34C759;
+        --orange:#FF950A; --chip:#F2F2F7; }
+  .dk { --card:#1C1C1E; --sep:rgba(84,84,88,.40); --label:#98989F; --primary:#FB4B54; --green:#30D158;
+        --orange:#FF950A; --chip:#2C2C2E; }
+
+  .pill { display:inline-block; font-size:11px; font-weight:600; border-radius:999px; padding:3px 10px; }
+  .pill.sel  { background:var(--primary); color:#fff; }
+  .pill.gray { background:var(--chip); color:var(--label); }
+  .pill.green{ background:rgba(52,199,89,.14); color:var(--green); }
+  .pill.org  { background:rgba(255,149,10,.15); color:var(--orange); }
+
+  .btn-primary { background:var(--primary); color:#fff; border-radius:999px; text-align:center;
+                 font-size:16px; font-weight:700; padding:14px 0; }
+  .btn-ghost { border:1px solid var(--sep); border-radius:999px; text-align:center; font-size:14px;
+               padding:12px 0; color:var(--label); }
+
+  .note { border:1.5px dashed #e6a817; background:rgba(255,214,90,.28); color:#7a5b00; border-radius:10px;
+          font-size:12px; line-height:1.65; padding:9px 12px; margin:12px 16px 4px; }
+  .note b { color:#5d4600; }
+
+  /* ---- screen 1 : 选购 ---- */
+  .state-strip { display:flex; align-items:center; gap:8px; margin:0 16px 12px; background:var(--chip);
+                 border-radius:12px; padding:10px 14px; font-size:13px; color:var(--label); }
+  .sku-card { position:relative; border:1.5px solid transparent; }
+  .sku-card.sel { border-color:var(--primary); }
+  .sku-check { position:absolute; top:14px; right:14px; width:22px; height:22px; border-radius:50%;
+               display:flex; align-items:center; justify-content:center; font-size:13px; color:#fff; }
+  .lt .sku-check { background:#E5E5EA; color:transparent; }
+  .dk .sku-check { background:#3A3A3C; color:transparent; }
+  .sku-card.sel .sku-check { background:var(--primary); color:#fff; }
+  .sku-name { font-size:17px; font-weight:700; }
+  .sku-meta { font-size:13px; color:var(--label); margin-top:5px; }
+  .sku-price { font-size:22px; font-weight:800; color:var(--primary); }
+  .sku-price small { font-size:13px; font-weight:600; }
+  .combo-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .combo-chip { border:1px solid var(--sep); border-radius:10px; padding:7px 12px; font-size:12px; color:var(--label); }
+  .combo-chip.on { border-color:var(--primary); color:var(--primary); font-weight:700; }
+  .paybar { margin-top:auto; border-top:.5px solid var(--sep); background:var(--card);
+            padding:12px 16px 26px; display:flex; align-items:center; gap:14px; }
+  .paybar .sum { font-size:13px; color:var(--label); white-space:nowrap; }
+  .paybar .sum b { font-size:20px; color:var(--primary); }
+  .paybar .btn-primary { flex:1; padding:13px 0; }
+
+  /* ---- screen 2 : 支付引导 ---- */
+  .amount-hero { text-align:center; padding:18px 0 6px; }
+  .amount-hero .no { font-size:12px; color:var(--label); margin-bottom:6px; letter-spacing:.3px; }
+  .amount-hero .amt { font-size:38px; font-weight:800; }
+  .amount-hero .sku { font-size:14px; color:var(--label); margin-top:4px; }
+  .steps { counter-reset:st; }
+  .step { display:flex; gap:12px; align-items:flex-start; padding:11px 0; border-bottom:.5px solid var(--sep); }
+  .step:last-child { border-bottom:none; }
+  .step .n { width:22px; height:22px; border-radius:50%; background:var(--chip); color:var(--label);
+             font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex:none; }
+  .step .t { font-size:14px; line-height:1.55; }
+  .step .t small { display:block; color:var(--label); font-size:12px; margin-top:2px; }
+  .copyrow { display:flex; align-items:center; justify-content:space-between; font-size:13px; }
+  .copyrow .mono { font-family:"SF Mono",Consolas,monospace; font-size:12px; color:var(--label); }
+  .copyrow .act { color:var(--primary); font-weight:700; font-size:13px; }
+  .foot-hint { font-size:11px; color:var(--label); text-align:center; line-height:1.7; padding:4px 20px 0; }
+
+  /* ---- screen 3 : 订单中心 ---- */
+  .od-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .od-no { font-size:12px; color:var(--label); font-family:"SF Mono",Consolas,monospace; }
+  .od-sku { font-size:15px; font-weight:700; margin-top:2px; }
+  .od-amt { font-size:16px; font-weight:800; }
+  .od-time { font-size:11px; color:var(--label); margin-top:8px; }
+  .od-ops { display:flex; gap:10px; margin-top:12px; }
+  .od-ops .btn-primary { flex:1; padding:10px 0; font-size:14px; }
+  .od-ops .btn-ghost { flex:1; padding:9px 0; }
+  .poll { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--label); }
+  .spin { width:12px; height:12px; border:2px solid var(--sep); border-top-color:var(--primary);
+          border-radius:50%; animation:sp 1s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .sheet-mask { position:absolute; inset:0; background:rgba(0,0,0,.42); display:flex;
+                align-items:flex-end; z-index:8; }
+  .sheet { background:var(--card); border-radius:20px 20px 0 0; padding:20px 18px 30px; width:100%; }
+  .sheet h4 { font-size:16px; font-weight:800; margin-bottom:8px; }
+  .sheet p { font-size:13px; color:var(--label); line-height:1.7; margin-bottom:16px; }
+</style>
+</head>
+<body>
+
+<h1>拾音购买面三屏 · 效果图 v1（批3 grilling 用）</h1>
+<div class="sub">
+  严格贴合现有 AM 双主题体系：底 <b>#F2F2F7 / 纯黑</b> · 卡 <b>#FFF / #1C1C1E</b> · 主色 <b>#FA233B / #FB4B54</b> · 卡 r16/p16 · 胶囊主钮 · 语义绿 #34C759、警示橙 #FF950A。<br>
+  每屏浅色+深色并排。<b>D1–D4 决策点</b>以黄色虚线框标注在图内，文末有汇总表——逐点回复拍板即可，我出 v2。
+</div>
+<div class="legend">
+  <span><b>数据源</b> /api/skus 九字段实测</span>
+  <span>SKU：拾音·7天 ¥1.99 · 1 设备</span>
+  <span>组合档：n2→8折 n3→7.5折</span>
+  <span>客服时段：每日 12:00-23:00</span>
+  <span>订单号：SY 前缀</span>
+</div>
+
+<!-- ============ 屏1 选购页 ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 1｜选购页（入口：MyKeys 空态「获取激活码」/ ExpiryBanner / 设置激活节）</div>
+  <div class="screen-desc">SKU 卡纵向流，选中态主色描边+实心勾；组合档位 chips 放目录下方；吸底结算栏（金额+去支付）。</div>
+  <div class="pair">
+
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>获取激活码</div>
+          <div class="state-strip">🎁 试用中 · 剩 2 天 — 可先体验，随时升级</div>
+          <div class="card sku-card sel">
+            <div class="sku-check">✓</div>
+            <div class="sku-name">拾音·7天</div>
+            <div class="sku-meta">7 天 · 1 台设备 · 激活码即时发货</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">
+              <span class="pill gray">单张</span>
+              <span class="sku-price"><small>¥</small>1.99</span>
+            </div>
+            <div class="combo-row">
+              <span class="combo-chip on">1 张 ¥1.99</span>
+              <span class="combo-chip">2 张 · 8 折 ¥3.18</span>
+              <span class="combo-chip">3 张 · 7.5 折 ¥4.48</span>
+              <span class="combo-chip">更多 ↓</span>
+            </div>
+          </div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:13px;color:var(--label);">✓ 激活码发货后可在本页一键激活 · 支持多码叠加延期</div>
+          </div>
+          <div class="note"><b>D1｜SKU 卡形态</b>现为主推「纵向卡+档位 chips」；备选=横向选择条（省纵向空间，适合未来 SKU 增多到 5 档时切换）。当前仅 d7 在售，纵向留白更舒展。</div>
+          <div class="paybar">
+            <span class="sum">合计<br><b>¥1.99</b></span>
+            <div class="btn-primary">去支付</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>获取激活码</div>
+          <div class="state-strip">🎁 试用中 · 剩 2 天 — 可先体验，随时升级</div>
+          <div class="card sku-card sel">
+            <div class="sku-check">✓</div>
+            <div class="sku-name">拾音·7天</div>
+            <div class="sku-meta">7 天 · 1 台设备 · 激活码即时发货</div>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:10px;">
+              <span class="pill gray">单张</span>
+              <span class="sku-price"><small>¥</small>1.99</span>
+            </div>
+            <div class="combo-row">
+              <span class="combo-chip on">1 张 ¥1.99</span>
+              <span class="combo-chip">2 张 · 8 折 ¥3.18</span>
+              <span class="combo-chip">3 张 · 7.5 折 ¥4.48</span>
+              <span class="combo-chip">更多 ↓</span>
+            </div>
+          </div>
+          <div class="card" style="padding:12px 16px;">
+            <div style="font-size:13px;color:var(--label);">✓ 激活码发货后可在本页一键激活 · 支持多码叠加延期</div>
+          </div>
+          <div class="paybar">
+            <span class="sum">合计<br><b>¥1.99</b></span>
+            <div class="btn-primary">去支付</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 屏2 支付引导页 ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 2｜支付引导页（点「去支付」后进入：幂等建单 → 闲鱼唤端）</div>
+  <div class="screen-desc">金额 hero → 闲鱼唤端主钮 → 三步引导 → 订单号复制（闲鱼留言核验）→ 客服行。降级链：itemId 唤端失败 = xianyu_url 原链直开。</div>
+  <div class="pair">
+
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>支付引导</div>
+          <div class="amount-hero">
+            <div class="no">订单号 SY20261102011718BB3BCA3</div>
+            <div class="amt">¥1.99</div>
+            <div class="sku">拾音·7天 × 1</div>
+          </div>
+          <div style="margin:6px 16px 10px;" class="btn-primary">打开闲鱼下单</div>
+          <div class="card steps">
+            <div class="step"><span class="n">1</span><span class="t">点击上方按钮跳转闲鱼商品<small>若未装闲鱼，将自动打开网页版</small></span></div>
+            <div class="step"><span class="n">2</span><span class="t">拍下付款，留言填订单号便于核对<small>订单号可一键复制 ↓</small></span></div>
+            <div class="step"><span class="n">3</span><span class="t">回到这里点「我已付款」，自动发码<small>发码后可在订单中心一键激活</small></span></div>
+          </div>
+          <div class="card copyrow">
+            <span>订单号 <span class="mono">SY…BB3BCA3</span></span>
+            <span class="act">复制</span>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;">💬 客服在线<br><small style="color:var(--label);font-size:11px;">每日 12:00 - 23:00</small></span>
+            <span class="pill gray">联系客服 ›</span>
+          </div>
+          <div class="foot-hint">6 小时未支付将提醒您一次 · 48 小时未支付订单自动关闭</div>
+          <div class="note"><b>D2｜「我已付款」落点</b>方案拍板=引导页内放确认钮（点后轮询订单状态直到 delivered）；备选=引导页不放，引导回订单中心操作。主推页内直按（少一次跳转，动线短）。</div>
+          <div style="margin:4px 16px 14px;" class="btn-ghost">我已付款，查询发码</div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>支付引导</div>
+          <div class="amount-hero">
+            <div class="no">订单号 SY20261102011718BB3BCA3</div>
+            <div class="amt">¥1.99</div>
+            <div class="sku">拾音·7天 × 1</div>
+          </div>
+          <div style="margin:6px 16px 10px;" class="btn-primary">打开闲鱼下单</div>
+          <div class="card steps">
+            <div class="step"><span class="n">1</span><span class="t">点击上方按钮跳转闲鱼商品<small>若未装闲鱼，将自动打开网页版</small></span></div>
+            <div class="step"><span class="n">2</span><span class="t">拍下付款，留言填订单号便于核对<small>订单号可一键复制 ↓</small></span></div>
+            <div class="step"><span class="n">3</span><span class="t">回到这里点「我已付款」，自动发码<small>发码后可在订单中心一键激活</small></span></div>
+          </div>
+          <div class="card copyrow">
+            <span>订单号 <span class="mono">SY…BB3BCA3</span></span>
+            <span class="act">复制</span>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;">💬 客服在线<br><small style="color:var(--label);font-size:11px;">每日 12:00 - 23:00</small></span>
+            <span class="pill gray">联系客服 ›</span>
+          </div>
+          <div class="foot-hint">6 小时未支付将提醒您一次 · 48 小时未支付订单自动关闭</div>
+          <div style="margin:4px 16px 14px;" class="btn-ghost">我已付款，查询发码</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 屏3 订单中心 ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 3｜订单中心（轮询五态 + 一键激活 + 多码融合确认）</div>
+  <div class="screen-desc">状态徽章五态：待支付(橙)/待发码(灰+spinner)/已发码(绿)/已完成(灰)/已关闭(灰)。已发码单卡内直放「一键激活」；激活时若持多码 → 底部弹层融合确认。</div>
+  <div class="pair">
+
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>我的订单</div>
+          <div style="margin:0 16px 10px;" class="poll"><span class="spin"></span>付款后本页自动刷新发放进度</div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110201171…</span><span class="pill org">待支付</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 1</span><span class="od-amt">¥1.99</span>
+            </div>
+            <div class="od-time">2026-11-02 01:17 · 48 小时后自动关闭</div>
+            <div class="od-ops"><div class="btn-primary">继续支付</div><div class="btn-ghost">取消订单</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110119330…</span><span class="pill green">已发码</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 1</span><span class="od-amt">¥1.99</span>
+            </div>
+            <div class="od-time">2026-11-01 19:33 · 激活码 JP-WPF6-****-****（点开完整码）</div>
+            <div class="od-ops"><div class="btn-primary">一键激活</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026103118022…</span><span class="pill gray">已完成</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 2（组合 8 折）</span><span class="od-amt">¥3.18</span>
+            </div>
+            <div class="od-time">2026-10-31 18:02 · 已激活至 2026-11-14</div>
+          </div>
+
+          <div class="note"><b>D3｜五态徽章配色</b>待支付=橙 / 待发码=灰+spinner / 已发码=绿 / 已完成与已关闭=灰。已关闭默认折叠到底部「历史订单」分组（图略）。</div>
+          <div style="height:8px;"></div>
+
+          <div class="sheet-mask">
+            <div class="sheet">
+              <h4>确认激活</h4>
+              <p>检测到您持有 <b style="color:var(--primary);">2 张可用码</b>：本次激活叠加后到期 <b style="color:var(--primary);">2026-11-20</b>（当前 11-13 + 7 天）。组合购入的码将一并激活。</p>
+              <div class="btn-primary">叠加激活 2 张</div>
+              <div style="height:10px;"></div>
+              <div class="btn-ghost">仅激活本单 1 张</div>
+              <div class="note" style="margin:12px 0 0;"><b>D4｜多码融合确认</b>方案拍板=激活前弹层明示叠加结果；「仅激活本单」=保守路径。两钮主次可对调，等您拍板。</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>我的订单</div>
+          <div style="margin:0 16px 10px;" class="poll"><span class="spin"></span>付款后本页自动刷新发放进度</div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110201171…</span><span class="pill org">待支付</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 1</span><span class="od-amt">¥1.99</span>
+            </div>
+            <div class="od-time">2026-11-02 01:17 · 48 小时后自动关闭</div>
+            <div class="od-ops"><div class="btn-primary">继续支付</div><div class="btn-ghost">取消订单</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110119330…</span><span class="pill green">已发码</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 1</span><span class="od-amt">¥1.99</span>
+            </div>
+            <div class="od-time">2026-11-01 19:33 · 激活码 JP-WPF6-****-****（点开完整码）</div>
+            <div class="od-ops"><div class="btn-primary">一键激活</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026103118022…</span><span class="pill gray">已完成</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;">
+              <span class="od-sku">拾音·7天 × 2（组合 8 折）</span><span class="od-amt">¥3.18</span>
+            </div>
+            <div class="od-time">2026-10-31 18:02 · 已激活至 2026-11-14</div>
+          </div>
+
+          <div style="height:8px;"></div>
+
+          <div class="sheet-mask">
+            <div class="sheet">
+              <h4>确认激活</h4>
+              <p>检测到您持有 <b style="color:var(--primary);">2 张可用码</b>：本次激活叠加后到期 <b style="color:var(--primary);">2026-11-20</b>（当前 11-13 + 7 天）。组合购入的码将一并激活。</p>
+              <div class="btn-primary">叠加激活 2 张</div>
+              <div style="height:10px;"></div>
+              <div class="btn-ghost">仅激活本单 1 张</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 决策点汇总 ============ -->
+<div class="screen-group">
+  <div class="screen-title">决策点汇总（逐点回复即可，如「D1 保持 / D2 备选 / D3 改 / D4 主次对调」）</div>
+  <div class="card" style="background:#fff;color:#1a1a1a;max-width:820px;">
+    <div style="font-size:14px;line-height:2.1;">
+      <b>D1</b>｜选购页 SKU 卡：纵向卡+组合档 chips（主推，当前单 SKU 舒展） vs 横向选择条（SKU 增多后省空间）<br>
+      <b>D2</b>｜支付引导「我已付款」：页内直按+轮询（主推，动线短） vs 只引导回订单中心<br>
+      <b>D3</b>｜订单五态徽章配色：待支付橙/待发码灰转圈/已发码绿/已完成·已关闭灰，已关闭折叠历史分组<br>
+      <b>D4</b>｜多码融合确认弹层：「叠加激活 N 张」为主钮、「仅激活本单」为次钮（主次可对调）<br>
+      <b>D5</b>｜状态条「试用中·剩 2 天」是否保留在选购页顶部（当前保留——试用转化动线清晰；去掉更干净）
+    </div>
+  </div>
+</div>
+
+</body>
+</html>

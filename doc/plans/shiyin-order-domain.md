@@ -74,6 +74,36 @@ RN 购买面(选购页/支付引导/订单中心) ──HTTP(X-Product=shiyin)�
 - INTEGRATIONS.md D 域拍板翻转落字；商品上架/改价/补货运营步骤单（**正式上架先于/伴随 App 发版**）；「闲鱼链接→resolver→itemId」配置闭环；闲鱼文案/客服内容占位（运营内容待用户补）；净屏 native channel 落库缺口修复（**改法升级：ordercore CreateManualOrder INSERT 单源修 channel（uid 非空→native），净屏/拾音同批生效**+**看板渠道口径跳变注记**）。
 - **批2 代码审挂账（2026-11-02）**：①净屏 trial_order_create 同分支 val() 纯 string 断言对平台 grant_id number 载荷同样失败——净屏即时路疑似已静默失效被 cron 掩盖（优化师席外溢发现，本批拾音侧已修+fixture 锁，净屏侧同法修）②净屏 /api/order/create 同样无 trial 档入口过滤（净屏 trial 已 retire 暂无实害，ordercore 修 channel 时一并加 tier 闸更稳）③ordercore 事件 kind 字面量（return/void）收口常量单源 ④ordercore xianyu resolver.loop 持锁调 urlFn（锁内走宿主 Setting→DB 查询；量级无实害，对齐 refresh() 锁外取值）。
 
+### 批3 v1.2 修订（2026-11-02 音源收费模型+三角色方案审拍板；本节覆盖批3 节与 v1.1 冲突处）
+
+**音源收费模型**：
+- 音源=独立 app_key：tx/wy/kg/kw 已注册生产库 product_apps→shiyin（package_name 纯登记无消费方，平台/后端/SDK 代码零改）；SKU=音源×档位按需建，管理台自助（id={app}-{tier} 服务端生成）
+- shiyin key=全源兜底：RN 权益判定先查 expiries["shiyin"]（命中=全源放行；auto3 试用码与 shiyin-d7 全源卡同语义），否则逐音源查 expiries["tx"/"wy"/"kg"/"kw"]；shiyin-d7 现有行=「全源·7天」卡零迁移
+- APP_CN 扩表翻转：shiyin→「全部音源」、tx/wy/kg/kw→QQ音乐/网易云音乐/酷狗音乐/酷我音乐（修复 ExpiryBanner:66/MyKeys:357 显示，shiyin 旧值「QQ音乐」语义随全源拍板作废）
+
+**选购页 UI（形态 A 定稿，效果图 v1→v4 于 doc/mockups/）**：
+- 音源横向胶囊 tab（全源|QQ|网易云|酷狗|酷我）× 档位纵向列表（对标 Apple 订阅页/iCloud+ 分段选择，官方链接已录审查包）；分态权益卡（未激活隐藏/试用/单源/多源收敛一行/≤3天警示橙）；跨 tab 多选购物车式组合（同音源替换/跨音源叠加/点已选取消/切 tab 不清）；tab 数字角标+促销横幅
+- **全源×单源硬互斥**（选中全源清空/禁选单源 tab，对标 Apple One「已包含」处理；审查 I5 用户拍板）
+- 组合折扣：按音源数打折不设档位门槛（方案 C）；n2→950/n3→900/n4 档配 1000——**审查 C1 修订：折扣表读 Setting 配置化**。原「管理台调 combo_rates」在现后端无通道（ordercore DiscountPerMille 编译期常量+净屏拾音共享单源+管理台无面板），改为：拾音 cfg 加 combo_rates 键+管理台表单字段，comboRates() 读 Setting 缺省回退 ordercore 现表（净屏零动，~30 行后端小改，批3 发版前部署）
+- **单源 SKU tier 避让 d7**：批2 后端 ComboRestrictedTiers 含 "d7"（组合禁入，净屏语义），含 d7 组合单必 400——审查 C2 修订：拾音单源档位用 w1（id=tx-w1，UI 显示名仍「7天」），方案 C 完整保留，零后端改动
+
+**其余拍板**：
+- D2=我已付款页内直按+轮询（dujiaoka 人工转账同构先例；按下=留页轮询+「待管理员核验」反馈语义）
+- D3=五态徽章：待支付橙/待发码灰转圈/已发码绿/已完成·已关闭灰，已关闭折叠历史区；「已完成」=delivered 且该单码已在本地 keys 全量命中（**实现口径勘误，批3代码审 F-1**：expiries 结构为 {app:时间戳} 无码粒度，「expiries 命中」不可实现，keys 命中是可落地最细粒度；服务端仅四态，客户端推断）
+- D4=多码融合弹层「叠加激活 N 张」主钮、「仅激活本单」次钮（**实现注记**：confirmDialog 双钮限制下为两段确认式——有跨单可用码时主弹层「叠加全部」、取消落次弹层「仅本单」）
+- 待支付提醒=2 次（下单后 6h+40h 临关单前；自定注记：主流催付 1-2 次/关单 24h，拾音 48h 关单随批2 后端既定不动；**渠道注记，批3代码审 S-2**：业界主流走系统推送，拾音暂无推送基础设施=App 内弹窗+依赖用户主动开 App，触达弱于推送——推送能力列后续排期）；触发=建单即存本地 pending 快照，Home 挂载/AppState active 双触发
+- 订单中心待支付卡接取消（/api/order/cancel 现成零后端改）；常驻入口=MyKeys 页内「购买记录」行（过期引导弹窗保持直达 MyKeys 两跳）
+
+**编码清单修订（审查 I/S 全采纳）**：
+- 核心层补：订单本地持久化（建单即存快照 order_no/金额/SKU/状态；订单中心 nos 本地全集+uid 双凭证合流；重装退化=uid 脱敏列表+订单号输入找回）/client_token 生命周期（进结算生成一次绑定购物车快照，重试双击复用，购物车变更重置）/apps 长度≠1 且≠["shiyin"] 的 SKU 跳过渲染+console 留痕
+- 一键激活复用 activateByCode 编排链（含 ensureAuth(true) 取链重建，防「激活成功但取链仍旧 token」）
+- 权益判定补 formatActivationState 单源态适配（单源用户无 shiyin 键时 expiry=0 被兜底成「永久」的失真修复）
+- 轮询策略：支付引导页 5-10s 密集（paid/delivered 即停）/订单中心 15-30s/失败退避对齐 config.ts 先例/退屏 cancelHttp
+- 409 native_checkout_disabled 兜底文案三语（「暂停售卖，请联系客服」类）；**发版后降级预案**=管理台关 native_checkout（409 拦截建单）+选购页/引导页兜底 UI（批2 网关 location 发版后禁摘的替代闸）
+- contact_url 空态回退 faq.html；入口=MyKeys 空态/ExpiryBanner（点击改直达选购页）/设置激活节+MyKeys 购买记录行；导航注册补 src/screens/index.ts 导出行
+- 真机 checklist 补：组合算价三档（n2/n3/n4=原价）/client_token 幂等重放/重装找回/已关闭折叠/429 限频/单源码激活后设置节文案
+- 规模修正：约 18-20 文件（屏内组件不单计）
+
 ## 五、风险与对策
 
 | 风险 | 等级 | 对策 |

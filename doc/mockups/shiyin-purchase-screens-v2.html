@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+<meta charset="UTF-8">
+<title>拾音购买面三屏效果图 v2 — 音源维度版</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#e8e8ed; font-family:-apple-system,"PingFang SC","Segoe UI","Microsoft YaHei",sans-serif; padding:32px; }
+  h1 { font-size:22px; color:#1a1a1a; margin-bottom:6px; }
+  .sub { font-size:13px; color:#6b6b70; margin-bottom:24px; line-height:1.7; }
+  .screen-group { margin-bottom:48px; }
+  .screen-title { font-size:17px; font-weight:700; color:#1a1a1a; margin-bottom:4px; }
+  .screen-desc { font-size:13px; color:#6b6b70; margin-bottom:14px; line-height:1.7; }
+  .pair { display:flex; gap:36px; flex-wrap:wrap; align-items:flex-start; }
+  .theme-tag { font-size:11px; color:#8a8a8e; margin-bottom:6px; }
+  .changelog { background:#fff; border:1px solid #d5d5da; border-radius:10px; padding:14px 18px; max-width:820px;
+               font-size:13px; line-height:1.9; color:#1a1a1a; margin-bottom:28px; }
+
+  .phone { width:390px; border-radius:44px; border:11px solid #141414; overflow:hidden; position:relative;
+           box-shadow:0 10px 34px rgba(0,0,0,.22); }
+  .statusbar { height:44px; display:flex; justify-content:space-between; align-items:center;
+               padding:0 24px 0 30px; font-size:14px; font-weight:600; }
+  .notch { position:absolute; top:10px; left:50%; transform:translateX(-50%); width:118px; height:26px;
+           background:#141414; border-radius:14px; z-index:9; }
+  .page { min-height:560px; display:flex; flex-direction:column; }
+  .lt { background:#F2F2F7; color:#000; } .lt .statusbar { color:#000; }
+  .dk { background:#000; color:#fff; } .dk .statusbar { color:#fff; }
+
+  .lt { --card:#FFFFFF; --sep:rgba(60,60,67,.12); --label:#8A8A8E; --primary:#FA233B; --green:#34C759;
+        --orange:#FF950A; --chip:#F2F2F7; }
+  .dk { --card:#1C1C1E; --sep:rgba(84,84,88,.40); --label:#98989F; --primary:#FB4B54; --green:#30D158;
+        --orange:#FF950A; --chip:#2C2C2E; }
+
+  .hdr { display:flex; align-items:center; gap:10px; padding:10px 16px; font-size:17px; font-weight:700; }
+  .hdr .back { font-size:20px; width:28px; text-align:center; opacity:.9; }
+  .card { background:var(--card); border-radius:16px; padding:16px; margin:0 16px 10px; }
+
+  .pill { display:inline-block; font-size:11px; font-weight:600; border-radius:999px; padding:3px 10px; }
+  .pill.sel  { background:var(--primary); color:#fff; }
+  .pill.gray { background:var(--chip); color:var(--label); }
+  .pill.green{ background:rgba(52,199,89,.14); color:var(--green); }
+  .pill.org  { background:rgba(255,149,10,.15); color:var(--orange); }
+
+  .btn-primary { background:var(--primary); color:#fff; border-radius:999px; text-align:center;
+                 font-size:16px; font-weight:700; padding:14px 0; }
+  .btn-ghost { border:1px solid var(--sep); border-radius:999px; text-align:center; font-size:14px;
+               padding:12px 0; color:var(--label); }
+  .note { border:1.5px dashed #e6a817; background:rgba(255,214,90,.28); color:#7a5b00; border-radius:10px;
+          font-size:12px; line-height:1.65; padding:9px 12px; margin:12px 16px 4px; }
+  .note b { color:#5d4600; }
+
+  /* 音源标(圆角方块 logo 位) */
+  .src-badge { width:38px; height:38px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+               font-size:17px; font-weight:800; color:#fff; flex:none; }
+  .src-tx { background:#31C27C; } .src-wy { background:#DD001B; }
+  .src-kg { background:#2CA6F4; } .src-kw { background:#FFC337; }
+  .src-all { background:linear-gradient(135deg,#FA233B 50%,#FB7B3C 50%); }
+
+  /* ---- 屏1 选购(v2:全源置顶+单源组) ---- */
+  .state-strip { display:flex; align-items:center; gap:8px; margin:0 16px 12px; background:var(--chip);
+                 border-radius:12px; padding:10px 14px; font-size:13px; color:var(--label); }
+  .sec-label { font-size:12px; font-weight:700; color:var(--label); margin:6px 20px 8px; letter-spacing:.5px; }
+  .sku-row { display:flex; gap:12px; align-items:center; position:relative; }
+  .sku-info { flex:1; min-width:0; }
+  .sku-name { font-size:15px; font-weight:700; }
+  .sku-meta { font-size:12px; color:var(--label); margin-top:3px; }
+  .sku-price { font-size:19px; font-weight:800; color:var(--primary); white-space:nowrap; }
+  .sku-price small { font-size:12px; font-weight:600; }
+  .sku-check { position:absolute; top:0; right:0; width:20px; height:20px; border-radius:50%;
+               display:flex; align-items:center; justify-content:center; font-size:12px; color:#fff; }
+  .lt .sku-check { background:#E5E5EA; color:transparent; }
+  .dk .sku-check { background:#3A3A3C; color:transparent; }
+  .card.selected { outline:1.5px solid var(--primary); outline-offset:-1.5px; }
+  .card.selected .sku-check { background:var(--primary); color:#fff; }
+  .all-hero { border:1.5px solid var(--primary); position:relative; }
+  .all-tag { position:absolute; top:-9px; left:14px; background:var(--primary); color:#fff; font-size:10px;
+             font-weight:700; border-radius:999px; padding:2px 10px; letter-spacing:.5px; }
+  .paybar { margin-top:auto; border-top:.5px solid var(--sep); background:var(--card);
+            padding:12px 16px 26px; display:flex; align-items:center; gap:14px; }
+  .paybar .sum { font-size:13px; color:var(--label); white-space:nowrap; }
+  .paybar .sum b { font-size:20px; color:var(--primary); }
+  .paybar .btn-primary { flex:1; padding:13px 0; }
+
+  /* ---- 屏2/3 复用 v1 结构 ---- */
+  .amount-hero { text-align:center; padding:18px 0 6px; }
+  .amount-hero .no { font-size:12px; color:var(--label); margin-bottom:6px; }
+  .amount-hero .amt { font-size:38px; font-weight:800; }
+  .amount-hero .sku { font-size:14px; color:var(--label); margin-top:4px; }
+  .od-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+  .od-no { font-size:12px; color:var(--label); font-family:Consolas,monospace; }
+  .od-sku-row { display:flex; gap:10px; align-items:center; margin-top:2px; }
+  .od-sku { font-size:15px; font-weight:700; }
+  .od-amt { font-size:16px; font-weight:800; margin-left:auto; }
+  .od-time { font-size:11px; color:var(--label); margin-top:8px; }
+  .od-ops { display:flex; gap:10px; margin-top:12px; }
+  .od-ops .btn-primary { flex:1; padding:10px 0; font-size:14px; }
+  .od-ops .btn-ghost { flex:1; padding:9px 0; }
+  .poll { display:flex; align-items:center; gap:7px; font-size:12px; color:var(--label); margin:0 16px 10px; }
+  .spin { width:12px; height:12px; border:2px solid var(--sep); border-top-color:var(--primary);
+          border-radius:50%; animation:sp 1s linear infinite; }
+  @keyframes sp { to { transform:rotate(360deg); } }
+  .sheet-mask { position:absolute; inset:0; background:rgba(0,0,0,.42); display:flex;
+                align-items:flex-end; z-index:8; }
+  .sheet { background:var(--card); border-radius:20px 20px 0 0; padding:20px 18px 30px; width:100%; }
+  .sheet h4 { font-size:16px; font-weight:800; margin-bottom:8px; }
+  .sheet p { font-size:13px; color:var(--label); line-height:1.7; margin-bottom:16px; }
+</style>
+</head>
+<body>
+
+<h1>拾音购买面三屏 · 效果图 v2（音源维度版）</h1>
+<div class="sub">
+  v2 变更：音源收费模型（拍板=音源独立 app_key）落地到 UI——选购页<b>全源卡置顶 + 四单源分组</b>；支付引导/订单中心的商品名带音源标识。
+  主题 token 与 v1 相同。新增决策点 <b>D6/D7</b>（黄框），v1 的 D1–D5 继续有效待拍。
+</div>
+<div class="changelog">
+  <b>v1 → v2 变更清单</b><br>
+  ① 选购页：SKU 卡改为「全源推荐卡（shiyin-d7，shiyin key=全源兜底拍板）置顶 + 单源组四卡（tx/wy/kg/kw 各自独立商品）」；组合档 chips 移除——按音源收费后，跨音源组合折扣不再适用（各音源独立 SKU 独立价）<br>
+  ② 每个商品行加音源标（品牌色圆角方块：QQ绿/网易云红/酷狗蓝/酷我黄/全源双拼）<br>
+  ③ 支付引导页 hero、订单中心订单卡的 SKU 名改为带音源的商品名（如「QQ音乐·7天」）
+</div>
+
+<!-- ============ 屏1 选购页 v2 ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 1｜选购页 v2（全源置顶 + 单源分组）</div>
+  <div class="screen-desc">顶部「全源推荐」一张卡（shiyin-d7）；下方「按音源」组：四单源卡各带品牌色标。选中态=主色描边+实心勾（同 v1）。</div>
+  <div class="pair">
+
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>获取激活码</div>
+          <div class="state-strip">🎁 试用中 · 剩 2 天（全音源可用）</div>
+
+          <div class="sec-label">推荐</div>
+          <div class="card all-hero selected" style="padding:14px 16px;">
+            <span class="all-tag">全音源通用</span>
+            <div class="sku-check" style="top:12px;right:14px;">✓</div>
+            <div class="sku-row">
+              <div class="src-badge src-all">拾</div>
+              <div class="sku-info">
+                <div class="sku-name">全源·7天</div>
+                <div class="sku-meta">QQ / 网易云 / 酷狗 / 酷我 全解锁 · 1 台设备</div>
+              </div>
+              <div class="sku-price"><small>¥</small>1.99</div>
+            </div>
+          </div>
+
+          <div class="sec-label">按音源</div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-tx">Q</div>
+            <div class="sku-info"><div class="sku-name">QQ音乐·7天</div><div class="sku-meta">仅解锁 QQ 音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-wy">网</div>
+            <div class="sku-info"><div class="sku-name">网易云音乐·7天</div><div class="sku-meta">仅解锁网易云音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-kg">狗</div>
+            <div class="sku-info"><div class="sku-name">酷狗音乐·7天</div><div class="sku-meta">仅解锁酷狗音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-kw">我</div>
+            <div class="sku-info"><div class="sku-name">酷我音乐·7天</div><div class="sku-meta">仅解锁酷我音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+
+          <div class="note"><b>D6｜音源区形态</b>主推「全源置顶+单源平铺四卡」；备选=音源横向 tab（QQ/网易云/酷狗/酷我 切页，每页内再列时长档）——tab 形态在音源×档位组合增多（≥8 SKU）时更利落，当前 5 SKU 平铺一屏放得下。</div>
+          <div class="note"><b>D7｜组合折扣去留</b>按音源收费后 v1 的「2张8折」chips 已移除；服务端 combo_rates 字段仍在下发（机制保留），若想保留「同商品多张折扣」可恢复（如 QQ·7天 ×2 打折）——要不要，拍板。</div>
+          <div class="paybar">
+            <span class="sum">全源·7天<br><b>¥1.99</b></span>
+            <div class="btn-primary">去支付</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>获取激活码</div>
+          <div class="state-strip">🎁 试用中 · 剩 2 天（全音源可用）</div>
+
+          <div class="sec-label">推荐</div>
+          <div class="card all-hero selected" style="padding:14px 16px;">
+            <span class="all-tag">全音源通用</span>
+            <div class="sku-check" style="top:12px;right:14px;">✓</div>
+            <div class="sku-row">
+              <div class="src-badge src-all">拾</div>
+              <div class="sku-info">
+                <div class="sku-name">全源·7天</div>
+                <div class="sku-meta">QQ / 网易云 / 酷狗 / 酷我 全解锁 · 1 台设备</div>
+              </div>
+              <div class="sku-price"><small>¥</small>1.99</div>
+            </div>
+          </div>
+
+          <div class="sec-label">按音源</div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-tx">Q</div>
+            <div class="sku-info"><div class="sku-name">QQ音乐·7天</div><div class="sku-meta">仅解锁 QQ 音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-wy">网</div>
+            <div class="sku-info"><div class="sku-name">网易云音乐·7天</div><div class="sku-meta">仅解锁网易云音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-kg">狗</div>
+            <div class="sku-info"><div class="sku-name">酷狗音乐·7天</div><div class="sku-meta">仅解锁酷狗音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+          <div class="card sku-row" style="padding:13px 16px;">
+            <div class="src-badge src-kw">我</div>
+            <div class="sku-info"><div class="sku-name">酷我音乐·7天</div><div class="sku-meta">仅解锁酷我音源 · 1 台设备</div></div>
+            <div class="sku-price"><small>¥</small>1.49</div>
+          </div>
+
+          <div class="paybar">
+            <span class="sum">全源·7天<br><b>¥1.99</b></span>
+            <div class="btn-primary">去支付</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 屏2 支付引导 v2（微调） ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 2｜支付引导 v2（SKU 名带音源；其余同 v1）</div>
+  <div class="screen-desc">以「QQ音乐·7天」单源单为例；全源单则显示「全源·7天」。D2（我已付款页内直按）继续待拍。</div>
+  <div class="pair">
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>支付引导</div>
+          <div class="amount-hero">
+            <div class="no">订单号 SY20261102093412TX7D01</div>
+            <div class="amt">¥1.49</div>
+            <div class="sku" style="display:inline-flex;align-items:center;gap:6px;">
+              <span class="src-badge src-tx" style="width:20px;height:20px;font-size:10px;border-radius:6px;">Q</span>
+              QQ音乐·7天 × 1
+            </div>
+          </div>
+          <div style="margin:6px 16px 10px;" class="btn-primary">打开闲鱼下单</div>
+          <div class="card" style="padding:8px 16px;">
+            <div class="step" style="display:flex;gap:12px;padding:10px 0;border-bottom:.5px solid var(--sep);"><span class="pill gray" style="flex:none;">1</span><span style="font-size:14px;">跳转闲鱼商品页拍下付款<small style="display:block;color:var(--label);font-size:12px;">未装闲鱼自动转网页版</small></span></div>
+            <div class="step" style="display:flex;gap:12px;padding:10px 0;border-bottom:.5px solid var(--sep);"><span class="pill gray" style="flex:none;">2</span><span style="font-size:14px;">留言填订单号便于核对<small style="display:block;color:var(--label);font-size:12px;">订单号可一键复制 ↓</small></span></div>
+            <div class="step" style="display:flex;gap:12px;padding:10px 0;"><span class="pill gray" style="flex:none;">3</span><span style="font-size:14px;">回来点「我已付款」自动发码<small style="display:block;color:var(--label);font-size:12px;">发码后订单中心一键激活</small></span></div>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">
+            <span>订单号 <span style="font-family:Consolas,monospace;font-size:12px;color:var(--label);">SY…TX7D01</span></span>
+            <span style="color:var(--primary);font-weight:700;">复制</span>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;">💬 客服在线<br><small style="color:var(--label);font-size:11px;">每日 12:00 - 23:00</small></span>
+            <span class="pill gray">联系客服 ›</span>
+          </div>
+          <div style="text-align:center;font-size:11px;color:var(--label);padding:6px 20px 0;line-height:1.7;">6 小时未支付将提醒您一次 · 48 小时未支付订单自动关闭</div>
+          <div style="margin:10px 16px 16px;" class="btn-ghost">我已付款，查询发码</div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>支付引导</div>
+          <div class="amount-hero">
+            <div class="no">订单号 SY20261102093412TX7D01</div>
+            <div class="amt">¥1.49</div>
+            <div class="sku" style="display:inline-flex;align-items:center;gap:6px;">
+              <span class="src-badge src-tx" style="width:20px;height:20px;font-size:10px;border-radius:6px;">Q</span>
+              QQ音乐·7天 × 1
+            </div>
+          </div>
+          <div style="margin:6px 16px 10px;" class="btn-primary">打开闲鱼下单</div>
+          <div class="card" style="display:flex;justify-content:space-between;font-size:13px;align-items:center;">
+            <span>订单号 <span style="font-family:Consolas,monospace;font-size:12px;color:var(--label);">SY…TX7D01</span></span>
+            <span style="color:var(--primary);font-weight:700;">复制</span>
+          </div>
+          <div class="card" style="display:flex;justify-content:space-between;align-items:center;">
+            <span style="font-size:13px;">💬 客服在线<br><small style="color:var(--label);font-size:11px;">每日 12:00 - 23:00</small></span>
+            <span class="pill gray">联系客服 ›</span>
+          </div>
+          <div style="margin:10px 16px 16px;" class="btn-ghost">我已付款，查询发码</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 屏3 订单中心 v2（微调） ============ -->
+<div class="screen-group">
+  <div class="screen-title">屏 3｜订单中心 v2（订单卡带音源标；D3/D4 继续待拍）</div>
+  <div class="screen-desc">权益提示行更新：按音源单激活后只解锁对应音源（App 内音源线可见性按 expiries 音源 key 判定）。</div>
+  <div class="pair">
+    <div>
+      <div class="theme-tag">浅色 am_light</div>
+      <div class="phone lt"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>我的订单</div>
+          <div class="poll"><span class="spin"></span>付款后本页自动刷新发放进度</div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110209341…</span><span class="pill org">待支付</span></div>
+            <div class="od-sku-row"><span class="src-badge src-tx" style="width:26px;height:26px;font-size:12px;border-radius:7px;">Q</span><span class="od-sku">QQ音乐·7天 × 1</span><span class="od-amt">¥1.49</span></div>
+            <div class="od-time">2026-11-02 09:34 · 48 小时后自动关闭</div>
+            <div class="od-ops"><div class="btn-primary">继续支付</div><div class="btn-ghost">取消订单</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110119330…</span><span class="pill green">已发码</span></div>
+            <div class="od-sku-row"><span class="src-badge src-all" style="width:26px;height:26px;font-size:12px;border-radius:7px;">拾</span><span class="od-sku">全源·7天 × 1</span><span class="od-amt">¥1.99</span></div>
+            <div class="od-time">2026-11-01 19:33 · 激活码 JP-WPF6-****-****（点开完整码）</div>
+            <div class="od-ops"><div class="btn-primary">一键激活</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026103118022…</span><span class="pill gray">已完成</span></div>
+            <div class="od-sku-row"><span class="src-badge src-wy" style="width:26px;height:26px;font-size:12px;border-radius:7px;">网</span><span class="od-sku">网易云音乐·7天 × 1</span><span class="od-amt">¥1.49</span></div>
+            <div class="od-time">2026-10-31 18:02 · 已激活 · 网易云音源至 2026-11-07</div>
+          </div>
+
+          <div class="sheet-mask">
+            <div class="sheet">
+              <h4>确认激活</h4>
+              <p>本单为<b style="color:var(--primary);">全源码</b>：激活后 QQ / 网易云 / 酷狗 / 酷我 音源全部解锁 7 天（叠加现有权益后至 <b style="color:var(--primary);">2026-11-20</b>）。</p>
+              <div class="btn-primary">确认激活</div>
+              <div style="height:10px;"></div>
+              <div class="btn-ghost">稍后再说</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="theme-tag">深色 am_dark</div>
+      <div class="phone dk"><div class="notch"></div>
+        <div class="statusbar"><span>9:41</span><span>▮▮▮</span></div>
+        <div class="page">
+          <div class="hdr"><span class="back">‹</span>我的订单</div>
+          <div class="poll"><span class="spin"></span>付款后本页自动刷新发放进度</div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110209341…</span><span class="pill org">待支付</span></div>
+            <div class="od-sku-row"><span class="src-badge src-tx" style="width:26px;height:26px;font-size:12px;border-radius:7px;">Q</span><span class="od-sku">QQ音乐·7天 × 1</span><span class="od-amt">¥1.49</span></div>
+            <div class="od-time">2026-11-02 09:34 · 48 小时后自动关闭</div>
+            <div class="od-ops"><div class="btn-primary">继续支付</div><div class="btn-ghost">取消订单</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026110119330…</span><span class="pill green">已发码</span></div>
+            <div class="od-sku-row"><span class="src-badge src-all" style="width:26px;height:26px;font-size:12px;border-radius:7px;">拾</span><span class="od-sku">全源·7天 × 1</span><span class="od-amt">¥1.99</span></div>
+            <div class="od-time">2026-11-01 19:33 · 激活码 JP-WPF6-****-****（点开完整码）</div>
+            <div class="od-ops"><div class="btn-primary">一键激活</div></div>
+          </div>
+
+          <div class="card">
+            <div class="od-head"><span class="od-no">SY2026103118022…</span><span class="pill gray">已完成</span></div>
+            <div class="od-sku-row"><span class="src-badge src-wy" style="width:26px;height:26px;font-size:12px;border-radius:7px;">网</span><span class="od-sku">网易云音乐·7天 × 1</span><span class="od-amt">¥1.49</span></div>
+            <div class="od-time">2026-10-31 18:02 · 已激活 · 网易云音源至 2026-11-07</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 决策点汇总 ============ -->
+<div class="screen-group">
+  <div class="screen-title">决策点汇总（v1 D1–D5 继续有效 + v2 新增 D6/D7，逐点回复即可）</div>
+  <div class="card" style="background:#fff;color:#1a1a1a;max-width:820px;">
+    <div style="font-size:14px;line-height:2.1;">
+      <b>D6</b>｜音源区形态：<b>全源置顶+单源平铺四卡</b>（主推，当前 5 SKU 一屏放下） vs 音源横向 tab（SKU ≥8 后再切）<br>
+      <b>D7</b>｜组合折扣：按音源收费后 v1 的多张折扣 chips 已移除；是否保留「同商品多张折扣」（服务端 combo_rates 机制仍在）<br>
+      <b>D1</b>｜SKU 卡形态（v1）：纵向卡 vs 横向选择条 —— v2 音源行形态已吸收此讨论<br>
+      <b>D2</b>｜支付引导「我已付款」页内直按 vs 引导回订单中心<br>
+      <b>D3</b>｜订单五态徽章配色 + 已关闭折叠历史区<br>
+      <b>D4</b>｜多码融合确认弹层主次钮（v2 示例为全源码单钮确认，多码叠加语义不变）<br>
+      <b>D5</b>｜选购页顶部「试用中·剩 2 天（全音源可用）」状态条去留
+    </div>
+  </div>
+</div>
+
+</body>
+</html>
