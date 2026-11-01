@@ -9,7 +9,7 @@
 | # | 动作 | 要点 | 状态 |
 |---|---|---|---|
 | 1 | 境外注册商购新域 | **已完成（2026-10-26）：`shiyinbox.top` @ Namesilo（$1.88/年，续费 $4.88；WHOIS 隐私生效）** | ✅ |
-| 2 | EdgeOne 国际站免费套餐 | **已完成（2026-10-27 全链贯通）**：NS 接入+边缘证书（2026-10-26）；**回源 Host 已切 `sy-api.a-stock.top`+回源 HTTPS:443（2026-10-27 用户控制台操作）**；源站证书+拾音 server block 同日上线，525 消除（`/` 200、`/config` 200、`/dl/` 200）。缓存规则（动态接口禁缓存）控制台侧**待用户配置**（响应头 no-store 双保险的服务端一侧已生效） | ✅（差禁缓存规则） |
+| 2 | EdgeOne 国际站免费套餐 | **已完成（2026-10-27 全链贯通）**：NS 接入+边缘证书（2026-10-26）；**回源 Host 已切 `sy-api.a-stock.top`+回源 HTTPS:443（2026-10-27 用户控制台操作）**；源站证书+拾音 server block 同日上线，525 消除（`/` 200、`/config` 200、`/dl/` 200）。**禁缓存规则已配置（2026-11-02 用户控制台+实测收口）**：`/config` `/url` 实测 `Cache-Control: no-store`+`EO-Cache-Status: MISS`（每次回源零缓存命中）——⑥冒烟期间实证过缓存污染（GET /url 的 401 按缓存键=URL 不含 header 被缓存，换有效 token 仍命中旧 401），此配置关闭该风险面（详见 §8 件① 冒烟补记） | ✅ |
 | 3 | tx 会员 cookie | **2026-10-26 用户拍板：先用主力号绿钻 cookie 测试**（风险知情：§八#4 缓解①「独立小号隔离」暂失效，主力号暴露在风控面；测试期短量小可控）。**硬门槛：放量前必须切独立小号**——此门槛写入 §六放量前置 | ✅（测试期主力号） |
 
 ## 1. license-platform 接入（产品注册→SKU→发码→srv token）
@@ -202,6 +202,10 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 > 3. **trial_min_client_ver per-product 化**（2026-11-01 已记）：现全局单键 meta（缺省 1.7.0
 >    曾掐断拾音 1.0.0 召回链，已临时调 1.0.0，备份在案）——新增低版本产品接入必须先调 meta；
 >    长期改 products 列/按产品 meta 键，免「上线即断链」暗雷复发。
+>    ⚠️ **踩线警示（2026-11-02）**：拾音版本基线已重开 1.0.0/1（11-01 27ed208b，改名后独立
+>    版本线，旧认知「当前 1.9.1 远高」作废）——现 App 版本头=1.0.0 **恰好等于** meta=1.0.0，
+>    踩线放行。**meta 上调前必须先发新版本 App**，否则全量断召回（同 11-01 事故形态）；
+>    per-product 化落地前此键对拾音侧视为只读。
 > 4. **多源到期口径复核**（2026-11-01 三角色审查 I3 补）：`/srv/key-entitlement` 的
 >    `expires_at`=store.Key v1 聚合（**min 非零到期**，licenses.go:87）是 key 级跨 app 口径，
 >    取链服务已把它写进 token record 做 /url 全局拦截——多源码「A 源到期 B 源在期」会把
@@ -209,6 +213,22 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 >    发码前须：平台按产品维度下发到期（`expires_by_app` 或按 X-Product 过滤）+取链按源
 >    校验；并复核 min 聚合是否参与平台 status 判定（若参与，status 本身已在多源码失真，
 >    属平台既有语义需一并对拍）。
+>
+> **✅ 件① 核验适配已实施（2026-11-02，⑥冒烟驱动）**：按源收费码（QQ音乐·月卡 tx-m1/
+> 年卡 tx-y1，apps=["tx"]，product_apps 注册表 tx|shiyin 已登记）activate 全通但
+> register 恒 403——根因=fork `routers/shiyin.py:203` 按「apps 字面含 product_id」旧口径
+> 判定，Key v1 per-app 到期 map 下源键码恒拒。修复=平台 `srvapi.go handleSRVKeyEntitlement`
+> 响应加 `entitled` 字段（key.apps 键集合 ∩ product_apps[product_id] 单源判定，
+> commit f115130）+fork 消费该字段缺省 False fail-closed（commit c22cce3，部署顺序=平台
+> 先行；平台二进制+fork 镜像已部署，DB 备份 pre-entitled-deploy-20261102-0252.db）。
+> **⑥冒烟全链 PASS**：两码 activate（receipt Ed25519）→register 200→/url 200 真实
+> QQ 播放 URL；测试席位已 admin/revoke 清理（码可复用）。
+
+**⚠️ EdgeOne 缓存污染实证（2026-11-02 ⑥冒烟，§0#2 待办升级必做）**：`GET /url/` 的失败
+响应（401）被 EdgeOne 缓存后对同 URL 后续请求（即便换了有效 token）反复返回——缓存键=URL
+不含 header，冒烟多轮 401 假象直至某请求穿透回源刷新缓存才消除。控制台禁缓存规则（§0#2
+挂账项）从「双保险」升级为**必做**：真实用户 token 轮换后同样可能命中旧缓存响应。清单见
+§4 上线检查单（/url /config /register /activate /redeem /device /api /latest /dash）。
 
 ## 9. 批2 直连商业化实施记录与运维事件（2026-10-31~11-02 回写）
 
