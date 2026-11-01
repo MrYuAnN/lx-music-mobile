@@ -208,3 +208,6 @@ export const DEFAULT_SETTING = {
 // destructive 红语义独立于品牌色（HIG 惯例不随 tint）：AM 双态红（治理批审查 I1 单源化，
 // ActionSheet/Setting ActionRow 共用）
 export const DESTRUCTIVE_RED = { dark: '#FB4B54', light: '#FA233B' } as const
+
+// success 绿语义（净屏 jingpingSuccess 同源 iOS systemGreen 双态）：绑回钮等恢复类动作用色
+export const SUCCESS_GREEN = { dark: '#30D158', light: '#34C759' } as const
