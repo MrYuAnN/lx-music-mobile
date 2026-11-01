@@ -78,8 +78,8 @@ class MainApplication : Application(), ReactApplication {
       // 未来接看板须先加网关 location 再开
       installReportEnabled = false,
     )
-    // RESTORED→「已恢复本机激活」toast（净屏 :193 同款常驻席：重装用户的试用 claim 命中
-    // 409 trial_has_license 时 SDK 内部自动导航 restore 找回，找回成功即通知）
+    // RESTORED→「已恢复本机激活」toast（净屏 :193 同款常驻席：启动 restore 先行命中，或
+    // 试用 claim 命中 409 trial_has_license 时 SDK 内部自动导航 restore 找回，找回成功即通知）
     EntitlementManager.registerEntitlementListener { change ->
       if (change == EntitlementManager.EntitlementChange.RESTORED) {
         runCatching {
@@ -92,14 +92,20 @@ class MainApplication : Application(), ReactApplication {
     // 首启试用资格待弹标志（净屏 :187 同款）：同步判定先于 claim；RN 侧经
     // consumeTrialWelcomePending 消费（AppState active 每次前台，审查 N3）
     EntitlementManager.markTrialWelcomePendingIfEligible(this)
-    // 权益启动协程（净屏 :232-243 同款）：巡检刷新 → 首启自动领 3 天试用（Unactivated 才领，
-    // SDK 内部幂等+退避节流；失败静默，无网首启联网后自动开始）。不接（落字，审查 S6/复审）：
-    // enforceExpiry 钩子（拾音到期处置=取链 403→重注册快速失败链承担）、6h 巡检 Worker
-    // （权益止损靠 /register 重注册重核，≤TTL 24h）、PlanSkus.fetch（已核实 claim 直连
-    // /api/trial-claim 不依赖 SKU 缓存，fetch 属净屏 SKU 展示面）
+    // 权益启动协程（净屏 :232-243 同款）：巡检刷新 → 未激活先 restore 按设备锚找回（claim
+    // 调用契约「restore 先行」的宿主侧落实——正价重装召回不再单点依赖 claim 409 分支，
+    // trial_min_client_ver 门槛 426 掐断试用链时召回链仍通）→ 首启自动领 3 天试用
+    // （Unactivated 才领，SDK 内部幂等+退避节流；失败静默，无网首启联网后自动开始）。
+    // 不接（落字，审查 S6/复审）：enforceExpiry 钩子（拾音到期处置=取链 403→重注册快速
+    // 失败链承担）、6h 巡检 Worker（权益止损靠 /register 重注册重核，≤TTL 24h）、
+    // PlanSkus.fetch（已核实 claim 直连 /api/trial-claim 不依赖 SKU 缓存，fetch 属净屏
+    // SKU 展示面）
     appScope.launch {
       try {
         EntitlementManager.refreshOnStart(this@MainApplication)
+        if (EntitlementManager.current(this@MainApplication) is EntitlementManager.State.Unactivated) {
+          EntitlementManager.restoreFromDevice(this@MainApplication)
+        }
         EntitlementManager.claimTrial(this@MainApplication)
       } catch (e: Exception) {
         Log.w(BOOT_TAG, "activation startup failed: ${e.message}")

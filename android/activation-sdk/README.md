@@ -41,7 +41,23 @@ ActivationSdk.init(
 )
 ```
 
-3. **可选：到期处置**（不注册=SDK 只提供 State 供宿主自行判定）：
+3. **权益启动协程**（Application.onCreate 起 IO 协程；**顺序不可倒——restore 先行是
+   claimTrial 的调用契约**，正价重装召回不依赖 claim 409 分支，trial 版本门槛 426
+   掐断试用链时召回链仍通）：
+
+```kotlin
+appScope.launch {
+    EntitlementManager.refreshOnStart(applicationContext)
+    // Expired 不召回（过期本地码换新码语义）；Active 由 SDK 内部短路。Unactivated 无在绑
+    // 记录时 restore 为一次轻量空应答 GET（每次冷启动至多一次，可接受）
+    if (EntitlementManager.current(applicationContext) is EntitlementManager.State.Unactivated) {
+        EntitlementManager.restoreFromDevice(applicationContext)
+    }
+    EntitlementManager.claimTrial(applicationContext)   // 首启自动领试用（内部幂等+退避）
+}
+```
+
+4. **可选：到期处置**（不注册=SDK 只提供 State 供宿主自行判定）：
 
 ```kotlin
 ActivationSdk.registerExpiryHandler(
@@ -105,6 +121,15 @@ ActivationSdk.registerExpiryHandler(
   build.gradle testOptions/testImplementation）。
   剥离：XianyuTracker（渠道埋点）移宿主 com.celzero.bravedns.service（对标 RevenueCat
   attribution：归因为第三方 MMP+服务端集成，SDK 核心不含渠道归因逻辑——渠道埋点归宿主）。
+
+- 2026-10-31 v1.4（拾音激活域入口重构批，方案 §2.1）：解绑结构化通道——新增
+  `ReleaseOutcome{ok,errCode,userMessage}` 与 `releaseDeviceEx`/`releaseRemoteEx`
+  （errCode=not_bound/trial_no_release/release_limit/null 三值+null 归并，多语言宿主
+  i18n 消费；userMessage 中文原文双轨保留）；旧 `releaseDevice`/`releaseRemote` 委托
+  Ex 并保持原签名（净屏消费面零改动；唯一有意差异=releaseDevice 网络异常 message
+  为 null 时补「网络异常」兜底文案）；err→errCode/文案提取单源 `releaseErrCode`/
+  `releaseFailMessage`（纯函数）；单测 ReleaseOutcomeTest（映射+文案逐字回归双锚点；
+  成功路径 clearKey 行为由真机冒烟盖）。
 
 - 2026-10-31 文档姊妹件首版（非 SDK 版本推进，SDK 源码零变化）：
   INTEGRATION-CHECKLIST.md（宿主层接入能力清单 v1.0——自拾音全域对照审计的净屏
