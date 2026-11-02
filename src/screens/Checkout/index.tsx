@@ -1,10 +1,10 @@
 // 支付引导页（批3，方案 §四批3 v1.2；效果图 v2 定稿）。数据=建单响应齐发（免二次拉取）：
 // 金额 hero → 闲鱼唤端主钮（xianyu_item_id 非空=fleamarket:// 直拉商品页，降级=xianyu_url
 // 原链；审查先例=PlanSkus.xianyuItemId 同语义）→ 三步引导 → 订单号复制（闲鱼留言核验）→
-// 客服行（contact_url 空回退 faq.html，优化师 S6）→「我已付款」页内直按密集轮询（D2 拍板，
-// 动线短；dujiaoka 人工转账同构先例）。轮询策略（优化师 S5）：8s 密集、paid/delivered 即停、
-// 上限 40 次≈5min 后引导去订单中心、卸载清理。按钮语义（优化师 S4）=发起核验查询而非确认
-// 收款——「待管理员核验」反馈防重复操作误解。
+// 客服行（contact_url 空回退 faq.html，优化师 S6）→「挂载即自动核验轮询」（2026-11-03 拍板
+// 对齐净屏自动刷新，推翻 D2 手动直按；「我已付款」按钮降级为手动立即触发）。
+// 轮询策略（优化师 S5）：8s 密集、paid/delivered 即停、上限 40 次≈5min 后引导去订单中心、
+// 卸载清理。核验语义（优化师 S4）=发起核验查询而非确认收款——「待管理员核验」反馈防重复操作误解。
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Animated, AppState, Linking, ScrollView, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
@@ -74,11 +74,12 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
     }
   }, [t])
 
-  // 我已付款（D2 拍板=页内直按）：密集轮询 /api/orders?nos= 直到 delivered；语义=发起
-  // 核验查询（人工链路 App 无法确认已付——「待管理员核验」反馈防误当确认收款）
-  const handlePaid = useCallback(() => {
+  // 核验轮询（2026-11-03 拍板推翻 D2 手动直按，对齐净屏自动刷新）：挂载即自动密集轮询
+  // /api/orders?nos= 直到 delivered/closed；「我已付款」按钮降级为手动立即触发（超时/失败
+  // 停表后可再按）。语义=发起核验查询（人工链路 App 无法确认已付——「待管理员核验」反馈
+  // 防误当确认收款）
+  const startPolling = useCallback(() => {
     if (polling || delivered) return
-    hapticSelection()
     setPolling(true)
     times.current = 0
     delay.current = POLL_BASE_MS
@@ -105,6 +106,18 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
     tickRef.current = tick
     tick()
   }, [polling, delivered, order.orderNo, t, stopPolling])
+
+  const handlePaid = useCallback(() => {
+    if (polling || delivered) return
+    hapticSelection()
+    startPolling()
+  }, [polling, delivered, startPolling])
+
+  // 挂载即自动核验（对齐净屏自动刷新；pending 单进页即开始，delivered 初值已发码不轮询）
+  useEffect(() => {
+    if (!delivered) startPolling()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // AppState 退后台暂停轮询、回前台续跑（审查 S2：与 Orders 页对齐，退屏不空转）
   useEffect(() => {
