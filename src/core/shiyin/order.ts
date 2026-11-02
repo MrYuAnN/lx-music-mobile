@@ -7,7 +7,7 @@
 import { httpFetch } from '@/utils/request'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
-import { SHIYIN_BASE_URL } from './config'
+import { ORDER_BASE_URL } from './config'
 import { activationModule } from '@/utils/nativeModules/activation'
 import type { Message } from '@/lang'
 
@@ -179,7 +179,7 @@ let fetchingSkus: Promise<SkusCatalog> | null = null
 
 export const fetchSkus = (): Promise<SkusCatalog> => {
   if (fetchingSkus != null) return fetchingSkus
-  fetchingSkus = httpFetch(`${SHIYIN_BASE_URL}/api/skus`, {
+  fetchingSkus = httpFetch(`${ORDER_BASE_URL}/api/skus`, {
     timeout: NETWORK_TIMEOUT,
     headers: { 'X-Product': 'shiyin' },
   }).promise.then(resp => {
@@ -239,7 +239,7 @@ export const createOrder = async(skuIds: string, opts?: { clientToken?: string }
   if (!skuParam) throw new Error('empty cart')
   const deviceId = await activationModule.getDeviceId()
   const token = opts?.clientToken ?? getCheckoutToken(skuParam)
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/order/create`, {
+  const resp = await httpFetch(`${ORDER_BASE_URL}/api/order/create`, {
     method: 'post',
     timeout: NETWORK_TIMEOUT,
     headers: {
@@ -315,7 +315,7 @@ export const syncOrders = async(): Promise<OrderRecord[]> => {
   if (nos) params.set('nos', nos)
   if (deviceId) params.set('uid', deviceId)
   if (!params.toString()) return local
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/orders?${params.toString()}`, {
+  const resp = await httpFetch(`${ORDER_BASE_URL}/api/orders?${params.toString()}`, {
     timeout: NETWORK_TIMEOUT,
     headers: { 'X-Product': 'shiyin' },
   }).promise
@@ -372,7 +372,7 @@ export const fetchOrder = async(orderNo: string): Promise<OrderRecord | null> =>
   if (orderNo) params.set('nos', orderNo)
   else if (deviceId) params.set('uid', deviceId)
   if (!params.toString()) return null
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/orders?${params.toString()}`, {
+  const resp = await httpFetch(`${ORDER_BASE_URL}/api/orders?${params.toString()}`, {
     timeout: NETWORK_TIMEOUT,
     headers: { 'X-Product': 'shiyin' },
   }).promise
@@ -398,7 +398,7 @@ export const fetchOrder = async(orderNo: string): Promise<OrderRecord | null> =>
 
 // ---- 取消（审查 I7：待支付卡取消钮，后端契约现成；订单号强凭证，仅 pending 可取消）----
 export const cancelOrder = async(orderNo: string): Promise<boolean> => {
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/order/cancel`, {
+  const resp = await httpFetch(`${ORDER_BASE_URL}/api/order/cancel`, {
     method: 'post',
     timeout: NETWORK_TIMEOUT,
     headers: {

@@ -1,0 +1,14 @@
+fix(order): 订单域切平台直连 /sy/api 转写——建单/查询告别 EdgeOne 2.4s 链路税
+
+回归反馈（2026-11-02 建单 5s 体验差拍板）：createOrder/skus/orders/cancel 全走
+shiyinbox.top EdgeOne（TTFB 2.3-2.7s 实测）——用户架构拍板「激活售卖域直连、音乐域
+EdgeOne」覆盖订单域。
+
+- 网关：api.a-stock.top 加 /sy/api/ 前缀转写 → 8090（顶层 /api/order(s) 已被净屏占用
+  不可共用；nginx-gateway ace95e8 已部署，本机直测 TTFB 0.039s/公网 0.148s——60 倍）。
+- RN：config.ts 新 ORDER_BASE_URL（直连基址归属注释单源），order.ts 五处调用切换
+  （skus/create/orders×2/cancel）。
+- 边界：音乐域（config/url/dl）仍 SHIYIN_BASE_URL EdgeOne；激活域 SDK/register 已直连。
+  回滚=摘网关段+客户端回退一行。
+
+验证：tsc 0+eslint 0；公网转写路由冒烟 200。

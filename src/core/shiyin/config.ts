@@ -21,6 +21,12 @@ export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 // SHIYIN_BASE_URL——订单域待 sy-api.a-stock.top DNS 就绪后统一切直连，勿在此提前改）
 export const ACTIVATION_BASE_URL = 'https://api.a-stock.top'
 
+// 订单域直连基址（2026-11-02 建单 5s 反馈拍板：订单域同属激活售卖域，直连不走 EdgeOne
+// ——api.a-stock.top 顶层 /api/order(s)/skus 已被净屏占用，/sy 前缀由网关转写至订单域
+// 8090 去前缀，路由单源=nginx-gateway jingping-api.conf 段注释。skus/建单/查询/取消全走
+// 此基址；音乐域（config/url/dl）仍 SHIYIN_BASE_URL）
+export const ORDER_BASE_URL = `${ACTIVATION_BASE_URL}/sy`
+
 // 客户端版本名（平台 Gate/trial 门槛与 A-6 /register 补头共用；驻 config 解 auth↔config
 // import 环——净屏审计 A-6 落法，activation-audit-jingping.md §四）
 export const getClientVersion = (): string => process.versions.app
