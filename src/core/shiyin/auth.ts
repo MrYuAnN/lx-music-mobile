@@ -14,7 +14,7 @@ import { getData, removeData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import * as Keychain from 'react-native-keychain'
 import { activationModule } from '@/utils/nativeModules/activation'
-import { SHIYIN_BASE_URL, getClientVersion } from './config'
+import { ACTIVATION_BASE_URL, getClientVersion } from './config'
 import versionActions from '@/store/version/action'
 import versionState from '@/store/version/state'
 
@@ -134,7 +134,7 @@ const doRegister = async(): Promise<ShiyinAuth> => {
     key = await waitTrialKey()
     if (!key) throw shiyinError('ShiyinNotActivated', global.i18n.t('shiyin_not_activated'))
   }
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/register`, {
+  const resp = await httpFetch(`${ACTIVATION_BASE_URL}/register`, {
     method: 'post',
     headers: {
       // A-6（净屏审计 P1）：/register 原缺版本头致 fork 层强升闸（products.min_client_ver）

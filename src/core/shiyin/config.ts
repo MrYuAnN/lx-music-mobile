@@ -15,6 +15,12 @@ import versionActions from '@/store/version/action'
 
 export const SHIYIN_BASE_URL = 'https://shiyinbox.top'
 
+// 激活域基址=平台直连（2026-11-02 架构拍板：激活码域直连、音乐/订单域走 EdgeOne——
+// SDK 层 SDK_API_BASE 同值同拍板；/register 为平台原生端点，shiyinbox.top 对其纯转发
+// 白收 ~2.4s 链路税。音乐域（config/url/dl）+订单域（skus/orders 自有服务）仍走
+// SHIYIN_BASE_URL——订单域待 sy-api.a-stock.top DNS 就绪后统一切直连，勿在此提前改）
+export const ACTIVATION_BASE_URL = 'https://api.a-stock.top'
+
 // 客户端版本名（平台 Gate/trial 门槛与 A-6 /register 补头共用；驻 config 解 auth↔config
 // import 环——净屏审计 A-6 落法，activation-audit-jingping.md §四）
 export const getClientVersion = (): string => process.versions.app
