@@ -214,7 +214,26 @@ export default ({ componentId }: { componentId: string }) => {
         >
           {loading
             ? (
-              <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_loading')}</Text></View>
+              // 首次无缓存骨架屏（Q1 体感配套，2026-11-02 二次拍板：净屏原生页框架先渲染
+              // 同构——链路 TTFB ~2.4s 期间展示布局占位而非一行字，等待可感知可控；占位
+              // 形态对齐 tabs 行+档位卡真实布局）
+              <View style={styles.skeletonWrap}>
+                <View style={styles.skelTabs}>
+                  {[64, 72, 72, 72].map((w, i) => (
+                    <View key={i} style={[styles.skelTab, { backgroundColor: theme['c-content-background'] }, { width: w }]} />
+                  ))}
+                </View>
+                {[0, 1, 2, 3].map(i => (
+                  <View key={i} style={[styles.skelCard, { backgroundColor: theme['c-content-background'] }]}>
+                    <View style={[styles.skelTick, { backgroundColor: theme['c-border-background'] }]} />
+                    <View style={styles.skelLines}>
+                      <View style={[styles.skelLine, { width: '52%', backgroundColor: theme['c-border-background'] }]} />
+                      <View style={[styles.skelLine, { width: '34%', backgroundColor: theme['c-border-background'] }]} />
+                    </View>
+                    <View style={[styles.skelPrice, { backgroundColor: theme['c-border-background'] }]} />
+                  </View>
+                ))}
+              </View>
               )
             : failed || catalog == null
               ? (
@@ -457,6 +476,49 @@ const styles = createStyle({
     paddingTop: 120,
     paddingHorizontal: SPACING.s16,
     gap: SPACING.s12,
+  },
+  // 骨架屏（Q1 体感配套）：占位形态对齐 tabs 行+档位卡真实布局（TierRow 视觉：
+  // 圆角 16/横向/勾选圆点+双行文案+右侧价格块）
+  skeletonWrap: {
+    paddingTop: SPACING.s16,
+  },
+  skelTabs: {
+    flexDirection: 'row',
+    gap: SPACING.s8,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s16,
+  },
+  skelTab: {
+    height: 34,
+    borderRadius: 999,
+  },
+  skelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.s12,
+    borderRadius: 16,
+    padding: SPACING.s16,
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s10,
+    height: 76,
+  },
+  skelTick: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+  },
+  skelLines: {
+    flex: 1,
+    gap: SPACING.s8,
+  },
+  skelLine: {
+    height: 13,
+    borderRadius: 6,
+  },
+  skelPrice: {
+    width: 48,
+    height: 18,
+    borderRadius: 6,
   },
   retryBtn: {
     borderRadius: 999,

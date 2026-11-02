@@ -21,8 +21,8 @@ export default ({ componentId }: Props) => {
   useTrialWelcome()
   // 批3 待支付订单提醒（6h/40h 两次，本地快照判定+AppState active 双触发，审查 I4 挂载拍板）
   useOrderReminder(componentId)
-  // 七题 Q1-C 选购页目录预热带（Home 挂载+AppState active 双触发，>1h 节流——点到期横幅
-  // 进购买页时缓存新鲜即开即最新）
+  // 七题 Q1-C 选购页目录预热·前台回切席（冷启动首拉已在启动链 prefetchSkus，2026-11-02
+  // 二次拍板；此处只管 AppState active 回切刷新，双触发面共享 >1h 节流与 in-flight 去重）
   useSkusPrefetch()
   useEffect(() => {
     setComponentId(COMPONENT_IDS.home, componentId)

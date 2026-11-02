@@ -1,8 +1,10 @@
-// skus 目录预热带（七题 Q1-C，2026-11-02 拍板）：Home 挂载+AppState active 双触发后台静默
-// 刷新（orderReminder.ts 同款挂载模式），保证用户点到期横幅进购买页时缓存新鲜、即开即最新。
-// 节流=距上次成功拉取 >1h 才真发请求（本产品自定阈值，机制=主流 prefetch 实践；时间源单源
-// =缓存 fetchedAt，持久化——冷启动 1h 内不重发）。active 每次触发先走本地年龄判定（零网络）
-// 拦截；in-flight 去重在 fetchSkus 层（order.ts 模块级单例），此处只管触发与节流。
+// skus 目录预热（七题 Q1-C，2026-11-02 拍板；Q1-C 修订=预热时机提前到启动链，2026-11-02
+// 回归反馈后二次拍板：净屏 RethinkDnsApplication「进程启动即拉，不等用户点购买」同构——
+// 原 Home 挂载点晚 1-2s JS 加载，冷启动秒点横幅撞上链路 TTFB ~2.4s 仍慢）。
+// 两个触发面：①启动链 initShiyinConfig 后 fire-and-forget（冷启动首拉，不阻塞）②Home
+// AppState active（前台回切刷新）。节流=距上次成功拉取 >1h 才真发请求（本产品自定阈值，
+// 时间源单源=缓存 fetchedAt）；in-flight 去重在 fetchSkus 层（order.ts 模块级单例），
+// 双触发面与 Purchase 页 load 并发均不重复请求。
 import { useEffect } from 'react'
 import { AppState } from 'react-native'
 
@@ -10,7 +12,7 @@ import { fetchSkus, getSkusCacheAge } from './order'
 
 const PREFETCH_INTERVAL_MS = 3600_000
 
-const prefetch = async(): Promise<void> => {
+export const prefetchSkus = async(): Promise<void> => {
   const age = await getSkusCacheAge()
   if (age < PREFETCH_INTERVAL_MS) return
   try {
@@ -22,9 +24,9 @@ const prefetch = async(): Promise<void> => {
 
 export const useSkusPrefetch = (): void => {
   useEffect(() => {
-    void prefetch()
+    void prefetchSkus()
     const sub = AppState.addEventListener('change', state => {
-      if (state == 'active') void prefetch()
+      if (state == 'active') void prefetchSkus()
     })
     return () => { sub.remove() }
   }, [])

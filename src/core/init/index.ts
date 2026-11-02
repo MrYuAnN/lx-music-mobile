@@ -8,6 +8,7 @@ import initCommonState from './common'
 import { initDeeplink } from './deeplink'
 import { initShiyinConfig } from '@/core/apiSource'
 import { initDynamicSources } from '@/core/shiyin/dynamicSources'
+import { prefetchSkus } from '@/core/shiyin/skusPrefetch'
 import commonActions from '@/store/common/action'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
@@ -50,6 +51,12 @@ export default async() => {
   initDynamicSources()
   await initShiyinConfig()
   bootLog('Shiyin config inited.')
+
+  // 选购页目录冷启动预热（七题 Q1-C 修订，2026-11-02 二次拍板：净屏 RethinkDnsApplication
+  // 「进程启动即拉，不等用户点购买」同构——原 Home 挂载点晚 JS 加载 1-2s；fire-and-forget
+  // 不阻塞启动链，失败静默下次触发再试，>1h 节流+in-flight 去重在 prefetch/fetchSkus 内）
+  void prefetchSkus()
+  bootLog('Skus prefetch kicked.')
 
   registerPlaybackService()
   bootLog('Playback Service Registered.')
