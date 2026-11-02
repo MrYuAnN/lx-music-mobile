@@ -31,9 +31,11 @@ var shiyinOrderCfg = osv.Config{
 }
 
 // AppCN 拾音受管 app 的 key→中文名（描述快照数据源；product_apps 注册表拾音行
-// display_name 对齐）。TierCN 档位中文（平台 seed 默认档全集+auto3）。
+// display_name 对齐——2026-11-03 补齐 tx/wy/kg/kw 四条（此前缺项回落原值，
+// tx 系订单快照/管理台/App 卡片显示「tx·7天」，客诉实锤）。上架新 App 时此处
+// 与平台注册表须同步补条目。TierCN 档位中文（平台 seed 默认档全集+auto3）。
 var (
-	AppCN  = map[string]string{"shiyin": "拾音"}
+	AppCN  = map[string]string{"shiyin": "拾音", "tx": "QQ音乐", "wy": "网易云音乐", "kg": "酷狗音乐", "kw": "酷我音乐"}
 	TierCN = map[string]string{"d7": "7天", "m1": "月卡", "m6": "半年卡", "y1": "年卡", "perm": "永久", "auto3": "体验·3天"}
 )
 
