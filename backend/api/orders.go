@@ -18,8 +18,11 @@ import (
 	"net/http"
 	"sort"
 	"strings"
+	"sync/atomic"
+	"time"
 
 	osv "ordercore/orderstore"
+	osrv "ordercore/srv"
 
 	"shiyin/backend/store"
 )
@@ -240,17 +243,65 @@ func (s *Server) orderCreateResponse(o osv.Order) map[string]any {
 // nativeOrderDTO 订单中心条目（净屏同构）：full=true（订单号强凭证）→ 完整
 // 订单号+激活码；full=false（uid 弱凭证）→ 脱敏单号+无码。CloseReason 仅 closed
 // 单下发（user_cancel/timeout_close；存量旧单无事件为空串）。
+// CodeAgg 生命周期聚合（2026-11-03，双视图同发——纯计数不含码值，uid 弱视图
+// 脱敏口径不受影响）：服务端六桶派生单一事实源，App 端五态推断主源；平台未
+// 升级（v2 探测失败）时 nil，App 端回退客户端推断。
 type nativeOrderDTO struct {
-	OrderNo     string   `json:"order_no,omitempty"`
-	MaskedNo    string   `json:"masked_no"`
-	Status      string   `json:"status"`
-	CloseReason string   `json:"close_reason,omitempty"`
-	AmountCents int      `json:"amount_cents"`
-	Desc        string   `json:"desc"`
-	IsCombo     bool     `json:"is_combo"`
-	CreatedAt   int64    `json:"created_at"`
-	Codes       []string `json:"codes,omitempty"`
-	Full        bool     `json:"full"`
+	OrderNo     string        `json:"order_no,omitempty"`
+	MaskedNo    string        `json:"masked_no"`
+	Status      string        `json:"status"`
+	CloseReason string        `json:"close_reason,omitempty"`
+	AmountCents int           `json:"amount_cents"`
+	Desc        string        `json:"desc"`
+	IsCombo     bool          `json:"is_combo"`
+	CreatedAt   int64         `json:"created_at"`
+	Codes       []string      `json:"codes,omitempty"`
+	Full        bool          `json:"full"`
+	CodeAgg     *orderCodeAgg `json:"code_agg,omitempty"`
+}
+
+// orderCodeAgg 单据码生命周期六桶（平台 /srv/keys-agg v2 契约同构；字段语义见
+// orderstore srvstore.PoolAgg——assigned/rebind=可激活面，bound_self/merged_self=
+// 本机已完成面，bound_other=他机，expired=过期展示桶含吊销/作废）。
+type orderCodeAgg struct {
+	AssignedN   int `json:"assigned_n"`
+	ActivatedN  int `json:"activated_n"`
+	RebindN     int `json:"rebind_n"`
+	BoundSelfN  int `json:"bound_self_n"`
+	MergedSelfN int `json:"merged_self_n"`
+	BoundOtherN int `json:"bound_other_n"`
+	ExpiredN    int `json:"expired_n"`
+}
+
+// aggV2MissUntil keys-agg v2 探测失败负缓存（进程级 60s，定稿 §7.9）：平台
+// 未升级（确定无 v2 标记）时，App 订单轮询不重复白打注定无 v2 的往返。
+// aggErrBackoffUntil 瞬时错误短退避（代码审 I2：传输错误≠「注定无 v2」——
+// 平台 5xx/网络抖动只缓 5s，防一次抖动让全部用户展示降级拉满一个轮询分钟）。
+// 原子读写——http handler 并发安全。0=无缓存。
+var aggV2MissUntil atomic.Int64
+var aggErrBackoffUntil atomic.Int64
+
+// orderCodeAggs delivered 单批量取生命周期聚合。失败（旧平台/瞬时错误）返回
+// false——调用方不下发 code_agg，App 端走客户端推断回退。
+func (s *Server) orderCodeAggs(nos []string, uid string) (map[string]osrv.KeyAgg, bool) {
+	now := time.Now().Unix()
+	if aggV2MissUntil.Load() > now || aggErrBackoffUntil.Load() > now {
+		return nil, false
+	}
+	sc := s.St.SRV()
+	if sc == nil {
+		return nil, false
+	}
+	m, v2, err := sc.KeysAggUID(nos, uid)
+	if err != nil {
+		aggErrBackoffUntil.Store(now + 5)
+		return nil, false
+	}
+	if !v2 {
+		aggV2MissUntil.Store(now + 60)
+		return nil, false
+	}
+	return m, true
 }
 
 // orderCloseReason 从事件流水取关单类别（后写优先；非 closed 一律空串——
@@ -297,6 +348,14 @@ func (s *Server) handleNativeOrders(w http.ResponseWriter, r *http.Request) {
 	}
 	out := []nativeOrderDTO{}
 	seen := map[string]bool{}
+	// 生命周期聚合收集（2026-11-03）：delivered 单真实单号收窗口（uid 视图 DTO
+	// 无 order_no，收集必须在构建侧进行）。记录 out 下标（append 扩容会使指针
+	// 失效——禁用指针，全量 append 完成后按下标回填）
+	type aggTarget struct {
+		idx int
+		no  string
+	}
+	var aggTargets []aggTarget
 	// nos 批量一次 IN 查询（批2 代码审 S4：单连接串行化下 20 次逐单往返放大队头
 	// 延迟——复用 ordercore OrdersByNos；不存在单不出现=不泄露存在性语义不变）
 	if len(nos) > 0 {
@@ -316,6 +375,9 @@ func (s *Server) handleNativeOrders(w http.ResponseWriter, r *http.Request) {
 				dto.Codes = o.PoolIDs
 			}
 			out = append(out, dto)
+			if o.Status == osv.OrderStatusDelivered {
+				aggTargets = append(aggTargets, aggTarget{idx: len(out) - 1, no: o.OrderNo})
+			}
 		}
 	}
 	if uid != "" {
@@ -331,16 +393,47 @@ func (s *Server) handleNativeOrders(w http.ResponseWriter, r *http.Request) {
 				dto := nativeOrderDTO{MaskedNo: maskOrderNo(o.OrderNo),
 					Status: o.Status, CloseReason: orderCloseReason(o), AmountCents: o.Amount,
 					Desc: s.DescribeOrder(o), IsCombo: osv.IsCombo(o.SKU), CreatedAt: o.CreatedAt, Full: false}
-				// 试用单码值对 uid 视图豁免脱敏（七题回归反馈 2026-11-02）：试用单由
-				// trial_sync 服务端自动建（SYTRIAL- 前缀），本地快照永无其单号 → 恒走
-				// uid 视图 → codes 恒空 → 客户端「已完成」推断（delivered 且码全在绑）
-				// 永不命中、恒显「已发码」。豁免依据：金额 0+试用码首绑锁设备（泄露
-				// 无收益）+uid=本机盐化哈希取本机单，无增量枚举风险；正式单脱敏不变。
-				if o.Status == osv.OrderStatusDelivered && len(o.PoolIDs) > 0 &&
-					strings.HasPrefix(o.OrderNo, s.St.TrialOrderPrefix()) {
-					dto.Codes = o.PoolIDs
-				}
 				out = append(out, dto)
+				if o.Status == osv.OrderStatusDelivered {
+					aggTargets = append(aggTargets, aggTarget{idx: len(out) - 1, no: o.OrderNo})
+				}
+			}
+		}
+	}
+	// 码生命周期聚合回填（双视图同发；v2 缺省=不下发，App 端回退客户端推断）。
+	// bb2fc3af 撤销（2026-11-03）：试用单 uid 视图码值豁免块删除——生命周期展示
+	// 改由 code_agg 承载，码值脱敏回归全局统一（未激活码值=可窃取面）。
+	// 试用单号映射（代码审 C1 修复）：平台试用码 pool.order_no=JPTRIAL-<gid>，
+	// 本地单号=SYTRIAL-<gid>（同 gid 异前缀）——查询侧前缀替换对齐平台行，
+	// 配对常量=osrv.TrialOrderNoPrefix（order-core srv，锚 platform trial.go）。
+	// uid 空（App 侧 getDeviceId 桥接失败的 nos-only 请求）不下发（代码审 I3：
+	// 面板模式语义与本机维度判定互斥——bound 自机桶恒 0 会把在绑单误显他机），
+	// App 端自动回退客户端推断。
+	if len(aggTargets) > 0 && uid != "" {
+		localTrialPrefix := s.St.TrialOrderPrefix()
+		uniq := make([]string, 0, len(aggTargets))
+		guard := map[string]bool{}
+		for _, t := range aggTargets {
+			aggNo := osrv.TrialAggOrderNo(t.no, localTrialPrefix)
+			if !guard[aggNo] {
+				guard[aggNo] = true
+				uniq = append(uniq, aggNo)
+			}
+		}
+		if m, ok := s.orderCodeAggs(uniq, uid); ok {
+			for _, t := range aggTargets {
+				aggNo := osrv.TrialAggOrderNo(t.no, localTrialPrefix)
+				if a, hit := m[aggNo]; hit {
+					out[t.idx].CodeAgg = &orderCodeAgg{
+						AssignedN:   a.AssignedN,
+						ActivatedN:  a.ActivatedN,
+						RebindN:     a.RebindN,
+						BoundSelfN:  a.BoundSelfN,
+						MergedSelfN: a.MergedSelfN,
+						BoundOtherN: a.BoundOtherN,
+						ExpiredN:    a.ExpiredN,
+					}
+				}
 			}
 		}
 	}

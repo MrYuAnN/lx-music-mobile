@@ -305,16 +305,23 @@ func orderPanelRows(rows []adminOrderRow) [][]string {
 }
 
 // orderExtra 订单行机器可读附加（epoch 时间+码激活聚合+标签徽章；与 rows 下标对齐）。
+// 2026-11-03 码生命周期六桶扩展（面板徽章「激活 a/N · 并入 m · 他机 o · 过期 e」
+// 数据源；omitempty=旧平台窗口期字段缺省，bp.js ?? 防御降级单段）。
 type orderExtra struct {
 	CreatedAt   int64  `json:"created_at"`
 	PaidAt      int64  `json:"paid_at"`
 	DeliveredAt int64  `json:"delivered_at"`
 	AssignedN   int    `json:"assigned_n"`
 	ActivatedN  int    `json:"activated_n"`
+	RebindN     int    `json:"rebind_n,omitempty"`
+	MergedSelfN int    `json:"merged_self_n,omitempty"`
+	BoundOtherN int    `json:"bound_other_n,omitempty"`
+	ExpiredN    int    `json:"expired_n,omitempty"`
 	Tag         string `json:"tag,omitempty"`
 }
 
-// orderExtras 批量组装行附加（srv/keys-agg 单次往返；失败静默省略聚合数）。
+// orderExtras 批量组装行附加（srv/keys-agg 单次往返，uid 空=面板模式；失败
+// 静默省略聚合数——橙点与新徽章同步降级，管理台可用性不受平台可用性拖累）。
 func (ps *PanelServer) orderExtras(orders []osv.Order) []orderExtra {
 	nos := make([]string, 0, len(orders))
 	for _, o := range orders {
@@ -322,7 +329,7 @@ func (ps *PanelServer) orderExtras(orders []osv.Order) []orderExtra {
 	}
 	aggs := map[string]srv.KeyAgg{}
 	if sc := ps.St.SRV(); sc != nil {
-		if m, err := sc.KeysAgg(nos); err == nil {
+		if m, _, err := sc.KeysAggUID(nos, ""); err == nil {
 			aggs = m
 		}
 	}
@@ -331,6 +338,7 @@ func (ps *PanelServer) orderExtras(orders []osv.Order) []orderExtra {
 		e := orderExtra{CreatedAt: o.CreatedAt, PaidAt: o.PaidAt, DeliveredAt: o.DeliveredAt, Tag: o.Tag}
 		if a, ok := aggs[o.OrderNo]; ok {
 			e.AssignedN, e.ActivatedN = a.AssignedN, a.ActivatedN
+			e.RebindN, e.MergedSelfN, e.BoundOtherN, e.ExpiredN = a.RebindN, a.MergedSelfN, a.BoundOtherN, a.ExpiredN
 		}
 		out[i] = e
 	}

@@ -20,6 +20,11 @@ import (
 	"shiyin/backend/store"
 )
 
+// fakeAggV2 假平台 keys-agg 是否模拟已升级形态（v2 标记+六桶字段）。缺省 false=
+// 旧平台（无 v 键）——v2 探测负缓存路径的缺省覆盖；生命周期聚合测试置 true。
+// 包内测试串行执行（无 t.Parallel），包级开关安全。
+var fakeAggV2 = false
+
 // fakePlatform 假平台 /srv 面（划码/查询族最小实现）。
 func fakePlatform(issued map[string][]string) *httptest.Server {
 	mux := http.NewServeMux()
@@ -54,8 +59,25 @@ func fakePlatform(issued map[string][]string) *httptest.Server {
 		}
 		_ = json.NewEncoder(w).Encode(map[string]any{"keys": keys})
 	})
-	mux.HandleFunc("GET /srv/keys-agg", func(w http.ResponseWriter, _ *http.Request) {
-		_ = json.NewEncoder(w).Encode(map[string]any{"aggs": []osrv.KeyAgg{}})
+	mux.HandleFunc("GET /srv/keys-agg", func(w http.ResponseWriter, r *http.Request) {
+		// fakeAggV2=true 模拟已升级平台（v2 标记+六桶；assigned_n=issued 码数；
+		// JPTRIAL-* 试用行=平台 trial.go pool.order_no 契约模拟，assigned_n=1），
+		// 缺省=旧平台形态（无 v 键）——v2 探测负缓存路径由缺省形态覆盖
+		if !fakeAggV2 {
+			_ = json.NewEncoder(w).Encode(map[string]any{"aggs": []osrv.KeyAgg{}})
+			return
+		}
+		aggs := []osrv.KeyAgg{}
+		for _, no := range strings.Split(r.URL.Query().Get("order_nos"), ",") {
+			if ids := issued[no]; len(ids) > 0 {
+				aggs = append(aggs, osrv.KeyAgg{OrderNo: no, AssignedN: len(ids),
+					ActivatedN: 0, RebindN: 0, BoundSelfN: 0, MergedSelfN: 0, BoundOtherN: 0, ExpiredN: 0})
+			} else if strings.HasPrefix(no, "JPTRIAL-") {
+				aggs = append(aggs, osrv.KeyAgg{OrderNo: no, AssignedN: 1,
+					ActivatedN: 0, RebindN: 0, BoundSelfN: 0, MergedSelfN: 0, BoundOtherN: 0, ExpiredN: 0})
+			}
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{"aggs": aggs, "v": 2})
 	})
 	mux.HandleFunc("GET /srv/config/sales", func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(osrv.SalesConfig{PresetTags: []string{"闲鱼", "送人", "活动赠送"}})
@@ -73,6 +95,8 @@ func newTestServer(t *testing.T) (apiURL, panelURL string, st *store.Store) {
 	issued := map[string][]string{}
 	fp := fakePlatform(issued)
 	t.Cleanup(fp.Close)
+	aggV2MissUntil.Store(0)      // 负缓存进程级共享——每测试重置防前序 miss 串扰
+	aggErrBackoffUntil.Store(0)
 	st, err := store.Open(filepath.Join(t.TempDir(), "shiyin-test.db"))
 	if err != nil {
 		t.Fatal(err)
@@ -298,8 +322,9 @@ func TestPanelFlow(t *testing.T) {
 }
 
 // TestTrialSync 试用补单（SYTRIAL- 前缀+字段契约：金额 0/is_test/channel 空）+
-// uid 视图豁免（七题回归反馈 2026-11-02）：试用单 delivered 经 uid 查询应带 codes
-// （客户端「已完成」推断数据源）；正式单 uid 视图脱敏无码（TestOrderCenterLevels 锁）。
+// uid 视图全局脱敏（2026-11-03 撤销 bb2fc3af 回归锁）：试用单 delivered 经 uid
+// 查询不带 codes（生命周期展示改由 code_agg 承载，码值脱敏回归全局统一——
+// 未激活码值=可窃取面）；正式单 uid 视图脱敏无码（TestOrderCenterLevels 锁）。
 func TestTrialSync(t *testing.T) {
 	base, _, st := newTestServer(t)
 	cronSync(t, st)
@@ -311,8 +336,8 @@ func TestTrialSync(t *testing.T) {
 		o.Tag != "自动试用" || o.SKU != "auto3" || len(o.PoolIDs) != 1 {
 		t.Fatalf("试用单字段不符: %+v", o)
 	}
-	// uid 视图豁免：试用单带码（full 仍 false=单号仍脱敏）。新测试库 uid=dev-t1
-	// 仅试用单一行（脱敏号形如 SY****0001，取唯一行断言）
+	// uid 视图脱敏回归：试用单不带码（full 仍 false=单号仍脱敏）。新测试库
+	// uid=dev-t1 仅试用单一行（脱敏号形如 SY****0001，取唯一行断言）
 	_, body := get(t, base+"/api/orders?uid=dev-t1", "")
 	orders := body["orders"].([]any)
 	if len(orders) != 1 {
@@ -322,9 +347,95 @@ func TestTrialSync(t *testing.T) {
 	if trial["full"] != false {
 		t.Fatalf("试用单 uid 视图 full 应 false: %v", trial)
 	}
-	codes, _ := trial["codes"].([]any)
-	if len(codes) == 0 {
-		t.Fatalf("试用单 uid 视图应豁免下发 codes: %v", trial)
+	if codes, ok := trial["codes"].([]any); ok && len(codes) > 0 {
+		t.Fatalf("试用单 uid 视图不应下发 codes（bb2fc3af 撤销回归）: %v", trial)
+	}
+}
+
+// TestOrderCodeAgg 码生命周期聚合下发（2026-11-03）：v2 平台形态下 delivered 单
+// 双视图均带 code_agg（纯计数不含码值）；旧平台形态（缺省 fake）不下发 code_agg
+// ——App 端回退客户端推断的契约锚。
+func TestOrderCodeAgg(t *testing.T) {
+	fakeAggV2 = true
+	defer func() { fakeAggV2 = false }()
+	base, _, _ := newTestServer(t)
+	code, body := post(t, base+"/api/order/create", "", `{"sku":"shiyin-m1","uid":"dev-agg","client_token":"tokagg"}`)
+	if code != 200 {
+		t.Fatal(body)
+	}
+	no := body["order_no"].(string)
+	code, resp := post(t, base+"/panel/action", "ptok", `{"action_id":"confirm_paid","values":{"order_no":"`+no+`","actual_cents":"499"}}`)
+	if code != 200 || resp["ok"] != true {
+		t.Fatalf("confirm_paid: %d %v", code, resp)
+	}
+	// full 视图：codes + code_agg 同发（App 实际请求恒附 uid——nos-only 请求
+	// 不下发 agg，见 handleNativeOrders I3 修复注释；此处带 uid 模拟真实形态）
+	code, body = get(t, base+"/api/orders?nos="+no+"&uid=dev-agg", "")
+	o := body["orders"].([]any)[0].(map[string]any)
+	if o["codes"] == nil {
+		t.Fatalf("full 视图应带 codes: %v", o)
+	}
+	agg, ok := o["code_agg"].(map[string]any)
+	if !ok {
+		t.Fatalf("full 视图应带 code_agg: %v", o)
+	}
+	if agg["assigned_n"] != float64(1) || agg["activated_n"] != float64(0) {
+		t.Fatalf("code_agg 值不符: %v", agg)
+	}
+	// uid 视图：无 codes（脱敏）但有 code_agg
+	code, body = get(t, base+"/api/orders?uid=dev-agg", "")
+	o = body["orders"].([]any)[0].(map[string]any)
+	if o["codes"] != nil {
+		t.Fatalf("uid 视图不应带 codes: %v", o)
+	}
+	if _, ok := o["code_agg"].(map[string]any); !ok {
+		t.Fatalf("uid 视图应带 code_agg: %v", o)
+	}
+}
+
+// TestTrialCodeAgg 试用单聚合回归锁（代码审 C1/I1）：平台试用码 pool.order_no=
+// JPTRIAL-<gid> 与本地 SYTRIAL-<gid> 同 gid 异前缀——查询侧映射后试用单 uid
+// 视图必须拿到 code_agg（撤销 bb2fc3af 的前提=agg 承载生命周期展示）。
+func TestTrialCodeAgg(t *testing.T) {
+	fakeAggV2 = true
+	defer func() { fakeAggV2 = false }()
+	base, _, st := newTestServer(t)
+	cronSync(t, st)
+	_, body := get(t, base+"/api/orders?uid=dev-t1", "")
+	orders := body["orders"].([]any)
+	if len(orders) != 1 {
+		t.Fatalf("uid 列表应恰试用单一行: %v", orders)
+	}
+	trial := orders[0].(map[string]any)
+	if codes, ok := trial["codes"].([]any); ok && len(codes) > 0 {
+		t.Fatalf("试用单 uid 视图不应带 codes: %v", trial)
+	}
+	agg, ok := trial["code_agg"].(map[string]any)
+	if !ok {
+		t.Fatalf("试用单 uid 视图应带 code_agg（C1 映射回归）: %v", trial)
+	}
+	if agg["assigned_n"] != float64(1) {
+		t.Fatalf("试用单 code_agg 值不符: %v", agg)
+	}
+}
+
+// TestOrderCodeAggV2Fallback v2 探测回退（定稿 §7.9 正向+负向锚）：旧平台形态
+// （fake 缺省无 v 键）→ 不下发 code_agg；App 端据缺失走客户端推断回退。
+func TestOrderCodeAggV2Fallback(t *testing.T) {
+	base, _, _ := newTestServer(t)
+	code, body := post(t, base+"/api/order/create", "", `{"sku":"shiyin-m1","uid":"dev-v2","client_token":"tokv2"}`)
+	if code != 200 {
+		t.Fatal(body)
+	}
+	no := body["order_no"].(string)
+	code, resp := post(t, base+"/panel/action", "ptok", `{"action_id":"confirm_paid","values":{"order_no":"`+no+`","actual_cents":"499"}}`)
+	if code != 200 || resp["ok"] != true {
+		t.Fatalf("confirm_paid: %d %v", code, resp)
+	}
+	code, body = get(t, base+"/api/orders?nos="+no, "")
+	o := body["orders"].([]any)[0].(map[string]any)
+	if _, ok := o["code_agg"]; ok {
+		t.Fatalf("旧平台形态不应下发 code_agg: %v", o)
 	}
 }
 
