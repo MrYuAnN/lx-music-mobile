@@ -1,8 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native'
 
 import { Icon } from '@/components/common/Icon'
 import StatusBar from '@/components/common/StatusBar'
-import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
+import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE, isGlassSupported } from '@/components/common/GlassSurface'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -60,6 +61,19 @@ export default ({ componentId, title, right, progress, alwaysShowTitle = true, o
   }
 
   const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
+  // 玻璃惰性挂载（2026-11-02 转场卡顿反馈拍板）：页顶（progress≈0）玻璃底 opacity=0 不可见，
+  // 但 BlurView（Android 12+ RenderEffect 实时模糊）在 opacity 0 下仍逐帧重算——push 转场
+  // 期间两屏玻璃+迷你条玻璃同时活跃=UI/GPU 线程饱和（「一卡一卡」根因）。滚动首次过渐显
+  // 起点才挂载 BlurView，挂后常驻（本页生命周期）；回退设备（不支持模糊=实色底）不惰性，
+  // 照常直挂。收益面=顶栏族全屏。
+  const [glassOn, setGlassOn] = useState(!isGlassSupported())
+  useEffect(() => {
+    if (glassOn) return
+    const id = progress.addListener((v: { value: number }) => {
+      if (v.value > 1) setGlassOn(true)
+    })
+    return () => { progress.removeListener(id) }
+  }, [progress, glassOn])
   const titleOpacity = alwaysShowTitle
     ? 1
     : progress.interpolate({ inputRange: [TITLE_FADE_RANGE[0], TITLE_FADE_RANGE[1]], outputRange: [0, 1], extrapolate: 'clamp' })
@@ -67,7 +81,7 @@ export default ({ componentId, title, right, progress, alwaysShowTitle = true, o
   return (
     <Animated.View style={{ ...styles.container, height: SCREEN_HEADER_HEIGHT + statusBarHeight, paddingTop: statusBarHeight }} pointerEvents="box-none">
       <Animated.View style={[styles.barBgWrap, { opacity: bgOpacity }]} pointerEvents="none">
-        <GlassSurface style={styles.barBgGlass} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />
+        {glassOn && <GlassSurface style={styles.barBgGlass} hairline="bottom" fallbackColor={theme.isDark ? GLASS_BAR_FALLBACK.dark : GLASS_BAR_FALLBACK.light} />}
       </Animated.View>
       <StatusBar />
       <View style={styles.row} pointerEvents="box-none">
