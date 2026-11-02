@@ -12,7 +12,6 @@ import { AppState, ActivityIndicator, Animated, ScrollView, TouchableOpacity, Vi
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { createStyle, toast, confirmDialog } from '@/utils/tools'
 import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
@@ -23,6 +22,7 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import { dateFormat } from '@/utils'
 import {
   syncOrders,
+  getLocalOrders,
   cancelOrder,
   createOrder,
   orderErrorKey,
@@ -73,8 +73,24 @@ export default ({ componentId }: { componentId: string }) => {
     })
   }, [])
 
+  // 两段式（Q5-A，2026-11-02 拍板 SWR）：本地快照（syncOrders 本就回写 shiyinOrders）毫秒级
+  // 渲染，随后 syncOrders 静默刷新原地更新；刷新失败静默保留快照（断网也能看单；快照无陈旧
+  // 标注=已知接受项，复审架构席 S-4）。仅零快照才走 loading→sync→failed 现状链。陈旧 pending
+  // 单「继续支付」由同 token 重放服务端返回原单实际状态兜底（幂等契约）
   useEffect(() => {
-    refresh()
+    void (async() => {
+      const local = await getLocalOrders()
+      if (!mounted.current) return
+      if (local.length > 0) {
+        setOrders(local)
+        setLoading(false)
+        void syncOrders().then(list => {
+          if (mounted.current) setOrders(list)
+        }).catch(() => {})
+      } else {
+        refresh()
+      }
+    })()
   }, [refresh])
 
   // 轮询：AppState active 才挂表（后台暂停，优化师 S5）；20s 挡；busy 只在 tick 内防重入
@@ -327,9 +343,8 @@ export default ({ componentId }: { componentId: string }) => {
                     )}
           <View style={styles.tail} />
         </ScrollView>
-        <PlayerBarPlaceholder />
       </View>
-      <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} alwaysShowTitle={false} />
+      <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} />
     </PageContent>
   )
 }

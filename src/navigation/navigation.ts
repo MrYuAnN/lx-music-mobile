@@ -108,10 +108,21 @@ export function pushCommentScreen(componentId: string) {
 export const pushMyKeysScreen = (componentId: string) => { void componentId; pushAmScreen(MY_KEYS_SCREEN) }
 export const pushChangelogScreen = (componentId: string) => { void componentId; pushAmScreen(CHANGELOG_SCREEN) }
 
-// 购买面三屏（批3：选购/支付引导/订单中心，方案 §四批3 v1.2）
-export const pushPurchaseScreen = (componentId: string) => { void componentId; pushAmScreen(PURCHASE_SCREEN) }
-export const pushOrdersScreen = (componentId: string) => { void componentId; pushAmScreen(ORDERS_SCREEN) }
+// 购买面三屏（批3：选购/支付引导/订单中心，方案 §四批3 v1.2）。迷你条黑名单屏（七题 Q2-B）：
+// push 前置 markPendingBlacklist 提前隐藏防转场 ~300ms 闪跳（pushCommentScreen 同款先例；
+// 清除依赖屏在 SCREEN_NAMES_SET 名单内——Q2-0 补名单后与该先例同构闭环）
+export const pushPurchaseScreen = (componentId: string) => {
+  markPendingBlacklist()
+  void componentId
+  pushAmScreen(PURCHASE_SCREEN)
+}
+export const pushOrdersScreen = (componentId: string) => {
+  markPendingBlacklist()
+  void componentId
+  pushAmScreen(ORDERS_SCREEN)
+}
 export const pushCheckoutScreen = (componentId: string, order: CreateOrderResult) => {
+  markPendingBlacklist()
   void componentId
   pushAmScreen(CHECKOUT_SCREEN, { order })
 }

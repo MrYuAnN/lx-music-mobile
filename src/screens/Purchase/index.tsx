@@ -9,17 +9,19 @@ import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
 
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
-import Text from '@/components/common/Text'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { createStyle, toast } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
 import { SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { useActivationState, APP_CN, formatRemainHint, isExpiringSoonAt } from '@/core/shiyin/activation'
+import { useActivationState, activateByCode, APP_CN, formatRemainHint, isExpiringSoonAt } from '@/core/shiyin/activation'
+import InputSheet, { type InputSheetType } from '@/components/common/InputSheet'
 import {
   fetchSkus,
+  getCachedCatalog,
+  isSkusCacheStale,
   comboTotalCents,
   rateFor,
   createOrder,
@@ -51,11 +53,33 @@ export default ({ componentId }: { componentId: string }) => {
   const t = useI18n()
   const statusBarHeight = useStatusbarHeight()
   const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
-  const { info } = useActivationState()
+  const { info, refresh: refreshActivation } = useActivationState()
+
+  // 页头输码入口（Q4-B，2026-11-02 拍板=净屏购买页顶部输码入口同构；对标 App Store/Google
+  // Play 兑换码=页头级入口不占内容版面）：复用 InputSheet+activateByCode（含 Q7 合并确认
+  // 链与 busy 反馈），成功后刷新页内权益态（useActivationState.refresh——bridge
+  // onEntitlementChanged 事件亦会自动刷新，此处显式调用防事件时序差）
+  const inputSheetRef = useRef<InputSheetType>(null)
+  const [redeeming, setRedeeming] = useState(false)
+  const handleSheetActivate = useCallback((sheetCode: string) => {
+    if (redeeming) return
+    setRedeeming(true)
+    inputSheetRef.current?.setBusy(true)
+    void activateByCode(sheetCode, () => {
+      inputSheetRef.current?.hide()
+      refreshActivation()
+    }).finally(() => {
+      setRedeeming(false)
+      inputSheetRef.current?.setBusy(false)
+    })
+  }, [redeeming, refreshActivation])
 
   const [catalog, setCatalog] = useState<SkusCatalog | null>(null)
   const [loading, setLoading] = useState(true)
   const [failed, setFailed] = useState(false)
+  // 缓存陈旧标注（Q1-D）：>7 天秒开+「价格以支付页为准」标注（有意偏离净屏 S3 的超龄强制
+  // 拉新，复审产品席 S2 知情偏离）；后台刷新成功即消失
+  const [stale, setStale] = useState(false)
   // 购物车：sku.id → Sku（跨 tab 不清；同源替换；点已选取消）
   const [cart, setCart] = useState<Record<string, Sku>>({})
   const [activeTab, setActiveTab] = useState<TabKey>('shiyin')
@@ -81,8 +105,26 @@ export default ({ componentId }: { componentId: string }) => {
     })
   }, [])
 
+  // 两段式（Q1-B，2026-11-02 拍板 SWR=净屏 PlanSkus cached 同构）：有缓存立即渲染（loading
+  // 不出现，秒开）+后台静默刷新回写；刷新失败静默保留缓存；仅无缓存才走 loading→sync→failed
+  // 现状链。in-flight 去重在 fetchSkus 层（order.ts 模块级单例），与 Home 预热带并发不重复请求
   useEffect(() => {
-    load()
+    void (async() => {
+      const cached = await getCachedCatalog()
+      if (!mounted.current) return
+      if (cached == null) {
+        load()
+        return
+      }
+      setCatalog(cached)
+      setLoading(false)
+      void isSkusCacheStale().then(st => { if (mounted.current) setStale(st) })
+      void fetchSkus().then(next => {
+        if (!mounted.current) return
+        setCatalog(next)
+        setStale(false)
+      }).catch(() => {})
+    })()
   }, [load])
 
   const cartItems = useMemo(() => Object.values(cart), [cart])
@@ -206,7 +248,7 @@ export default ({ componentId }: { componentId: string }) => {
                             >
                               <Text
                                 size={13}
-                                style={{ fontWeight: entry.key == activeTab ? '700' : '500' }}
+                                style={entry.key == activeTab ? styles.tabTextActive : styles.tabText}
                                 color={entry.key == activeTab ? theme['c-on-primary'] : theme['c-font-label']}
                               >
                                 {entry.label}
@@ -222,6 +264,9 @@ export default ({ componentId }: { componentId: string }) => {
                           ))}
                         </View>
                         <PromoStrip catalog={catalog} t={t} primaryColor={theme['c-primary']} />
+                        {stale && (
+                          <Text size={11} color={theme['c-font-label']} style={styles.priceHint}>{t('purchase_price_hint')}</Text>
+                        )}
                         {tiers.map(sku => (
                           <TierRow
                             key={sku.id}
@@ -237,7 +282,6 @@ export default ({ componentId }: { componentId: string }) => {
                       </>
                     )}
         </ScrollView>
-        <PlayerBarPlaceholder />
       </View>
       {catalog != null && cartItems.length > 0 && (
         <View style={[styles.paybar, { backgroundColor: theme['c-content-background'], borderTopColor: theme['c-border-background'] }]}>
@@ -271,7 +315,28 @@ export default ({ componentId }: { componentId: string }) => {
           </TouchableOpacity>
         </View>
       )}
-      <ScreenHeader componentId={componentId} title={t('purchase_title')} progress={scrollY} alwaysShowTitle={false} />
+      <InputSheet
+        ref={inputSheetRef}
+        title={t('purchase_title')}
+        placeholder={t('activation_input_hint')}
+        confirmText={t('activation_btn_activate')}
+        onConfirm={handleSheetActivate}
+      />
+      <ScreenHeader
+        componentId={componentId}
+        title={t('purchase_title')}
+        progress={scrollY}
+        right={
+          <TouchableOpacity
+            style={styles.headerEntry}
+            activeOpacity={0.7}
+            onPress={() => { inputSheetRef.current?.show() }}
+            disabled={redeeming}
+          >
+            <Text size={13} color={theme['c-primary']}>{t('activation_input_entry_short')}</Text>
+          </TouchableOpacity>
+        }
+      />
     </PageContent>
   )
 }
@@ -408,6 +473,7 @@ const styles = createStyle({
   tabs: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    alignItems: 'center',
     gap: SPACING.s8,
     marginHorizontal: SPACING.s16,
     marginBottom: SPACING.s8,
@@ -416,7 +482,20 @@ const styles = createStyle({
     borderWidth: 1,
     borderRadius: 999,
     paddingHorizontal: SPACING.s14,
-    paddingVertical: SPACING.s8,
+    // 固定高度+垂直居中（Q3-B）：pill 高度与文字行盒解耦，防切 tab 时 CJK 度量差引 pill 高低
+    // 不平（34=现状视觉值 paddingVertical 8×2+13 号行盒推导，真机回归量取校准——复审优化师 S-2）
+    height: 34,
+    justifyContent: 'center',
+  },
+  // 选中态字族切换（Q3-A，对齐 Text.tsx「不做 fontWeight 合成」拍板+CategoryChips 先例）：
+  // 裸 fontWeight 在 Android 触发 CJK 回退粗体档换行盒→选中文字基线上浮（真机实证）；静态族
+  // 度量恒定。semibold 档=本产品自定（复审产品席 S3：页面主操作 tab 较筛选 chip 需更强选中强调，
+  // 与主色实底反白双通道叠加）
+  tabText: {
+    fontFamily: FontFamilies.medium,
+  },
+  tabTextActive: {
+    fontFamily: FontFamilies.semibold,
   },
   tabDisabled: {
     opacity: 0.35,
@@ -439,6 +518,17 @@ const styles = createStyle({
     paddingHorizontal: SPACING.s12,
     borderRadius: 10,
     backgroundColor: 'rgba(250,35,59,0.08)',
+  },
+  // 缓存陈旧标注（Q1-D）：>7 天缓存秒开时显示，后台刷新成功即消失
+  priceHint: {
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s12,
+    marginTop: -SPACING.s4,
+  },
+  // 页头输码入口（Q4-B）：文字按钮热区垫高对齐 44dp 触控基准
+  headerEntry: {
+    paddingHorizontal: SPACING.s12,
+    paddingVertical: SPACING.s8,
   },
   tierRow: {
     flexDirection: 'row',

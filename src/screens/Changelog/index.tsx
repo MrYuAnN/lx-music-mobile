@@ -111,7 +111,7 @@ export default ({ componentId }: { componentId: string }) => {
         </ScrollView>
         <PlayerBarPlaceholder />
       </View>
-      <ScreenHeader componentId={componentId} title={t('about_changelog')} progress={scrollY} alwaysShowTitle={false} />
+      <ScreenHeader componentId={componentId} title={t('about_changelog')} progress={scrollY} />
     </PageContent>
   )
 }

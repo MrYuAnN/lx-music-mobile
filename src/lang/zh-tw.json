@@ -689,5 +689,7 @@
   "orders_activate_only_msg": "僅激活本單 {n} 張激活碼（跨單碼可稍後在對應訂單激活）。",
   "orders_activate_only_btn": "僅激活本單",
   "orders_activate_partial": "已激活 {ok}/{total} 張：{msg}，請重試剩餘",
-  "activation_merge_confirm_msg_src": "檢測到新碼與已綁定的 {src} 權益重疊，其剩餘時長將併入新碼並停用該碼。確定繼續？"
+  "activation_merge_confirm_msg_src": "檢測到新碼與已綁定的 {src} 權益重疊，其剩餘時長將併入新碼並停用該碼。確定繼續？",
+  "activation_input_entry_short": "輸碼",
+  "purchase_price_hint": "價格以支付頁為準"
 }

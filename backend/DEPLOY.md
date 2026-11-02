@@ -230,6 +230,31 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 挂账项）从「双保险」升级为**必做**：真实用户 token 轮换后同样可能命中旧缓存响应。清单见
 §4 上线检查单（/url /config /register /activate /redeem /device /api /latest /dash）。
 
+### 8.1 人工补时长 SOP（七题 Q7-G，2026-11-02；「顶替/融合」纠纷的运维口径）
+
+场景：用户主张「先激活 A 码后激活 B 码，A 剩余时长未并入 B」（如月卡→年卡顶替申诉）。
+**第一步（必做）：op_log 鉴别是否已自动融合**（复审架构席 I-R2：服务端首兑路径无条件
+同源融合（licenses.go pool 分支 mergeSameApp 2026-08-24 拍板）+重激活显式 merge 路径
+均留痕——未查证直接补=可能重复叠加）：
+
+```sql
+-- 管理台/sqlite 查 B 码（新码）为 ref 的融合留痕
+SELECT kind, key_id, ref, at, product_id FROM op_log
+ WHERE ref='<B码 key_id>' AND kind IN ('merge','auto-release','expire-release');
+```
+
+- 命中且 key_id=A 码 → **已自动融合，不补**（A 剩余已按「取大/相加顺延」并入 B；向用户
+  出示留痕时间即可）。A 码 local receipt 已被 pruneOrphanedKeys 清理属预期（SDK 孤儿清理）。
+- 无命中 → A 确实未被融合（旧构建无确认链+旧平台版本等历史窗口），进入第二步补时长。
+
+**第二步：人工补时长**（管理台改 B 码 apps 到期）：到期口径=**B 码到期 + A 码剩余秒**
+（剩余=max(0, A.expires_at - now)；A 永久 0=并入永久）；**操作后验证查询**：重查 B 码
+expires_by_app，目标源到期应等于叠加值。
+
+**关联闸门**：平台 409 merge_required（Q7-E，env JP_MERGE_GATE_PRODUCTS 白名单开关，
+拾音先行）已拦「重激活路径同源接管且无 merge」——本 SOP 主要覆盖闸门上线前的存量纠纷
+与首兑历史窗口。
+
 ## 9. 批2 直连商业化实施记录与运维事件（2026-10-31~11-02 回写）
 
 **App 侧实施（已分批入库 am-redesign；实施单源 `.review-bundle/2026-10-31/context-b2-plan.md` v3）**：

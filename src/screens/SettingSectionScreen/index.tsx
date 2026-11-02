@@ -50,7 +50,7 @@ export default ({ componentId, id }: { componentId: string, id: SettingSectionTa
         </ScrollView>
         <PlayerBarPlaceholder />
       </View>
-      <ScreenHeader componentId={componentId} title={t(`setting_${id}`)} progress={scrollY} alwaysShowTitle={false} />
+      <ScreenHeader componentId={componentId} title={t(`setting_${id}`)} progress={scrollY} />
     </PageContent>
   )
 }

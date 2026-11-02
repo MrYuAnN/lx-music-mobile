@@ -17,6 +17,13 @@ import {
   LOCAL_MUSIC_SCREEN,
   LOCAL_MUSIC_GROUP_SCREEN,
   ADD_MUSIC_SCREEN,
+  DISLIKE_MANAGE_SCREEN,
+  MY_KEYS_SCREEN,
+  CHANGELOG_SCREEN,
+  SETTING_SECTION_SCREEN,
+  PURCHASE_SCREEN,
+  CHECKOUT_SCREEN,
+  ORDERS_SCREEN,
 } from './screenNames'
 
 export interface CurrentScreen {
@@ -24,7 +31,10 @@ export interface CurrentScreen {
   componentName: string
 }
 
-// 全部 stack screen（14 屏）；弹窗/迷你条不入名单，其出现不污染当前屏记录（新批问题4 v3 方案）
+// 全部 stack screen（21 屏=screenNames 全集，七题 Q2-0 修订：原 14 屏名单漏批3 购买三屏与
+// MyKeys/Changelog/SettingSection/DislikeManage——黑名单判定与 pendingHide 清除都依赖名单
+// 派发，缺席屏会致迷你条隐藏死配置/返回不清残留）；弹窗/迷你条不入名单，其出现不污染当前
+// 屏记录（新批问题4 v3 方案）。语义钉死=名单恒全集，新增屏必须同步登记（防再漂移）
 const SCREEN_NAMES_SET = new Set<string>([
   HOME_SCREEN,
   PLAY_DETAIL_SCREEN,
@@ -40,6 +50,13 @@ const SCREEN_NAMES_SET = new Set<string>([
   LOCAL_MUSIC_SCREEN,
   LOCAL_MUSIC_GROUP_SCREEN,
   ADD_MUSIC_SCREEN,
+  DISLIKE_MANAGE_SCREEN,
+  MY_KEYS_SCREEN,
+  CHANGELOG_SCREEN,
+  SETTING_SECTION_SCREEN,
+  PURCHASE_SCREEN,
+  CHECKOUT_SCREEN,
+  ORDERS_SCREEN,
 ])
 
 let currentScreen: CurrentScreen | null = null

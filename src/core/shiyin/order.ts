@@ -143,15 +143,56 @@ const sortTier = (a: Sku): number => (a.days == 0 ? Number.MAX_VALUE : (a.days <
 /** 是否永久档（显式 days=0；缺省 -1 不算——审查 S6 口径单源） */
 export const isForeverSku = (sku: Sku): boolean => sku.days == 0
 
-export const fetchSkus = async(): Promise<SkusCatalog> => {
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/skus`, {
+// ---- skus 本地缓存（七题 Q1，2026-11-02 拍板=净屏 PlanSkus 同构 SWR）----
+// fetchSkus 成功即写缓存（净屏 fetch() 同构），存原始 body+fetchedAt；读时经 parseSkusPayload
+// 单源解析（字段演进天然兼容）。缓存无效判定（复审架构席 I-5）：skus 非数组或解析后目录全空
+// → null——parseSkusPayload 对畸形 body 返空目录不抛错，直接复用会「空目录假成功」渲染成
+// 无商品无重试的空白页，必须在此拦截。
+interface SkusCache {
+  body: unknown
+  fetchedAt: number
+}
+
+const SKUS_CACHE_STALE_MS = 7 * 86400_000 // >7 天=陈旧（净屏 cacheAgeMs S3 口径；超龄仍秒开+页面标注）
+
+export const getCachedCatalog = async(): Promise<SkusCatalog | null> => {
+  const cache = await getData<SkusCache>(storageDataPrefix.shiyinSkus).catch(() => null)
+  if (cache?.body == null || !Array.isArray((cache.body as any)?.skus)) return null
+  const catalog = parseSkusPayload(cache.body)
+  const isEmpty = catalog.allSource.length == 0 && SOURCE_KEYS.every(k => (catalog.bySource[k]?.length ?? 0) == 0)
+  return isEmpty ? null : catalog
+}
+
+/** 缓存年龄 ms；无缓存返回 Number.MAX_SAFE_INTEGER（ Purchase 页陈旧标注用） */
+export const getSkusCacheAge = async(): Promise<number> => {
+  const cache = await getData<SkusCache>(storageDataPrefix.shiyinSkus).catch(() => null)
+  return cache?.fetchedAt ? Date.now() - cache.fetchedAt : Number.MAX_SAFE_INTEGER
+}
+
+export const isSkusCacheStale = async(): Promise<boolean> => {
+  return await getSkusCacheAge() > SKUS_CACHE_STALE_MS
+}
+
+// in-flight 单例（复审架构席 I-6）：下沉 fetchSkus 层模块级共享——Purchase 页 load 与 Home
+// 预热带（skusPrefetch）并发时只发一个请求、写一次缓存
+let fetchingSkus: Promise<SkusCatalog> | null = null
+
+export const fetchSkus = (): Promise<SkusCatalog> => {
+  if (fetchingSkus != null) return fetchingSkus
+  fetchingSkus = httpFetch(`${SHIYIN_BASE_URL}/api/skus`, {
     timeout: NETWORK_TIMEOUT,
     headers: { 'X-Product': 'shiyin' },
-  }).promise
-  if (resp.statusCode != 200) {
-    throw new Error(`skus http ${resp.statusCode}`)
-  }
-  return parseSkusPayload(resp.body)
+  }).promise.then(resp => {
+    if (resp.statusCode != 200) {
+      throw new Error(`skus http ${resp.statusCode}`)
+    }
+    // 成功即写缓存（净屏 PlanSkus.fetch 同构；写失败静默——缓存是优化不是依赖）
+    void saveData(storageDataPrefix.shiyinSkus, { body: resp.body, fetchedAt: Date.now() } satisfies SkusCache).catch(() => {})
+    return parseSkusPayload(resp.body)
+  }).finally(() => {
+    fetchingSkus = null
+  })
+  return fetchingSkus
 }
 
 // 组合折扣（ DiscountPerMille HALF_UP 同口径）：倒序取首个 n<=count 的档；无匹配档=原价

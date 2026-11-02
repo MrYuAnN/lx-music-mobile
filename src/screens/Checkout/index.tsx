@@ -12,7 +12,6 @@ import Clipboard from '@react-native-clipboard/clipboard'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
-import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { createStyle, openUrl, toast } from '@/utils/tools'
 import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
@@ -232,9 +231,8 @@ export default ({ componentId, order }: { componentId: string, order: CreateOrde
               )}
           <View style={styles.tail} />
         </ScrollView>
-        <PlayerBarPlaceholder />
       </View>
-      <ScreenHeader componentId={componentId} title={t('checkout_title')} progress={scrollY} alwaysShowTitle={false} />
+      <ScreenHeader componentId={componentId} title={t('checkout_title')} progress={scrollY} />
     </PageContent>
   )
 }

@@ -132,6 +132,8 @@ export const storageDataPrefix = {
   // 订单域（批3）：本地订单快照（order_no 强凭证，审查 I2）+待支付提醒已提记录（6h/40h 去重）
   shiyinOrders: '@shiyin_orders',
   shiyinOrderRemind: '@shiyin_order_remind',
+  // 选购页目录缓存（七题 Q1，2026-11-02 拍板=净屏 PlanSkus 同构 SWR）：原始响应 body+fetchedAt
+  shiyinSkus: '@shiyin_skus',
 } as const
 
 // v0.x.x 版本的 data keys

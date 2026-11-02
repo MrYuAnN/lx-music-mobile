@@ -689,5 +689,7 @@
   "orders_activate_only_msg": "Activate only the {n} code(s) from this order (other codes can be activated later from their orders).",
   "orders_activate_only_btn": "This Order Only",
   "orders_activate_partial": "Activated {ok}/{total}: {msg}, please retry the rest",
-  "activation_merge_confirm_msg_src": "The new code overlaps an existing {src} entitlement. Its remaining time will be merged into the new code and the old code deactivated. Continue?"
+  "activation_merge_confirm_msg_src": "The new code overlaps an existing {src} entitlement. Its remaining time will be merged into the new code and the old code deactivated. Continue?",
+  "activation_input_entry_short": "Redeem",
+  "purchase_price_hint": "Final prices shown at checkout"
 }

@@ -5,9 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 
 import { activationModule, onEntitlementChanged, type ActivationStateInfo } from '@/utils/nativeModules/activation'
-import { ensureAuth, clearStoredAuth, getDeviceId } from './auth'
-import { httpFetch } from '@/utils/request'
-import { SHIYIN_BASE_URL, getClientVersion } from './config'
+import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
 import versionState from '@/store/version/state'
@@ -105,70 +103,46 @@ export const detectClipboardCandidate = (text: string | null | undefined): strin
   return candidate
 }
 
-/** 多码融合按源重叠查询（⑥件②方案①前置查码，2026-11-02）：激活前调平台
- *  /api/code-overlap——overlap=新码源键 ∩ 本机在绑码源键（服务端 mergeSameApp 会真实
- *  并入的源）。null=查询失败（保守回退旧粗触发确认框）；空数组=纯跨源/无在绑（不弹，
- *  直接激活）。响应只含源键，防枚举在端点侧（Gate 门槛+IP 限流）。 */
-const queryCodeOverlap = async(code: string): Promise<string[] | null> => {
-  const deviceId = await getDeviceId().catch(() => '')
-  if (!deviceId) return null
-  const resp = await httpFetch(`${SHIYIN_BASE_URL}/api/code-overlap`, {
-    method: 'post',
-    headers: {
-      'X-Product': 'shiyin',
-      'X-Client-Version': getClientVersion(),
-    },
-    body: { code, device_id: deviceId },
-  }).promise
-  if (resp.statusCode != 200) return null
-  const body = resp.body as { overlap?: unknown }
-  return Array.isArray(body?.overlap) ? (body.overlap as string[]) : null
-}
-
-/** 输码激活（F.3）：多码融合确认（审计 A-2）→ activateOrRedeem → 成功 toast+立即建
- *  注册链；失败 toast SDK 本地化文案 */
+/** 输码激活（F.3 → Q7-C 案重构，2026-11-02 用户拍板「跟净屏对齐」=净屏 JingpingSheets
+ *  doActivate 同构）：纯本地判定零网络前置。判定（fail-closed——code-overlap 查询层整体
+ *  退役，事故洞 a「keys 失败静默跳过」/洞 b「查询异常整链静默死」/洞 c「空表无条件信任」
+ *  三洞随层消解）：CZ- 前缀跳过整链（续费不融合）；getKeys 失败(null)→视为可能有在绑码
+ *  →弹窗（不再静默跳过直通顶替路径）；有其他在绑码（判定只排除当前输入码自身，防误确认
+ *  绕过 SDK「已使用过」拦截）→弹窗。文案=既有规则式合并确认（同源并入/跨源并存两态恒
+ *  真实，复用 activation_merge_confirm_title/msg）。确认恒 merge=true——同源=剩余时长
+ *  并入（事故「月卡被顶替」的正确防护）；跨源=服务端 mergeSameApp 按新码声明键集过滤
+ *  no-op 无害（license-platform licenses.go）。取消=中止不激活。整链 try/catch：任何
+ *  异常→失败 toast（不再静默死）。服务端 Q7-E 409 merge_required（重激活路径同源接管且
+ *  无 merge 时拦截）=纵深兜底，正常流（确认后恒带 merge）不命中，命中即异常态由 SDK
+ *  errCode 白名单文案兜底（「app 版本过旧请升级」映射，见 DEPLOY.md ⑥批方案②）。
+ *  activateOrRedeem 成功 → toast+立即建注册链；失败 toast SDK 本地化文案 */
 export const activateByCode = async(input: string, onDone: () => void): Promise<void> => {
   const code = normalizeCode(input)
   if (!code) return
-  // 多码融合按源精准确认（⑥件②方案①，2026-11-02）：JP- 码+本机有其他在绑码时先查
-  // code-overlap——overlap 非空=同源融合真实发生，弹精准文案（APP_CN 指名源）；空数组=
-  // 纯跨源/无同源在绑，不弹直接激活（服务端 mergeSameApp 跨 App 互不影响，旧粗触发的
-  // 中性文案「剩余时长将并入」在跨源场景不实——⑥摸底实证）；查询失败（null）保守回退
-  // 旧粗触发确认框（fail-open 保留「防同源烧旧码零知情」审计 A-2 原始关切）。判定排除
-  // 当前输入码自身（防误确认绕过 SDK「已使用过」拦截）；CZ- 充值码跳过（续费不融合）
   let merge = false
   if (!code.startsWith('CZ-')) {
     const keys = await activationModule.getKeys().catch(() => null)
-    if (keys != null && keys.some(k => normalizeCode(k) !== code)) {
-      const overlap = await queryCodeOverlap(code)
-      if (overlap === null) {
-        const confirmed = await confirmDialog({
-          title: global.i18n.t('activation_merge_confirm_title'),
-          message: global.i18n.t('activation_merge_confirm_msg'),
-          bgClose: false,
-        }).catch(() => false)
-        if (!confirmed) return
-        merge = true
-      } else if (overlap.length) {
-        const srcNames = overlap.map(s => APP_CN[s] ?? s).join('、')
-        const confirmed = await confirmDialog({
-          title: global.i18n.t('activation_merge_confirm_title'),
-          message: global.i18n.t('activation_merge_confirm_msg_src', { src: srcNames }),
-          bgClose: false,
-        }).catch(() => false)
-        if (!confirmed) return
-        merge = true
-      }
-      // overlap 为空数组：纯跨源/无同源在绑——不弹不 merge（服务端不会融合）
+    if (keys == null || keys.some(k => normalizeCode(k) !== code)) {
+      const confirmed = await confirmDialog({
+        title: global.i18n.t('activation_merge_confirm_title'),
+        message: global.i18n.t('activation_merge_confirm_msg'),
+        bgClose: false,
+      }).catch(() => false)
+      if (!confirmed) return
+      merge = true
     }
   }
-  const r = await activationModule.activate(code, merge)
-  if (r.ok) {
-    toast(global.i18n.t('activation_toast_activated'))
-    onDone()
-    void ensureAuth(true).catch(() => {})
-  } else {
-    toast(r.message || global.i18n.t('activation_failed'))
+  try {
+    const r = await activationModule.activate(code, merge)
+    if (r.ok) {
+      toast(global.i18n.t('activation_toast_activated'))
+      onDone()
+      void ensureAuth(true).catch(() => {})
+    } else {
+      toast(r.message || global.i18n.t('activation_failed'))
+    }
+  } catch {
+    toast(global.i18n.t('activation_failed'))
   }
 }
 

@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState, type JSX } from 'react'
-import { Platform, View } from 'react-native'
+import { ActivityIndicator, Platform, View } from 'react-native'
 
 import SheetBase, { type SheetBaseType } from './SheetBase'
 import Input, { type InputType } from './Input'
@@ -43,6 +43,10 @@ export interface InputSheetType {
   hide: () => void
   /** 打开并预置文本（清空逻辑由 show 内部处理，预设用于改名类场景） */
   showWithText: (text: string) => void
+  /** busy 态（七题 Q6-B，2026-11-02 拍板）：提交中确认钮转圈+禁用、取消钮禁用、遮罩/返回
+   *  键关闭通道全禁（bgHide/keyHide 翻转，净屏 setCancelable(false) 同语义防误滑丢反馈）；
+   *  调用方 promise settle 后复位，hide()/show() 内部兜底复位 */
+  setBusy: (busy: boolean) => void
 }
 
 const InputSheet = ({
@@ -62,6 +66,8 @@ const InputSheet = ({
   const sheetRef = useRef<SheetBaseType>(null)
   const inputRef = useRef<InputType>(null)
   const [text, setText] = useState('')
+  // busy 态（Q6-B）：提交中锁全部关闭通道+确认钮转圈（消除激活链路「零反馈黑洞」）
+  const [busy, setBusy] = useState(false)
 
   const focusTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   // 本会话键盘是否已弹（仅 imeAvoid 有 dialog-ime 信号通道）
@@ -111,14 +117,20 @@ const InputSheet = ({
   useImperativeHandle(ref, () => ({
     show() {
       setText('')
+      setBusy(false) // 兜底复位（复审优化师 S-3：调用方 settle 复位之外的保险）
       sheetRef.current?.setVisible(true)
     },
     hide() {
+      setBusy(false)
       closeSheet()
     },
     showWithText(preset: string) {
       setText(preset)
+      setBusy(false)
       sheetRef.current?.setVisible(true)
+    },
+    setBusy(b: boolean) {
+      setBusy(b)
     },
   }))
 
@@ -132,6 +144,7 @@ const InputSheet = ({
   // 时点说明（三席审查 S-14）：UtilsModule 已挂 KeyboardPassThroughCallback——首击自收键盘
   // +放行，正常 ROM 上全部操作一击完成；本处二击/分流语义为放行件缺失 ROM 的兜底
   const handleImeDismiss = () => {
+    if (busy) return
     if (!text.trim().length) closeSheet()
   }
   const handleConfirm = async() => {
@@ -157,6 +170,9 @@ const InputSheet = ({
       navigationBarTranslucent={false}
       systemAvoidsInsets={Platform.OS === 'android' && !imeAvoid}
       avoidKeyboard={imeAvoid}
+      // busy 防误滑锁（Q6-B）：遮罩点击与返回键关闭通道禁用（净屏 setCancelable(false) 同语义）
+      bgHide={!busy}
+      keyHide={!busy}
     >
       <View style={styles.container}>
         {description ? <View style={styles.description}>{description}</View> : null}
@@ -179,6 +195,7 @@ const InputSheet = ({
               不再视为取消（对话框双键场景可接受） */}
           <Button
             style={{ ...styles.btn, backgroundColor: theme['c-button-background'] }}
+            disabled={busy}
             onPressIn={() => {
               closeSheet()
               onCancel?.()
@@ -188,12 +205,16 @@ const InputSheet = ({
           </Button>
           <Button
             style={{ ...styles.btn, backgroundColor: theme['c-primary'] }}
-            disabled={!text.trim().length}
+            disabled={busy || !text.trim().length}
             onPressIn={handleConfirm}
           >
-            {/* 空串同样回退默认文案（|| 非 ??）：动态文案消费方（定时关闭）在未开启态传空串，
-                ?? 会让确认钮白底无字（真机反馈 2026-10-21） */}
-            <Text size={14} color={theme['c-on-primary']}>{confirmText || t('confirm')}</Text>
+            <View style={styles.confirmContent}>
+              {/* busy 转圈（Q6-B）：激活链路提交中可见反馈（净屏「激活中」+禁用同语义） */}
+              {busy && <ActivityIndicator size="small" color={theme['c-on-primary']} />}
+              {/* 空串同样回退默认文案（|| 非 ??）：动态文案消费方（定时关闭）在未开启态传空串，
+                  ?? 会让确认钮白底无字（真机反馈 2026-10-21） */}
+              <Text size={14} color={theme['c-on-primary']}>{confirmText || t('confirm')}</Text>
+            </View>
           </Button>
         </View>
       </View>
@@ -221,6 +242,12 @@ const styles = createStyle({
   btns: {
     flexDirection: 'row',
     gap: scaleSizeW(12),
+  },
+  // 确认钮内容行（Q6-B busy 转圈+文字并排居中）
+  confirmContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: scaleSizeW(8),
   },
   btn: {
     flex: 1,

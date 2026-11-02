@@ -8,7 +8,7 @@
 // 关于页激活弹窗已退役（单入口）。2026-11-01 整卡视觉对齐净屏 item_key_card（左对齐/r16 无描
 // 边/逐源生效行/绿字绑回/试用码隐藏解绑）+输码弹层迁 InputSheet+全停权码卡放宽渲染（审查 I-4）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Animated, ScrollView, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 
 import ScreenHeader from '@/components/common/ScreenHeader'
@@ -129,7 +129,7 @@ export default ({ componentId }: { componentId: string }) => {
     refreshEntries(forceKey)
   }, [refreshEntries])
 
-  // 输码提交（未购直显卡）：activateByCode 内含 A-2 多码融合确认链
+  // 输码提交（未购直显卡）：activateByCode 内含合并确认链（Q7-C 案，2026-11-02）
   const handleActivate = useCallback(() => {
     if (submitting) return
     setSubmitting(true)
@@ -140,14 +140,20 @@ export default ({ componentId }: { componentId: string }) => {
   }, [code, refreshAll, submitting])
 
   // 已购态输码弹层（InputSheet 标准容器，净屏激活弹层同形态）：A-3 锁与未购直显卡共用；
-  // 成功回调里关层+刷新（InputSheet 自管文本，打开即清空）
+  // 成功回调里关层+刷新（InputSheet 自管文本，打开即清空）。busy 态（Q6-B，2026-11-02）：
+  // 提交中弹层转圈+禁用+关闭通道全锁（净屏 setCancelable(false) 防误滑同语义），消除激活
+  // 链路零反馈黑洞；settle 复位+hide/show 内部兜底复位
   const handleSheetActivate = useCallback((sheetCode: string) => {
     if (submitting) return
     setSubmitting(true)
+    inputSheetRef.current?.setBusy(true)
     void activateByCode(sheetCode, () => {
       inputSheetRef.current?.hide()
       refreshAll()
-    }).finally(() => { setSubmitting(false) })
+    }).finally(() => {
+      setSubmitting(false)
+      inputSheetRef.current?.setBusy(false)
+    })
   }, [refreshAll, submitting])
 
   // 三操作在途锁（审查 I-C：解绑消耗月度配额/远程解绑双要素——防连点重入与确认弹窗
@@ -237,10 +243,16 @@ export default ({ componentId }: { componentId: string }) => {
                     </TouchableOpacity>
                   )
                   : null}
-                <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={submitting} onPress={() => { handleActivate() }}>
-                  <Text size={14} color={theme['c-on-primary']}>
-                    {submitting ? t('activation_activating') : t('activation_btn_activate')}
-                  </Text>
+                <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={submitting} onPressIn={() => { handleActivate() }}>
+                  <View style={styles.activateBtnContent}>
+                    {/* 提交中转圈（Q6-A，2026-11-02）：激活链路含本地确认链与网络激活，裸文字
+                        「激活中…」反馈过弱致重复点击无感（真机反馈）；onPressIn=键盘收起态二击
+                        即触发（本 ROM 首击征用收键盘，InputSheet 同款兜底） */}
+                    {submitting && <ActivityIndicator size="small" color={theme['c-on-primary']} />}
+                    <Text size={14} color={theme['c-on-primary']}>
+                      {submitting ? t('activation_activating') : t('activation_btn_activate')}
+                    </Text>
+                  </View>
                 </Button>
               </View>
               )
@@ -313,7 +325,7 @@ export default ({ componentId }: { componentId: string }) => {
         onConfirm={handleSheetActivate}
       />
 
-      <ScreenHeader componentId={componentId} title={t('setting_my_keys')} progress={scrollY} alwaysShowTitle={false} />
+      <ScreenHeader componentId={componentId} title={t('setting_my_keys')} progress={scrollY} />
     </PageContent>
   )
 }
@@ -507,6 +519,12 @@ const styles = createStyle({
     paddingVertical: SPACING.s10,
     alignItems: 'center',
     borderRadius: 999,
+  },
+  // 激活钮内容行（Q6-A busy 转圈+文字并排居中）
+  activateBtnContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   entryCard: {
     borderRadius: 16,
