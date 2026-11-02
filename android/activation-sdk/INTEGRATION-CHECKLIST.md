@@ -97,9 +97,9 @@
 
 | 能力 | 分级 | 净屏参照锚 | 实现要点 |
 |---|---|---|---|
-| 解绑本机 | 【核心】 | KeyInfoActivity#releaseDevice 确认弹窗 | **事前文案含「每月限 1 次」**（平台 release_monthly_limit 默认 1，30 天滚动窗）；成功即断本地权益链（token/缓存立即失效，勿等 TTL） |
+| 解绑本机 | 【核心】 | KeyInfoActivity#releaseDevice 确认弹窗 | **事前文案含「每 30 天限 1 次」**（平台 release_monthly_limit 默认 1，30 天滚动窗，2026-11-03 文案口径对齐）；成功即断本地权益链（token/缓存立即失效，勿等 TTL） |
 | 月限 429 兜底 | 【核心】 | SDK 内置（release_limit→「…请联系客服协助」） | 宿主须有客服去向（见 F 域），否则文案指路落空 |
-| 远程解绑他机 | 【放量】 | KeyInfoActivity#releaseRemote | SDK 现成；确认文案含「停止时效+消耗月度次数」；设备满额（dl）时用户唯一自助路径 |
+| 远程解绑他机 | 【放量】 | KeyInfoActivity#releaseRemote | SDK 现成；确认文案含「停止时效+消耗 30 天次数」；设备满额（dl）时用户唯一自助路径 |
 | 绑定三态+绑回 | 【放量】 | KeyInfoActivity（bindingState 三态渲染） | 正常/已解绑（可绑回）/他机占用；绑回=重新输码等价亦可（拾音先例，登记即可） |
 | 设备列表与名额 | 【放量】 | KeyInfoActivity（n/limit+设备行+日期） | binding-check 网络校验 60s 节流；本机排前 |
 

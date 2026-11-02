@@ -37,7 +37,7 @@ class ReleaseOutcomeTest {
             EntitlementManager.releaseFailMessage("trial_no_release", 403, remote = false),
         )
         assertEquals(
-            "本月解绑次数已用完（每月限 1 次），请联系客服协助",
+            "解绑次数已用完（每 30 天限 1 次），请联系客服协助",
             EntitlementManager.releaseFailMessage("release_limit", 429, remote = false),
         )
         assertEquals(
@@ -50,7 +50,7 @@ class ReleaseOutcomeTest {
             EntitlementManager.releaseFailMessage("not_bound", 404, remote = true),
         )
         assertEquals(
-            "本月解绑次数已用完（每月限 1 次），请联系客服协助",
+            "解绑次数已用完（每 30 天限 1 次），请联系客服协助",
             EntitlementManager.releaseFailMessage("release_limit", 429, remote = true),
         )
     }

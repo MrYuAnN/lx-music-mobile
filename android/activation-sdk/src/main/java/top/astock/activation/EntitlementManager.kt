@@ -169,7 +169,7 @@ object EntitlementManager {
             if (remote) "该设备已不在此码名下，刷新后查看最新列表"
             else "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
         "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
-        "release_limit" -> "本月解绑次数已用完（每月限 1 次），请联系客服协助"
+        "release_limit" -> "解绑次数已用完（每 30 天限 1 次），请联系客服协助"
         else -> "服务异常（$httpCode），请稍后再试"
     }
 
@@ -844,9 +844,10 @@ object EntitlementManager {
     }
 
     /** 解绑指定 key 的本机设备（多码模型：KeyInfoSheet 指定码解绑）；成功后清除该
-     *  key 本地权益。每月限 1 次由服务端控制。体验卡（trial7/trial3）除外：服务端
-     *  禁止自助解绑（一码一用锁首绑设备，2026-10-24），仅管理台客诉通道可解。
-     *  key 本地权益，激活码可在新设备重新激活（用户侧每月限 1 次，服务端控制）
+     *  key 本地权益。每 30 天限 1 次（滚动窗）由服务端控制。体验卡（trial7/trial3）
+     *  除外：服务端禁止自助解绑（一码一用锁首绑设备，2026-10-24），仅管理台客诉
+     *  通道可解。
+     *  key 本地权益，激活码可在新设备重新激活（用户侧每 30 天限 1 次，服务端控制）
      *  v1.4：委托 releaseDeviceEx（行为等价；唯一有意差异=网络异常 message 为 null 时
      *  补「网络异常」兜底文案，旧版此路径 message=null，服务端三文案逐字不变） */
     suspend fun releaseDevice(context: Context, keyOverride: String? = null): Result<Unit> {
