@@ -19,6 +19,8 @@ import { dateFormat } from '@/utils'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
+import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { useStatusbarHeight } from '@/store/common/hook'
 import { useVersionInfo } from '@/store/version/hook'
 import { refreshVersionInfoSilently } from '@/core/version'
 
@@ -27,6 +29,10 @@ const currentVer = process.versions.app
 export default ({ componentId }: { componentId: string }) => {
   const theme = useTheme()
   const t = useI18n()
+  // 悬浮页头让位（About 同款 headerTotal 管线：内容从玻璃底下穿行）——回归
+  // 反馈修复：此前 container 无顶部让位，内容顶到状态栏下与其他二级页不一致
+  const statusBarHeight = useStatusbarHeight()
+  const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
   const versionInfo = useVersionInfo()
   const [failed, setFailed] = useState(false)
   // 卸载守卫（审查 S-e：与 MyKeys mounted 模式一致——静默刷新返回后不再 setState）
@@ -61,7 +67,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={styles.container}>
-        <AnimatedScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+        <AnimatedScrollView contentContainerStyle={[styles.contentContainer, { paddingTop: headerTotal + SPACING.s16 }]} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
           {empty
             ? (
               <View style={styles.empty}>

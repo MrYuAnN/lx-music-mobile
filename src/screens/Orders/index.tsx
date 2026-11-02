@@ -12,7 +12,7 @@ import { AppState, ActivityIndicator, Animated, TouchableOpacity, View } from 'r
 import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { createStyle, toast, confirmDialog } from '@/utils/tools'
 import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
@@ -383,16 +383,21 @@ export default ({ componentId }: { componentId: string }) => {
   )
 }
 
-// 五态徽章配色（D3 拍板）：待支付橙/待发码灰+spinner/已发码绿/已完成·已关闭灰。
-// 2026-11-03 生命周期派生新增：他机已激活灰 / 已过期橙（警示语义同待支付）
+// 五态徽章配色（D3 拍板）：待支付橙/待发码灰+spinner/已发码绿/已关闭灰。
+// 2026-11-03 生命周期派生回归反馈（装机走查「状态与其他文字同级不显眼」）：
+// 语义色阶定稿（对标 App Store 订阅页「活跃」绿 pill 成功语义+HIG 语义色
+// systemGreen 成功/systemBlue 信息/systemOrange 警示，印象级）——completed
+// 灰→绿（终态成功，与 delivered 同族，原灰系语义倒挂）；elsewhere 灰→蓝
+// （「在别处」信息语义）；expired 恒橙警示。徽章文字 11→12+Medium 字重
+// （fontFamily 直引——CJK 禁 fontWeight 合成，Q3 踩坑单源），底 alpha 微升
 const STATUS_VIEW: Record<string, { key: string, color: string, bgAlpha: number }> = {
   pending: { key: 'orders_status_pending', color: 'rgb(255,149,10)', bgAlpha: 0.15 },
   paid: { key: 'orders_status_paid', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
   delivered: { key: 'orders_status_delivered', color: 'rgb(52,199,89)', bgAlpha: 0.14 },
-  completed: { key: 'orders_status_completed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+  completed: { key: 'orders_status_completed', color: 'rgb(52,199,89)', bgAlpha: 0.15 },
   closed: { key: 'orders_status_closed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
-  elsewhere: { key: 'orders_status_elsewhere', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
-  expired: { key: 'orders_status_expired', color: 'rgb(255,149,10)', bgAlpha: 0.12 },
+  elsewhere: { key: 'orders_status_elsewhere', color: 'rgb(10,102,255)', bgAlpha: 0.12 },
+  expired: { key: 'orders_status_expired', color: 'rgb(255,149,10)', bgAlpha: 0.15 },
 }
 
 const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, onCancel, onActivate }: {
@@ -416,7 +421,7 @@ const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, on
       <View style={styles.cardHead}>
         <Text size={12} color={theme['c-font-label']} style={styles.orderNo}>{noText}</Text>
         <View style={[styles.statusBadge, { backgroundColor: bg }]}>
-          <Text size={11} color={view.color}>{t(view.key)}</Text>
+          <Text size={12} color={view.color} style={styles.statusBadgeText}>{t(view.key)}</Text>
           {/* 待发码转圈（D3/审查 I6：ActivityIndicator 替代静态圆环） */}
           {status == 'paid' && <ActivityIndicator size="small" color={view.color} />}
         </View>
@@ -475,7 +480,7 @@ const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, on
         }
         return hint != null
           ? (
-            <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>{hint}</Text>
+            <Text size={12} color={theme['c-font']} style={styles.codesHint}>{hint}</Text>
             )
           : null
       })()}
@@ -558,6 +563,9 @@ const styles = createStyle({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
+  },
+  statusBadgeText: {
+    fontFamily: FontFamilies.medium,
   },
   skuRow: {
     flexDirection: 'row',
