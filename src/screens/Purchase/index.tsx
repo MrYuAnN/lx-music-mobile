@@ -182,10 +182,13 @@ export default ({ componentId }: { componentId: string }) => {
       badge: badgeOf('shiyin'),
     }]
     for (const key of SOURCE_KEYS) {
+      // 未开放售卖的源不出 tab（2026-11-02 用户拍板）：目录无该源档位=服务端未开通，点进
+      // 去是空列表；服务端日后发码自动出现，无需改客户端
+      if ((catalog?.bySource[key]?.length ?? 0) == 0) continue
       list.push({ key, label: APP_CN[key] ?? key, disabled: hasAllSource, badge: badgeOf(key) })
     }
     return list
-  }, [t, hasSingleSource, hasAllSource, cartItems])
+  }, [t, catalog, hasSingleSource, hasAllSource, cartItems])
 
   const tiers = useMemo(() => {
     if (catalog == null) return []
@@ -193,6 +196,11 @@ export default ({ componentId }: { componentId: string }) => {
   }, [catalog, activeTab])
   // 当前 tab 被互斥锁（对立来源在车）→ 档位行只读
   const tabLocked = activeTab == 'shiyin' ? hasSingleSource : hasAllSource
+
+  // 目录刷新后当前单源 tab 可能失去档位（服务端下架/未开放）→ 回落全源 tab（防空白列表）
+  useEffect(() => {
+    if (activeTab != 'shiyin' && (catalog?.bySource[activeTab]?.length ?? 0) == 0) setActiveTab('shiyin')
+  }, [catalog, activeTab])
 
   const handleRetry = useCallback(() => { load() }, [load])
   const isEmpty = catalog != null && catalog.allSource.length == 0 &&
