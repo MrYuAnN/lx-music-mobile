@@ -70,12 +70,27 @@ export interface OrderRecord {
   createdAt: number
   /** 仅 full + delivered 下发（本地有 order_no 的单恒 full） */
   codes: string[]
+  /** 码生命周期六桶（2026-11-03 服务端派生单一事实源；平台未升级 v2 缺省=
+   *  undefined → 五态推断回退客户端推断）。assigned/rebind=可激活面；
+   *  boundSelf/mergedSelf=本机已完成面；boundOther=他机；expired=过期展示桶 */
+  codeAgg?: OrderCodeAgg
   /** 建单 sku 串（本地独有，服务端不下发）——「继续支付」按同 token+同 sku 幂等重放取回
    *  闲鱼链接齐发响应（服务端同 token 重试返回原单契约） */
   skuIds: string
   /** 建单时的 client_token（本地独有；审查批3代码审 I3/A：持久化后「继续支付」跨进程
    *  重放仍幂等命中原单，杀 App 重启不失效；同 token 异内容 409 时轮换重建闭环） */
   clientToken: string
+}
+
+/** 码生命周期六桶计数（服务端 code_agg 契约同构；纯计数不含码值，uid 弱视图同发） */
+export interface OrderCodeAgg {
+  assignedN: number
+  activatedN: number
+  rebindN: number
+  boundSelfN: number
+  mergedSelfN: number
+  boundOtherN: number
+  expiredN: number
 }
 
 // 本地快照结构（建单即写；轮询回写 status/codes；上限截断最旧）
@@ -349,6 +364,7 @@ export const syncOrders = async(): Promise<OrderRecord[]> => {
 }
 
 const mapOrderDTO = (o: any): OrderRecord => {
+  const rawAgg = o?.code_agg
   return {
     orderNo: typeof o?.order_no == 'string' ? o.order_no : '',
     maskedNo: typeof o?.masked_no == 'string' ? o.masked_no : '',
@@ -359,6 +375,17 @@ const mapOrderDTO = (o: any): OrderRecord => {
     isCombo: o?.is_combo === true,
     createdAt: o?.created_at ?? 0,
     codes: Array.isArray(o?.codes) ? o.codes.filter((c: any) => typeof c == 'string') : [],
+    codeAgg: rawAgg && typeof rawAgg == 'object'
+      ? {
+          assignedN: typeof rawAgg.assigned_n == 'number' ? rawAgg.assigned_n : 0,
+          activatedN: typeof rawAgg.activated_n == 'number' ? rawAgg.activated_n : 0,
+          rebindN: typeof rawAgg.rebind_n == 'number' ? rawAgg.rebind_n : 0,
+          boundSelfN: typeof rawAgg.bound_self_n == 'number' ? rawAgg.bound_self_n : 0,
+          mergedSelfN: typeof rawAgg.merged_self_n == 'number' ? rawAgg.merged_self_n : 0,
+          boundOtherN: typeof rawAgg.bound_other_n == 'number' ? rawAgg.bound_other_n : 0,
+          expiredN: typeof rawAgg.expired_n == 'number' ? rawAgg.expired_n : 0,
+        }
+      : undefined,
     // 本地独有字段：DTO 无此键，合流时由 localHit 保留（继续支付重放依赖）
     skuIds: '',
     clientToken: '',

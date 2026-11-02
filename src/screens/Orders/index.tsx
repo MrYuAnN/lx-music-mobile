@@ -33,7 +33,7 @@ import {
   type OrderRecord,
   type SkusCatalog,
 } from '@/core/shiyin/order'
-import { activationModule } from '@/utils/nativeModules/activation'
+import { activationModule, type KeyEntry } from '@/utils/nativeModules/activation'
 import { ensureAuth } from '@/core/shiyin/auth'
 import { pushCheckoutScreen } from '@/navigation/navigation'
 
@@ -151,15 +151,27 @@ export default ({ componentId }: { componentId: string }) => {
     }).catch(() => {})
   }, [orders])
 
-  // 五态推断（D3/审查 I8 单源收口：delivered 且码全在本地 keys 命中=已完成）
+  // 五态推断（2026-11-03 双源化：主源=服务端 code_agg 六桶派生——本地凭证会被
+  // 融合链合法剪除（pruneOrphanedKeys），客户端推不出「已并入/从未激活/绑他机」；
+  // 回退=批3 D3/I8 客户端推断（服务端未升级 v2 时 agg 缺省，部署窗口兼容）。
+  // 六桶语义：assigned+rebind=可激活面，boundSelf+mergedSelf=本机已完成面，
+  // boundOther=他机，expired=过期展示桶（含吊销/作废）。全零 agg=数据异常回落
   const nameOf = useCallback((o: OrderRecord): string => {
     return describeBySkuIds(catalog, o.skuIds) ?? o.desc
   }, [catalog])
 
   const statusOf = useCallback((o: OrderRecord): string => {
-    if (o.status == 'delivered' && o.codes.length > 0 &&
+    if (o.status != 'delivered') return o.status
+    const agg = o.codeAgg
+    if (agg) {
+      if (agg.assignedN + agg.rebindN > 0) return 'delivered'
+      if (agg.boundSelfN + agg.mergedSelfN > 0) return 'completed'
+      if (agg.boundOtherN > 0) return 'elsewhere'
+      if (agg.expiredN > 0) return 'expired'
+    }
+    if (o.codes.length > 0 &&
       o.codes.every(c => boundCodes.includes(c.trim().toUpperCase()))) return 'completed'
-    return o.status
+    return 'delivered'
   }, [boundCodes])
 
   const { activeList, historyList } = useMemo(() => {
@@ -211,22 +223,25 @@ export default ({ componentId }: { componentId: string }) => {
   // 主钮=叠加激活全部（本单+跨单），次钮=仅激活本单；逐张 activate(code, true) 同 App
   // 融合叠加。部分失败（审查 I5）：任一张成功即 ensureAuth(true)+refresh（防「已激活但
   // 取链仍旧 token」复发），失败反馈 i18n 含进度。跨单码激活复用 rebindKey 同款直调
-  // activate 语义（确认框已知情，不进 activateByCode 二次融合确认））
+  // activate 语义（确认框已知情，不进 activateByCode 二次融合确认）。
+  // 2026-11-03 口径同步（审查 IM-4）：own/extra 可激活判据由「码不在本地 keys」改
+  // 「非本机在绑」——解绑码 receipt 保留本地（带停权标记 mark!=null），旧判据会把它
+  // 误过滤成「均已激活」致按钮空转；getKeyEntries().mark==null=本机在绑（本地 SP 初值）
   const handleActivate = useCallback((o: OrderRecord) => {
     hapticSelection()
     if (!o.codes.length || actingNo != null) return
     setActingNo(o.orderNo)
     void (async() => {
       try {
-        // 跨单可用码检测（D4）：本地其它 delivered 单的、尚未在 keys 命中的码
-        const bound = await activationModule.getKeys().then(ks => ks.map(k => k.trim().toUpperCase())).catch(() => [] as string[])
-        const boundSet = new Set(bound)
-        const own = o.codes.map(c => c.trim()).filter(c => !boundSet.has(c.toUpperCase()))
+        // 非本机在绑判定：mark!=null（unbound/bound_other）或不在码卡列表=可激活
+        const entries = await activationModule.getKeyEntries().catch(() => [] as KeyEntry[])
+        const activelyBound = new Set(entries.filter(e => e.mark == null).map(e => e.key.trim().toUpperCase()))
+        const own = o.codes.map(c => c.trim()).filter(c => !activelyBound.has(c.toUpperCase()))
         const extra: string[] = []
         for (const other of orders) {
           if (other.orderNo == o.orderNo || other.status != 'delivered') continue
           for (const c of other.codes.map(x => x.trim())) {
-            if (!boundSet.has(c.toUpperCase()) && !own.includes(c) && !extra.includes(c)) extra.push(c)
+            if (!activelyBound.has(c.toUpperCase()) && !own.includes(c) && !extra.includes(c)) extra.push(c)
           }
         }
         const n = own.length
@@ -368,13 +383,16 @@ export default ({ componentId }: { componentId: string }) => {
   )
 }
 
-// 五态徽章配色（D3 拍板）：待支付橙/待发码灰+spinner/已发码绿/已完成·已关闭灰
+// 五态徽章配色（D3 拍板）：待支付橙/待发码灰+spinner/已发码绿/已完成·已关闭灰。
+// 2026-11-03 生命周期派生新增：他机已激活灰 / 已过期橙（警示语义同待支付）
 const STATUS_VIEW: Record<string, { key: string, color: string, bgAlpha: number }> = {
   pending: { key: 'orders_status_pending', color: 'rgb(255,149,10)', bgAlpha: 0.15 },
   paid: { key: 'orders_status_paid', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
   delivered: { key: 'orders_status_delivered', color: 'rgb(52,199,89)', bgAlpha: 0.14 },
   completed: { key: 'orders_status_completed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
   closed: { key: 'orders_status_closed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+  elsewhere: { key: 'orders_status_elsewhere', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
+  expired: { key: 'orders_status_expired', color: 'rgb(255,149,10)', bgAlpha: 0.12 },
 }
 
 const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, onCancel, onActivate }: {
@@ -407,14 +425,60 @@ const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, on
         <Text size={15} style={styles.skuName}>{name}</Text>
         <Text size={16}>{`¥${yuan(order.amountCents)}`}</Text>
       </View>
-      {status == 'delivered' && order.codes.length > 0 && (
-        <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>
-          {t('orders_codes_hint', { n: order.codes.length })}
-        </Text>
-      )}
-      {status == 'completed' && (
-        <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>{t('orders_completed_hint')}</Text>
-      )}
+      {/* 生命周期提示行（2026-11-03 派生）：可激活汇总（含跨桶混合）/已完成/
+          他机/过期/uid 视图无码 actionable 输码引导——agg 缺省回退旧码数提示。
+          非主导桶明细不静默（代码审 S5）：派生态在主文案后拼接其余非零桶 */}
+      {(() => {
+        let hint: string | null = null
+        const agg = order.codeAgg
+        if (status == 'delivered') {
+          if (agg && order.codes.length == 0) {
+            const actionable = agg.assignedN + agg.rebindN
+            if (actionable > 0) {
+              hint = t('orders_uid_actionable_hint', { n: actionable })
+              const rest: string[] = []
+              const done = agg.boundSelfN + agg.mergedSelfN
+              if (done > 0) rest.push(t('orders_agg_done', { n: done }))
+              if (agg.boundOtherN > 0) rest.push(t('orders_agg_other', { n: agg.boundOtherN }))
+              if (agg.expiredN > 0) rest.push(t('orders_agg_expired', { n: agg.expiredN }))
+              if (rest.length > 0) hint += ' · ' + rest.join(' · ')
+            }
+          } else if (agg) {
+            const parts: string[] = []
+            const actionable = agg.assignedN + agg.rebindN
+            if (actionable > 0) parts.push(t('orders_agg_actionable', { n: actionable }))
+            const done = agg.boundSelfN + agg.mergedSelfN
+            if (done > 0) parts.push(t('orders_agg_done', { n: done }))
+            if (agg.boundOtherN > 0) parts.push(t('orders_agg_other', { n: agg.boundOtherN }))
+            if (agg.expiredN > 0) parts.push(t('orders_agg_expired', { n: agg.expiredN }))
+            hint = parts.length > 0 ? parts.join(' · ') : null
+          } else if (order.codes.length > 0) {
+            hint = t('orders_codes_hint', { n: order.codes.length })
+          }
+        } else {
+          // 派生态主文案 + 非主导桶明细（completed 只补他机/过期；elsewhere 补
+          // 已完成/过期；expired 补已完成/他机——actionable 桶与四态互斥不出现）
+          const base = status == 'completed' ? t('orders_completed_hint')
+            : status == 'elsewhere' ? t('orders_elsewhere_hint')
+              : status == 'expired' ? t('orders_expired_hint') : null
+          if (base != null) {
+            hint = base
+            if (agg) {
+              const done = agg.boundSelfN + agg.mergedSelfN
+              const rest: string[] = []
+              if (status != 'completed' && done > 0) rest.push(t('orders_agg_done', { n: done }))
+              if (status != 'elsewhere' && agg.boundOtherN > 0) rest.push(t('orders_agg_other', { n: agg.boundOtherN }))
+              if (status != 'expired' && agg.expiredN > 0) rest.push(t('orders_agg_expired', { n: agg.expiredN }))
+              if (rest.length > 0) hint += ' · ' + rest.join(' · ')
+            }
+          }
+        }
+        return hint != null
+          ? (
+            <Text size={11} color={theme['c-font-label']} style={styles.codesHint}>{hint}</Text>
+            )
+          : null
+      })()}
       <Text size={11} color={theme['c-font-label']} style={styles.timeText}>
         {order.createdAt > 0 ? dateFormat(order.createdAt * 1000, 'Y-M-D h:m') : ''}
       </Text>

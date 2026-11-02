@@ -691,5 +691,14 @@
   "orders_activate_partial": "已激活 {ok}/{total} 張：{msg}，請重試剩餘",
   "activation_merge_confirm_msg_src": "檢測到新碼與已綁定的 {src} 權益重疊，其剩餘時長將併入新碼並停用該碼。確定繼續？",
   "activation_input_entry_short": "輸碼",
-  "purchase_price_hint": "價格以支付頁為準"
+  "purchase_price_hint": "價格以支付頁為準",
+  "orders_status_expired": "已過期",
+  "orders_status_elsewhere": "他機已激活",
+  "orders_expired_hint": "激活碼已過期，如需續期請重新購買",
+  "orders_elsewhere_hint": "已在其他設備激活",
+  "orders_agg_actionable": "可激活 {n}",
+  "orders_agg_done": "已完成 {n}",
+  "orders_agg_other": "他機 {n}",
+  "orders_agg_expired": "過期 {n}",
+  "orders_uid_actionable_hint": "本單含 {n} 張待激活碼：請在激活頁輸入卡密激活，或憑閒魚發貨消息中的訂單號聯繫客服"
 }

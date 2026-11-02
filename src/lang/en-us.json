@@ -691,5 +691,14 @@
   "orders_activate_partial": "Activated {ok}/{total}: {msg}, please retry the rest",
   "activation_merge_confirm_msg_src": "The new code overlaps an existing {src} entitlement. Its remaining time will be merged into the new code and the old code deactivated. Continue?",
   "activation_input_entry_short": "Redeem",
-  "purchase_price_hint": "Final prices shown at checkout"
+  "purchase_price_hint": "Final prices shown at checkout",
+  "orders_status_expired": "Expired",
+  "orders_status_elsewhere": "Activated Elsewhere",
+  "orders_expired_hint": "Code expired. Purchase again to renew",
+  "orders_elsewhere_hint": "Activated on another device",
+  "orders_agg_actionable": "{n} activatable",
+  "orders_agg_done": "{n} done",
+  "orders_agg_other": "{n} elsewhere",
+  "orders_agg_expired": "{n} expired",
+  "orders_uid_actionable_hint": "Contains {n} code(s) awaiting activation: enter the code on the activation page, or contact support with the order number from your Xianyu chat"
 }
