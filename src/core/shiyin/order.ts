@@ -436,3 +436,19 @@ export const orderErrorKey = (err: Error): keyof Message => {
 
 // 价格分 → 元字符串两位小数（¥ 显示层用；SDK yuan 同口径）
 export const yuan = (cents: number): string => (cents / 100).toFixed(2)
+
+// 订单商品名按本地目录匹配（七题回归反馈 2026-11-02）：desc_snapshot=服务端合成规格串
+// （「拾音·月卡（30天 · 1设备）」ordercore DescribeSKU），与购买页运营 name 不同源——
+// App 端显示层用目录匹配回归购买页命名。全部 id 命中才生效（任一 miss=目录变动/下架，
+// 回退服务端 desc 语义自足）；试用单无 skuIds 自然回退。null=不可匹配（调用方回退 desc）
+export const describeBySkuIds = (catalog: SkusCatalog | null, skuIds: string | undefined): string | null => {
+  if (catalog == null || !skuIds) return null
+  const all: Sku[] = [...catalog.allSource, ...SOURCE_KEYS.flatMap(k => catalog.bySource[k] ?? [])]
+  const parts: string[] = []
+  for (const id of skuIds.split('+')) {
+    const hit = all.find(s => s.id == id)
+    if (hit == null) return null
+    parts.push(hit.name)
+  }
+  return parts.join(' + ')
+}

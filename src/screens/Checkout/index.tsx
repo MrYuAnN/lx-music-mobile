@@ -31,7 +31,7 @@ const POLL_BASE_MS = 8000
 const POLL_MAX_DELAY_MS = 30000
 const POLL_MAX_TIMES = 40
 
-export default ({ componentId, order }: { componentId: string, order: CreateOrderResult }) => {
+export default ({ componentId, order, names }: { componentId: string, order: CreateOrderResult, names?: string }) => {
   const theme = useTheme()
   const t = useI18n()
   const statusBarHeight = useStatusbarHeight()
@@ -152,7 +152,7 @@ export default ({ componentId, order }: { componentId: string, order: CreateOrde
           <View style={styles.hero}>
             <Text size={12} color={theme['c-font-label']} style={styles.orderNoText}>{order.orderNo}</Text>
             <Text size={38}>{`¥${yuan(order.amountCents)}`}</Text>
-            <Text size={14} color={theme['c-font-label']} style={styles.heroSku}>{order.desc}</Text>
+            <Text size={14} color={theme['c-font-label']} style={styles.heroSku}>{names || order.desc}</Text>
           </View>
 
           <TouchableOpacity

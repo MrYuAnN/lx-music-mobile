@@ -121,10 +121,12 @@ export const pushOrdersScreen = (componentId: string) => {
   void componentId
   pushAmScreen(ORDERS_SCREEN)
 }
-export const pushCheckoutScreen = (componentId: string, order: CreateOrderResult) => {
+export const pushCheckoutScreen = (componentId: string, order: CreateOrderResult, names?: string) => {
   markPendingBlacklist()
   void componentId
-  pushAmScreen(CHECKOUT_SCREEN, { order })
+  // names=购买页选中档位的运营名串（七题回归反馈：order.desc=服务端合成规格串与购买页
+  // 显示名不同源，Checkout 显示层优先 names 回退 desc）
+  pushAmScreen(CHECKOUT_SCREEN, { order, names })
 }
 
 // 设置二级页（批 R·I-7：单屏+passProps 传节 id；id 类型收窄七节，竖屏根菜单专用）

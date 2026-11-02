@@ -23,11 +23,14 @@ import { dateFormat } from '@/utils'
 import {
   syncOrders,
   getLocalOrders,
+  getCachedCatalog,
+  describeBySkuIds,
   cancelOrder,
   createOrder,
   orderErrorKey,
   yuan,
   type OrderRecord,
+  type SkusCatalog,
 } from '@/core/shiyin/order'
 import { activationModule } from '@/utils/nativeModules/activation'
 import { ensureAuth } from '@/core/shiyin/auth'
@@ -129,6 +132,15 @@ export default ({ componentId }: { componentId: string }) => {
     }
   }, [refresh])
 
+  // 商品名目录（七题回归反馈 2026-11-02）：desc_snapshot=服务端合成规格串与购买页运营名
+  // 不同源——本地缓存目录按 skuIds 匹配回归购买页命名，miss 回退 desc（试用单/下架单）
+  const [catalog, setCatalog] = useState<SkusCatalog | null>(null)
+  useEffect(() => {
+    void getCachedCatalog().then(cat => {
+      if (mounted.current) setCatalog(cat)
+    }).catch(() => {})
+  }, [])
+
   // 五态映射（D3/审查 I8）：服务端四态+客户端「已完成」推断（delivered 且码全在本地 keys 命中）
   const [boundCodes, setBoundCodes] = useState<string[]>([])
   useEffect(() => {
@@ -139,6 +151,10 @@ export default ({ componentId }: { componentId: string }) => {
   }, [orders])
 
   // 五态推断（D3/审查 I8 单源收口：delivered 且码全在本地 keys 命中=已完成）
+  const nameOf = useCallback((o: OrderRecord): string => {
+    return describeBySkuIds(catalog, o.skuIds) ?? o.desc
+  }, [catalog])
+
   const statusOf = useCallback((o: OrderRecord): string => {
     if (o.status == 'delivered' && o.codes.length > 0 &&
       o.codes.every(c => boundCodes.includes(c.trim().toUpperCase()))) return 'completed'
@@ -307,6 +323,7 @@ export default ({ componentId }: { componentId: string }) => {
                           <OrderCard
                             key={o.orderNo || o.maskedNo}
                             order={o}
+                            name={nameOf(o)}
                             status={statusOf(o)}
                             acting={actingNo == o.orderNo}
                             theme={theme}
@@ -328,6 +345,7 @@ export default ({ componentId }: { componentId: string }) => {
                               <OrderCard
                                 key={o.orderNo || o.maskedNo}
                                 order={o}
+                                name={nameOf(o)}
                                 status={statusOf(o)}
                                 acting={actingNo == o.orderNo}
                                 theme={theme}
@@ -358,8 +376,9 @@ const STATUS_VIEW: Record<string, { key: string, color: string, bgAlpha: number 
   closed: { key: 'orders_status_closed', color: 'rgb(138,138,142)', bgAlpha: 0.12 },
 }
 
-const OrderCard = memo(({ order, status, acting, theme, t, onResumePay, onCancel, onActivate }: {
+const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, onCancel, onActivate }: {
   order: OrderRecord
+  name: string
   status: string
   acting: boolean
   theme: any
@@ -384,7 +403,7 @@ const OrderCard = memo(({ order, status, acting, theme, t, onResumePay, onCancel
         </View>
       </View>
       <View style={styles.skuRow}>
-        <Text size={15} style={styles.skuName}>{order.desc}</Text>
+        <Text size={15} style={styles.skuName}>{name}</Text>
         <Text size={16}>{`¥${yuan(order.amountCents)}`}</Text>
       </View>
       {status == 'delivered' && order.codes.length > 0 && (

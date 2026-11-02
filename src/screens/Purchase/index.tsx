@@ -165,7 +165,9 @@ export default ({ componentId }: { componentId: string }) => {
     void createOrder(cartItems.map(i => i.id).join('+')).then(order => {
       if (!mounted.current) return
       setSubmitting(false)
-      pushCheckoutScreen(componentId, order)
+      // names=选中档位运营名（购物车加入序）——支付引导页商品名与购买页同源（七题回归
+      // 反馈：order.desc=服务端合成规格串）
+      pushCheckoutScreen(componentId, order, cartItems.map(i => i.name).join(' + '))
     }).catch(err => {
       if (!mounted.current) return
       setSubmitting(false)

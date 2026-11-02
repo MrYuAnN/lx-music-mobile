@@ -1,11 +1,10 @@
-perf(ui): 顶栏玻璃惰性挂载——修 push 转场「一卡一卡」（全顶栏族受益）
+fix(order): 支付引导页/订单商品名回归购买页命名（目录匹配显示层）
 
-回归反馈（2026-11-02 去支付进支付引导页转场卡顿）：native-stack 原生动画排除 JS 因素，
-根因=GlassSurface BlurView（Android 12+ RenderEffect 实时模糊）在顶栏玻璃 opacity=0
-（页顶不可见）下仍逐帧重算——push 转场期间两屏玻璃+迷你条玻璃同时活跃，UI/GPU 线程
-饱和。
+回归反馈（2026-11-02）：订单 desc_snapshot=服务端建单合成规格串（ordercore DescribeSKU
+「拾音·月卡（30天 · 1设备）」格式），与购买页显示的管理台运营 SKU name 不同源。
 
-ScreenHeader 玻璃底惰性挂载：progress 首次过渐显起点（>1）才挂 BlurView，挂后本页
-生命周期常驻；回退设备（不支持模糊=实色底）不惰性照常直挂。页顶静止态同步零 blur
-开销（省电副收益）。收益面=顶栏族全部屏。验证：tsc 0+eslint 0；真机回归点=各页
-滚动时顶栏玻璃渐显正常/转场流畅。
+显示层修复（零契约影响）：order.ts 新 describeBySkuIds（本地缓存目录按 skuIds 匹配运营
+名，全 id 命中才生效、任一 miss/试用单回退服务端 desc 语义自足）；Checkout 经
+pushCheckoutScreen names 参数直传购买页选中名（购物车序）；Orders 拉缓存目录匹配。
+对比过服务端 desc_snapshot 改 name 优先——ordercore 净屏共用契约需评估+历史单已落库
+不变，客户端方案历史单一并修正。验证：tsc 0+eslint 0。
