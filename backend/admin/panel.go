@@ -708,9 +708,16 @@ func (ps *PanelServer) handleAction(w http.ResponseWriter, r *http.Request) {
 		orderNo := val("order_no")
 		// actual_cents 契约=分（前端 unit=yuan_to_cents 已换算，后端直收——
 		// 净屏审查 C-2：二次换算致实收放大 100 倍教训）
-		cents, convErr := strconv.Atoi(val("actual_cents"))
+		// 文案带收到值（2026-11-02 事故复盘：缺字段/数字类型 JSON 均落 Atoi 空串，
+		// 只报「无效」无法区分三态，线上排查绕远）
+		raw := val("actual_cents")
+		cents, convErr := strconv.Atoi(raw)
 		if convErr != nil || cents < 0 {
-			respond(false, "实收金额无效", nil)
+			if raw == "" {
+				respond(false, "实收金额无效（未收到金额字段，请强刷管理台页面重试）", nil)
+			} else {
+				respond(false, "实收金额无效（收到："+raw+"）", nil)
+			}
 			return
 		}
 		ids, err := ps.St.AdminConfirmPaid(orderNo, cents)

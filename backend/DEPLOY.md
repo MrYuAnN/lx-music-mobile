@@ -65,10 +65,12 @@ go run ./cmd/platform-admin srv-token-set --db jingping.db --product shiyin
 ## 2. 轻服务部署（本目录 backend/）
 
 ```bash
-# 本机交叉编译（Go 1.26）
+# 本机交叉编译（Go 1.26；-ldflags 注入构建指纹，启动日志打印 build=<commit>@<time>
+# 便于对拍线上部署物与主干——2026-11-02 确认收款事故复盘机制）
 cd backend
-GOOS=linux GOARCH=amd64 go build -o shiyin-server .
+GOOS=linux GOARCH=amd64 go build -ldflags "-X main.buildCommit=$(git rev-parse --short HEAD) -X main.buildTime=$(date +%Y-%m-%dT%H:%M)" -o shiyin-server .
 # 上传 VPS：/root/shiyin/{shiyin-server,web/}（shiyin.db 首次 serve 自动创建）
+# ⚠️ scp 后必须重启服务：systemctl restart shiyin-web（换文件不重启=进程仍跑旧二进制）
 scp -r shiyin-server web root@8.137.126.215:/root/shiyin/
 ```
 

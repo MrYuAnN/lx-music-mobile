@@ -25,6 +25,14 @@ import (
 	"shiyin/backend/store"
 )
 
+// 构建指纹（-ldflags "-X main.buildCommit=... -X main.buildTime=..." 注入；
+// 空=本地 go run/未注入。2026-11-02 确认收款事故复盘：线上报错无法反查部署物版本，
+// 启动日志可一眼对拍部署物与主干 commit）
+var (
+	buildCommit = "dev"
+	buildTime   = "unknown"
+)
+
 const usage = `拾音业务轻服务
 
   serve        启动 HTTP 服务（官网静态页 + /latest + /dash）
@@ -122,7 +130,7 @@ func cmdServe(args []string) error {
 		DashToken: *dashToken, WebDir: *webDir,
 		XY: xy, PanelToken: *panelToken,
 	}
-	log.Printf("拾音轻服务启动 addr=%s web=%s panel=%v", *addr, *webDir, *panelToken != "")
+	log.Printf("拾音轻服务启动 addr=%s web=%s panel=%v build=%s@%s", *addr, *webDir, *panelToken != "", buildCommit, buildTime)
 	// 显式超时防慢连接堆积（2026-10-26 审查 S-8；只绑内网，读头/空闲超时足够）
 	hs := &http.Server{
 		Addr:              *addr,
