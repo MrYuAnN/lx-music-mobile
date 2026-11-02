@@ -328,9 +328,19 @@ func (s *Server) handleNativeOrders(w http.ResponseWriter, r *http.Request) {
 					continue
 				}
 				seen[o.OrderNo] = true
-				out = append(out, nativeOrderDTO{MaskedNo: maskOrderNo(o.OrderNo),
+				dto := nativeOrderDTO{MaskedNo: maskOrderNo(o.OrderNo),
 					Status: o.Status, CloseReason: orderCloseReason(o), AmountCents: o.Amount,
-					Desc: s.DescribeOrder(o), IsCombo: osv.IsCombo(o.SKU), CreatedAt: o.CreatedAt, Full: false})
+					Desc: s.DescribeOrder(o), IsCombo: osv.IsCombo(o.SKU), CreatedAt: o.CreatedAt, Full: false}
+				// 试用单码值对 uid 视图豁免脱敏（七题回归反馈 2026-11-02）：试用单由
+				// trial_sync 服务端自动建（SYTRIAL- 前缀），本地快照永无其单号 → 恒走
+				// uid 视图 → codes 恒空 → 客户端「已完成」推断（delivered 且码全在绑）
+				// 永不命中、恒显「已发码」。豁免依据：金额 0+试用码首绑锁设备（泄露
+				// 无收益）+uid=本机盐化哈希取本机单，无增量枚举风险；正式单脱敏不变。
+				if o.Status == osv.OrderStatusDelivered && len(o.PoolIDs) > 0 &&
+					strings.HasPrefix(o.OrderNo, s.St.TrialOrderPrefix()) {
+					dto.Codes = o.PoolIDs
+				}
+				out = append(out, dto)
 			}
 		}
 	}

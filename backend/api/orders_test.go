@@ -297,10 +297,11 @@ func TestPanelFlow(t *testing.T) {
 	}
 }
 
-// TestTrialSync 试用补单（SYTRIAL- 前缀+字段契约：金额 0/is_test/channel 空）。
+// TestTrialSync 试用补单（SYTRIAL- 前缀+字段契约：金额 0/is_test/channel 空）+
+// uid 视图豁免（七题回归反馈 2026-11-02）：试用单 delivered 经 uid 查询应带 codes
+// （客户端「已完成」推断数据源）；正式单 uid 视图脱敏无码（TestOrderCenterLevels 锁）。
 func TestTrialSync(t *testing.T) {
 	base, _, st := newTestServer(t)
-	_ = base
 	cronSync(t, st)
 	o, err := st.GetOrder("SYTRIAL-000001")
 	if err != nil {
@@ -309,6 +310,21 @@ func TestTrialSync(t *testing.T) {
 	if o.Amount != 0 || !o.IsTest || o.Channel != "" || o.UID != "dev-t1" ||
 		o.Tag != "自动试用" || o.SKU != "auto3" || len(o.PoolIDs) != 1 {
 		t.Fatalf("试用单字段不符: %+v", o)
+	}
+	// uid 视图豁免：试用单带码（full 仍 false=单号仍脱敏）。新测试库 uid=dev-t1
+	// 仅试用单一行（脱敏号形如 SY****0001，取唯一行断言）
+	_, body := get(t, base+"/api/orders?uid=dev-t1", "")
+	orders := body["orders"].([]any)
+	if len(orders) != 1 {
+		t.Fatalf("uid 列表应恰试用单一行: %v", orders)
+	}
+	trial := orders[0].(map[string]any)
+	if trial["full"] != false {
+		t.Fatalf("试用单 uid 视图 full 应 false: %v", trial)
+	}
+	codes, _ := trial["codes"].([]any)
+	if len(codes) == 0 {
+		t.Fatalf("试用单 uid 视图应豁免下发 codes: %v", trial)
 	}
 }
 

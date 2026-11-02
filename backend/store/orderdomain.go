@@ -44,6 +44,10 @@ func (s *Store) SetSRV(c *srv.Client) { s.Domain.SetSRVClient(c) }
 // SRV 取平台 srv 客户端（api/panel 用）。
 func (s *Store) SRV() *srv.Client { return s.Domain.SRVClient() }
 
+// TrialOrderPrefix 拾音试用单号前缀（api 层 uid 视图豁免判定锚，七题回归反馈
+// 2026-11-02：试用单交付码对 uid 弱凭证视图豁免脱敏——正式单脱敏契约不变）。
+func (s *Store) TrialOrderPrefix() string { return shiyinOrderCfg.TrialOrderPrefix }
+
 // ---------- SKU 缓存（平台 /srv/skus 单源；净屏同构模式） ----------
 
 // RefreshSKUs 拉取平台全量 SKU 刷新本地缓存（启动 seed / cron 定时 / 下单 miss
