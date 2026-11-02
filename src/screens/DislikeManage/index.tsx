@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+import { Animated, TouchableOpacity, View } from 'react-native'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import { getGlassHairlineColor } from '@/components/common/GlassSurface'
 import { BorderWidths } from '@/theme'
@@ -101,7 +102,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={styles.container}>
-        <ScrollView
+        <AnimatedScrollView
           style={styles.content}
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
@@ -137,7 +138,7 @@ export default ({ componentId }: { componentId: string }) => {
                   </View>
                 )
           }
-        </ScrollView>
+        </AnimatedScrollView>
         <PlayerBarPlaceholder />
       </View>
       <ScreenHeader

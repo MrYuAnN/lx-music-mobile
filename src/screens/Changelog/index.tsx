@@ -5,8 +5,9 @@
 // 进页静默刷新（30s 去重，refreshVersionInfoSilently 不弹窗不污染手动检查状态）；
 // 空态/失败态分显（净屏刻意区分，不把失败伪装成暂无——S-PM2）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, ScrollView, View } from 'react-native'
+import { Animated, View } from 'react-native'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
@@ -60,7 +61,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={styles.container}>
-        <ScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+        <AnimatedScrollView contentContainerStyle={styles.contentContainer} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
           {empty
             ? (
               <View style={styles.empty}>
@@ -108,7 +109,7 @@ export default ({ componentId }: { componentId: string }) => {
                 </View>
               )
             })}
-        </ScrollView>
+        </AnimatedScrollView>
         <PlayerBarPlaceholder />
       </View>
       <ScreenHeader componentId={componentId} title={t('about_changelog')} progress={scrollY} />

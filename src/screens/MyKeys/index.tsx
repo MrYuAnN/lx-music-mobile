@@ -8,9 +8,10 @@
 // 关于页激活弹窗已退役（单入口）。2026-11-01 整卡视觉对齐净屏 item_key_card（左对齐/r16 无描
 // 边/逐源生效行/绿字绑回/试用码隐藏解绑）+输码弹层迁 InputSheet+全停权码卡放宽渲染（审查 I-4）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+import { ActivityIndicator, Animated, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
@@ -210,7 +211,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={styles.container}>
-        <ScrollView
+        <AnimatedScrollView
           contentContainerStyle={[styles.contentContainer, { paddingTop: headerTotal + SPACING.s16 }]}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
@@ -299,7 +300,7 @@ export default ({ componentId }: { componentId: string }) => {
               onUnbindRemote={handleUnbindRemote}
             />
           ))}
-        </ScrollView>
+        </AnimatedScrollView>
         <PlayerBarPlaceholder />
       </View>
 

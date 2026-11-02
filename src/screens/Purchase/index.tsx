@@ -5,8 +5,9 @@
 // 「已包含」形态）；组合折扣按音源数打折不设档位门槛（方案 C），吸底栏实时算价
 // （comboTotalCents 与服务端 DiscountPerMille HALF_UP 同口径）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+import { Animated, TouchableOpacity, View } from 'react-native'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text, { FontFamilies } from '@/components/common/Text'
@@ -216,7 +217,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={[styles.container, { paddingTop: headerTotal }]}>
-        <ScrollView
+        <AnimatedScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
@@ -310,7 +311,7 @@ export default ({ componentId }: { componentId: string }) => {
                         <View style={styles.listTail} />
                       </>
                     )}
-        </ScrollView>
+        </AnimatedScrollView>
       </View>
       {catalog != null && cartItems.length > 0 && (
         <View style={[styles.paybar, { backgroundColor: theme['c-content-background'], borderTopColor: theme['c-border-background'] }]}>

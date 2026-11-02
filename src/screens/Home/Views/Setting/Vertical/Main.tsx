@@ -1,8 +1,9 @@
 import { useCallback, useMemo } from 'react'
-import { Animated, Image, ScrollView, View } from 'react-native'
+import { Animated, Image, View } from 'react-native'
 
 import { createStyle, openUrl, toast } from '@/utils/tools'
 import Text, { FontFamilies } from '@/components/common/Text'
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import SelectRow from '../components/SelectRow'
 import SettingSection from '../components/SettingSection'
 import { useTheme } from '@/store/theme/hook'
@@ -129,9 +130,6 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
     </AnimatedScrollView>
   )
 }
-
-// native onScroll（useNativeDriver）要求滚动组件经 createAnimatedComponent 包装（原平铺宿主同款），模块级构造防重挂
-const AnimatedScrollView = Animated.createAnimatedComponent(ScrollView) as unknown as typeof ScrollView
 
 const styles = createStyle({
   // 垂直零 padding（2026-10-21 拍板沿用：顶栏让位由 contentPaddingTop 独立承担）

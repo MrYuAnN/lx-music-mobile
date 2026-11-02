@@ -6,9 +6,10 @@
 // 轮询策略（优化师 S5）：8s 密集、paid/delivered 即停、上限 40 次≈5min 后引导去订单中心、
 // 卸载清理。核验语义（优化师 S4）=发起核验查询而非确认收款——「待管理员核验」反馈防重复操作误解。
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { Animated, AppState, Linking, ScrollView, TouchableOpacity, View } from 'react-native'
+import { Animated, AppState, Linking, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
@@ -153,7 +154,7 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
   return (
     <PageContent>
       <View style={[styles.container, { paddingTop: headerTotal }]}>
-        <ScrollView
+        <AnimatedScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onScroll={Animated.event(
@@ -243,7 +244,7 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
               </TouchableOpacity>
               )}
           <View style={styles.tail} />
-        </ScrollView>
+        </AnimatedScrollView>
       </View>
       <ScreenHeader componentId={componentId} title={t('checkout_title')} progress={scrollY} />
     </PageContent>

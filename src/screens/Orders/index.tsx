@@ -7,8 +7,9 @@
 // 激活 N 张」主钮）后逐张 activate(code, true) 同 App 融合叠加。轮询=15-30s 挡位+AppState
 // 后台暂停（优化师 S5；对齐 ExpiryBanner 可见性停表先例）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AppState, ActivityIndicator, Animated, ScrollView, TouchableOpacity, View } from 'react-native'
+import { AppState, ActivityIndicator, Animated, TouchableOpacity, View } from 'react-native'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
@@ -296,7 +297,7 @@ export default ({ componentId }: { componentId: string }) => {
   return (
     <PageContent>
       <View style={[styles.container, { paddingTop: headerTotal }]}>
-        <ScrollView
+        <AnimatedScrollView
           contentContainerStyle={styles.contentContainer}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
@@ -360,7 +361,7 @@ export default ({ componentId }: { componentId: string }) => {
                       </>
                     )}
           <View style={styles.tail} />
-        </ScrollView>
+        </AnimatedScrollView>
       </View>
       <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} />
     </PageContent>

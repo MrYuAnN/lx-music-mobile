@@ -4,8 +4,9 @@
 // ScreenHeader 滚动接线（玻璃渐显+标题淡入，MyKeys/Changelog 同款）+节组件自带
 // SettingSection 组卡。
 import { useMemo, useRef } from 'react'
-import { Animated, ScrollView, View } from 'react-native'
+import { Animated, View } from 'react-native'
 
+import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
@@ -35,7 +36,7 @@ export default ({ componentId, id }: { componentId: string, id: SettingSectionTa
   return (
     <PageContent>
       <View style={styles.container}>
-        <ScrollView
+        <AnimatedScrollView
           contentContainerStyle={[styles.contentContainer, { paddingTop: headerTotal }]}
           showsVerticalScrollIndicator={false}
           onScroll={handleScroll}
@@ -47,7 +48,7 @@ export default ({ componentId, id }: { componentId: string, id: SettingSectionTa
               ? <Section first />
               : <Text size={13}>{t(`setting_${id}`)}</Text>
           }
-        </ScrollView>
+        </AnimatedScrollView>
         <PlayerBarPlaceholder />
       </View>
       <ScreenHeader componentId={componentId} title={t(`setting_${id}`)} progress={scrollY} />
