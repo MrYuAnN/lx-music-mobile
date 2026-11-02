@@ -29,7 +29,7 @@ import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from 
 import { useStatusbarHeight } from '@/store/common/hook'
 import { getGlassHairlineColor } from '@/components/common/GlassSurface'
 import { dateFormat } from '@/utils'
-import { pushPurchaseScreen, pushOrdersScreen } from '@/navigation/navigation'
+import { pushPurchaseScreen } from '@/navigation/navigation'
 import { onEntitlementChanged, BINDING_MARK, type KeyEntry, type BindingInfo } from '@/utils/nativeModules/activation'
 import { activationModule } from '@/utils/nativeModules/activation'
 import {
@@ -282,18 +282,6 @@ export default ({ componentId }: { componentId: string }) => {
               </View>
               )
             : null}
-          {/* 购买记录入口行（审查 I9 拍板：订单中心常驻入口，与激活码管理同域） */}
-          <TouchableOpacity
-            style={[styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
-            activeOpacity={0.6}
-            onPress={() => { pushOrdersScreen(componentId) }}
-          >
-            <View style={[styles.entryIconBg, { backgroundColor: theme['c-primary-light-900-alpha-200'] }]}>
-              <Icon name="playlist-music" size={14} color={theme['c-primary']} />
-            </View>
-            <Text style={styles.entryLabel} size={14}>{t('orders_entry')}</Text>
-            <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
-          </TouchableOpacity>
           {/* 生效码卡（2026-11-01 审查 I-4 拍板放宽）：全停权（唯一码 OTHER/unbound→state
               Unactivated）也渲染——OTHER 换机自助远程解绑/UNBOUND 绑回是唯一自助路径，对齐
               净屏码卡常显口径；与输码卡并存不互斥 */}

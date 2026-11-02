@@ -181,7 +181,7 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
           >
             <Text size={13}>
               {t('checkout_order_no')}
-              <Text size={12} color={theme['c-font-label']}>{`  ${order.orderNo.slice(0, 10)}…`}</Text>
+              <Text size={12} color={theme['c-font-label']}>{`  ${order.orderNo}`}</Text>
             </Text>
             <Text size={13} color={theme['c-primary']}>{t('checkout_copy')}</Text>
           </TouchableOpacity>

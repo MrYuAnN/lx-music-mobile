@@ -97,6 +97,12 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
           value=''
           onPress={() => { if (componentId) navigations.pushPurchaseScreen(componentId) }}
         />
+        <SelectRow
+          icon="playlist-music"
+          label={t('orders_entry')}
+          value=''
+          onPress={() => { if (componentId) navigations.pushOrdersScreen(componentId) }}
+        />
       </SettingSection>
 
       <SettingSection title={t('setting_root_section_general')}>

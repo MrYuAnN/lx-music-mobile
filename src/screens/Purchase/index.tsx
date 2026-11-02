@@ -338,7 +338,7 @@ export default ({ componentId }: { componentId: string }) => {
             onPress={handlePay}
             disabled={submitting}
           >
-            <Text size={16} color={theme['c-on-primary']}>
+            <Text size={14} color={theme['c-on-primary']}>
               {submitting ? t('purchase_submitting') : t('purchase_pay')}
             </Text>
           </TouchableOpacity>
@@ -640,7 +640,7 @@ const styles = createStyle({
     borderTopWidth: 0.5,
   },
   paySums: {
-    flexShrink: 0,
+    flex: 1,
   },
   payPriceRow: {
     flexDirection: 'row',
@@ -656,10 +656,12 @@ const styles = createStyle({
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
+  // 精致化（2026-11-02 用户反馈）：去 flex 自适应宽（原 flex:1 吃满剩余空间挤压价格/
+  // 折扣区），缩字号缩内距；金额区 flex:1 为主
   payBtn: {
-    flex: 1,
     borderRadius: 999,
     alignItems: 'center',
-    paddingVertical: SPACING.s12,
+    paddingVertical: SPACING.s8,
+    paddingHorizontal: SPACING.s24,
   },
 })
