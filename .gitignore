@@ -80,3 +80,6 @@ backend/dist/
 # 本地冒烟/误落产物（2026-11-01 审查批清理）
 .smoke-tmp/
 android/assets/
+
+# 轻服务本机构建产物（DEPLOY.md §2 go build 输出，部署即上传后无本地保留价值）
+backend/shiyin-server
