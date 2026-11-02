@@ -129,7 +129,13 @@ android {
         // 批2：activation-sdk 配置四件套（ActivationSdk.init 注入源；净屏 app/build.gradle:150 同款形态）。
         // SDK_DEVICE_SALT 不可变（换盐=全量存量设备指纹失效），断言测试锁定（salt=平台 products 注册表 salt_id）。
         // SDK_SERVICE_PUBKEY_HEX=平台实例验签公钥（sha256(service.private)=70a4659c… 双端 diff 一致，2026-10-31 核实）。
-        buildConfigField "String", "SDK_API_BASE", '"https://shiyinbox.top"'
+        // SDK_API_BASE=平台直连域名（七题回归反馈 2026-11-02 拍板：激活码域直连、音乐/订单
+        // 域走 EdgeOne——SDK 端点本就是平台原生端点，shiyinbox.top 对其纯转发白收 ~2.4s
+        // 链路税〔curl 实测 TTFB 直连 0.1s vs EdgeOne 2.3-2.7s〕，解绑 5s/首次激活慢同根；
+        // 可达性=净屏同款链路长期生产验证；X-Product: shiyin 分桶不受影响。回滚=改回
+        // shiyinbox.top 重装机。RN 层 SHIYIN_BASE_URL（音乐 config/url/dl+订单域 skus/
+        // orders 自有服务）不受此参数影响仍走 EdgeOne）
+        buildConfigField "String", "SDK_API_BASE", '"https://api.a-stock.top"'
         buildConfigField "String", "SDK_PRODUCT_ID", '"shiyin"'
         buildConfigField "String", "SDK_DEVICE_SALT", '"shiyin-device-v1"'
         buildConfigField "String", "SDK_SERVICE_PUBKEY_HEX", '"bb50b7c0294ec095a8f31237995838620402349fecc71010d6d6dde100b23e23"'
