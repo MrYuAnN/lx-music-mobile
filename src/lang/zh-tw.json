@@ -700,5 +700,6 @@
   "orders_agg_done": "已完成 {n}",
   "orders_agg_other": "他機 {n}",
   "orders_agg_expired": "過期 {n}",
-  "orders_uid_actionable_hint": "本單含 {n} 張待激活碼：請在激活頁輸入卡密激活，或憑閒魚發貨消息中的訂單號聯繫客服"
+  "orders_uid_actionable_hint": "本單含 {n} 張待激活碼：請在激活頁輸入卡密激活，或憑閒魚發貨消息中的訂單號聯繫客服",
+  "changelog_loading": "正在載入更新日誌…"
 }

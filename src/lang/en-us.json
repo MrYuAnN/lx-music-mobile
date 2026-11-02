@@ -700,5 +700,6 @@
   "orders_agg_done": "{n} done",
   "orders_agg_other": "{n} elsewhere",
   "orders_agg_expired": "{n} expired",
-  "orders_uid_actionable_hint": "Contains {n} code(s) awaiting activation: enter the code on the activation page, or contact support with the order number from your Xianyu chat"
+  "orders_uid_actionable_hint": "Contains {n} code(s) awaiting activation: enter the code on the activation page, or contact support with the order number from your Xianyu chat",
+  "changelog_loading": "Loading changelog…"
 }

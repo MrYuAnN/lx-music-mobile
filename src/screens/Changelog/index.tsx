@@ -10,9 +10,9 @@ import { Animated, View } from 'react-native'
 import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import Button from '@/components/common/Button'
-import ChangelogNote, { GROUP_COLORS } from '@/components/common/ChangelogNote'
+import ChangelogNote from '@/components/common/ChangelogNote'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { createStyle } from '@/utils/tools'
 import { dateFormat } from '@/utils'
@@ -24,7 +24,6 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import { useVersionInfo } from '@/store/version/hook'
 import { refreshVersionInfoSilently } from '@/core/version'
 
-const currentVer = process.versions.app
 
 export default ({ componentId }: { componentId: string }) => {
   const theme = useTheme()
@@ -35,6 +34,10 @@ export default ({ componentId }: { componentId: string }) => {
   const headerTotal = statusBarHeight + SCREEN_HEADER_HEIGHT
   const versionInfo = useVersionInfo()
   const [failed, setFailed] = useState(false)
+  // 三态初值（净屏 ReleaseHistoryScreen loading 态同构，修「进页空态闪变列表」）：
+  // store 有历史（本会话已拉过）直接显内容+后台静默刷新（SWR 无感）；无历史才进
+  // loading 态（store 纯内存，冷会话必经一次 loading——净屏同款「正在加载…」）
+  const [loading, setLoading] = useState(() => (versionInfo.newVersion?.history?.length ?? 0) == 0)
   // 卸载守卫（审查 S-e：与 MyKeys mounted 模式一致——静默刷新返回后不再 setState）
   const mounted = useRef(true)
   useEffect(() => {
@@ -50,14 +53,18 @@ export default ({ componentId }: { componentId: string }) => {
 
   useEffect(() => {
     void refreshVersionInfoSilently().then(result => {
-      if (mounted.current) setFailed(result == 'failed')
+      if (!mounted.current) return
+      setFailed(result == 'failed')
+      setLoading(false)
     })
   }, [])
 
   const handleRetry = useCallback(() => {
     // 重试=强制静默再拉（手动检查会弹更新弹窗，非本页语义；force 越过 30s 节流）
     void refreshVersionInfoSilently(true).then(result => {
-      if (mounted.current) setFailed(result == 'failed')
+      if (!mounted.current) return
+      setFailed(result == 'failed')
+      setLoading(false)
     })
   }, [])
 
@@ -68,53 +75,46 @@ export default ({ componentId }: { componentId: string }) => {
     <PageContent>
       <View style={styles.container}>
         <AnimatedScrollView contentContainerStyle={[styles.contentContainer, { paddingTop: headerTotal + SPACING.s16 }]} showsVerticalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
-          {empty
+          {loading
             ? (
+              // loading 态（净屏 FullScreenMessage 同构）：store 无历史的冷会话首拉期间
+              // 显加载，替代旧「空态→列表」闪变
               <View style={styles.empty}>
-                <Text size={13} color={theme['c-font-label']}>
-                  {failed ? t('changelog_failed') : t('changelog_empty')}
-                </Text>
-                {failed
-                  ? (
-                    <View style={styles.retryBtn}>
-                      <Button onPress={handleRetry}>
-                        <Text>{t('shiyin_retry')}</Text>
-                      </Button>
-                    </View>
-                  )
-                  : null}
+                <Text size={13} color={theme['c-font-label']}>{t('changelog_loading')}</Text>
               </View>
             )
-            : history.map((item, index) => {
-              const isCurrent = item.version == currentVer
-              return (
-                <View
-                  key={item.version}
-                  style={[
-                    styles.item,
-                    {
-                      backgroundColor: theme['c-content-background'],
-                      borderColor: theme['c-border-background'],
-                    },
-                  ]}
-                >
-                  <View style={styles.header}>
-                    <Text size={17}>v{item.version}</Text>
-                    {isCurrent
-                      ? (
-                        <View style={{ ...styles.badge, backgroundColor: theme.isDark ? CURRENT_BADGE.bgDark : CURRENT_BADGE.bg }}>
-                          <Text size={11} color={theme.isDark ? CURRENT_BADGE.fgDark : CURRENT_BADGE.fg}>{t('changelog_current')}</Text>
-                        </View>
-                      )
-                      : null}
-                    <Text size={13} color={theme['c-font-label']} style={styles.date}>
-                      {item.releasedAt ? dateFormat(item.releasedAt, 'Y-M-D') : ''}
-                    </Text>
-                  </View>
-                  <ChangelogNote note={item.desc} lineSize={14} />
+            : empty
+              ? (
+                <View style={styles.empty}>
+                  <Text size={13} color={theme['c-font-label']}>
+                    {failed ? t('changelog_failed') : t('changelog_empty')}
+                  </Text>
+                  {failed
+                    ? (
+                      <View style={styles.retryBtn}>
+                        <Button onPress={handleRetry}>
+                          <Text>{t('shiyin_retry')}</Text>
+                        </Button>
+                      </View>
+                    )
+                    : null}
                 </View>
               )
-            })}
+              : history.map(item => {
+                // 净屏 ReleaseItem 同构：平铺无卡片，版本号（titleMedium 16 semibold）
+                // 与日期（右对齐带时间）同行
+                return (
+                  <View key={item.version} style={styles.item}>
+                    <View style={styles.header}>
+                      <Text size={16} style={styles.verTitle}>{'v' + item.version}</Text>
+                      <Text size={12} color={theme['c-font-label']} style={styles.date}>
+                        {item.releasedAt ? dateFormat(item.releasedAt, 'Y-M-D h:m') : ''}
+                      </Text>
+                    </View>
+                    <ChangelogNote note={item.desc} lineSize={14} />
+                  </View>
+                )
+              })}
         </AnimatedScrollView>
         <PlayerBarPlaceholder />
       </View>
@@ -122,10 +122,6 @@ export default ({ componentId }: { componentId: string }) => {
     </PageContent>
   )
 }
-
-// 「当前版本」徽标（D2 例外 S-b）：净屏 ChangelogActivity 浅橙底+橙字，明暗同构；
-// 色源=ChangelogNote GROUP_COLORS.fix 共享（审查 S-c，防双源漂移）
-const CURRENT_BADGE = GROUP_COLORS.fix
 
 const styles = createStyle({
   container: {
@@ -142,23 +138,18 @@ const styles = createStyle({
   retryBtn: {
     minWidth: 120,
   },
+  // 净屏 ReleaseItem 同构：无卡片（LazyColumn spacedBy(16) 平铺），条目内 gap=4dp
   item: {
-    borderRadius: 12,
-    borderWidth: 1,
-    padding: SPACING.s16,
-    marginBottom: SPACING.s12,
-    gap: SPACING.s10,
+    marginBottom: SPACING.s16,
+    gap: SPACING.s4,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.s8,
   },
-  badge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: SPACING.s8,
-    paddingVertical: 2,
-    borderRadius: 6,
+  verTitle: {
+    fontFamily: FontFamilies.semibold,
   },
   date: {
     marginLeft: 'auto',

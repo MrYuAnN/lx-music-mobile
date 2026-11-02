@@ -700,5 +700,6 @@
   "orders_agg_done": "已完成 {n}",
   "orders_agg_other": "他机 {n}",
   "orders_agg_expired": "过期 {n}",
-  "orders_uid_actionable_hint": "本单含 {n} 张待激活码：请在激活页输入卡密激活，或凭闲鱼发货消息中的订单号联系客服"
+  "orders_uid_actionable_hint": "本单含 {n} 张待激活码：请在激活页输入卡密激活，或凭闲鱼发货消息中的订单号联系客服",
+  "changelog_loading": "正在加载更新日志…"
 }
