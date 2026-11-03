@@ -7,6 +7,7 @@ import { getMusicUrl, getLyricInfo } from '@/core/music/online'
 import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath, RNFSExternalDirectoryPath } from '@/utils/fs'
 import { obfuscateFileHeader } from '@/utils/nativeModules/crypto'
 import { guardEntitlementGate } from '@/core/shiyin/client'
+import { isShiyinFastFail } from '@/core/shiyin/auth'
 import { isStorageGranted } from '@/utils/permissions'
 import { getOnlineQualitys } from '@/utils/music'
 import { writeMetadata as lmWriteMetadata, writePic as lmWritePic } from '@/utils/localMediaMetadata'
@@ -290,7 +291,11 @@ const resolveDownloadUrl = async(musicInfo: SY.Music.MusicInfoOnline, isRefresh 
     try {
       const url = await getMusicUrl({ musicInfo, quality, isRefresh })
       if (url) return { url, quality, ext: QUALITY_EXT[quality] }
-    } catch { /* 该档不可用，向下回退 */ }
+    } catch (err) {
+      // 快速失败直抛（审计 W3-04）：未激活/权益失效/注册失败不空转回退链——每档各触发
+      // 一次 12s 试用码等待×5 档串行最长≈60s 且终文案（无可下载音质）掩盖真实原因
+      if (isShiyinFastFail(err)) throw err
+    }
   }
   throw new Error(global.i18n.t('download_no_available_quality'))
 }

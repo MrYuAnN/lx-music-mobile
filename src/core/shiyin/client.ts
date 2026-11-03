@@ -10,7 +10,7 @@ import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL 
 import versionActions from '@/store/version/action'
 import { activationModule } from '@/utils/nativeModules/activation'
 import { confirmDialog } from '@/utils/tools'
-import { pushMyKeysScreen } from '@/navigation/navigation'
+import { pushMyKeysScreen, pushPurchaseScreen } from '@/navigation/navigation'
 
 // ⑥ 双层权益门·客户端层（2026-11-01 拍板）：本地 Expired 态（SDK 纯本地时间判定）取链
 // 前置拦截——doRegister 的本地快抛只护无码分支（auth.ts:126-132 有 key 即跳过），过期
@@ -40,34 +40,61 @@ export const guideEntitlementExpired = (isTrial: boolean): void => {
 }
 
 const checkEntitlementBeforeUrl = async(): Promise<void> => {
+  // 按态分流（批2 审查 I-D）：unactivated 抛 NotActivated（与 auth.ts 快抛同源，分类与
+  // 文案如实）；expired 经闸引导后抛 EntitlementExpired
+  const st = await activationModule.getState().catch(() => null)
+  if (st?.state == 'unactivated') throw shiyinNotActivatedError()
   if (await guardEntitlementGate()) throw shiyinEntitlementExpiredError()
 }
 
-/** 本地态过期判定（零网络，SDK「State 判定纯本地时间戳」契约——负载模型：播放 N 次=本地读
- *  N 次微秒级+取链本身，无新增请求） */
-export const isEntitlementExpired = async(): Promise<boolean> => {
-  const st = await activationModule.getState().catch(() => null)
-  return st?.state == 'expired'
+// 未激活引导（审计 W3-04 修复，拍板 self-hosted-music-server.md:201「未激活点下载=弹
+// 激活引导」）：转化漏斗第一触点直达购买页（未激活无码可输，买码/领试用均在购买页）；
+// 存续期守卫同 guideEntitlementExpired 口径
+let unactivatedGuideShowing = false
+export const guideUnactivated = (): void => {
+  if (unactivatedGuideShowing) return
+  unactivatedGuideShowing = true
+  void confirmDialog({
+    title: global.i18n.t('shiyin_unactivated_guide_title'),
+    message: global.i18n.t('shiyin_unactivated_guide_body'),
+    confirmButtonText: global.i18n.t('shiyin_unactivated_guide_go'),
+    bgClose: false,
+  }).then(confirmed => {
+    unactivatedGuideShowing = false
+    if (confirmed) pushPurchaseScreen('')
+  }).catch(() => {
+    unactivatedGuideShowing = false
+  })
 }
 
-const isTrialEntitlement = async(): Promise<boolean> => {
-  const st = await activationModule.getState().catch(() => null)
-  return st?.isTrial ?? false
-}
-
-/** ⑧ 入口权益闸（2026-11-01 用户拍板「所有需要权限的入口统一前置拦截」）：expired=引导一次
- *  并返回 true（blocked）。消费方=handlePlay（播放）/下载音质弹窗 show×3/addDownloadTask
- *  闸门/取链前置（兜底层） */
+/** ⑧ 入口权益闸（2026-11-01 用户拍板「所有需要权限的入口统一前置拦截」）：unactivated/
+ *  expired 两态各引导一次并返回 true（blocked）——原实现只拦 expired，未激活穿透到取链
+ *  层（播放队列逐首跳光 W3-12/下载 5 档×12s 空转 W3-04）。消费方=handlePlay（播放）/
+ *  下载音质弹窗 show×3/addDownloadTask 闸门/取链前置（兜底层） */
 export const guardEntitlementGate = async(): Promise<boolean> => {
-  if (!(await isEntitlementExpired())) return false
-  guideEntitlementExpired(await isTrialEntitlement())
-  return true
+  const st = await activationModule.getState().catch(() => null)
+  if (st?.state == 'unactivated') {
+    guideUnactivated()
+    return true
+  }
+  if (st?.state == 'expired') {
+    guideEntitlementExpired(st?.isTrial ?? false)
+    return true
+  }
+  return false
 }
 
 // 快拓名单 name（auth.isShiyinFastFail）：换源链对过期设备直接终止不空转退避
 const shiyinEntitlementExpiredError = (): Error => {
   const err = new Error(global.i18n.t('shiyin_entitlement_expired'))
   err.name = 'ShiyinEntitlementExpired'
+  return err
+}
+
+// 同名单（auth.ts :135 ShiyinNotActivated 同源）：未激活快抛（批2 审查 I-D 分类修正）
+const shiyinNotActivatedError = (): Error => {
+  const err = new Error(global.i18n.t('shiyin_not_activated'))
+  err.name = 'ShiyinNotActivated'
   return err
 }
 

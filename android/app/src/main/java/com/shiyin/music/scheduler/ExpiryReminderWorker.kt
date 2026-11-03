@@ -139,7 +139,16 @@ class ExpiryReminderWorker(
     companion object {
         private const val PREFS = "shiyin"
         private const val CHANNEL_ID = "shiyin_membership_expiry"
-        private val APP_CN = mapOf("shiyin" to "QQ音乐")
+        // 显示名映射（审计 F-03 修复 2026-11-03）：原单键「shiyin→QQ音乐」既缺 tx/wy/kg/kw
+        // 音源键（源卡到期零提醒——键域外不发）又错挂显示名；现对齐 RN 侧
+        // core/shiyin/activation APP_CN 五键单源口径（shiyin=全源兜底键显示「全部音源」）
+        private val APP_CN = mapOf(
+            "shiyin" to "全部音源",
+            "tx" to "QQ音乐",
+            "wy" to "网易云音乐",
+            "kg" to "酷狗音乐",
+            "kw" to "酷我音乐",
+        )
         private const val PRE_WINDOW_DAYS = 7L
         private const val TRIAL_PRE_WINDOW_HOURS = 36L
         private const val POST_WINDOW_DAYS = 7L

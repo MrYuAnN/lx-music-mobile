@@ -376,8 +376,8 @@ const handlePlay = async() => {
   }
 
   // ⑧ 播放入口权益拦截（2026-11-01 用户拍板：过期不进入播放流程——此前取链层拦截留下
-  // 「逐首失败→error 自动跳歌→队列跳光」体验）。isEntitlementExpired=本地态查询（纯本地
-  // 读零网络负载）。过期=引导一次+终止：temp 队列清空断 auto-next 链，handleToggleStop
+  // 「逐首失败→error 自动跳歌→队列跳光」体验）。guardEntitlementGate=本地态查询（纯本地
+  // 读零网络负载；批2 起覆盖 unactivated/expired 双态）。过期=引导一次+终止：temp 队列清空断 auto-next 链，handleToggleStop
   // 停机不再触发 error→playNext 推进。本地已下载歌同被拦截（⑦a：过期后下载文件保留但
   // 不可播放，恢复激活即续播）
   if (await guardEntitlementGate()) {

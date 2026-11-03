@@ -16,6 +16,8 @@ import type { Message } from '@/lang'
 // ——全源码用户原会看到「QQ音乐会员即将到期」），音源键=product_apps 登记（tx/wy/kg/kw），
 // 命名与 self-hosted-music-server.md §五音质映射表同源
 export const APP_CN: Record<string, string> = {
+  // 双源表（批2 审查 S-1 登记）：原生 ExpiryReminderWorker.kt APP_CN 同款五键——改动须双改，
+  // 防重演 F-03（af3f2fa2 只改 RN 未跟原生=源卡到期零提醒）
   shiyin: '全部音源',
   tx: 'QQ音乐',
   wy: '网易云音乐',
