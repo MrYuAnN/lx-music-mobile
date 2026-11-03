@@ -42,7 +42,13 @@
 - 发布 checklist：versionCode 12→13 单调（工作区已 bump 待随车提交）；app_releases 表首=最新语义核查（DEPLOY 坑单）；更新通道 /latest 登记
 - 发布后真机回归包：V1/V3/V4+U1 三态封锁实测 + trial 两场景 + 购买页全源 tab 消失/组合购正常/存量 d7 权益卡 + 直连时延复测
 
-### S4 批2 · 放量硬前置（跨库，顺序即依赖）
+### S4 批2 · 放量硬前置（跨库，顺序即依赖）—— 代码完成（2026-11-03），待审查/装机回归
+- W3-01 ✅ fork 权益门两闸「或」语义：判定抽纯函数 `routers/shiyin_entitlement.py`（零依赖可测，修复聚合闸先行锁死混合 key+per-app 0 值误拒），fixture 7/7 PASS（`uv run python tests/test_entitlement_gate.py` 同款）+py_compile 绿
+- W3-03 ✅ webhook+SOP（拍板）：平台新包 `internal/kick`（JP_KICK_URL/JP_KICK_TOKEN env 缺省关闭）+三动作点接线（CLI revoke 同步踢/管理台代解绑/自助解绑异步踢）+`docs/SOP-吊销解绑即时踢.md`（含手动 curl 兜底）；go build/vet/三包测试绿
+- F-03 ✅ ExpiryReminderWorker APP_CN 扩五键正名（原单键 shiyin→QQ音乐 既缺源卡键又错名；对齐 RN activation.ts 口径）
+- W3-04 ✅ guardEntitlementGate 扩 unactivated 分支（guideUnactivated→购买页，三语新键）+resolveDownloadUrl 快抛直抛（isShiyinFastFail 不再被回退链吞——5 档×12s 空转根除）；连带改善 W3-12 播放跳光（同一闸覆盖播放入口）；isTrialEntitlement 死代码随之清除
+- F-02 ✅ 已提前入库（4eb6e954，S0 清账批）
+- 待办：三角色审查（待触发）→装机回归（未激活点播/下载引导、源卡到期提醒通知、fork 部署后混合 key 行为）→提交推送（待拍板）；fork+平台部署另约（部署=写操作逐次确认）
 - W3-01 fork 两闸（「或」语义+0 值跳过+fixture 测试）→ W3-03 revoke 接线（webhook or cron 对账，至少固化人工 SOP）→ F-03 Worker 扩五键（tx-m1/tx-y1 已在售，严格说已欠）→ W3-04 未激活下载引导+快抛直抛 → F-02 faq 三处改 /faq
 - 验收：只读探针（W3-01 两闸行为/faq 200/Worker 白名单）+ P0-B 真码「注册→取链→播放」全链回归（写操作，逐次确认）
 - 解锁：**wy/kg/kw 开售资格（硬门槛）+ 正式放量**
