@@ -53,7 +53,7 @@ export interface CreateOrderResult {
   xianyuUrl: string
   xianyuItemId: string
   serviceHours: string
-  /** 客服链接（批3代码审 I1/B：建单响应下发，空回退 faq.html——运营配置购买面生效） */
+  /** 客服链接（批3代码审 I1/B：建单响应下发，空回退 faq——运营配置购买面生效） */
   contactUrl: string
 }
 

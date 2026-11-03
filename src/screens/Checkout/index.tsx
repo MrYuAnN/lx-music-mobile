@@ -1,7 +1,7 @@
 // 支付引导页（批3，方案 §四批3 v1.2；效果图 v2 定稿）。数据=建单响应齐发（免二次拉取）：
 // 金额 hero → 闲鱼唤端主钮（xianyu_item_id 非空=fleamarket:// 直拉商品页，降级=xianyu_url
 // 原链；审查先例=PlanSkus.xianyuItemId 同语义）→ 三步引导 → 订单号复制（闲鱼留言核验）→
-// 客服行（contact_url 空回退 faq.html，优化师 S6）→「挂载即自动核验轮询」（2026-11-03 拍板
+// 客服行（contact_url 空回退 faq，优化师 S6）→「挂载即自动核验轮询」（2026-11-03 拍板
 // 对齐净屏自动刷新，推翻 D2 手动直按；「我已付款」按钮降级为手动立即触发）。
 // 轮询策略（优化师 S5）：8s 密集、paid/delivered 即停、上限 40 次≈5min 后引导去订单中心、
 // 卸载清理。核验语义（优化师 S4）=发起核验查询而非确认收款——「待管理员核验」反馈防重复操作误解。
@@ -208,7 +208,7 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
             <TouchableOpacity
               style={[styles.serviceBtn, { backgroundColor: theme['c-border-background'] }]}
               activeOpacity={0.7}
-              onPress={() => { void openUrl(order.contactUrl || `${SHIYIN_BASE_URL}/faq.html`) }}
+              onPress={() => { void openUrl(order.contactUrl || `${SHIYIN_BASE_URL}/faq`) }}
             >
               <Text size={12} color={theme['c-font-label']}>{t('checkout_contact_service')}</Text>
             </TouchableOpacity>

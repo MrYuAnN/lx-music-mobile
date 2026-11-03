@@ -121,7 +121,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
         <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={handleCheckUpdate} />
         <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { if (componentId) navigations.pushChangelogScreen(componentId) }} />
         {/* 定案#1 关于组去重：「关于拾音」行删除（独立 About 页退役），补联系客服直达 */}
-        <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq.html`) }} />
+        <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq`) }} />
       </SettingSection>
       {/* 定案#3：版权落列表尾部 */}
       <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
