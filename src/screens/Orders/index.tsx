@@ -19,7 +19,8 @@ import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
-import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
+import { Icon } from '@/components/common/Icon'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { dateFormat } from '@/utils'
 import {
@@ -40,6 +41,16 @@ import { ensureAuth } from '@/core/shiyin/auth'
 import { pushCheckoutScreen } from '@/navigation/navigation'
 
 const POLL_INTERVAL_MS = 20000
+
+// 主列表白名单（2026-11-04 ④拍板按需操作性两桶）：进行中/需操作闭集（待支付有继续支付/
+// 取消钮、待发码进行中、已发码有激活钮），其余状态（已完成/已关闭/在别处/已过期及未来
+// 新增终态）自动入历史折叠区。谓词白名单反转（架构席审查 I-5）根治「新增终态漏跟分桶规则」
+// 的演进缺口（原「仅 closed 入历史」黑名单列举型）。弃选对比：elsewhere 保留主列表不可取
+// ——零操作纯展示卡（激活钮仅 delivered 渲染）且占比随购买次数线性增长。方向对标 App Store
+// 订阅页「活跃+终态分段」；折叠区形态沿用 D3 项目自定（App Store 为默认可见分段）。
+// 反向义务（架构席审查 S-4）：白名单反转对「新增非终态」（如退款处理中）同样会静默
+// 折入历史——未来新增需操作状态须同步扩本白名单
+const ACTIVE_ORDER_STATUSES: readonly string[] = ['pending', 'paid', 'delivered']
 
 export default ({ componentId }: { componentId: string }) => {
   const theme = useTheme()
@@ -205,7 +216,7 @@ export default ({ componentId }: { componentId: string }) => {
     const active: OrderRecord[] = []
     const history: OrderRecord[] = []
     for (const o of orders) {
-      ;(statusOf(o) == 'closed' ? history : active).push(o)
+      ;(ACTIVE_ORDER_STATUSES.includes(statusOf(o)) ? active : history).push(o)
     }
     return { activeList: active, historyList: history }
   }, [orders, statusOf])
@@ -348,14 +359,8 @@ export default ({ componentId }: { componentId: string }) => {
           <View style={styles.pollHint}>
             <Text size={12} color={theme['c-font-label']}>{t('orders_poll_hint')}</Text>
           </View>
-          {/* F-05 订单号找回入口（重装/换机后凭闲鱼订单号自助取回，恒显不抢视觉） */}
-          <TouchableOpacity
-            style={styles.recoverRow}
-            activeOpacity={0.7}
-            onPress={() => { hapticSelection(); recoverSheetRef.current?.show() }}
-          >
-            <Text size={12} color={theme['c-primary']}>{t('orders_recover_action')}</Text>
-          </TouchableOpacity>
+          {/* F-05 订单号找回（重装/换机后凭闲鱼订单号自助取回）入口已上收页头 history
+              图标（2026-11-04 ③拍板：内容流裸链接位置非标准，业界无此形态） */}
           {loading
             ? (
               <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_loading')}</Text></View>
@@ -410,10 +415,32 @@ export default ({ componentId }: { componentId: string }) => {
                         )}
                       </>
                     )}
+          {activeList.length == 0 && historyList.length > 0 && (
+            <View style={styles.activeEmpty}>
+              <Text size={13} color={theme['c-font-label']}>{t('orders_active_empty')}</Text>
+            </View>
+          )}
           <View style={styles.tail} />
         </AnimatedScrollView>
       </View>
-      <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} />
+      <ScreenHeader
+        componentId={componentId}
+        title={t('orders_title')}
+        progress={scrollY}
+        right={
+          /* ③页头动作图标化（2026-11-04 拍板，DislikeManage 同款模式）：history 时钟回转
+             =找回语义；触区 px12/py8+hitSlop 与页头图标惯例一致 */
+          <TouchableOpacity
+            style={styles.headerBtn}
+            activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            onPress={() => { hapticSelection(); recoverSheetRef.current?.show() }}
+            accessibilityLabel={t('orders_recover_action')}
+          >
+            <Icon name="history" size={ICON_SIZE.nav} color={theme['c-font']} />
+          </TouchableOpacity>
+        }
+      />
       {/* F-05 订单号找回输入弹层（InputSheet 标准容器，busy 态防重复提交） */}
       <InputSheet
         ref={recoverSheetRef}
@@ -582,11 +609,13 @@ const styles = createStyle({
     marginHorizontal: SPACING.s16,
     marginBottom: SPACING.s10,
   },
-  recoverRow: {
-    marginHorizontal: SPACING.s16,
-    marginBottom: SPACING.s10,
-    alignSelf: 'flex-start',
-    paddingVertical: SPACING.s4,
+  headerBtn: {
+    paddingHorizontal: SPACING.s12,
+    paddingVertical: SPACING.s8,
+  },
+  activeEmpty: {
+    alignItems: 'center',
+    paddingVertical: SPACING.s20,
   },
   center: {
     alignItems: 'center',

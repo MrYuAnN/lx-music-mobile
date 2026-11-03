@@ -1,10 +1,11 @@
 // 更新日志页（净屏 ChangelogActivity 对标，方案 §2.6 + 批 R 重构）：全量渲染 releases 历史
 // （不迁 VersionModal 的 compareVer 过滤——那是更新弹窗「只显更新」语义，审查 I-4）；
-// 卡片=版本号+发布日期（releasedAt 缺省不显示；「当前版本」徽标已随 f602d1d6 删除，
-// 与净屏形态分叉=有意，DR1 批6 回填）
-// +note 分组渲染（ChangelogNote 共用组件，行前缀新增/修复/优化，D5 三端同规则）；
+// 版本条目卡片化+已安装版本「当前版本」橙徽标（2026-11-04 ②按净屏截图恢复，推翻
+// f602d1d6「平铺无卡片/无徽标」——该记录与净屏实际形态不符）
+// +note 分组渲染（ChangelogNote 共用组件，彩色胶囊+段落小节，D5 三端同规则）；
 // 进页静默刷新（30s 去重，refreshVersionInfoSilently 不弹窗不污染手动检查状态）；
 // 空态/失败态分显（净屏刻意区分，不把失败伪装成暂无——S-PM2）。
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, View } from 'react-native'
 
@@ -13,10 +14,10 @@ import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text, { FontFamilies } from '@/components/common/Text'
 import Button from '@/components/common/Button'
-import ChangelogNote from '@/components/common/ChangelogNote'
+import ChangelogNote, { GROUP_COLORS } from '@/components/common/ChangelogNote'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import { createStyle } from '@/utils/tools'
-import { dateFormat } from '@/utils'
+import { dateFormat, compareVer } from '@/utils'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
@@ -24,6 +25,8 @@ import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useVersionInfo } from '@/store/version/hook'
 import { refreshVersionInfoSilently } from '@/core/version'
+
+const currentVer = process.versions.app
 
 
 export default ({ componentId }: { componentId: string }) => {
@@ -102,14 +105,27 @@ export default ({ componentId }: { componentId: string }) => {
                 </View>
               )
               : history.map(item => {
-                // 净屏 ReleaseItem 同构：平铺无卡片，版本号（titleMedium 16 semibold）
-                // 与日期（右对齐带时间）同行
+                // 版本组卡（2026-11-04 ②拍板恢复卡片形态，推翻 f602d1d6「平铺无卡片」
+                // 对齐失真——净屏截图实证每版本一张白圆角卡）：圆角 12（组卡单源拍板）
+                // +组卡底色；已安装版本带「当前版本」橙徽标（=fix 组同橙共享常量，净屏
+                // ChangelogActivity 同构）；日期口径=净屏截图 date-only
+                const isCurrent = compareVer(currentVer, item.version) == 0
+                const badgeColor = GROUP_COLORS.fix
+                const badgeFg = theme.isDark ? badgeColor.fgDark : badgeColor.fg
+                const badgeBg = theme.isDark ? badgeColor.bgDark : badgeColor.bg
                 return (
-                  <View key={item.version} style={styles.item}>
+                  <View key={item.version} style={[styles.item, { backgroundColor: theme['c-content-background'] }]}>
                     <View style={styles.header}>
                       <Text size={16} style={styles.verTitle}>{'v' + item.version}</Text>
+                      {isCurrent
+                        ? (
+                          <View style={{ ...styles.currentBadge, backgroundColor: badgeBg }}>
+                            <Text size={11} color={badgeFg}>{t('changelog_current')}</Text>
+                          </View>
+                        )
+                        : null}
                       <Text size={12} color={theme['c-font-label']} style={styles.date}>
-                        {item.releasedAt ? dateFormat(item.releasedAt, 'Y-M-D h:m') : ''}
+                        {item.releasedAt ? dateFormat(item.releasedAt, 'Y-M-D') : ''}
                       </Text>
                     </View>
                     <ChangelogNote note={item.desc} lineSize={14} />
@@ -139,15 +155,22 @@ const styles = createStyle({
   retryBtn: {
     minWidth: 120,
   },
-  // 净屏 ReleaseItem 同构：无卡片（LazyColumn spacedBy(16) 平铺），条目内 gap=4dp
+  // 版本组卡（2026-11-04 ②恢复）：圆角 12（组卡圆角单源拍板）+组卡底色（inline），页底灰透间隙
   item: {
     marginBottom: SPACING.s16,
-    gap: SPACING.s4,
+    borderRadius: 12,
+    padding: SPACING.s16,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.s8,
+    marginBottom: SPACING.s4,
+  },
+  currentBadge: {
+    paddingHorizontal: SPACING.s8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   verTitle: {
     fontFamily: FontFamilies.semibold,

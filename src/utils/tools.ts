@@ -3,7 +3,7 @@ import { Platform, ToastAndroid, BackHandler, Linking, Dimensions, Alert, Appear
 import Clipboard from '@react-native-clipboard/clipboard'
 import { storageDataPrefix } from '@/config/constant'
 import { gzipFile, readFile, temporaryDirectoryPath, unGzipFile, unlink, writeFile } from '@/utils/fs'
-import { getSystemLocales, isIgnoringBatteryOptimization, isNotificationsEnabled, requestIgnoreBatteryOptimization, shareText } from '@/utils/nativeModules/utils'
+import { getSystemLocales, isNotificationsEnabled, shareText } from '@/utils/nativeModules/utils'
 import musicSdk from '@/utils/musicSdk'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import BackgroundTimer from 'react-native-background-timer'
@@ -268,46 +268,9 @@ export const checkNotificationPermission = async() => {
 }
 
 
-export const checkIgnoringBatteryOptimization = async() => {
-  const isHide = await getData(storageDataPrefix.ignoringBatteryOptimizationTipEnable)
-  if (isHide != null) return
-  // 去设置失败冷却（2026-10-30 弹窗批定稿/审查 I-1）：系统框被 ROM 拦截或用户在系统框拒绝时
-  // 落 7 天冷却标记，冷却期内不再打扰；「不再提醒」为永久键，设置页清缓存可复位（reset 双清）。
-  // 7 天取值：业界无权威数值（惯例为按 session/版本限频重提示），本产品自定（代码审查 I-3 补注）
-  const cooldownUntil = await getData(storageDataPrefix.batteryOptimizationCooldownUntil)
-  if (cooldownUntil != null && Date.now() < Number(cooldownUntil)) return
-  const enabled = await isIgnoringBatteryOptimization()
-  if (enabled) return
-  return confirmAction.show({
-    title: global.i18n.t('ignoring_battery_optimization_check_title'),
-    message: global.i18n.t('ignoring_battery_optimization_check_tip'),
-    cancelButtonText: global.i18n.t('never_show'),
-    confirmButtonText: global.i18n.t('dialog_go_settings'),
-    showConfirm: true,
-    // 强制二选一（双钮化定稿）：遮罩/返回键均不可关，防「误关不落标记下次启动再弹」
-    bgHide: false,
-    keyHide: false,
-    onCancel: () => {
-      void saveData(storageDataPrefix.ignoringBatteryOptimizationTipEnable, '1')
-    },
-    onConfirm: () => {
-      requestAnimationFrame(() => {
-        void requestIgnoreBatteryOptimization().then((result) => {
-          if (!result) void saveData(storageDataPrefix.batteryOptimizationCooldownUntil, String(Date.now() + 7 * 24 * 60 * 60 * 1000))
-        }).catch(() => {
-          void saveData(storageDataPrefix.batteryOptimizationCooldownUntil, String(Date.now() + 7 * 24 * 60 * 60 * 1000))
-        })
-      })
-    },
-  }).then(() => {})
-}
 export const resetNotificationPermissionCheck = async() => {
   await removeData(storageDataPrefix.notificationTipEnable)
   return removeData(storageDataPrefix.notificationPermissionRequested)
-}
-export const resetIgnoringBatteryOptimizationCheck = async() => {
-  await removeData(storageDataPrefix.ignoringBatteryOptimizationTipEnable)
-  return removeData(storageDataPrefix.batteryOptimizationCooldownUntil)
 }
 
 export const formatMusicName = (format: string, name: string, singer: string) => {

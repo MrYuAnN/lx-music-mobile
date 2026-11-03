@@ -5,7 +5,7 @@ import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
-import { useActivationState, APP_CN, isExpiredAt, isExpiringSoonAt, hasAnyValidKey, isKeyValid } from '@/core/shiyin/activation'
+import { useActivationState, isExpiredAt, isExpiringSoonAt, hasAnyValidKey, isKeyValid } from '@/core/shiyin/activation'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
@@ -27,7 +27,6 @@ const BANNER_COLORS = {
 } as const
 
 interface BannerPick {
-  app: string
   exp: number
   expired: boolean
 }
@@ -46,7 +45,7 @@ const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
     : Object.entries(info.expiries)
   const hasAnyValid = hasAnyValidKey(info.expiries)
   let pick: BannerPick | null = null
-  for (const [app, exp] of pool) {
+  for (const [, exp] of pool) {
     if (exp == 0) continue // 永久不提醒
     const expired = isExpiredAt(exp)
     const soon = !expired && isExpiringSoonAt(exp)
@@ -54,30 +53,29 @@ const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
     if (expired && hasAnyValid) continue
     if (!expired && !soon) continue
     if (pick == null || (expired && !pick.expired) || (expired == pick.expired && exp < pick.exp)) {
-      pick = { app, exp, expired }
+      pick = { exp, expired }
     }
   }
   return pick
 }
 
 /** 临期文案三档粒度（2026-11-03 用户需求）：剩余<1h=分钟倒计时、<24h=小时倒计时、
- *  1-3 天=日期+具体时间点（此前恒日期粒度，当天到期只显日期不显紧迫度）。分粒度
- *  语义与 KeyInfo keyinfo_remain 对齐；30s tick 现成=倒计时分钟级自动刷新 */
-const bannerLabel = (pick: BannerPick, appName: string): string => {
-  if (pick.expired) return global.i18n.t('home_banner_expired', { app: appName })
+ *  1-3 天=日期（此前恒日期粒度，当天到期只显日期不显紧迫度）。分粒度
+ *  语义与 KeyInfo keyinfo_remain 对齐；30s tick 现成=倒计时分钟级自动刷新。
+ *  2026-11-04 ⑫B 拍板精简：去源归因（详情码卡页可见，11-01 归因展示退役）、1-3 天档
+ *  去时分与「即将」字样（'M-D' 短日期，3 天窗内无跨年歧义）——单行不再拥挤 */
+const bannerLabel = (pick: BannerPick): string => {
+  if (pick.expired) return global.i18n.t('home_banner_expired')
   const remainSec = pick.exp - Date.now() / 1000
   if (remainSec < 3600) {
     const minutes = Math.max(1, Math.ceil(remainSec / 60))
-    return global.i18n.t('home_banner_expiring_minutes', { app: appName, n: minutes })
+    return global.i18n.t('home_banner_expiring_minutes', { n: minutes })
   }
   if (remainSec < 86400) {
     const hours = Math.max(1, Math.ceil(remainSec / 3600))
-    return global.i18n.t('home_banner_expiring_hours', { app: appName, n: hours })
+    return global.i18n.t('home_banner_expiring_hours', { n: hours })
   }
-  return global.i18n.t('home_banner_expiring', {
-    app: appName,
-    date: dateFormat(pick.exp * 1000, 'Y-M-D h:m'),
-  })
+  return global.i18n.t('home_banner_expiring', { date: dateFormat(pick.exp * 1000, 'M-D') })
 }
 
 export default () => {
@@ -99,8 +97,7 @@ export default () => {
 
   const pick = info != null ? pickBannerApp(info) : null
   if (pick == null || info == null) return null
-  const appName = APP_CN[pick.app] ?? pick.app
-  const label = bannerLabel(pick, appName)
+  const label = bannerLabel(pick)
 
   return (
     <TouchableOpacity

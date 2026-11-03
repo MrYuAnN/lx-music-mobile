@@ -67,6 +67,9 @@ class ExpiryReminderWorker(
         for ((app, exp) in ent.expiries) {
             if (exp == 0L) continue // 永久不提醒
             if (app !in APP_CN) continue // 键域外不发（S-7）
+            // 2026-11-04 ⑧拍板登记：RN 码卡逐源行已按 /config 配置源过滤（全源键单行+
+            //   过滤，MyKeys KeyCard displayEntries），本 Worker 无 /config 通道，维持全集+
+            //   遮蔽口径不变——通知提醒的源键可多于码卡展示行（已知分叉，非漂移）
             // 双判定（doc/plans/activation-expiry-display-plan.md §四C，2026-11-03；与 RN 横幅
             // 滤红留金同口径——同语义族五处联动复核纪律见 RN core/shiyin/activation）：
             // ①遮蔽=shiyin 全源键有效时被覆盖源（非 shiyin 键）不提醒（多码 merged 集残留

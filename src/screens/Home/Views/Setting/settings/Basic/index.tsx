@@ -6,6 +6,7 @@ import Language from './Language'
 import IsStartupAutoPlay from './IsStartupAutoPlay'
 import IsStartupPushPlayDetailScreen from './IsStartupPushPlayDetailScreen'
 import NotificationPermission from './NotificationPermission'
+import BatteryProtection from './BatteryProtection'
 import { useI18n } from '@/lang/i18n'
 
 export default memo(() => {
@@ -18,6 +19,7 @@ export default memo(() => {
       <Theme />
       <Language />
       <NotificationPermission />
+      <BatteryProtection />
     </SettingSection>
   )
 })

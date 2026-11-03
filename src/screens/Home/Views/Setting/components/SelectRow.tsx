@@ -31,7 +31,7 @@ export default memo(({ label, value, icon, onPress }: {
             )
           : null
       }
-      <Text style={styles.label}>{label}</Text>
+      <Text style={styles.label} numberOfLines={1}>{label}</Text>
       <Text size={13} color={theme['c-font-label']} style={styles.value} numberOfLines={1}>{value}</Text>
       <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
     </TouchableOpacity>
@@ -53,6 +53,8 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
     paddingRight: SPACING.s12,
+    // 标题恒单行（2026-11-04 拍板①兜底）：长 value 挤压时标题不折行（此前「我的激活码」
+    // 被全串值挤成两行），value 侧截断省略
   },
   value: {
     flexShrink: 1,

@@ -40,6 +40,7 @@ import {
   formatRemainHint,
   isExpiredAt,
   isEntryExpired,
+  isKeyValid,
   APP_CN,
 } from '@/core/shiyin/activation'
 
@@ -108,6 +109,15 @@ export default ({ componentId }: { componentId: string }) => {
       refreshEntries()
     })
   }, [refreshEntries])
+
+  // 配置源到账重渲（2026-11-04 ⑧拍板）：码卡逐源行过滤读 qualityList（applySources 单源），
+  // SWR 刷新/首启缓存到账时页内自动收敛（AddMusicScreen 同款订阅模式），不依赖重进页面
+  const [sourcesVersion, setSourcesVersion] = useState(0)
+  useEffect(() => {
+    const handleSourcesUpdated = () => { setSourcesVersion(v => v + 1) }
+    global.state_event.on('sourcesUpdated', handleSourcesUpdated)
+    return () => { global.state_event.off('sourcesUpdated', handleSourcesUpdated) }
+  }, [])
 
   // 未购态=SDK state 口径（审查 I-I）：全停权（码全带 mark/被清）时 getState 返回 Unactivated，恰是最需要输码的人群；
   // 首帧 info=null（state 异步就绪前）按未购渲染防分态闪烁（代码审查 S-a）
@@ -288,6 +298,7 @@ export default ({ componentId }: { componentId: string }) => {
               binding={bindings[entry.key]}
               actionsDisabled={actingKey != null}
               destructiveColor={destructiveColor}
+              sourcesVersion={sourcesVersion}
               onRefreshBinding={handleRefreshBinding}
               onCopy={handleCopy}
               onUnbind={handleUnbind}
@@ -322,6 +333,7 @@ const KeyCard = memo(({
   binding,
   actionsDisabled,
   destructiveColor,
+  sourcesVersion,
   onRefreshBinding,
   onCopy,
   onUnbind,
@@ -332,6 +344,9 @@ const KeyCard = memo(({
   binding: BindingInfo | undefined
   actionsDisabled: boolean
   destructiveColor: string
+  /** 配置源到账重渲触发（代码审查 I-1）：逐源行过滤读 qualityList（非 props），memo 浅
+   *  比较不可见——订阅 bump 值作显式 prop 传入，配置 SWR 到账时击穿 memo 重算显示集 */
+  sourcesVersion: number
   onRefreshBinding: (key: string) => void
   onCopy: (key: string) => void
   onUnbind: (key: string) => void
@@ -355,10 +370,36 @@ const KeyCard = memo(({
   const devices = [...(binding?.devices ?? [])].sort((a, b) => (a.isSelf === b.isSelf ? 0 : (a.isSelf ? -1 : 1)))
   const boundCount = Math.max(devices.length, 1) // 服务端 devices 未返回时显示 1 不显 0（S-复5）
 
-  // 生效范围行（净屏 entitlementRows 对齐，2026-11-01 拍板）：按源收费→逐源行「音源 · 有效期」；
-  // expiries 键=产品 app 键（APP_CN 映射显示名）；日期口径=净屏 app_row 同款 date-only（剩余递进
-  // 由 remainHint 承担）。状态分态（2026-11-01 用户装机反馈：过期码卡曾恒显「试用中」；
-  // 净屏 :445 口径——已到期标签优先于码级档位，与设置页 formatActivationState Expired 态同源）。
+  // 生效范围行显示集（2026-11-04 ⑧拍板，取代 2026-11-01「净屏 entitlementRows 对齐」App 侧
+  // 口径——净屏维持全集渲染不跟随，跨端分叉=有意决定）：全源键（shiyin）单行；按源收费码
+  // 逐源行按 /config 配置源过滤（「配置源=唯一边界」applySources 单源，未启用源键不显示）。
+  // 纯展示过滤，判定语义族（isKeyValid 四处）不动。S4（审查）：配置未加载（qualityList
+  // 空集）不过滤显全集，防首启弱网「全集→过滤集」口径闪变
+  const expiryEntries = Object.entries(entry.expiries ?? {})
+  const configuredSources = Object.keys(global.sy.qualityList ?? {})
+  // 全源键单行条件带有效性（代码审查 I-3）：混合态 {shiyin 过期, 单源键有效} 时若恒收缩
+  // 单行，生效码卡唯一行显「已到期」——对齐横幅 pickBannerApp allCovered 同口径（shiyin
+  // 有效才收缩，无效回落逐源过滤集）
+  const filteredEntries = expiryEntries.some(([app, exp]) => app == 'shiyin' && isKeyValid(exp))
+    ? expiryEntries.filter(([app, exp]) => app == 'shiyin' && isKeyValid(exp))
+    : configuredSources.length
+      ? expiryEntries.filter(([app]) => configuredSources.includes(app))
+      : expiryEntries
+  // 字母序恢复（代码审查 I-4）：旧实现渲染前显式排序，过滤分支不得退化为键插入序
+  const displayEntries = filteredEntries.sort(([a], [b]) => a.localeCompare(b))
+  // 聚合行兜底（⑧）：键集与配置源零交集（过滤后无行）时以摘要行呈现防码卡空白——
+  // 条目数+最早到期（永久优先）语义；n 含过期键=兜底低频分支的有意概括口径（代码审查 S-l 登记）
+  const renderAggregateRow = () => {
+    const anyPermanent = expiryEntries.some(([, exp]) => exp == 0)
+    const dates = expiryEntries.filter(([, exp]) => exp != 0).map(([, exp]) => exp)
+    const phrase = anyPermanent || dates.length == 0
+      ? t('activation_permanent')
+      : `${t('activation_until')} ${dateFormat(Math.min(...dates) * 1000, 'Y-M-D')}`
+    return `${t('activation_state_n_sources', { n: expiryEntries.length })} · ${phrase}`
+  }
+  // 逐源行渲染（expiries 键=产品 app 键，APP_CN 映射显示名）；日期口径=净屏 app_row 同款
+  // date-only（剩余递进由 remainHint 承担）。状态分态（2026-11-01 用户装机反馈：过期码卡
+  // 曾恒显「试用中」；净屏 :445 口径——已到期标签优先于码级档位）。
   // S2（审查）：expired 判定单源=isExpiredAt（activation.ts）
   const renderExpiryRow = (app: string, exp: number) => {
     const remain = formatRemainHint(exp, t)
@@ -394,11 +435,16 @@ const KeyCard = memo(({
         <Text size={16} style={styles.keyText} selectable>{entry.key}</Text>
         {/* 层次规格=净屏 item_key_card：码 16 等宽加粗/复制提示主题色/生效范围行正文色 15/绑定行 13 灰 */}
         <Text size={12} color={theme['c-primary']} style={styles.hintText}>{t('keyinfo_copy_hint')}</Text>
-        {(Object.keys(entry.expiries ?? {}).length
-          ? Object.entries(entry.expiries).sort(([a], [b]) => a.localeCompare(b)).map(([app, exp]) => (
+        {(displayEntries.length
+          ? displayEntries.map(([app, exp]) => (
             <Text key={app} size={15} color={theme['c-font']} style={styles.expiryText}>{renderExpiryRow(app, exp)}</Text>
           ))
-          : (
+          : expiryEntries.length
+            ? (
+              // 聚合行兜底（⑧）：过滤后无行防码卡空白
+              <Text size={15} color={theme['c-font']} style={styles.expiryText}>{renderAggregateRow()}</Text>
+            )
+            : (
             // 旧 native 桥接无 expiries 时的兜底（reload 窗口期）：单值 expiry 行
             // S6（审查）：同步④分态口径——过期加「已到期」标签（净屏 :445 同源）
             <Text size={15} color={theme['c-font']} style={styles.expiryText}>

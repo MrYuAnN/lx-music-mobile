@@ -96,7 +96,8 @@ const guideSourceEntitlement = (source: string, kind: 'expired' | 'not_entitled'
 // per-source 精准文案，不再误弹笼统「会员已到期」；unlockSource 同口径——0=永久）。
 // 矛盾态/无该源记录/全到期=false 走笼统引导（服务端 per-source 闸兜底语义兜住）
 // 「键有效」同语义族参照（代码审查 S3 指回）：口径调整时对照 core/shiyin/activation
-// 族注五处联动复核（isExpiredAt/isKeyValid/unlockSource/formatActivationState/Worker）
+// 族注四处联动复核（isExpiredAt/isKeyValid/unlockSource/Worker；formatActivationState
+// 已随 2026-11-04 ①短词化退役出族，见 activation.ts 族注）
 const isSourceExpiredWithOthersActive = (source: string, expiries: Record<string, number>): boolean => {
   const own = expiries[source]
   const nowSec = Date.now() / 1000

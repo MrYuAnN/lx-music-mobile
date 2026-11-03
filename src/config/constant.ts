@@ -97,9 +97,8 @@ export const storageDataPrefix = {
   // 系统通知权限窗已发起标记（走查 F-4 / 复审 R3-v3：不复用 notificationTipEnable——
   // 其存量语义为「拒绝过 in-app 提示」，复用会吞存量用户首次系统弹窗）
   notificationPermissionRequested: '@notification_permission_requested',
-  ignoringBatteryOptimizationTipEnable: '@ignoring_battery_optimization_tip_enable',
-  // 电池优化「去设置」失败冷却（2026-10-30 弹窗批）：时间戳 ms，冷却期内不再弹（7 天）
-  batteryOptimizationCooldownUntil: '@battery_optimization_cooldown_until',
+  // （2026-11-04 ⑤拍板：ignoringBatteryOptimizationTipEnable/batteryOptimizationCooldownUntil
+  //  两键随电池优化打扰式弹窗退役删除；SP 存量残留值无消费方自然失效，无需迁移）
   // 标签嵌入迁移完成标记（2026-10-30 元数据绑定定稿）：存量下载一次性补写文件标签
   localTagEmbedMigrationDone: '@local_tag_embed_migration_done',
   // 标签嵌入迁移一次性重跑标记（P0-A 修复③ 2026-11-03）：错名封面改名补跑后清位重跑嵌入，

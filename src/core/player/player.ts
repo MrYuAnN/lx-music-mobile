@@ -26,7 +26,7 @@ import { getRandom } from '@/utils/common'
 import { filterList } from './utils'
 import { getOrderedPlayList } from './queue'
 import BackgroundTimer from 'react-native-background-timer'
-import { checkIgnoringBatteryOptimization, checkNotificationPermission, debounceBackgroundTimer } from '@/utils/tools'
+import { checkNotificationPermission, debounceBackgroundTimer } from '@/utils/tools'
 import { guardEntitlementGate } from '@/core/shiyin/client'
 import { LIST_IDS } from '@/config/constant'
 import { addListMusics, removeListMusics } from '@/core/list'
@@ -367,7 +367,6 @@ const debouncePlay = debounceBackgroundTimer(() => {
 const handlePlay = async() => {
   if (!isInitialized()) {
     await checkNotificationPermission()
-    void checkIgnoringBatteryOptimization()
     await playerInitial({
       volume: settingState.setting['player.volume'],
       playRate: settingState.setting['player.playbackRate'],

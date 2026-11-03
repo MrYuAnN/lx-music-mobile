@@ -22,7 +22,7 @@ import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { reloadCurrentWithQuality } from '@/core/player/player'
 import { guardEntitlementGate } from '@/core/shiyin/client'
 import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
-import { createStyle } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
 import { qualityLabel, qualityLabelMarked, toOnlineIdentity } from '@/utils/music'
 import { useLrcHasTranslation } from '@/plugins/lyric'
@@ -171,6 +171,10 @@ const ActionRow = ({ page }: ActionRowProps) => {
         action: q,
         label: qualityLabelMarked(q, downloadedQuality, t),
         disabled: !songQualitys?.[q],
+        // ⑪置灰档点击 toast（2026-11-04 拍板）：解释性反馈优于纯禁用（产品自定+可访问性
+        // 最佳实践——置灰形态本身对标 QQ 音质面板已核实，toast 交互无业界直接先例）
+        // 仅置灰分支被 CheckSheet 派发（非置灰项传回调永不触发），无需按 disabled 条件置空
+        onDisabledPress: () => { toast(t('quality_unavailable_song', { quality: qualityLabel(q, t) })) },
       }))
   }, [actualMusicInfo, identityIsBareLocal, t])
   const hasQualityOptions = qualityOptions.length > 0

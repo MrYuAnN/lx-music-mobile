@@ -6,7 +6,7 @@ import ActionRow from '../../components/ActionRow'
 import Popup, { type PopupType } from '@/components/common/Popup'
 import Button from '@/components/common/Button'
 import Text from '@/components/common/Text'
-import { createStyle, toast, confirmDialog, resetNotificationPermissionCheck, resetIgnoringBatteryOptimizationCheck } from '@/utils/tools'
+import { createStyle, toast, confirmDialog, resetNotificationPermissionCheck } from '@/utils/tools'
 import { getAppCacheSize, clearAppCache } from '@/utils/nativeModules/cache'
 import { getCacheSize, clearCache } from '@/plugins/player/utils'
 import { sizeFormate } from '@/utils'
@@ -69,7 +69,6 @@ export default memo(() => {
         clearCache(),
         clearMusicUrl(),
         resetNotificationPermissionCheck(),
-        resetIgnoringBatteryOptimizationCheck(),
       ]).then(() => {
         toast(t('setting_other_cache_clear_success_tip'))
       }).finally(() => {

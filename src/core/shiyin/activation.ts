@@ -7,7 +7,6 @@ import { AppState } from 'react-native'
 import { activationModule, onEntitlementChanged, type ActivationStateInfo, type KeyEntry } from '@/utils/nativeModules/activation'
 import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
-import { dateFormat } from '@/utils'
 import versionState from '@/store/version/state'
 import type { Message } from '@/lang'
 
@@ -35,42 +34,19 @@ export const unlockSource = (source: string, expiries: Record<string, number> | 
   return own != null && (own == 0 || own * 1000 > Date.now())
 }
 
-// 状态行文案（About 页消费）：state+expiry → 展示文本。
-// 批3 单源态适配（审查 I1）：bridge expiry=expiries["shiyin"]?:0 的 elvis 兜底，纯音源
-// 码用户（expiries 无 shiyin 键）被渲染成「已激活 · 永久」——此处按 expiries 全集重算：
-// 无 shiyin 键时 active 显单源名+日期（1 源）或 N 音源摘要（多源），expired 不带日期。
+// 状态行文案（设置页「我的激活码」行值，2026-11-04 拍板①短状态词）：只返回状态词，
+// 来源与到期日期在「我的激活码」二级页码卡逐源可见——对标 iOS 设置 cell 标题单行+
+// 右侧短状态词惯例（此前全串值把 label 挤折两行）。纯展示分支，判定语义族不含本函数。
 export const formatActivationState = (info: ActivationStateInfo | null, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
   if (info == null) return ''
-  const hasAllKey = info.expiries != null && 'shiyin' in info.expiries
   switch (info.state) {
     case 'unactivated':
       return t('activation_state_unactivated')
     case 'expired':
-      return `${t('activation_state_expired')}${hasAllKey ? formatExpiry(info.expiry, t) : ''}`
+      return t('activation_state_expired')
     default:
-      if (!info.isTrial && !hasAllKey) {
-        const live = Object.entries(info.expiries ?? {})
-          .filter(([, exp]) => exp == 0 || exp * 1000 > Date.now())
-        if (live.length == 1) {
-          const [src, exp] = live[0]
-          return `${t('activation_state_active')} · ${APP_CN[src] ?? src}${exp == 0 ? '' : ` · ${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}`}`
-        }
-        if (live.length > 1) {
-          return `${t('activation_state_active')} · ${t('activation_state_n_sources', { n: live.length })}`
-        }
-        return t('activation_state_active')
-      }
-      return info.isTrial
-        ? `${t('activation_state_trial')}${formatExpiry(info.expiry, t)}`
-        : `${t('activation_state_active')}${formatExpiry(info.expiry, t)}`
+      return info.isTrial ? t('activation_state_trial') : t('activation_state_active')
   }
-}
-
-const formatExpiry = (expiry: number | null, t: (k: keyof Message) => string): string => {
-  // 0=永久（SDK Entitlement 契约）；null=无权益记录
-  if (expiry == null) return ''
-  if (expiry == 0) return ` · ${t('activation_permanent')}`
-  return ` · ${t('activation_until')} ${dateFormat(expiry * 1000, 'Y-M-D')}`
 }
 
 /** 激活态快照 hook：挂载即拉一次+权益事件驱动刷新（审计 A-7，净屏 HomeActivity
@@ -248,11 +224,12 @@ export const isExpiringSoonAt = (expiry: number): boolean => {
   return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
 }
 
-// 「键有效」判定语义族五处（方案 activation-expiry-display-plan.md §四B/§四C 收口单源；
-// 口径调整须五处联动复核，F-03 同型防线）：
+// 「键有效」判定语义族四处（方案 activation-expiry-display-plan.md §四B/§四C 收口单源；
+// 口径调整须四处联动复核，F-03 同型防线）：
 // ①到期档位 isExpiredAt/isExpiringSoonAt（本文件上方）②码级 hasAnyValidKey/isEntryExpired
-// （本文件下方）③unlockSource（本文件上方）④formatActivationState live 过滤（本文件上方）
-// ⑤原生 ExpiryReminderWorker 双判定（Kotlin，注释互指）；
+// （本文件下方）③unlockSource（本文件上方）
+// ④原生 ExpiryReminderWorker 双判定（Kotlin，注释互指）；
+// （2026-11-04 ①拍板：formatActivationState 短状态词化，其 live 过滤展示分支退役出族）
 // 另有同语义内联参照 client.ts isSourceExpiredWithOthersActive（既有实现不收编，改动时对照本族）
 
 /** 单键有效判定（0=永久或未过期；代码审查 S6 收口：语义族单键谓词单点定义，五处联动
@@ -260,7 +237,7 @@ export const isExpiringSoonAt = (expiry: number): boolean => {
 export const isKeyValid = (exp: number): boolean => exp == 0 || exp * 1000 > Date.now()
 
 /** 任一键有效（方案 §四B）：横幅滤红留金闸门与码级过期判定的公共底座，
- *  与 formatActivationState live 过滤、client.ts isSourceExpiredWithOthersActive 同语义收口 */
+ *  与 client.ts isSourceExpiredWithOthersActive 同语义收口 */
 export const hasAnyValidKey = (expiries: Record<string, number> | null | undefined): boolean => {
   if (expiries == null) return false
   return Object.values(expiries).some(isKeyValid)

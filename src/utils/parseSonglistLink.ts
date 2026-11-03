@@ -104,6 +104,25 @@ export const expandShortLink = async(url: string, timeoutMs = 8000, signal?: Abo
   }
 }
 
+// tx 宽松兜底（2026-11-04 ⑦拍板）：y.qq.com 子域内任意 id=<纯数字> query 提取歌单 id——
+// 对齐 tx SDK getListId listDetailLink2（songList.js 同策略）与 GoMusic，免疫子域/页面名
+// 再变（playlist.html 新分享形态即此前漏网形态）。域判定 hostname 精确/后缀匹配
+// （matchShortLink 同款纪律，禁子串）；域内 album/song 页误命中为已知接受（与歌单广场
+// 入口既有口径同构，错调歌单 API=报错 toast 低频）
+const TX_DOMAIN = 'y.qq.com'
+const TX_ID_PARAM_RXP = /[?&]id=(\d+)/
+
+const extractTxIdFallback = (url: string): ParsedSonglistLink | null => {
+  try {
+    const { hostname } = new URL(url)
+    if (hostname != TX_DOMAIN && !hostname.endsWith(`.${TX_DOMAIN}`)) return null
+  } catch {
+    return null
+  }
+  const match = TX_ID_PARAM_RXP.exec(url)
+  return match ? { source: 'tx', id: match[1] } : null
+}
+
 export const parseSonglistLink = async(text: string, signal?: AbortSignal): Promise<ParsedSonglistLink | null> => {
   const rawUrl = extractFirstUrl(text.trim())
   if (!rawUrl) return null
@@ -111,6 +130,12 @@ export const parseSonglistLink = async(text: string, signal?: AbortSignal): Prom
   const direct = parseByPatterns(url)
   if (direct) return direct
   const expanded = await expandShortLink(url, undefined, signal)
-  if (!expanded) return null
-  return parseByPatterns(trimTrailingPunct(expanded))
+  // 兜底只应用在「短链展开成功的长链」或「非短链直链」上——禁入 TX_PATTERNS 数组：
+  // direct 轮先于短链展开，数组内兜底会把携带 id= 统计参数的短链直接误提取（架构席
+  // 审查 I-4）；未展开成功的短链 query 参数非歌单 id 语义，同样不应用
+  const finalUrl = expanded != null
+    ? trimTrailingPunct(expanded)
+    : (matchShortLink(url) ? null : url)
+  if (finalUrl == null) return null
+  return parseByPatterns(finalUrl) ?? extractTxIdFallback(finalUrl)
 }

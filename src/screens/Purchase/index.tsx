@@ -15,7 +15,8 @@ import { createStyle, toast } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { SPACING } from '@/config/spacing'
-import { SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
+import { SCREEN_HEADER_HEIGHT, SUCCESS_GREEN, ICON_SIZE } from '@/config/constant'
+import { Icon } from '@/components/common/Icon'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { useActivationState, activateByCode, APP_CN, formatRemainHint, isExpiringSoonAt } from '@/core/shiyin/activation'
 import InputSheet, { type InputSheetType } from '@/components/common/InputSheet'
@@ -378,13 +379,16 @@ export default ({ componentId }: { componentId: string }) => {
         title={t('purchase_title')}
         progress={scrollY}
         right={
+          /* ③页头动作图标化（2026-11-04 拍板）：文字「输码」→key 图标，与订单页找回/
+             DislikeManage 页头图标同形态；redeeming 防重入态保留 */
           <TouchableOpacity
             style={styles.headerEntry}
             activeOpacity={0.7}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             onPress={() => { inputSheetRef.current?.show() }}
             disabled={redeeming}
           >
-            <Text size={13} color={theme['c-primary']}>{t('activation_input_entry_short')}</Text>
+            <Icon name="key" size={ICON_SIZE.nav} color={theme['c-font']} />
           </TouchableOpacity>
         }
       />

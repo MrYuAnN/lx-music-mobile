@@ -331,6 +331,17 @@ export default ({ componentId }: { componentId: string }) => {
                   </SwipeDeleteRow>
                 )}
                 ListEmptyComponent={<EmptyList tab={tab} />}
+                ListFooterComponent={
+                  /* ⑥防误解文案（2026-11-04 拍板）：私有目录卸载即焚提示钉在已下载列表尾部，
+                     对标音乐 App 下载页惯例的弱提示位；仅列表非空时显示 */
+                  completedList.length
+                    ? (
+                        <Text size={12} color={theme['c-font-label']} style={styles.storageHint}>
+                          {t('download_storage_hint')}
+                        </Text>
+                      )
+                    : undefined
+                }
                 showsVerticalScrollIndicator={false}
               />
             )
@@ -640,5 +651,10 @@ const styles = createStyle({
     paddingVertical: 40,
     alignItems: 'center',
     gap: SPACING.s12,
+  },
+  storageHint: {
+    textAlign: 'center',
+    paddingHorizontal: SPACING.s16,
+    paddingTop: SPACING.s12,
   },
 })

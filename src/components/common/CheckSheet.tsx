@@ -15,6 +15,10 @@ export interface CheckSheetItem {
   action: string
   label: string
   disabled?: boolean
+  /** 置灰项点击回调（2026-11-04 ⑪拍板可选扩展）：disabled 项默认零响应（TouchableOpacity
+   *  disabled 直挂，原行为不变）；仅传入本回调的消费方（当前唯一=播放页音质面板）在置灰项
+   *  点击时收到派发——解释性反馈优于纯禁用，不选中不关层。其余消费方零影响 */
+  onDisabledPress?: () => void
 }
 
 export interface CheckSheetProps {
@@ -69,8 +73,16 @@ const CheckSheet = ({
                 key={item.action}
                 style={styles.item}
                 activeOpacity={0.6}
-                disabled={item.disabled}
-                onPress={() => { handlePress(item) }}
+                disabled={item.disabled && item.onDisabledPress == null}
+                onPress={() => {
+                  // 置灰项带 onDisabledPress：只派发解释性反馈，不选中不关层（⑪拍板）
+                  if (item.disabled) {
+                    hapticSelection()
+                    item.onDisabledPress?.()
+                    return
+                  }
+                  handlePress(item)
+                }}
               >
                 <Text
                   size={15}
