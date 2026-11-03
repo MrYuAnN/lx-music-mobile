@@ -5,6 +5,7 @@
 // 426→强更弹窗（F5 直达：UpgradeRequiredModal 统一出口）/ 429→提示不自动重试 / 其余（5xx·网络）→可重试（交换源链）。
 import { httpFetch } from '@/utils/request'
 import { requestMsg } from '@/utils/message'
+import { APP_CN } from './activation'
 import { ensureAuth, signRequest, clearStoredAuth } from './auth'
 import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL } from './config'
 import versionActions from '@/store/version/action'
@@ -64,6 +65,43 @@ export const guideUnactivated = (): void => {
     if (confirmed) pushPurchaseScreen('')
   }).catch(() => {
     unactivatedGuideShowing = false
+  })
+}
+
+// W3-05：跨源 403 per-source 引导（fork 批3 细分 message + 本机 expiries 预判配套）。
+// kind='expired'：精准续费引导（确认去激活码页，同笼统口径）；kind='not_entitled'：
+// 未开通该音源引导直达购买页（转化触点，同 guideUnactivated 口径）。守卫复用
+// expiryGuideShowing（权益类引导弹窗互斥，防换源链同次遍历重弹）
+const guideSourceEntitlement = (source: string, kind: 'expired' | 'not_entitled'): void => {
+  if (expiryGuideShowing) return
+  expiryGuideShowing = true
+  const sourceName = APP_CN[source] ?? source
+  const isNotEntitled = kind == 'not_entitled'
+  void confirmDialog({
+    title: global.i18n.t(isNotEntitled ? 'shiyin_source_not_entitled_title' : 'shiyin_source_expired_guide_title', { name: sourceName }),
+    message: global.i18n.t(isNotEntitled ? 'shiyin_source_not_entitled_body' : 'shiyin_source_expired_guide_body', { name: sourceName }),
+    confirmButtonText: global.i18n.t(isNotEntitled ? 'shiyin_unactivated_guide_go' : 'shiyin_expired_guide_go'),
+    bgClose: false,
+  }).then(confirmed => {
+    expiryGuideShowing = false
+    if (!confirmed) return
+    if (isNotEntitled) pushPurchaseScreen('')
+    else pushMyKeysScreen('')
+  }).catch(() => {
+    expiryGuideShowing = false
+  })
+}
+
+// W3-05 本机 expiries 预判：该源已过期且存在其他在期源（多码「tx 过期+wy 在期」弹
+// per-source 精准文案，不再误弹笼统「会员已到期」；unlockSource 同口径——0=永久）。
+// 矛盾态/无该源记录/全到期=false 走笼统引导（服务端 per-source 闸兜底语义兜住）
+const isSourceExpiredWithOthersActive = (source: string, expiries: Record<string, number>): boolean => {
+  const own = expiries[source]
+  const nowSec = Date.now() / 1000
+  if (own == null || !(own > 0 && nowSec > own)) return false
+  return Object.entries(expiries).some(([, exp]) => {
+    const e = Math.trunc(Number(exp) || 0)
+    return e === 0 || nowSec <= e
   })
 }
 
@@ -178,12 +216,23 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
         throw new Error(requestMsg.fail)
       case 403:
         // ⑥ expired=服务端 token 内嵌到期校验拒（I1 自愈重放后仍 expired=真到期）——
-        // 与前置拦截同引导；其余 403=摘源（cookie 失效自动摘/开关关闭）：不自动重试，
-        // 立即重拉 /config 收敛本地源集
+        // 与前置拦截同引导。W3-05：本机 expiries 预判该源过期且他源在期=跨源场景，
+        // 弹 per-source 精准文案（多码「tx 过期+wy 在期」不再误弹笼统到期）；
+        // not_entitled_for_source（fork 批3 细分，旧服务端无此值自然落下一分支）=
+        // 未持有该源，引导购买页；其余 403=摘源（cookie 失效自动摘/开关关闭）：
+        // 不自动重试，立即重拉 /config 收敛本地源集
         if (body.message == 'expired') {
           const st = await activationModule.getState().catch(() => null)
-          guideEntitlementExpired(st?.isTrial ?? false)
+          if (st?.expiries && isSourceExpiredWithOthersActive(source, st.expiries)) {
+            guideSourceEntitlement(source, 'expired')
+          } else {
+            guideEntitlementExpired(st?.isTrial ?? false)
+          }
           throw shiyinEntitlementExpiredError()
+        }
+        if (body.message == 'not_entitled_for_source') {
+          guideSourceEntitlement(source, 'not_entitled')
+          throw new Error(global.i18n.t('shiyin_source_not_entitled_title', { name: APP_CN[source] ?? source }))
         }
         void fetchShiyinConfig().catch(() => {})
         throw new Error(global.i18n.t('shiyin_source_disabled'))

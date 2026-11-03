@@ -750,10 +750,16 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
 }
 
 /**
- * 恢复播放
+ * 恢复播放（批3 W3-02：入口前置权益闸——暂停期间到期翻转后，耳机/通知栏续播
+ * 穿透「过期不进入播放流程」拍板（⑧ 入口闸在 play 漏网：非空分支直接 setPlay
+ * 续播已缓冲曲目不弹引导；空分支 setMusicUrl 走缓存命中完全绕过取链兜底层）。
+ * 闸=纯本地态查询零网络开销，拦截即引导；调用方（通知栏/耳机/歌词链/深链）全
+ * fire-and-forget，async 化无感。修后 getMusicUrl 缓存读被入口闸收敛——上游
+ * handlePlay 中心闸/checkEntitlementBeforeUrl 兜底层/play 本闸三层闭环）
  */
-export const play = () => {
+export const play = async() => {
   if (playerState.playMusicInfo.musicInfo == null) return
+  if (await guardEntitlementGate()) return
   if (isEmpty()) {
     if (createGettingUrlId(playerState.playMusicInfo.musicInfo) != global.sy.gettingUrlId) setMusicUrl(playerState.playMusicInfo.musicInfo)
     return
@@ -788,7 +794,7 @@ export const togglePlay = () => {
   if (playerState.isPlay) {
     void pause()
   } else {
-    play()
+    void play()
   }
 }
 

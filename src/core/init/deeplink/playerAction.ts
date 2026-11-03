@@ -5,7 +5,7 @@ export type PlayerAction = 'play' | 'pause' | 'skipNext' | 'skipPrev' | 'toggleP
 export const handlePlayerAction = async(action: PlayerAction) => {
   switch (action) {
     case 'play':
-      play()
+      void play()
       break
     case 'pause':
       void pause()

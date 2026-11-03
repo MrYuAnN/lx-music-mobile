@@ -30,7 +30,7 @@ const registerPlaybackService = async() => {
   console.log('reg services...')
   TrackPlayer.addEventListener(TPEvent.RemotePlay, () => {
     // console.log('remote-play')
-    play()
+    void play()
   })
 
   TrackPlayer.addEventListener(TPEvent.RemotePause, () => {
