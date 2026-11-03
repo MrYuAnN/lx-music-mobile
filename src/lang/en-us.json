@@ -575,7 +575,7 @@
   "activation_until": "until",
   "activation_permanent": "Lifetime membership",
   "activation_input_hint": "Enter activation code",
-  "activation_clip_chip": "Activation code detected in clipboard — tap to fill in",
+  "activation_clip_chip": "Paste code from clipboard",
   "activation_btn_activate": "Activate",
   "activation_activating": "Activating…",
   "activation_btn_unbind": "Unbind this device",
@@ -719,5 +719,9 @@
   "orders_agg_other": "{n} elsewhere",
   "orders_agg_expired": "{n} expired",
   "orders_uid_actionable_hint": "Contains {n} code(s) awaiting activation: enter the code on the activation page, or contact support with the order number from your Xianyu chat",
-  "changelog_loading": "Loading changelog…"
+  "changelog_loading": "Loading changelog…",
+  "keyinfo_empty_hint": "Get a code",
+  "keyinfo_empty_link": "Get one",
+  "keyinfo_input_entry_unactivated": "Enter code · Activate or extend",
+  "keyinfo_empty_desc": "Open the shop · per-source purchase"
 }

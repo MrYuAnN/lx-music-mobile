@@ -8,15 +8,13 @@
 // 关于页激活弹窗已退役（单入口）。2026-11-01 整卡视觉对齐净屏 item_key_card（左对齐/r16 无描
 // 边/逐源生效行/绿字绑回/试用码隐藏解绑）+输码弹层迁 InputSheet+全停权码卡放宽渲染（审查 I-4）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ActivityIndicator, Animated, TouchableOpacity, View } from 'react-native'
+import { Animated, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
 
 import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text from '@/components/common/Text'
-import Input from '@/components/common/Input'
-import Button from '@/components/common/Button'
 import { Icon } from '@/components/common/Icon'
 import { PlayerBarPlaceholder } from '@/components/player/PlayerBar'
 import InputSheet, { type InputSheetType } from '@/components/common/InputSheet'
@@ -28,7 +26,6 @@ import { SPACING } from '@/config/spacing'
 import { BorderWidths } from '@/theme'
 import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { getGlassHairlineColor } from '@/components/common/GlassSurface'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
 import { onEntitlementChanged, BINDING_MARK, type KeyEntry, type BindingInfo } from '@/utils/nativeModules/activation'
@@ -57,8 +54,7 @@ export default ({ componentId }: { componentId: string }) => {
   const { info } = useActivationState() // state 消费：未购态判据（审查 I-I：全停权用户也需剪贴板提示）；码列表刷新由下方自身订阅承担
   const [entries, setEntries] = useState<KeyEntry[]>([])
   const [bindings, setBindings] = useState<Record<string, BindingInfo>>({})
-  // 输码（未购直显卡+已购弹窗两态共用 code/submitting：A-3 防重锁跨态单源）
-  const [code, setCode] = useState('')
+  // submitting（A-3 防重锁单源）：提交中锁全部触发（弹窗文本由 InputSheet 自管）
   // 标准二级页滚动接线（玻璃渐显+标题淡入，About 同款）
   const scrollY = useRef(new Animated.Value(0)).current
   const handleScroll = useMemo(() => Animated.event(
@@ -161,20 +157,10 @@ export default ({ componentId }: { componentId: string }) => {
     refreshEntries(forceKey)
   }, [refreshEntries])
 
-  // 输码提交（未购直显卡）：activateByCode 内含合并确认链（Q7-C 案，2026-11-02）
-  const handleActivate = useCallback(() => {
-    if (submitting) return
-    setSubmitting(true)
-    void activateByCode(code, () => {
-      setCode('')
-      refreshAll()
-    }).finally(() => { setSubmitting(false) })
-  }, [code, refreshAll, submitting])
-
   // 已购态输码弹层（InputSheet 标准容器，净屏激活弹层同形态）：A-3 锁与未购直显卡共用；
   // 成功回调里关层+刷新（InputSheet 自管文本，打开即清空）。busy 态（Q6-B，2026-11-02）：
-  // 提交中弹层转圈+禁用+关闭通道全锁（净屏 setCancelable(false) 防误滑同语义），消除激活
-  // 链路零反馈黑洞；settle 复位+hide/show 内部兜底复位
+  // 提交中弹层转圈+禁用+关闭通道全锁（净屏 setCancelable(false) 防误滑丢反馈）；
+  // settle 复位+hide/show 内部兜底复位。2026-11-04 统一入口行式后为唯一输码通道
   const handleSheetActivate = useCallback((sheetCode: string) => {
     if (submitting) return
     setSubmitting(true)
@@ -233,9 +219,15 @@ export default ({ componentId }: { componentId: string }) => {
     toast(t('keyinfo_copied'))
   }, [t])
 
+  // 打开输码弹窗（2026-11-04 统一入口行式）：剪贴板候选存在时预填（showWithText，
+  // 弹窗主动打开语境的用户可见填入，取代直显卡 chip「点击填入」）
   const handleOpenInputDialog = useCallback(() => {
-    inputSheetRef.current?.show()
-  }, [])
+    if (clipCandidate) {
+      inputSheetRef.current?.showWithText(clipCandidate)
+    } else {
+      inputSheetRef.current?.show()
+    }
+  }, [clipCandidate])
 
   const destructiveColor = theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light
 
@@ -248,72 +240,42 @@ export default ({ componentId }: { componentId: string }) => {
           onScroll={handleScroll}
           scrollEventThrottle={16}
         >
-          {/* 输码分态（批 R 拍板 D3）：未购=直显卡（A-1 chip 保真）；已购=入口行→弹窗 */}
-          {unactivated
-            ? (
-              <View
-                style={[
-                  styles.card,
-                  {
-                    backgroundColor: theme['c-content-background'],
-                    borderColor: getGlassHairlineColor(theme.isDark),
-                  },
-                ]}
-              >
-                <Text style={styles.cardTitle}>{t('setting_activation')}</Text>
-                <Input
-                  value={code}
-                  onChangeText={setCode}
-                  placeholder={t('activation_input_hint')}
-                  placeholderTextColor={theme['c-font-label']}
-                  style={{ ...styles.input, borderColor: getGlassHairlineColor(theme.isDark) }}
-                />
-                {clipCandidate && !code
-                  ? (
-                    <TouchableOpacity style={styles.clipChip} onPress={() => { setCode(clipCandidate) }}>
-                      <Text size={12} color={theme['c-font-label']}>{t('activation_clip_chip')}</Text>
-                    </TouchableOpacity>
-                  )
-                  : null}
-                {/* F-10：空码禁用（对照清单「空码 inline 错误」口径与已购态 InputSheet 空码禁用
-                    先例）——原仅 disabled={submitting}，未购态空码点击零反馈 */}
-                <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={submitting || !code.trim()} onPressIn={() => { handleActivate() }}>
-                  <View style={styles.activateBtnContent}>
-                    {/* 提交中转圈（Q6-A，2026-11-02）：激活链路含本地确认链与网络激活，裸文字
-                        「激活中…」反馈过弱致重复点击无感（真机反馈）；onPressIn=键盘收起态二击
-                        即触发（本 ROM 首击征用收键盘，InputSheet 同款兜底） */}
-                    {submitting && <ActivityIndicator size="small" color={theme['c-on-primary']} />}
-                    <Text size={14} color={theme['c-on-primary']}>
-                      {submitting ? t('activation_activating') : t('activation_btn_activate')}
-                    </Text>
-                  </View>
-                </Button>
-              </View>
-              )
-            : (
-              <TouchableOpacity
-                style={[styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
-                activeOpacity={0.6}
-                onPress={handleOpenInputDialog}
-              >
-                <View style={[styles.entryIconBg, { backgroundColor: theme['c-primary-light-900-alpha-200'] }]}>
-                  <Icon name="key" size={14} color={theme['c-primary']} />
-                </View>
-                <Text style={styles.entryLabel} size={14}>{t('keyinfo_input_entry')}</Text>
-                <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
-              </TouchableOpacity>
-              )}
+          {/* 输码入口（2026-11-04 拍板统一入口行式，推翻批 R D3 两态分形）：已购/未购同构
+              入口行→InputSheet 弹窗（busy/空码禁用/防重全套现成，直显卡重复实现整块退役），
+              未购文案强化转化；剪贴板候选打开弹窗时预填（弹窗主动打开语境取代直显卡「点击
+              填入」chip——A-1 不静默预填口径随语境迁移标注） */}
+          <TouchableOpacity
+            style={[styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
+            activeOpacity={0.6}
+            onPress={handleOpenInputDialog}
+          >
+            <View style={[styles.entryIconBg, { backgroundColor: theme['c-primary-light-900-alpha-200'] }]}>
+              <Icon name="key" size={14} color={theme['c-primary']} />
+            </View>
+            <Text style={styles.entryLabel} size={14}>{unactivated ? t('keyinfo_input_entry_unactivated') : t('keyinfo_input_entry')}</Text>
+            <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+          </TouchableOpacity>
 
           {/* 未购且无码在手：获取激活码引导（批3 v1.2：应用内选购页直达，替换 tutorial.html
-              外链——方案 §四批3 入口拍板）；码在手（停权/解绑态）不再引导 */}
+              外链——方案 §四批3 入口拍板）；码在手（停权/解绑态）不再引导。
+              2026-11-04 结构化重构（用户拍板）：单行轻卡改入口行同构信息卡——图标底+
+              标题+副文案（对齐独立售卖模型「按音源独立购买」）+chevron */}
           {unactivated && !entries.length
             ? (
-              <View style={[styles.card, { backgroundColor: theme['c-content-background'] }]}>
-                <Text size={12} color={theme['c-font-label']} style={styles.emptyText}>{t('keyinfo_no_keys')}</Text>
-                <TouchableOpacity style={styles.emptyLink} onPress={() => { pushPurchaseScreen(componentId) }}>
-                  <Text size={13}>{t('keyinfo_get_code_hint')}</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[styles.card, styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
+                activeOpacity={0.6}
+                onPress={() => { pushPurchaseScreen(componentId) }}
+              >
+                <View style={[styles.entryIconBg, { backgroundColor: theme['c-primary-light-900-alpha-200'] }]}>
+                  <Icon name="plus" size={14} color={theme['c-primary']} />
+                </View>
+                <View style={styles.emptyTextGroup}>
+                  <Text size={14} style={styles.entryLabel}>{t('keyinfo_empty_hint')}</Text>
+                  <Text size={12} color={theme['c-font-label']}>{t('keyinfo_empty_desc')}</Text>
+                </View>
+                <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+              </TouchableOpacity>
               )
             : null}
           {/* 生效码卡（2026-11-01 审查 I-4 拍板放宽）：全停权（唯一码 OTHER/unbound→state
@@ -521,39 +483,26 @@ const styles = createStyle({
     paddingHorizontal: SPACING.s16,
   },
   card: {
-    // 净屏 item_key_card 卡语言：r16 无描边无阴影（白卡浮于页面底色）
-    borderRadius: 16,
+    // 卡语言：白卡浮于页面底色；r12=组卡圆角单源（design-principles §4 2026-10-23 拍板，
+    // 2026-11-04 全页 r16→r12 收口）
+    borderRadius: 12,
     padding: SPACING.s16,
     marginBottom: SPACING.s10,
   },
-  cardTitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: SPACING.s12,
-  },
-  input: {
-    borderWidth: BorderWidths.normal,
-    borderRadius: 8,
-    paddingHorizontal: SPACING.s12,
-    marginBottom: SPACING.s12,
-  },
-  clipChip: {
-    alignSelf: 'center',
-    paddingBottom: SPACING.s12,
-  },
-  btn: {
-    paddingVertical: SPACING.s10,
-    alignItems: 'center',
-    borderRadius: 999,
-  },
-  // 激活钮内容行（Q6-A busy 转圈+文字并排居中）
-  activateBtnContent: {
+  // 节头三件套（2026-11-04 精致化）：主色图标+左对齐标题，替换原居中悬空卡标题
+  sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginBottom: SPACING.s12,
   },
+  sectionTitle: {
+    fontWeight: '600',
+  },
+  // 节头三件套样式（sectionHeader/sectionTitle）与直显卡专用样式（inputWrap/inputInner/
+  // pasteBtn/btn/activateBtnContent/clipChip/cardTitle）已随 2026-11-04 统一入口行式退役
   entryCard: {
-    borderRadius: 16,
+    borderRadius: 12,
     padding: SPACING.s16,
     marginBottom: SPACING.s10,
     flexDirection: 'row',
@@ -572,12 +521,11 @@ const styles = createStyle({
     flexGrow: 1,
     fontWeight: '500',
   },
-  emptyText: {
-    textAlign: 'center',
-  },
-  emptyLink: {
-    alignSelf: 'center',
-    paddingTop: SPACING.s8,
+  // 空态信息卡文本列（2026-11-04 结构化重构）：标题+副文案纵排，与入口行图标底+chevron 同构
+  emptyTextGroup: {
+    flexGrow: 1,
+    flexShrink: 1,
+    gap: 3,
   },
   copyBlock: {
     // 复制热区=上半块（净屏「点击卡片复制」口径：label 下的码+提示+生效范围行整块可点）；

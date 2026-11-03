@@ -575,7 +575,7 @@
   "activation_until": "至",
   "activation_permanent": "永久会员",
   "activation_input_hint": "输入激活码",
-  "activation_clip_chip": "检测到剪贴板激活码，点击填入",
+  "activation_clip_chip": "粘贴剪贴板激活码",
   "activation_btn_activate": "激活",
   "activation_activating": "激活中…",
   "activation_btn_unbind": "解绑本机设备",
@@ -719,5 +719,9 @@
   "orders_agg_other": "他机 {n}",
   "orders_agg_expired": "过期 {n}",
   "orders_uid_actionable_hint": "本单含 {n} 张待激活码：请在激活页输入卡密激活，或凭闲鱼发货消息中的订单号联系客服",
-  "changelog_loading": "正在加载更新日志…"
+  "changelog_loading": "正在加载更新日志…",
+  "keyinfo_empty_hint": "获取激活码",
+  "keyinfo_empty_link": "获取激活码",
+  "keyinfo_input_entry_unactivated": "输入激活码 · 激活或续费",
+  "keyinfo_empty_desc": "前往选购页 · 支持按音源独立购买"
 }

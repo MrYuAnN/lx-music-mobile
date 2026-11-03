@@ -575,7 +575,7 @@
   "activation_until": "至",
   "activation_permanent": "永久會員",
   "activation_input_hint": "輸入激活碼",
-  "activation_clip_chip": "檢測到剪貼簿激活碼，點擊填入",
+  "activation_clip_chip": "貼上剪貼簿激活碼",
   "activation_btn_activate": "激活",
   "activation_activating": "激活中…",
   "activation_btn_unbind": "解綁本機設備",
@@ -719,5 +719,9 @@
   "orders_agg_other": "他機 {n}",
   "orders_agg_expired": "過期 {n}",
   "orders_uid_actionable_hint": "本單含 {n} 張待激活碼：請在激活頁輸入卡密激活，或憑閒魚發貨消息中的訂單號聯繫客服",
-  "changelog_loading": "正在載入更新日誌…"
+  "changelog_loading": "正在載入更新日誌…",
+  "keyinfo_empty_hint": "獲取激活碼",
+  "keyinfo_empty_link": "獲取激活碼",
+  "keyinfo_input_entry_unactivated": "輸入激活碼 · 激活或續費",
+  "keyinfo_empty_desc": "前往選購頁 · 支持按音源獨立購買"
 }
