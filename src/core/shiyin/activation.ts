@@ -111,7 +111,9 @@ export const detectClipboardCandidate = (text: string | null | undefined): strin
  *  绕过 SDK「已使用过」拦截）→弹窗。文案=既有规则式合并确认（同源并入/跨源并存两态恒
  *  真实，复用 activation_merge_confirm_title/msg）。确认恒 merge=true——同源=剩余时长
  *  并入（事故「月卡被顶替」的正确防护）；跨源=服务端 mergeSameApp 按新码声明键集过滤
- *  no-op 无害（license-platform licenses.go）。取消=中止不激活。整链 try/catch：任何
+ *  no-op 无害（license-platform licenses.go；方案 A 2026-11-03 例外：同产品 trial 码
+ *  跨源也整码全折——服务端 CodeOverlap 恒标记/首兑无条件特判，本宽触发已天然覆盖）。
+ *  取消=中止不激活。整链 try/catch：任何
  *  异常→失败 toast（不再静默死）。服务端 Q7-E 409 merge_required（重激活路径同源接管且
  *  无 merge 时拦截）=纵深兜底，正常流（确认后恒带 merge）不命中，命中即异常态由 SDK
  *  errCode 白名单文案兜底（「app 版本过旧请升级」映射，见 DEPLOY.md ⑥批方案②）。
@@ -121,11 +123,15 @@ export const activateByCode = async(input: string, onDone: () => void): Promise<
   if (!code) return
   let merge = false
   if (!code.startsWith('CZ-')) {
-    const keys = await activationModule.getKeys().catch(() => null)
-    if (keys == null || keys.some(k => normalizeCode(k) !== code)) {
+    // getKeyEntries 一次拿全（键集+isTrial）：keys 失败(null) fail-closed 同旧 getKeys 口径；
+    // 分态文案（代码审查优化师 S-2 用户拍板 2026-11-03）：本机含在绑试用码→trial 条款版
+    // （全折承诺），否则 plain 版——确认框内容与实际操作一致；失败态保守用含条款版
+    const entries = await activationModule.getKeyEntries().catch(() => null)
+    if (entries == null || entries.some(e => normalizeCode(e.key) !== code)) {
+      const hasTrial = entries?.some(e => e.isTrial) ?? false
       const confirmed = await confirmDialog({
         title: global.i18n.t('activation_merge_confirm_title'),
-        message: global.i18n.t('activation_merge_confirm_msg'),
+        message: global.i18n.t(hasTrial ? 'activation_merge_confirm_msg' : 'activation_merge_confirm_msg_plain'),
         bgClose: false,
       }).catch(() => false)
       if (!confirmed) return
