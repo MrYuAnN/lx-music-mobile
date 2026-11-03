@@ -37,9 +37,10 @@
 - App 侧：下载链登记值跟切（0.5 天）——赶 S3 列车则同版生效，赶不上随下一版（回退=发版窗口）
 - 验收：/url 取链时延对比探针（2.4s 税消除）
 
-### S3 下版窗口（发布列车）
+### S3 下版窗口（发布列车）—— **发布前核查完成（2026-11-03），发布动作暂缓待设备**
 - 车上内容：批1 + 全源停售摘 tab + 方案A trial App 侧 + config.ts:19 注释修正（P0-B 残余）+ 直连登记值（若 S2 赶上）
 - 发布 checklist：versionCode 12→13 单调（工作区已 bump 待随车提交）；app_releases 表首=最新语义核查（DEPLOY 坑单）；更新通道 /latest 登记
+- **发布前核查实况（2026-11-03，全绿）**：①app_releases 仅 1 条 1.0.0（11-02 stage v15），无 1.9.x 残留 ✓；②/latest /config 均 200，upgrade_url 已新域（直连线上生效实证）✓；③assembleStage 产物 `shiyin-v1.0.0-arm64-v8a.apk` aapt 实证 versionCode=13003/versionName=1.0.0 ✓；④六车上 commit 全在 origin/am-redesign ✓；⑤config.ts:19 注释修正已随 2abfc318 入库（车上清单勾销）；versionName 恒 1.0.0=Q7-F vc 每轮自增纪律口径。**挂起序列（设备就绪后）**：装机冒烟 → 上传 /root/shiyin/apk/ → latest-set 登记（写操作逐次确认，note 中文走 `<<'EOF'` stdin）→ /latest 复验 → 10 项回归
 - 发布后真机回归包：V1/V3/V4+U1 三态封锁实测 + trial 两场景 + 购买页全源 tab 消失/组合购正常/存量 d7 权益卡 + 直连时延复测
 
 ### S4 批2 · 放量硬前置（跨库，顺序即依赖）—— 代码完成（2026-11-03），待审查/装机回归
@@ -56,8 +57,17 @@
 - 验收：只读探针（W3-01 两闸行为/faq 200/Worker 白名单）+ P0-B 真码「注册→取链→播放」全链回归（写操作，逐次确认）
 - 解锁：**wy/kg/kw 开售资格（硬门槛）+ 正式放量**
 
-### S5 批3：W3-02 play() 续播闸（缓存路径随之收敛）+ W3-05 跨源 403 文案分离（fork message+客户端适配）
-### S6 批4 App RN 小修批：F-04/F-05/F-10/F-16/F-17/F-19 + W3-12 + ①下载-1/2/4 + 评论两修 + 歌手桶 + **F-09 闲鱼归因基础版交付（S0 拍板）**+ ⭐P2 搭车（清单见 audit-summary §四）
+### S5 批3：W3-02 play() 续播闸（缓存路径随之收敛）+ W3-05 跨源 403 文案分离（fork message+客户端适配）—— **代码完成+两仓已推送（2026-11-03），fork 部署挂起随 S3 发布窗口**
+- W3-02 ✅ App `913915e1`：play() 前置 guardEntitlementGate（⑧ 入口闸拍板补全——暂停期间到期翻转后耳机/通知栏续播穿透+空分支缓存命中绕过取链兜底层）；7 调用点全 fire-and-forget async 化无感（togglePlay/RemotePlay/深链三处补 void）；缓存读由入口闸自然收敛（handlePlay 中心闸/checkEntitlementBeforeUrl 兜底层/play 本闸三层闭环，纵深缓存校验不加——避免缓存层耦合）
+- W3-05 ✅ fork `fb2368a`+App `913915e1`：fork entitlement_verdict 细分（'expired'/'not_entitled_for_source'，旧 record 聚合路径语义不变，fixture 8/8 PASS）；App /url 403 三分——expired 按本机 expiries 预判（该源过期且他源在期→per-source 精准文案「XX音源会员已到期」）/not_entitled_for_source→未开通引导直达购买页/摘源分支不变；三语 4 新键（{name} 插值，go 键复用既有）；守卫复用 expiryGuideShowing 权益弹窗互斥
+- 对标（产品席口径留存）：到期拦截播放+应用内续费路径=Spotify 等订阅制通行模式（⑧ 拍板补全非新拍板）；细分机器可读错误码+客户端 i18n 映射=REST 契约通行（eBay/Alpaca insufficient subscription 先例、RFC 7807 模式）
+- 验收：tsc 全仓绿/改动文件 eslint 绿/assembleStage 绿/三语 JSON 有效；**既有问题登记**：ControlBtn.tsx:47 JSX 裸注释 eslint 错（0b655bfb 批遗留，非本批，挂批4 顺带）
+- 挂起：fork 部署（scp shiyin.py+shiyin_entitlement.py→compose 重建+探针，与 S3 发布窗口合并执行）；真机到期/多码态文案回归（随 S3 后装机窗口）；App 侧生效随下版（vc14+，不赶 vc13——包已构建完毕）
+### S6 批4 App RN 小修批：F-04/F-05/F-10/F-16/F-17/F-19 + ①下载-1/2/4 + 评论两修 + 歌手桶 + ⭐P2 搭车 —— **代码完成+三席审查处置收口（2026-11-03），待 commit**
+- 实施范围（19 文件 +241/−44 → 审查修复后略增）：①下载-1（aborted 三道闸+就地清 .tmp）/①下载-2（磁盘名 ` [h8xxxxxxxx]` 身份段唯一化+parseDownloadStem 两端单源）/①下载-4（Wi-Fi 重试闸+wifiWaitingIds 挂起收尾）/W3-06 ape 摘链（搭车一修两愈）/P2 下载-1（waiting 文案 statusText 优先）/①评论-1（refreshComment 归一）/①评论-2（seq 守卫贯通 then+catch+finally+死条件改判 requestMsg.timeout 活常量）/①本地-5（未知歌手桶）/F-04（窗口归属 number[]）/F-05（订单号找回 InputSheet 全链）/F-10/F-16/F-17/F-19/源收敛①（惰性校验回退源）②（词图直连闸 assertOnlineInfoSourceEnabled 单点化）
+- **挂账去向落字（审查 I-D）**：①W3-12 未激活播放跳光=**已核销**（批2 W3-04 guardEntitlementGate 扩 unactivated 分支+handlePlay 入口拦截，批3 play() 补齐续播缝隙——audit-gate-crosslink:148 修复方向全路径覆盖，登记即核销）；②**F-09 闲鱼归因基础版=拆批5**（净屏参照侦察完毕：核心=客户端埋点 fire-and-forget+服务端 /site/xianyu 端点+site_buy_clicks 表——拾音 backend 无 site_* 基础设施需从零建，跨 App+服务端两侧不塞 RN 小修批；RN 侧等价物归宿主 src/ 不进 SDK=净屏 v1.3 同拍板）；③ControlBtn.tsx:47 JSX 裸注释 eslint 错=**改挂批5 顺带**（批4 遗漏未修，登记防再漂）
+- **三席审查（2026-11-03）**：0C/5I/11S→全部处置。Important 四项全修（I-A isWifi await 窗口 abort 复查防吞暂停/I-B 评论死条件二修——「Aborted」经 request.js 出口映射同样不可达，改判 requestMsg.timeout 活常量+seq 守卫贯通 catch/finally+init 路径收口 unhandled/I-C 加歌页冷启窗口惰性校验回退源/I-D 本段落字）；S 六修一挂（S-1 存量 ape 恢复置空 url 强制降档/S-2 h8 字面前缀防误剥/S-3 orders_recover_failed 三语分流/S-4 词图闸抽守卫函数/S-5 首窗措辞/S-7 催付对标句精确化=淘宝系 24h 内 2-3 次上限本产品终身 2 次严于上限；S-6 statusText 持久化语言串**挂下批顺带**）。被证伪 22 条存档三席报告（.review-bundle/2026-11-03/）
+- 验收：tsc 全仓绿/改动文件 eslint 绿/三语 JSON 有效/assembleStage 绿；真机回归项（下载暂停删除竞态/跨源并发下载/已下载 tab 身份解析/评论弱网切歌/订单号找回全链/加歌页冷启搜索）归 S3 后装机窗口；生效随 vc14（不赶 vc13）
 ### S7 批5 服务端+order-core：F-14/F-18/W3-08/09/10/13/14/16/17 + F-15/F-20 + **W3-11 单段 SKU 快照锚（S0 拍板补齐）**（W3-07 已消解剔除）
 ### S8 批6 文档/登记：DR1-6 + F-08 余三处（净屏批提交后回灌）+ DEPLOY.md 勘误（R-a）+ F-13 FAQ 口径修正 + **F-21 products.min_client_ver 配置（S0 拍板：发版后执行）** + R-c 运营内容上架（待用户供给；放量前置）
 

@@ -13,6 +13,7 @@ import { AnimatedScrollView } from '@/components/common/AnimatedLists'
 import ScreenHeader from '@/components/common/ScreenHeader'
 import PageContent from '@/components/PageContent'
 import Text, { FontFamilies } from '@/components/common/Text'
+import InputSheet, { type InputSheetType } from '@/components/common/InputSheet'
 import { createStyle, toast, confirmDialog } from '@/utils/tools'
 import { hapticSelection } from '@/utils/haptic'
 import { useTheme } from '@/store/theme/hook'
@@ -28,6 +29,7 @@ import {
   describeBySkuIds,
   cancelOrder,
   createOrder,
+  fetchOrder,
   orderErrorKey,
   yuan,
   type OrderRecord,
@@ -54,6 +56,9 @@ export default ({ componentId }: { componentId: string }) => {
   const mounted = useRef(true)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
   const pollBusy = useRef(false)
+  // F-05 订单号找回（方案 v1.2 承诺「重装退化=uid 脱敏列表+订单号输入找回」的另一半）：
+  // 脱敏单可见但拿不到码值，只能人工客服——补输入口，fetchOrder（nos 强凭证）现成
+  const recoverSheetRef = useRef<InputSheetType>(null)
 
   useEffect(() => {
     mounted.current = true
@@ -76,6 +81,28 @@ export default ({ componentId }: { componentId: string }) => {
       if (!silent) setFailed(true)
     })
   }, [])
+
+  const handleRecoverOrder = useCallback((input: string) => {
+    const orderNo = input.trim()
+    if (!orderNo) return
+    recoverSheetRef.current?.setBusy(true)
+    void fetchOrder(orderNo).then(record => {
+      recoverSheetRef.current?.setBusy(false)
+      if (!mounted.current) return
+      if (record == null) {
+        toast(t('orders_recover_not_found'))
+        return
+      }
+      // fetchOrder 命中即已 upsert 本地列表（order.ts）——静默刷新展示
+      refresh(true)
+      recoverSheetRef.current?.hide()
+      toast(t('orders_recover_success'))
+    }).catch(() => {
+      recoverSheetRef.current?.setBusy(false)
+      // 审查 S-3：网络/服务异常与「未找到」分流——找回复景不再复用购买语境失败文案
+      if (mounted.current) toast(t('orders_recover_failed'))
+    })
+  }, [t, refresh])
 
   // 两段式（Q5-A，2026-11-02 拍板 SWR）：本地快照（syncOrders 本就回写 shiyinOrders）毫秒级
   // 渲染，随后 syncOrders 静默刷新原地更新；刷新失败静默保留快照（断网也能看单；快照无陈旧
@@ -321,6 +348,14 @@ export default ({ componentId }: { componentId: string }) => {
           <View style={styles.pollHint}>
             <Text size={12} color={theme['c-font-label']}>{t('orders_poll_hint')}</Text>
           </View>
+          {/* F-05 订单号找回入口（重装/换机后凭闲鱼订单号自助取回，恒显不抢视觉） */}
+          <TouchableOpacity
+            style={styles.recoverRow}
+            activeOpacity={0.7}
+            onPress={() => { hapticSelection(); recoverSheetRef.current?.show() }}
+          >
+            <Text size={12} color={theme['c-primary']}>{t('orders_recover_action')}</Text>
+          </TouchableOpacity>
           {loading
             ? (
               <View style={styles.center}><Text size={13} color={theme['c-font-label']}>{t('purchase_loading')}</Text></View>
@@ -379,6 +414,14 @@ export default ({ componentId }: { componentId: string }) => {
         </AnimatedScrollView>
       </View>
       <ScreenHeader componentId={componentId} title={t('orders_title')} progress={scrollY} />
+      {/* F-05 订单号找回输入弹层（InputSheet 标准容器，busy 态防重复提交） */}
+      <InputSheet
+        ref={recoverSheetRef}
+        title={t('orders_recover_title')}
+        placeholder={t('orders_recover_placeholder')}
+        confirmText={t('orders_recover_confirm')}
+        onConfirm={handleRecoverOrder}
+      />
     </PageContent>
   )
 }
@@ -497,13 +540,17 @@ const OrderCard = memo(({ order, name, status, acting, theme, t, onResumePay, on
           >
             <Text size={14} color={theme['c-on-primary']}>{t('orders_resume_pay')}</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.ghostBtn, { borderColor: theme['c-border-background'] }]}
-            activeOpacity={0.7}
-            onPress={() => { onCancel(order) }}
-          >
-            <Text size={14} color={theme['c-font-label']}>{t('orders_cancel')}</Text>
-          </TouchableOpacity>
+          {/* F-17：取消钮同「继续支付」防线——脱敏单（重装找回形态）无 orderNo 可得，
+              空单号照发 cancel 恒 400 恒 toast「取消失败」；无 orderNo 即隐藏 */}
+          {order.orderNo != null && order.orderNo !== '' && (
+            <TouchableOpacity
+              style={[styles.ghostBtn, { borderColor: theme['c-border-background'] }]}
+              activeOpacity={0.7}
+              onPress={() => { onCancel(order) }}
+            >
+              <Text size={14} color={theme['c-font-label']}>{t('orders_cancel')}</Text>
+            </TouchableOpacity>
+          )}
         </View>
       )}
       {status == 'delivered' && order.codes.length > 0 && (
@@ -534,6 +581,12 @@ const styles = createStyle({
   pollHint: {
     marginHorizontal: SPACING.s16,
     marginBottom: SPACING.s10,
+  },
+  recoverRow: {
+    marginHorizontal: SPACING.s16,
+    marginBottom: SPACING.s10,
+    alignSelf: 'flex-start',
+    paddingVertical: SPACING.s4,
   },
   center: {
     alignItems: 'center',

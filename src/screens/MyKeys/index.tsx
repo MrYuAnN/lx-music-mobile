@@ -244,7 +244,9 @@ export default ({ componentId }: { componentId: string }) => {
                     </TouchableOpacity>
                   )
                   : null}
-                <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={submitting} onPressIn={() => { handleActivate() }}>
+                {/* F-10：空码禁用（对照清单「空码 inline 错误」口径与已购态 InputSheet 空码禁用
+                    先例）——原仅 disabled={submitting}，未购态空码点击零反馈 */}
+                <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} disabled={submitting || !code.trim()} onPressIn={() => { handleActivate() }}>
                   <View style={styles.activateBtnContent}>
                     {/* 提交中转圈（Q6-A，2026-11-02）：激活链路含本地确认链与网络激活，裸文字
                         「激活中…」反馈过弱致重复点击无感（真机反馈）；onPressIn=键盘收起态二击

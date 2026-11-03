@@ -196,11 +196,20 @@ export const getOnlineOtherSourceMusicUrlByLocal = async(musicInfo: SY.Music.Mus
   })
 }
 
+// 源收敛边缘②（审查 S-4 单点化）：裸本地曲词图直连的配置源闸（URL 路径已闸 ✓）——判
+// meta.onlineInfo 身份源（本体外 source='local'，assertApiSupport 恒放行），kw 身份下载曲
+// 裸本地播放且无缓存时原直连 kw 词图，源被摘/未配置即必败请求
+const assertOnlineInfoSourceEnabled = (musicInfo: SY.Music.MusicInfoLocal): void => {
+  const onlineInfo = musicInfo.meta.onlineInfo
+  if (onlineInfo && isSourceDisabled(onlineInfo)) throw new Error('source disabled')
+}
+
 export const getOnlineOtherSourceLyricByLocal = async(musicInfo: SY.Music.MusicInfoLocal, isRefresh: boolean): Promise<{
   lyricInfo: SY.Music.LyricInfo
   isFromCache: boolean
 }> => {
   if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
+  assertOnlineInfoSourceEnabled(musicInfo)
 
   const lyricInfo = await getCachedLyricInfo(musicInfo)
   if (lyricInfo && !isRefresh) return { lyricInfo, isFromCache: true }
@@ -221,6 +230,7 @@ export const getOnlineOtherSourcePicByLocal = async(musicInfo: SY.Music.MusicInf
   url: string
 }> => {
   if (!await global.sy.apiInitPromise[0]) throw new Error('source init failed')
+  assertOnlineInfoSourceEnabled(musicInfo)
 
   let reqPromise
   try {

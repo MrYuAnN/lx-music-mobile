@@ -126,6 +126,9 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
       if (!mounted.current) return
       if (state == 'background') clearTimer()
       else if (state == 'active' && polling && delivered != true && times.current <= POLL_MAX_TIMES) {
+        // F-16：先清在途 timer 再排新——后台返回时在途请求回调仍可能已排 timer，直接覆盖
+        // 引用会漏 clear，双 timer 并行致轮询翻倍、40 次上限提前触顶（Orders 页幂等守卫同款）
+        clearTimer()
         timer.current = setTimeout(() => { tickRef.current() }, delay.current)
       }
     })

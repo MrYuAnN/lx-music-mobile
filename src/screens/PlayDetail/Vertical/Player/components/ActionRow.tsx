@@ -97,7 +97,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   const taskId = actualMusicInfo && !identityIsBareLocal
     ? `download__${actualMusicInfo.source}__${actualMusicInfo.id}`
     : null
-  const [taskState, setTaskState] = useState<{ status: SY.Download.DownloadTaskStatus, progress: number } | null>(null)
+  const [taskState, setTaskState] = useState<{ status: SY.Download.DownloadTaskStatus, progress: number, statusText: string } | null>(null)
   useEffect(() => {
     const refresh = () => {
       if (!taskId) {
@@ -106,10 +106,10 @@ const ActionRow = ({ page }: ActionRowProps) => {
       }
       const task = getDownloadListSnapshot().find(t => t.id == taskId)
       // 判等防无效重渲（审查 S-2）：downloadProgress 500ms 节流推送，无进度变化态（waiting/pause）
-      // 不因新对象引用触发 2Hz 重渲
+      // 不因新对象引用触发 2Hz 重渲（statusText 仅状态迁移时变，判等不增重渲）
       setTaskState(prev => {
-        const next = task && task.status != 'completed' ? { status: task.status, progress: task.progress } : null
-        return prev != null && next != null && prev.status == next.status && prev.progress == next.progress ? prev : next
+        const next = task && task.status != 'completed' ? { status: task.status, progress: task.progress, statusText: task.statusText } : null
+        return prev != null && next != null && prev.status == next.status && prev.progress == next.progress && prev.statusText == next.statusText ? prev : next
       })
     }
     refresh()
@@ -227,7 +227,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
         : taskState.status == 'pause'
           ? t('download_paused')
           : taskState.status == 'waiting'
-            ? t('download_waiting_wifi')
+            ? (taskState.statusText || t('download_queued')) // 排队中≠等待 Wi-Fi（P2 下载-1：Wi-Fi 挂起才带 statusText）
             : t('download_failed')
       return { icon: 'download-2', label, disabled: false, onPress: openDownloadManager }
     }

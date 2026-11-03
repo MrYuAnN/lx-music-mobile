@@ -293,8 +293,14 @@ export const useTrialWelcome = (): void => {
     subscription = AppState.addEventListener('change', state => {
       if (state == 'active') consume()
     })
+    // F-19（D2）CLAIMED 快路径：慢网冷启 claim 晚于 RN 挂载时，原仅挂载+AppState 两入口
+    // 「已到账」当场不弹（延迟非丢失，下个前台必弹）；bridge 转发已含 CLAIMED 事件，订阅补齐
+    const offEntitlementChanged = onEntitlementChanged(change => {
+      if (change == 'CLAIMED') consume()
+    })
     return () => {
       subscription?.remove()
+      offEntitlementChanged()
       // S9（审查）：卸载清理延迟弹（当前挂载点 Home 常驻影响≈0，防未来改挂可卸载屏）
       if (delayedShow != null) clearTimeout(delayedShow)
     }

@@ -239,14 +239,19 @@ export default ({ componentId }: { componentId: string }) => {
   const artists = useMemo(() => {
     const map = new Map<string, MusicGroup>()
     for (const item of filtered) {
-      for (const name of splitSingers(item.singer)) {
+      // ①本地-5：无歌手信息落「未知歌手」桶（对齐专辑视图兜底——splitSingers 空值返回
+      // 空数组原样跳过=裸文件在歌手分组整体不可见，列表/文件夹/专辑视图均可见）
+      const names = splitSingers(item.singer)
+      if (!names.length) names.push(global.i18n.t('local_music_unknown_artist'))
+      for (const name of names) {
         const bucket = map.get(name)
         if (bucket) bucket.list.push(item)
         else map.set(name, { name, list: [item] })
       }
     }
     return [...map.values()]
-  }, [filtered])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- langId 入依赖：语言切换后「未知歌手」桶名重建（同 albums）
+  }, [filtered, langId])
 
   const scanningLabel = scanning && progress.total > 0
     ? `${t('local_music_scanning')} ${progress.done}/${progress.total}`

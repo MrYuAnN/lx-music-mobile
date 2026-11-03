@@ -35,7 +35,7 @@ import musicSdk from '@/utils/musicSdk'
 import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { SPACING } from '@/config/spacing'
-import { ensureShiyinSources } from '@/core/shiyin/config'
+import { ensureShiyinSources, getShiyinSources } from '@/core/shiyin/config'
 
 // 添加歌曲页（方案 playlist-search-add-music §A2，2026-10-20）：全屏 push 页，来源对标 QQ 音乐官方口径
 // （搜索/最近播放/下载/其他歌单，y.qq.com 官方说明）+ 本地音乐（2026-10-20 迭代拍板：本项目无独立本地
@@ -87,8 +87,13 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const [source, setSource] = useState<Source>('search')
   const [keyword, setKeyword] = useState('')
   // 音源筛选（真机反馈 2026-10-20：对齐搜索页前缀筛选交互）：页内 state 不写全局
-  // searchMusicState（审查 I4 教训），初始取全局当前源（聚合回退 kw）
-  const [musicSource, setMusicSource] = useState<SY.OnlineSource>(() => (searchMusicState.source == 'all' ? 'kw' : searchMusicState.source))
+  // searchMusicState（审查 I4 教训），初始取全局当前源。源收敛边缘①（审计 P2）：聚合
+  // 回退源取 /config 下发集首个——原硬编码 'kw' 在 kw 未配置时初始搜索直发必败
+  const [musicSource, setMusicSource] = useState<SY.OnlineSource>(() => {
+    if (searchMusicState.source != 'all') return searchMusicState.source
+    const sources = Object.keys(getShiyinSources())
+    return (sources[0] ?? 'kw') as SY.OnlineSource
+  })
   const [list, setList] = useState<SY.Music.MusicInfo[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
@@ -133,6 +138,16 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
   const runSearch = useCallback((text: string, page: number) => {
     if (!text) return
     if (sourceRef.current != 'search' || text !== searchKeywordRef.current.trim()) return
+    // 源收敛①（审查 I-C）：冷启 /config 在途窗口初始源可能固化 'kw'（useState 初始化器
+    // 只执行一次，config 到达后不重算）——发起前惰性校验，当前源不在配置集则重取首个
+    if (getShiyinSources()[musicSourceRef.current] == null) {
+      const sources = Object.keys(getShiyinSources())
+      if (sources.length) {
+        const fallback = sources[0] as SY.OnlineSource
+        musicSourceRef.current = fallback
+        setMusicSource(fallback)
+      }
+    }
     if (page == 1) searchPageRef.current = 1
     const seq = searchSeqRef.current = searchSeqRef.current + 1
     setStatus('loading')

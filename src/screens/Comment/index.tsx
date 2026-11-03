@@ -162,9 +162,10 @@ export default memo(({ componentId }: {
   }, [])
 
   const refreshComment = useCallback(() => {
-    if (!playerState.playMusicInfo.musicInfo) return
-    let playerMusicInfo = playerState.playMusicInfo.musicInfo
-    if ('progress' in playerMusicInfo) playerMusicInfo = playerMusicInfo.metadata.musicInfo
+    // ①评论-1：复用 getMusicInfo 归一（剥 progress 壳+local→onlineInfo 映射）——原直剥壳
+    // 未做本地身份映射，已下载曲点刷新钮整页打成「不支持评论」（初始挂载走归一、刷新不走，自相矛盾）
+    const playerMusicInfo = getMusicInfo(playerState.playMusicInfo.musicInfo)
+    if (!playerMusicInfo) return
 
     if (musicInfo && musicInfo.id == playerMusicInfo.id) {
       toast(t('comment_refresh', { name: musicInfo.name }))

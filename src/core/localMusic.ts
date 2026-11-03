@@ -367,11 +367,13 @@ const parseInterval = (s: string): number => {
 }
 
 /** 下载命名解析（单源，审查 S-b）：「歌手 - 歌名.ext[.shy]」→ 身份三元组；先剥 .shy 壳
- *  再剥真实扩展名（「周杰伦 - 花海.flac.shy」→ 周杰伦/花海/flac）；matched=是否含「 - 」分隔 */
+ *  再剥真实扩展名（「周杰伦 - 花海.flac.shy」→ 周杰伦/花海/flac）；matched=是否含「 - 」分隔。
+ *  批4 ①下载-2 联动：磁盘名恒掺身份哈希后缀（download.ts buildDiskName，` [h8xxxxxxxx]`
+ *  带 h8 字面前缀防误剥合法名），剥该段后再走分隔正则——旧格式（无哈希）不命中，双向兼容 */
 const parseDownloadStem = (fileName: string): { matched: boolean, singer: string, name: string, ext: string } => {
   const bare = fileName.replace(/\.shy$/i, '')
   const dot = bare.lastIndexOf('.')
-  const stem = dot > -1 ? bare.slice(0, dot) : bare
+  const stem = (dot > -1 ? bare.slice(0, dot) : bare).replace(/ \[h8[0-9a-f]{8}\]$/, '')
   const parsed = /^(.*) - (.*)$/.exec(stem)
   return {
     matched: parsed != null,

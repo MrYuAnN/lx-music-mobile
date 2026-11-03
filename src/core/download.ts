@@ -20,13 +20,14 @@ import { toast } from '@/utils/tools'
 // SY.Download.ListItem，持久化 @download_list。暂停=中断保留 .tmp，继续=从头重下
 // （RNFS Android 无断点续传，方案期核实拍板）。
 
-// 自建下载回退链（不复用缺 ape 的 getPlayQuality，架构师 I3）
-const DOWNLOAD_QUALITY_CHAIN = ['flac24bit', 'flac', 'ape', '320k', '128k'] as const
+// 自建下载回退链（不复用缺 ape 的 getPlayQuality，架构师 I3；批4 摘 ape 搭车——W3-06/
+// ①P1-3 一修两愈：ExoPlayer 不支持 APE 解码+jaudiotagger 无 ape 读写器，链探测必败
+// 请求且落「不可播、不进本地页、无标签」文件标已完成）
+const DOWNLOAD_QUALITY_CHAIN = ['flac24bit', 'flac', '320k', '128k'] as const
 
 const QUALITY_EXT: Record<(typeof DOWNLOAD_QUALITY_CHAIN)[number], SY.Download.FileExt> = {
   flac24bit: 'flac',
   flac: 'flac',
-  ape: 'ape',
   '320k': 'mp3',
   '128k': 'mp3',
 }
@@ -232,6 +233,12 @@ export const initDownloadList = async(): Promise<void> => {
       const saved = await getData<SY.Download.ListItem[]>(storageDataPrefix.downloadList)
       if (saved?.length) {
         downloadList = saved.map(task => task.status == 'run' ? { ...task, status: 'waiting', speed: '' } : task)
+        // 审查 S-1：摘链（批4）前遗留的 ape 未完成任务——若缓存 URL 仍有效会直发落
+        // 不可播 ape 文件（ExoPlayer 不支持）；置空 url 强制走 resolveDownloadUrl 重取链
+        // 自动降档转 flac
+        for (const task of downloadList) {
+          if (task.status != 'completed' && task.metadata.quality == 'ape') task.metadata.url = null
+        }
       }
     } catch (err) {
       console.warn('init download list failed', err)
@@ -274,6 +281,24 @@ const buildFileName = (musicInfo: SY.Music.MusicInfoOnline, ext: SY.Download.Fil
   return `${raw.replace(/[\\/:*?"<>|]/g, '_')}.${ext}`
 }
 
+// djb2 32bit→8 位 hex（审计 ①下载-2：磁盘名唯一化的身份段；下载曲量级下碰撞可忽略）
+const strHash8 = (s: string): string => {
+  let h = 5381
+  for (let i = 0; i < s.length; i++) h = (((h << 5) + h) + s.charCodeAt(i)) >>> 0
+  return h.toString(16).padStart(8, '0')
+}
+
+/** 磁盘名（审计 ①下载-2：恒掺 source+songId 短哈希后缀——跨源同曲同名同档并发互踩
+ *  损坏+删除联动误伤根治；展示名 metadata.fileName 保持无哈希（列表/搜索干净），仅
+ *  落盘名带。审查 S-2：h8 字面前缀标记身份段（防「歌名恰以空格+8 位 hex 方括号结尾」
+ *  的合法名被 parseDownloadStem 误剥），两端格式单源同步） */
+const buildDiskName = (musicInfo: SY.Music.MusicInfoOnline, ext: SY.Download.FileExt) => {
+  const name = buildFileName(musicInfo, ext)
+  const dot = name.lastIndexOf('.')
+  const hash = strHash8(`${musicInfo.source}_${musicInfo.id}`)
+  return `${name.slice(0, dot)} [h8${hash}]${name.slice(dot)}`
+}
+
 /** 目标音质向下回退链探测（_qualitys 有档才探测；URL 过期由调用方 isRefresh 重取） */
 const resolveDownloadUrl = async(musicInfo: SY.Music.MusicInfoOnline, isRefresh = false, qualityOverride?: SY.Quality): Promise<{
   url: string
@@ -306,8 +331,9 @@ const applyResolved = (task: SY.Download.ListItem, resolved: { url: string, qual
   task.metadata.quality = resolved.quality
   task.metadata.ext = resolved.ext
   task.metadata.fileName = buildFileName(task.metadata.musicInfo, resolved.ext)
-  // .shy 私有扩展名（⑦b：fileName 保留原名供展示/搜索，落盘文件加私有后缀双隔离）
-  task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
+  // .shy 私有扩展名（⑦b：fileName 保留原名供展示/搜索，落盘文件加私有后缀双隔离；
+  // 磁盘名另掺身份哈希——审计 ①下载-2 同名唯一化，旁车 .lrc/.cover 派生自 filePath 自动跟随）
+  task.metadata.filePath = `${DOWNLOAD_DIR}/${buildDiskName(task.metadata.musicInfo, resolved.ext)}.shy`
 }
 
 const formatSpeed = (bytesPerSec: number) => {
@@ -349,16 +375,40 @@ const runDownload = async(task: SY.Download.ListItem) => new Promise<void>((reso
     }
     // .tmp → 成品（重下载同名场景先清目标）。⑦b 头混淆移至完成链嵌入之后（P0-A 修复②：
     // 判别修复后混淆真执行，先嵌后混防 jaudiotagger 打在暗文件上击穿标签嵌入）
+    // ①下载-1：写盘前复查中止——暂停/删除落在下载窗口时引擎继续完成后处理，completed
+    // 覆盖 pause 态/删除后成品文件族无主残留；命中清半成品静默上抛（启动清理为兜底）
+    if (abortedTasks.has(task.id)) {
+      await unlink(tmpPath).catch(() => {})
+      throw new Error('download aborted')
+    }
     await unlink(task.metadata.filePath).catch(() => {})
     await moveFile(tmpPath, task.metadata.filePath)
   }).then(() => { resolve() }).catch(reject)
 })
 
-/** URL 过期重试（isRefresh 强制刷新一次；中止直接上抛由 startTask 统一收尾——审查 C1） */
+/** URL 过期重试（isRefresh 强制刷新一次；中止直接上抛由 startTask 统一收尾——审查 C1）。
+ *  批4 ①下载-4：重试前复查 Wi-Fi 闸（运行中 Wi-Fi 断开→失败重试→OS 已切移动网络时
+ *  音频本体偷跑流量；不满足=转 wifiWaitingIds 挂起态抛出，startTask 收尾保持 waiting） */
 const runDownloadWithRefresh = async(task: SY.Download.ListItem) => {
   try {
     await runDownload(task)
   } catch (err) {
+    if (abortedTasks.has(task.id)) throw err
+    if (!settingState.setting['download.isAllowMobileNetwork']) {
+      const isWifi: boolean = await NativeModules.DownloadSupport?.isWifi?.().catch(() => true) ?? true
+      // 审查 I-A：isWifi await 窗口内用户暂停（abortedTasks+pause 态）——add 前复查中止，
+      // 命中直接上抛走中止收尾；否则 waiting 覆盖 pause 态+wifiWaitingIds 残留（恢复
+      // Wi-Fi 自动续传且 waiting 态无法再手动暂停）
+      if (abortedTasks.has(task.id)) throw err
+      if (!isWifi) {
+        wifiWaitingIds.add(task.id)
+        task.status = 'waiting'
+        task.statusText = global.i18n.t('download_waiting_wifi')
+        notifyChanged()
+        throw err
+      }
+    }
+    // ①下载-1：重取链窗口（1-3s）内的暂停/删除——发起前复查中止，命中静默上抛
     if (abortedTasks.has(task.id)) throw err
     const resolved = await resolveDownloadUrl(task.metadata.musicInfo, true, task.metadata.quality)
     applyResolved(task, resolved)
@@ -428,6 +478,8 @@ const startTask = async(task: SY.Download.ListItem) => {
   try {
     if (!task.metadata.url) {
       applyResolved(task, await resolveDownloadUrl(task.metadata.musicInfo, false, task.metadata.quality))
+      // ①下载-1：首次取链窗口（1-3s）内的暂停/删除——resolve 后复查中止，不再进入下载
+      if (abortedTasks.has(task.id)) throw new Error('download aborted')
     }
     await mkdir(DOWNLOAD_DIR).catch(() => {})
     task.downloaded = 0
@@ -448,6 +500,13 @@ const startTask = async(task: SY.Download.ListItem) => {
     // 主动中止（暂停/删除/取消）：状态与广播已由 pause/remove 路径处理，静默收尾（审查 C1）
     if (abortedTasks.has(task.id)) {
       abortedTasks.delete(task.id)
+      return
+    }
+    // ①下载-4：重试路径 Wi-Fi 闸挂起（runDownloadWithRefresh 转入 waiting）——保持
+    // waiting 态静默收尾，联网后 revalidateWifiWaiting 恢复调度，不标错不 toast
+    if (wifiWaitingIds.has(task.id)) {
+      notifyChanged()
+      pump()
       return
     }
     task.status = 'error'
