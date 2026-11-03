@@ -140,6 +140,8 @@ export default ({ componentId }: { componentId: string }) => {
   const rate = rateArgs(currentRate)
 
   // 硬互斥（审查 I5 拍板）：全源与单源不同车；同源替换；点已选取消
+  // （2026-11-03 全源停售拍板：停售后全源分支不可达——保留为存量缓存目录与日后恢复发售兼容，
+  // 摘除需同步动 toggleSku/tabLocked 两处，收益为零故不动）
   const toggleSku = useCallback((sku: Sku) => {
     const source = sku.apps[0]
     setCart(prev => {
@@ -178,12 +180,17 @@ export default ({ componentId }: { componentId: string }) => {
 
   const tabEntries = useMemo(() => {
     const badgeOf = (source: string) => cartItems.filter(s => s.apps[0] == source).length
-    const list: Array<{ key: TabKey, label: string, disabled: boolean, badge: number }> = [{
-      key: 'shiyin',
-      label: t('purchase_tab_all'),
-      disabled: hasSingleSource,
-      badge: badgeOf('shiyin'),
-    }]
+    const list: Array<{ key: TabKey, label: string, disabled: boolean, badge: number }> = []
+    // 全源 tab 服务端驱动（2026-11-03 全源停售拍板）：目录无全源档位=不出 tab，
+    // 与下方单源 tab 的 2026-11-02 拍板同模式——服务端日后恢复发售自动出现，无需改客户端
+    if ((catalog?.allSource.length ?? 0) > 0) {
+      list.push({
+        key: 'shiyin',
+        label: t('purchase_tab_all'),
+        disabled: hasSingleSource,
+        badge: badgeOf('shiyin'),
+      })
+    }
     for (const key of SOURCE_KEYS) {
       // 未开放售卖的源不出 tab（2026-11-02 用户拍板）：目录无该源档位=服务端未开通，点进
       // 去是空列表；服务端日后发码自动出现，无需改客户端
@@ -200,9 +207,21 @@ export default ({ componentId }: { componentId: string }) => {
   // 当前 tab 被互斥锁（对立来源在车）→ 档位行只读
   const tabLocked = activeTab == 'shiyin' ? hasSingleSource : hasAllSource
 
-  // 目录刷新后当前单源 tab 可能失去档位（服务端下架/未开放）→ 回落全源 tab（防空白列表）
+  // 目录刷新后当前组可能失去档位（服务端下架/未开放/全源停售）→ 回落首个可用组
+  // （防空白列表；2026-11-03 全源停售拍板：全源组空时回落目标改为首个有档位的单源）
   useEffect(() => {
-    if (activeTab != 'shiyin' && (catalog?.bySource[activeTab]?.length ?? 0) == 0) setActiveTab('shiyin')
+    if (catalog == null) return
+    const firstAvailable = (): TabKey | null => {
+      if (catalog.allSource.length > 0) return 'shiyin'
+      return SOURCE_KEYS.find(k => (catalog.bySource[k]?.length ?? 0) > 0) ?? null
+    }
+    const empty = activeTab == 'shiyin'
+      ? catalog.allSource.length == 0
+      : (catalog.bySource[activeTab]?.length ?? 0) == 0
+    if (empty) {
+      const next = firstAvailable()
+      if (next != null && next != activeTab) setActiveTab(next)
+    }
   }, [catalog, activeTab])
 
   const handleRetry = useCallback(() => { load() }, [load])
