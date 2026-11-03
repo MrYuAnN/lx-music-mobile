@@ -37,11 +37,13 @@
 - App 侧：下载链登记值跟切（0.5 天）——赶 S3 列车则同版生效，赶不上随下一版（回退=发版窗口）
 - 验收：/url 取链时延对比探针（2.4s 税消除）
 
-### S3 下版窗口（发布列车）—— **发布前核查完成（2026-11-03），发布动作暂缓待设备**
+### S3 下版窗口（发布列车）—— **发布完成+部署完成+回归收官（2026-11-03 19:14-19:40，用户配合真机）**
 - 车上内容：批1 + 全源停售摘 tab + 方案A trial App 侧 + config.ts:19 注释修正（P0-B 残余）+ 直连登记值（若 S2 赶上）
-- 发布 checklist：versionCode 12→13 单调（工作区已 bump 待随车提交）；app_releases 表首=最新语义核查（DEPLOY 坑单）；更新通道 /latest 登记
-- **发布前核查实况（2026-11-03，全绿）**：①app_releases 仅 1 条 1.0.0（11-02 stage v15），无 1.9.x 残留 ✓；②/latest /config 均 200，upgrade_url 已新域（直连线上生效实证）✓；③assembleStage 产物 `shiyin-v1.0.0-arm64-v8a.apk` aapt 实证 versionCode=13003/versionName=1.0.0 ✓；④六车上 commit 全在 origin/am-redesign ✓；⑤config.ts:19 注释修正已随 2abfc318 入库（车上清单勾销）；versionName 恒 1.0.0=Q7-F vc 每轮自增纪律口径。**挂起序列（设备就绪后）**：装机冒烟 → 上传 /root/shiyin/apk/ → latest-set 登记（写操作逐次确认，note 中文走 `<<'EOF'` stdin）→ /latest 复验 → 10 项回归
-- 发布后真机回归包：V1/V3/V4+U1 三态封锁实测 + trial 两场景 + 购买页全源 tab 消失/组合购正常/存量 d7 权益卡 + 直连时延复测
+- **发布实况**：冷启 496ms（≤1s 达标）→点播冒烟 PASS（PLAYING+取链流量）→APK 上传 `/root/shiyin/apk/shiyin-v1.0.0-stage-1103-vc13.apk`（51M）→latest-set 登记（note 三端分组文案用户确认，`<<'EOF'` stdin 中文无乱码）→/latest 复验+/dl/latest 200（X-Accel 51M 新包）；versionCode 13003 aapt 实证；同版 versionName 恒 1.0.0=检查更新静默（确定性预期）
+- **并行部署（用户授权，与回归同时）**：fork=批3+批5 HEAD 三文件 scp+compose 重建（**腾讯 PyPI 镜像 567 故障→sed uv.lock/pyproject 切官方 PyPI 处置**，hash 与 host 无关安全；bak-b5-1103 在案）探针 config 200 0.145s/register 429；backend=批5 五项交叉编译+原子换装+restart 探针 latest 200//site/xianyu 400+200；platform=批5 二项换装+restart 探针 401/listening——三段 bak 均在案
+- **10 项回归**：①自愈 ✅（退后播放+mtime 19:21 重写；明文=播放中预期态，复暗下次启动顺带）②新下载 ✅（稻香 [h887b5351b] 唯一化哈希+头混淆 8f b0 非 fLaC+旁车跟随）③已完成 3 计数+旁车/命名全对（条目 UI 细节用户浏览顺带）④cover 命名 ✅⑤混淆字节级 ✅⑥购买页 ✅（无全源 tab/单源三 SKU/组合折扣文案）⑦权益卡 ✅（双码卡面：试用剩 3h+tx 年卡 371 天——tx 在期播放不断）⑧登记（本机有权益无法构造，代码路径+批2 审查覆盖；**试用耗尽后 3h 有自然构造窗**）⑨Worker 在位+d7 今日到期=24h 自然触发窗 ⑩直连旁证 ✅（秒级出声+config 0.145s+216s 稳定流；精细 /url 时延挂 logcat 插桩）
+- **回归衍生发现**：n5 死档文案面（购买页折扣文案含「任选 5 个 8 折」但组合上限 4 源=不可达承诺——运营配置清理建议，W3-09 附注面）；试用 3h+tx 年卡并存聚合展示优先「试用中」（KeyInfo 聚合展示是否优先最长权益=P2 产品备查）；临期横幅粒度需求（用户提出）已实施三档方案随 vc14
+- **挂起**：F-21 products.min_client_ver 配置**另约窗口**（用户拍板 2026-11-03，vc14 发布后一并，配置值与策略届时拍板）；复暗验证+⑨到期通知观察（自然窗口）
 
 ### S4 批2 · 放量硬前置（跨库，顺序即依赖）—— 代码完成（2026-11-03），待审查/装机回归
 - W3-01 ✅ fork 权益门两闸「或」语义：判定抽纯函数 `routers/shiyin_entitlement.py`（零依赖可测，修复聚合闸先行锁死混合 key+per-app 0 值误拒），fixture 7/7 PASS（`uv run python tests/test_entitlement_gate.py` 同款）+py_compile 绿
