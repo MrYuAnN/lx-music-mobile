@@ -6,6 +6,7 @@ package store
 
 import (
 	"log"
+	"time"
 
 	osv "ordercore/orderstore"
 	"ordercore/srv"
@@ -70,6 +71,7 @@ func (s *Store) RefreshSKUs() error {
 	}
 	s.skuMu.Lock()
 	s.skus = m
+	s.skuFetchedAt = time.Now().Unix()
 	s.skuMu.Unlock()
 	return nil
 }
@@ -80,6 +82,39 @@ func (s *Store) RefreshSKUsQuiet() {
 	if err := s.RefreshSKUs(); err != nil {
 		log.Printf("[SRV] sku refresh failed (keep stale cache): %v", err)
 	}
+}
+
+// SkusCacheAge 目录缓存年龄（SWR 顺手刷新判龄）；从未拉到=返回极大（触发刷新，
+// 服务冷启动缓存空时 handleApiSkus 本就 503，触发拉取加速恢复）。
+func (s *Store) SkusCacheAge() time.Duration {
+	s.skuMu.RLock()
+	defer s.skuMu.RUnlock()
+	if s.skuFetchedAt == 0 {
+		return time.Duration(1 << 62)
+	}
+	return time.Since(time.Unix(s.skuFetchedAt, 0))
+}
+
+// RefreshSKUsStaleAsync SWR 顺手刷新（2026-11-03 拍板）：目录快照年龄超 maxAge
+// 时后台触发一次平台全量拉取（调用方旧值照回不阻塞）——管理台改价生效延迟从
+// cron 5 分钟窗压缩到「购买页两次访问内」，对标 App 侧 fetchSkus SWR 同构模式；
+// 快照容灾语义不变（srv 不可达仍保留旧值，RefreshSKUsQuiet 失败仅日志）。
+// 防抖=距上次触发 <debounce 直接返回：先判龄后占位（未超龄不消耗触发位），
+// 购买页 load+预热带并发请求不重复打平台 /srv。
+func (s *Store) RefreshSKUsStaleAsync(maxAge, debounce time.Duration) {
+	if s.SkusCacheAge() <= maxAge {
+		return
+	}
+	s.skuTriggerMu.Lock()
+	debounced := time.Since(time.Unix(s.skuTriggeredAt, 0)) < debounce
+	if !debounced {
+		s.skuTriggeredAt = time.Now().Unix()
+	}
+	s.skuTriggerMu.Unlock()
+	if debounced {
+		return
+	}
+	go s.RefreshSKUsQuiet()
 }
 
 // SKUsView sku 缓存快照列表（排序；panel 新建订单表单下拉数据源）。

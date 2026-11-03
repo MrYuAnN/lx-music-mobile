@@ -46,6 +46,12 @@ type Store struct {
 	db    *sql.DB
 	skuMu sync.RWMutex
 	skus  map[string]SKU
+	// skuFetchedAt 最近一次平台 /srv 全量拉取成功时间（unix 秒；skuMu 保护，与
+	// skus 同锁写）——SWR 顺手刷新判龄用（2026-11-03 拍板，见 RefreshSKUsStaleAsync）
+	skuFetchedAt int64
+	// skuTriggerMu/skuTriggeredAt SWR 触发防抖（独立小锁；与缓存锁分离避免锁序纠缠）
+	skuTriggerMu   sync.Mutex
+	skuTriggeredAt int64
 }
 
 // Open 打开（不存在则建）数据库并跑迁移。

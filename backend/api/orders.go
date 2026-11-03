@@ -86,6 +86,9 @@ func (s *Server) handleApiSkus(w http.ResponseWriter, _ *http.Request) {
 	// no-store 第二保险（批2 代码审 S9）：skuExt 含 native_checkout/xianyu_url
 	// 运营可变字段，「关 flag 即暂停入口」显隐面不依赖 EdgeOne 控制台单点
 	w.Header().Set("Cache-Control", "no-store")
+	// SWR 顺手刷新（2026-11-03 拍板）：快照年龄>30s 后台拉一次平台（旧值照回不
+	// 阻塞响应）——管理台改价经购买页两次访问内生效，压缩 cron 5 分钟窗；防抖 30s
+	s.St.RefreshSKUsStaleAsync(30*time.Second, 30*time.Second)
 	all, err := s.St.ListSKUs(true)
 	if err != nil {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
