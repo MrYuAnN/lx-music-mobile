@@ -179,10 +179,14 @@ object EntitlementManager {
             val userMessage: String,
             val errCode: String? = null,
             val devices: List<BoundDevice> = emptyList(),
+            val released: Boolean = false,
         ) : AuthResult()
         // errCode=服务端结构化错误码（如 not_bound/device_bound_other/expired），
         // 巡检按它分派处置；null=无服务端应答（网络失败等），一律走离线宽限。
-        // 展示文案与协议判定解耦（审查 I2：文案即协议曾使停权分派依赖中文子串）
+        // 展示文案与协议判定解耦（审查 I2：文案即协议曾使停权分派依赖中文子串）。
+        // released=binding-check expired 应答附带「该码对本机绑定已释放」（融合
+        // auto-release/解绑失效码，2026-11-04 同步缺口修复）——expired+released 即清
+        // 本地 receipt；仅新服务端下发，旧服务端缺省 false 行为不变（向后兼容）
     }
 
     /** 重装稳定设备标识盐（2026-09）：Android ID 盐化哈希，后端只见哈希值。
@@ -502,8 +506,18 @@ object EntitlementManager {
             is AuthResult.Failure -> {
                 Log.i(TAG, "binding check $key -> ${r.errCode ?: "no-answer"}: ${r.userMessage}")
                 when (r.errCode) {
-                    "expired" ->
+                    "expired" -> {
                         invalidateStateCache()
+                        // expired+released=被融合 auto-release/解绑失效码（服务端整码清空+
+                        // 解绑，试用全折/跨源换码场景）：本地 receipt 停留旧值致码卡假
+                        // 「生效中」（2026-11-04 用户实测「试用码已融合仍显示生效」根因）
+                        // ——清 receipt 对齐孤儿清理语义（trial/正价统一）；「过期但在绑」
+                        // 正价码 released=false 保留置灰展示，三态模型 :467 口径不变
+                        if (r.released) {
+                            Log.i(TAG, "binding check $key -> expired+released (absorbed) -> clearKey")
+                            clearKey(context, key)
+                        }
+                    }
                     "device_bound_other" -> {
                         setBindingMark(p, key, BINDING_MARK_OTHER)
                         invalidateStateCache()
@@ -1032,7 +1046,10 @@ object EntitlementManager {
             if (code != 200) {
                 val jo = runCatching { JSONObject(respBody) }.getOrNull()
                 val errCode = jo?.optString("error")?.takeIf { it.isNotEmpty() }
-                return@runCatching AuthResult.Failure(mapError(code, respBody), errCode, parseDevices(jo))
+                return@runCatching AuthResult.Failure(
+                    mapError(code, respBody), errCode, parseDevices(jo),
+                    jo?.optBoolean("released", false) ?: false,
+                )
             }
             parseActivationResp(JSONObject(respBody))
         }.getOrElse {
