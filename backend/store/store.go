@@ -99,6 +99,45 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// 官网浏览/下载埋点（看板补齐批 2026-11-03，净屏 001+004/006/007 终态一步
+	// 到位——拾音全新建库无存量行，is_bot 可空三态仅为对齐净屏聚合口径语义）。
+	// 索引照净屏 001 终态（visitor/at 双索引——SiteStats 与突发指纹回扫全系
+	// 查询走 at 窗扫、去重走 visitor）；存量 site_buy_clicks 补净屏同款 (kind,at)
+	// 索引（F-09 建表时缺，看板补齐审查 S-5 顺手补齐）
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS site_visits(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		visitor_id TEXT NOT NULL,
+		page TEXT NOT NULL,
+		ip TEXT NOT NULL DEFAULT '',
+		at INTEGER NOT NULL,
+		ua TEXT NOT NULL DEFAULT '',
+		is_bot INTEGER,
+		referer TEXT NOT NULL DEFAULT '',
+		channel TEXT NOT NULL DEFAULT ''
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS site_downloads(
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		visitor_id TEXT NOT NULL,
+		at INTEGER NOT NULL
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
+	for _, idx := range []string{
+		`CREATE INDEX IF NOT EXISTS idx_site_visits_visitor ON site_visits(visitor_id, at)`,
+		`CREATE INDEX IF NOT EXISTS idx_site_visits_at ON site_visits(at)`,
+		`CREATE INDEX IF NOT EXISTS idx_site_downloads_visitor ON site_downloads(visitor_id, at)`,
+		`CREATE INDEX IF NOT EXISTS idx_site_downloads_at ON site_downloads(at)`,
+		`CREATE INDEX IF NOT EXISTS idx_buy_clicks_kind ON site_buy_clicks(kind, at)`,
+	} {
+		if _, err := db.Exec(idx); err != nil {
+			db.Close()
+			return nil, fmt.Errorf("migrate: %w", err)
+		}
+	}
 	// ordercore 订单域迁移（独立记账 ordercore_migrations；拾音新库按序执行
 	// 0001/0002 建终态 orders——批2 首启即建，无基线分支）
 	if err := s.Domain.Migrate(); err != nil {

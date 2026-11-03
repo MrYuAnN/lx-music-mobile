@@ -23,6 +23,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	orderxianyu "ordercore/xianyu"
@@ -44,6 +45,10 @@ type Server struct {
 	XY *orderxianyu.Resolver
 	// Panel 业务面板（批2；PanelToken 空=面板路由不注册）
 	PanelToken string
+
+	// siteLim/siteLimOnce 官网埋点限流惰性单例（看板补齐批 2026-11-03，见 site.go）
+	siteLimOnce sync.Once
+	siteLim     *siteLimiter
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -71,8 +76,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/orders", s.handleNativeOrders)
 	mux.HandleFunc("POST /api/order/cancel", s.handleNativeOrderCancel)
 	// F-09（批5）：闲鱼归因点击埋点（净屏 /site/xianyu 同语义；App 端 fire-and-forget，
-	// 白名单外取值宽容归一不 400 丢行——审查定稿埋点宽容原则）
-	mux.HandleFunc("POST /site/xianyu", s.handleSiteBuyClick("xianyu"))
+	// 白名单外取值宽容归一不 400 丢行——审查定稿埋点宽容原则）。
+	// 看板补齐批（2026-11-03）：三 site 端点统一过 IP 限流（siteEndpoint——原
+	// 批5 裸注册丢限流层，架构席审查 I-1 补齐）+新增 visit/download 两端点
+	mux.HandleFunc("POST /site/xianyu", s.siteEndpoint(s.handleSiteBuyClick("xianyu")))
+	mux.HandleFunc("POST /site/visit", s.siteEndpoint(s.handleSiteVisit))
+	mux.HandleFunc("POST /site/download", s.siteEndpoint(s.handleSiteDownload))
 	// 业务面板（X-Panel-Token 服务间鉴权；平台管理台 per-product 代理接入）
 	if s.PanelToken != "" {
 		admin.RegisterPanelRoutes(mux, &admin.PanelServer{St: s.St, Token: s.PanelToken})

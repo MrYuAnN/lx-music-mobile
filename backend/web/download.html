@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>下载 · 拾音</title>
-<link rel="stylesheet" href="/static/style.css">
+<link rel="stylesheet" href="/static/style.css?v=aurora1">
 </head>
 <body>
 <div class="wrap">
@@ -24,7 +24,7 @@
 
 <h2>最新版本 <span id="ver" class="tag">加载中…</span></h2>
 <div class="card">
-  <p><a class="btn" id="dl-main" href="#">官网直链下载</a></p>
+  <p><a class="btn" id="dl-main" href="#" onclick="__syTrackDownload()">官网直链下载</a></p>
   <p class="muted">若官网直链不可用，请使用下方网盘镜像。</p>
 </div>
 
@@ -98,5 +98,6 @@ fetch('/latest', {signal: AbortSignal.timeout(8000)}).then(r => r.ok ? r.json() 
   document.getElementById('releases').innerHTML = '<p class="muted">暂未发布</p>';
 });
 </script>
+<script src="/static/beacon.js?v=beacon1"></script>
 </body>
 </html>

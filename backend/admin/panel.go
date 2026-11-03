@@ -3,11 +3,14 @@
 // 注册路由）；平台管理台「业务面板」tab 经 /admin/api/panel?product=shiyin 代理
 // 到本接口（products 注册表 panel_url/panel_token 驱动）。
 //
-// 拾音装配范围（方案 I-E 裁剪拍板）：
-//   - 分区=看板（销售卡精简版）/订单（仅 ordersTbl——裁净屏 channelTbl 净屏
-//     官网链接表与 legacy_replay 净屏存量回放；rulepack_content 类规则域不存在）
-//     /设置（cfg 精简分区：xianyu_item_url/contact_url/service_hours/native_checkout）
-//   - query kinds=orders/order_codes/global_search/dash_metric/trial_order 相关
+// 拾音装配范围（方案 I-E 裁剪拍板+看板补齐批 2026-11-03 扩展）：
+//   - 分区=看板（销售 4 卡+转化漏斗 4 对 8 卡：浏览/下载/试用/购买，卡序=净屏
+//     10-13 拍板漏斗序、卡 id 与净屏同名单源）/订单（仅 ordersTbl——裁净屏
+//     channelTbl 净屏官网链接表与 legacy_replay 净屏存量回放；rulepack_content
+//     类规则域不存在）/设置（cfg 精简分区：xianyu_item_url/contact_url/
+//     service_hours/native_checkout）
+//   - query kinds=orders/order_codes/global_search/dash_metric（sales_today/
+//     sales_total/trial/visit_today/visit_total/download/buy）/trial_order 相关
 //     子集（白名单仍用 ordercore/panel 全量单源；未开放 kind 显式报「本产品未提供」）
 //   - actions=confirm_paid/order_test_toggle/order_cancel/manual_order_create/
 //     code_return/code_void/order_settag/order_edit_amount/trial_order_create/cfg_save
@@ -19,6 +22,7 @@ package admin
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -26,6 +30,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	osv "ordercore/orderstore"
@@ -39,6 +44,37 @@ import (
 type PanelServer struct {
 	St    *store.Store
 	Token string
+
+	// dashMu/dashCache/dashAt 平台 /srv/dash 双层缓存（看板补齐批 2026-11-03，
+	// 净屏 dashWithCache 同款：30s 新鲜窗+失败沿用 ≤5min 旧值+无旧值报错——
+	// summary 高频刷新不逐次阻塞外呼，试用卡值/亮黄信号取此处）
+	dashMu    sync.Mutex
+	dashCache *srv.Dash
+	dashAt    time.Time
+}
+
+// dashWithCache 平台 /srv/dash 结果 30s 进程内缓存（净屏同款双层窗）：失败沿用
+// ≤5 分钟内的旧值（防长期陈旧），无旧值如实返回错误（试用对卡整对不渲染，
+// 不造 0 值假卡——净屏拍板卡面静默降级语义）。
+func (ps *PanelServer) dashWithCache() (*srv.Dash, error) {
+	ps.dashMu.Lock()
+	defer ps.dashMu.Unlock()
+	if ps.dashCache != nil && time.Since(ps.dashAt) < 30*time.Second {
+		return ps.dashCache, nil
+	}
+	sc := ps.St.SRV()
+	if sc == nil {
+		return nil, errors.New("srv client not configured")
+	}
+	d, err := sc.Dash()
+	if err != nil {
+		if ps.dashCache != nil && time.Since(ps.dashAt) < 5*time.Minute {
+			return ps.dashCache, nil
+		}
+		return nil, err
+	}
+	ps.dashCache, ps.dashAt = d, time.Now()
+	return d, nil
 }
 
 // ---------- schema 构造器（净屏 panel_schema.go 同构；键名字面量收敛于此） ----------
@@ -102,8 +138,12 @@ func (ps *PanelServer) handleSummary(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"registered": true, "sections": sections})
 }
 
-// dashSection 销售看板精简版（OrderSalesStats 单源六口径取四卡；trial 卡走
-// TrialDetail 弹窗——试用发放明细=平台流水+机型+待补单标记）。
+// dashSection 看板分区（看板补齐批 2026-11-03：销售 4 卡+转化漏斗 4 对 8 卡，
+// 卡序=净屏 2026-10-13 拍板漏斗序（浏览→下载→试用→购买）；卡 id 与净屏同名
+// 单源——平台壳 bp.js ORDER 硬编码数组按 id 排序，卡 id ≠ 明细 metric 名
+// （浏览卡 id=pv_*、metric=visit_*，净屏先例同构））。trial 卡值/亮黄=平台
+// srv dash 双层缓存（dashWithCache；失败该对卡整体不渲染不造 0 值假卡）；
+// 明细=TrialDetail 弹窗（平台流水+机型+待补单标记，existing query）。
 func (ps *PanelServer) dashSection() map[string]any {
 	sec := section("dash", "看板")
 	os, err := ps.St.OrderSalesStats()
@@ -113,7 +153,7 @@ func (ps *PanelServer) dashSection() map[string]any {
 		return sec
 	}
 	cny := func(c int) string { return "¥" + fmt.Sprintf("%.2f", float64(c)/100) }
-	sec["cards"] = []map[string]any{
+	cards := []map[string]any{
 		card("sales_today", "今日销售额", cny(os.TodaySalesCents), false,
 			map[string]any{"kind": "dash_metric", "metric": "sales_today"}),
 		card("sales_total", "累计销售额", cny(os.TotalSalesCents)+"（实收 "+cny(os.ActualSalesCents)+"）", false,
@@ -121,6 +161,59 @@ func (ps *PanelServer) dashSection() map[string]any {
 		card("today_orders", "今日付款订单", strconv.Itoa(os.TodayPaidOrders), false, nil),
 		card("pending_delivery", "已支付未发货", strconv.Itoa(os.PendingDelivery), os.PendingDelivery > 0, nil),
 	}
+	// ---------- 转化漏斗 4 对 8 卡（净屏 panel_sections.go 同构，值=今日、
+	// 累计成对独立卡；各数据源失败静默跳过该对卡——卡面高频展示不整卡报错，
+	// 明细弹窗低频如实报错，净屏拍板双策略） ----------
+	// 浏览 PV/UV（Store.SiteStats 真人/原始双口径；label 注记随站长名单联动，
+	// 净屏 10-16 拍板：未配置恒「已剔爬虫」，配置后「已剔爬虫与站长」）
+	if st, err := ps.St.SiteStats(); err == nil {
+		pvNote := "已剔爬虫"
+		if len(ps.St.OwnerVids()) > 0 {
+			pvNote = "已剔爬虫与站长"
+		}
+		cards = append(cards,
+			card("pv_today", "今日浏览·"+pvNote+"（真人 UV "+strconv.FormatInt(st.UvTodayHuman, 10)+
+				" / 原始 "+strconv.FormatInt(st.PvTodayRaw, 10)+"）", strconv.FormatInt(st.UvTodayHuman, 10), false,
+				map[string]any{"kind": "dash_metric", "metric": "visit_today"}),
+			card("pv_total", "累计浏览·"+pvNote+"（真人 UV "+strconv.FormatInt(st.UvTotalHuman, 10)+
+				" / 原始 "+strconv.FormatInt(st.PvTotalRaw, 10)+"）", strconv.FormatInt(st.UvTotalHuman, 10), false,
+				map[string]any{"kind": "dash_metric", "metric": "visit_total"}))
+	}
+	// 下载点击（官网按钮 beacon 单一来源，B 方案防双计——净屏拍板）
+	if cl, un, err := ps.St.DownloadStats("today"); err == nil {
+		cards = append(cards, card("download_today", "今日下载点击·官网（去重 "+strconv.FormatInt(un, 10)+"）",
+			strconv.FormatInt(cl, 10), false, map[string]any{"kind": "dash_metric", "metric": "download"}))
+	}
+	if cl, un, err := ps.St.DownloadStats("all"); err == nil {
+		cards = append(cards, card("download_total", "累计下载点击·官网（去重 "+strconv.FormatInt(un, 10)+"）",
+			strconv.FormatInt(cl, 10), false, map[string]any{"kind": "dash_metric", "metric": "download"}))
+	}
+	// 试用发放（值源=平台 srv dash Trial 汇总——TrialGrantsRecent 200 条上限
+	// 不作卡值口径，S-7 弃选理由：本地补单单 COUNT 受补单分钟级延迟影响，srv
+	// dash=发放即时真源。版本拒绝/IP 限>0 亮黄=门槛与发版失配信号（计数器已
+	// per-product 化，2026-11-03 平台仓根治配套——混计假黄已消除））
+	if pd, err := ps.dashWithCache(); err == nil {
+		cards = append(cards,
+			card("trial_today", "今日试用发放·命中返原码 "+strconv.FormatInt(pd.Trial.HitsToday, 10)+
+				" / 版本拒绝 "+strconv.FormatInt(pd.Trial.Reject426, 10)+
+				" / IP限 "+strconv.FormatInt(pd.Trial.RejectIP, 10),
+				strconv.FormatInt(pd.Trial.ClaimsToday, 10), pd.Trial.Reject426 > 0 || pd.Trial.RejectIP > 0,
+				map[string]any{"kind": "dash_metric", "metric": "trial"}),
+			card("trial_total", "累计试用发放",
+				strconv.FormatInt(pd.Trial.ClaimsTotal, 10), false,
+				map[string]any{"kind": "dash_metric", "metric": "trial", "w": "all"}))
+	}
+	// 购买点击（/site/xianyu 埋点 F-09 已落地，恒 App 端上报——官网无购买按钮，
+	// label 句式对照净屏「·含App端」适配为「·App 端」；shop 列恒 0 不展示）
+	if xy, _, err := ps.St.BuyClickStats("today"); err == nil {
+		cards = append(cards, card("buy_today", "今日购买点击·App 端（闲鱼 "+strconv.FormatInt(xy, 10)+"）",
+			strconv.FormatInt(xy, 10), false, map[string]any{"kind": "dash_metric", "metric": "buy"}))
+	}
+	if xy, _, err := ps.St.BuyClickStats("all"); err == nil {
+		cards = append(cards, card("buy_total", "累计购买点击·App 端（闲鱼 "+strconv.FormatInt(xy, 10)+"）",
+			strconv.FormatInt(xy, 10), false, map[string]any{"kind": "dash_metric", "metric": "buy", "w": "all"}))
+	}
+	sec["cards"] = cards
 	return sec
 }
 
@@ -450,23 +543,39 @@ func (ps *PanelServer) handleQuery(w http.ResponseWriter, r *http.Request) {
 		ps.handleOrderCodes(w, q)
 	case "dash_metric":
 		metric, win := q.Get("metric"), q.Get("w")
+		// dashMetricDetail 明细统一错误收口（看板补齐批代码审架 I-1 对齐净屏
+		// S-16 拍板）：内部错误文本可含 SQL 细节不直传响应体——细节进服务端日志，
+		// 响应恒 500 固定文案（明细弹窗低频如实降级，与卡面静默策略配合）；
+		// 既有 sales/trial case 同病连带收口，消除 400/502/500 三态分裂
+		dashMetricDetail := func(d *osv.DashDetail, err error) {
+			if err != nil {
+				log.Printf("[PANEL] dash_metric %s: %v", metric, err)
+				errJSON(w, http.StatusInternalServerError, "查询失败（详见服务端日志）")
+				return
+			}
+			writeJSON(w, http.StatusOK, d)
+		}
 		switch metric {
 		case "sales_today", "sales_total":
 			d, err := ps.St.SalesDetail(metric, win, q.Get("ch"))
-			if err != nil {
-				errJSON(w, http.StatusBadGateway, err.Error())
-				return
-			}
-			writeJSON(w, http.StatusOK, d)
+			dashMetricDetail(d, err)
 		case "trial":
 			d, err := ps.St.TrialDetail(win)
-			if err != nil {
-				errJSON(w, http.StatusBadGateway, err.Error())
-				return
-			}
-			writeJSON(w, http.StatusOK, d)
+			dashMetricDetail(d, err)
+		case "visit_today", "visit_total":
+			// 浏览明细（看板补齐批 2026-11-03，净屏同名 metric 同构；主表页面
+			// 聚合+Extra 环境/渠道+More 访客轨迹三区块，store.VisitDetail）
+			d, err := ps.St.VisitDetail(metric, win)
+			dashMetricDetail(d, err)
+		case "download":
+			d, err := ps.St.DownloadDetail()
+			dashMetricDetail(d, err)
+		case "buy":
+			// 购买点击明细（w 时间窗+source 来源筛选，净屏同名 metric 同构）
+			d, err := ps.St.BuyClickDetail(win, q.Get("source"))
+			dashMetricDetail(d, err)
 		default:
-			errJSON(w, http.StatusBadRequest, "未知 metric（拾音开放：sales_today/sales_total/trial）")
+			errJSON(w, http.StatusBadRequest, "未知 metric（拾音开放：sales_today/sales_total/trial/visit_today/visit_total/download/buy）")
 		}
 	case "order_stats_by_uid":
 		// 设备 360 徽章数据源（平台管理台设备页跨产品代理调用——批2 代码审 I-1
