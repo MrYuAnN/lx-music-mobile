@@ -174,7 +174,13 @@ object EntitlementManager {
     }
 
     sealed class AuthResult {
-        data class Success(val e: Entitlement, val devices: List<BoundDevice> = emptyList()) : AuthResult()
+        /** fusedKeys=本次激活事务整码清空+自动释放的被融合旧码（2026-11-04 响应下发，
+         *  激活成功即清本地 receipt；旧服务端无此字段=空表，行为退化为现状） */
+        data class Success(
+            val e: Entitlement,
+            val devices: List<BoundDevice> = emptyList(),
+            val fusedKeys: List<String> = emptyList(),
+        ) : AuthResult()
         data class Failure(
             val userMessage: String,
             val errCode: String? = null,
@@ -349,18 +355,23 @@ object EntitlementManager {
         // （unbound/bound_other 按码停权，S2 口径：融合 auto-release 的旧码不受全局牵连）
         val marks = bindingMarks(p)
         val merged = HashMap<String, Long>()
-        // 聚合元数据（keyId/tier/kind/deviceLimit）锚定「首个未停权且解析成功的码」（既有
-        // 口径，块4 审查 S1 声明）：该码可能不贡献任何有效 app；多码并存时取值随 SP JSON
-        // 键序。已知边界：试用码+正价码并存场景 kind 可能来自旧试用码（consumeTrialWelcome
-        // 仅 pending 残留触达，影响面窄）；混合码成真实主路径时应改按 paid>trial 优先级聚合。
+        // 聚合元数据（keyId/tier/kind/deviceLimit）锚定 paid>trial 优先（2026-11-04 登记项
+        // 转正：按源购买上线后试用+正价并存成真实主路径，原「首个未停权码」锚随 SP JSON
+        // 键序漂移，残留试用码会让 isTrial 误报 trial——首个非试用码优先，无则回退首个）。
+        // 该码可能不贡献任何有效 app
+        val anchored = rcpts.mapNotNull { (key, rcpt) ->
+            if (marks[key] != null) null else parseReceipt(rcpt)?.let { key to it }
+        }
+        val anchor = anchored.firstOrNull { !it.second.isTrial() } ?: anchored.firstOrNull()
         var keyId = ""
         var tier = ""
         var kind = ""
         var deviceLimit = 1
-        for ((key, rcpt) in rcpts) {
-            if (marks[key] != null) continue
-            val ent = parseReceipt(rcpt) ?: continue
-            if (keyId.isEmpty()) { keyId = ent.keyId; tier = ent.tier; kind = ent.kind; deviceLimit = ent.deviceLimit }
+        if (anchor != null) {
+            keyId = anchor.second.keyId; tier = anchor.second.tier
+            kind = anchor.second.kind; deviceLimit = anchor.second.deviceLimit
+        }
+        for ((key, ent) in anchored) {
             for ((app, exp) in ent.expiries) {
                 // 归属映射里该 app 属于本 key 才计入（防另一张过期码的同 app 覆盖）
                 if (keys[app] == null || keys[app] == key) merged[app] = exp
@@ -441,10 +452,22 @@ object EntitlementManager {
                     // （全部 App 权益都已被新码接管的旧码，避免 KeyInfoSheet 展示失效旧码、
                     // 用户误点解绑报 not_bound）
                     pruneOrphanedKeys(context)
+                    // 被融合码即时清理（2026-11-04 激活域收敛）：fused_keys=服务端融合事务
+                    // 整码清空+自动释放的旧码（试用全折/跨源换码，部分融合留痕的旧码有剩余
+                    // 权益不下发）——激活当下逐个 clearKey，不再等 binding-check 巡检派生
+                    // 发现（「试用码已融合仍显示生效」码卡+试用横幅残留的根因；服务端事务
+                    // 事实单源，不依赖第二次网络可达）。防御跳过=新码自身条目
+                    for (fused in r.fusedKeys) {
+                        if (fused != code) clearKey(context, fused)
+                    }
                     // 手动激活成功=服务端已建立本机绑定 → 解除该码停权标记
                     // （CZ- 纯续期不动 devices，标记必须保留，防「刚续费忽开忽关」审查 I1）
                     setBindingMark(p, code, null)
                 }
+                // 权益事件（2026-11-04 补齐）：激活/续费成功即通知宿主刷新——RN 首页横幅
+                // /状态行/码卡列表已订阅 onEntitlementChanged，此前激活不发事件致界面
+                // 残留试用态（CLAIMED/RESTORED 只覆盖后台 claim/重装恢复路径）
+                notifyEntitlementChanged(EntitlementChange.ACTIVATED)
                 r
             }
             else -> r
@@ -602,8 +625,10 @@ object EntitlementManager {
      *  宿主刷新状态行（事件驱动替代 30s tick 轮询消费）。列表注册而非单槽——
      *  Application 常驻席（restore toast）与首页生命周期席（刷 UI）并存；生命周期席
      *  onStart 注册 / onStop 注销防泄漏，错过回调由 onResume 全量刷兜底。
+     *  2026-11-04 补齐 ACTIVATED/CLEARED：手动激活/续费成功与本地清码（被融合/
+     *  吊销/无效）此前不发事件，首页横幅与码卡列表滞留旧态直到重进页。
      *  回调在 SDK IO 线程触发，实现方自行切主线程。 */
-    enum class EntitlementChange { CLAIMED, RESTORED }
+    enum class EntitlementChange { CLAIMED, RESTORED, ACTIVATED, CLEARED }
 
     private val entitlementListeners =
         java.util.concurrent.CopyOnWriteArrayList<(EntitlementChange) -> Unit>()
@@ -836,7 +861,10 @@ object EntitlementManager {
         invalidateStateCache()
     }
 
-    /** 清除单个 key（多码模型：该 key receipt + 其归属 app 条目） */
+    /** 清除单个 key（多码模型：该 key receipt + 其归属 app 条目）。实际移除即发
+     *  CLEARED 事件（2026-11-04）：被融合清码/吊销/无效与巡检 discovered 清码统一
+     *  通知宿主收敛界面（首页横幅/码卡列表此前滞留到重进页）；未移除（码不存在）
+     *  早退不发 */
     fun clearKey(context: Context, key: String) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val rcpts = receiptsMap(p).toMutableMap()
@@ -854,7 +882,7 @@ object EntitlementManager {
             }
             writeStateMac(p)
         }
-        invalidateStateCache()
+        notifyEntitlementChanged(EntitlementChange.CLEARED)
     }
 
     /** 解绑指定 key 的本机设备（多码模型：KeyInfoSheet 指定码解绑）；成功后清除该
@@ -1108,12 +1136,23 @@ object EntitlementManager {
                 deviceLimit = root.optInt("device_limit", 1),
                 kind = root.optString("entitlement_kind", ""),
             ),
-            devices = parseDevices(root)
+            devices = parseDevices(root),
+            fusedKeys = parseFusedKeys(root)
         )
     }.getOrElse {
         Log.e(TAG, "parseActivationResp failed", it)
         AuthResult.Failure("服务返回数据校验失败，请稍后再试")
     }
+
+    /** 被融合码清单解析（2026-11-04）：顶层 fused_keys 数组宽松读（旧平台无此键=空表，
+     *  与 entitlement_kind 同型先例）；仅 activate 路径携带，binding-check/claim 不带 */
+    private fun parseFusedKeys(root: JSONObject): List<String> {
+        val arr = root.optJSONArray("fused_keys") ?: return emptyList()
+        return (0 until arr.length()).mapNotNull { i -> arr.optString(i).takeIf { it.isNotEmpty() } }
+    }
+
+    // internal（模块内）：fused_keys 解析单测入口（2026-11-04 激活域收敛批次）
+    internal fun parseFusedKeysForTest(json: String): List<String> = parseFusedKeys(JSONObject(json))
 
     private fun mapError(code: Int, body: String): String {
         val err = runCatching { JSONObject(body).optString("error") }.getOrDefault("")
