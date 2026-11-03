@@ -48,7 +48,9 @@
 - F-03 ✅ ExpiryReminderWorker APP_CN 扩五键正名（原单键 shiyin→QQ音乐 既缺源卡键又错名；对齐 RN activation.ts 口径）
 - W3-04 ✅ guardEntitlementGate 扩 unactivated 分支（guideUnactivated→购买页，三语新键）+resolveDownloadUrl 快抛直抛（isShiyinFastFail 不再被回退链吞——5 档×12s 空转根除）；连带改善 W3-12 播放跳光（同一闸覆盖播放入口）；isTrialEntitlement 死代码随之清除
 - F-02 ✅ 已提前入库（4eb6e954，S0 清账批）
-- 待办：三角色审查（待触发）→装机回归（未激活点播/下载引导、源卡到期提醒通知、fork 部署后混合 key 行为）→提交推送（待拍板）；fork+平台部署另约（部署=写操作逐次确认）
+- **三角色审查（已完）**：0C/6I/10S——Important 全修（I-A kick 非 2xx 返回错误防假成功/I-B 引导文案「领取试用」指空改述如实（试用=自动发放）/I-C DEPLOY.md JP_KICK 补记挂批6（并行会话在途文件避冲突）/I-D checkEntitlementBeforeUrl 按态分流抛错/I-E fork _require_entitled 三元返回存量缺陷随批修/I-F 对标登记如下）/S 修五挂五（S-2 kick 注释登记 key 规范化风险、S-8 trim 口径、竞态/停机=拍板内残余、单语混排=既有口径）。修复后三仓全量重验绿。
+- **对标登记（产品席核实）**：未激活引导+直达购买页=freemium 门槛升级引导通行模式（Spotify 免费档引导 Premium/Adapty paywall/腾讯 ISUX 会员转化），非自定。
+- 提交：fork `6f23538`/平台 `28838a6`/App `74fcf8c4`+`f7ee4e16` 已推。待办：装机回归（未激活点播/下载引导、源卡到期通知、fork 部署后混合 key 行为）；fork+平台部署另约（写操作逐次确认：fork 容器重启+平台重编译+systemd 两行 env）
 - W3-01 fork 两闸（「或」语义+0 值跳过+fixture 测试）→ W3-03 revoke 接线（webhook or cron 对账，至少固化人工 SOP）→ F-03 Worker 扩五键（tx-m1/tx-y1 已在售，严格说已欠）→ W3-04 未激活下载引导+快抛直抛 → F-02 faq 三处改 /faq
 - 验收：只读探针（W3-01 两闸行为/faq 200/Worker 白名单）+ P0-B 真码「注册→取链→播放」全链回归（写操作，逐次确认）
 - 解锁：**wy/kg/kw 开售资格（硬门槛）+ 正式放量**
