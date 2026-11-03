@@ -611,6 +611,8 @@
   "keyinfo_remain_minutes": "剩 {n} 分钟",
   "keyinfo_remain_soon": "即将到期",
   "home_banner_expiring": "{app}会员至 {date} 即将到期 · 点击续费",
+  "home_banner_expiring_hours": "{app}会员还有 {n} 小时到期 · 点击续费",
+  "home_banner_expiring_minutes": "{app}会员还有 {n} 分钟到期 · 点击续费",
   "home_banner_expired": "{app}会员已到期 · 点击续费",
   "activation_welcome_trial_title": "已获得 3 天免费试用 🎉",
   "activation_welcome_trial_body": "3 天全功能免费试用已生效，到期时间可在「我的激活码」查看。到期后搜索、榜单、歌单、歌词、封面永久免费，播放需激活码。",

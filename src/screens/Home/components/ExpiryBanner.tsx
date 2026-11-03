@@ -46,6 +46,26 @@ const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
   return pick
 }
 
+/** 临期文案三档粒度（2026-11-03 用户需求）：剩余<1h=分钟倒计时、<24h=小时倒计时、
+ *  1-3 天=日期+具体时间点（此前恒日期粒度，当天到期只显日期不显紧迫度）。分粒度
+ *  语义与 KeyInfo keyinfo_remain 对齐；30s tick 现成=倒计时分钟级自动刷新 */
+const bannerLabel = (pick: BannerPick, appName: string): string => {
+  if (pick.expired) return global.i18n.t('home_banner_expired', { app: appName })
+  const remainSec = pick.exp - Date.now() / 1000
+  if (remainSec < 3600) {
+    const minutes = Math.max(1, Math.ceil(remainSec / 60))
+    return global.i18n.t('home_banner_expiring_minutes', { app: appName, n: minutes })
+  }
+  if (remainSec < 86400) {
+    const hours = Math.max(1, Math.ceil(remainSec / 3600))
+    return global.i18n.t('home_banner_expiring_hours', { app: appName, n: hours })
+  }
+  return global.i18n.t('home_banner_expiring', {
+    app: appName,
+    date: dateFormat(pick.exp * 1000, 'Y-M-D h:m'),
+  })
+}
+
 export default () => {
   const theme = useTheme()
   const { info } = useActivationState()
@@ -64,10 +84,7 @@ export default () => {
   const pick = info != null ? pickBannerApp(info) : null
   if (pick == null || info == null) return null
   const appName = APP_CN[pick.app] ?? pick.app
-  const dateText = pick.expired ? '' : dateFormat(pick.exp * 1000, 'Y-M-D')
-  const label = pick.expired
-    ? global.i18n.t('home_banner_expired', { app: appName })
-    : global.i18n.t('home_banner_expiring', { app: appName, date: dateText })
+  const label = bannerLabel(pick, appName)
 
   return (
     <TouchableOpacity
