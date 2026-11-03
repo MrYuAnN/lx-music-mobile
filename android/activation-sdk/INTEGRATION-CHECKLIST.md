@@ -46,7 +46,10 @@
 - 公网端点分流到平台：`/activate` `/redeem` `/device/` `/api/`（binding-check/
   restore/skus/trial-claim）；自家业务端点（取链等）分流到自家服务。
 - **开 install 上报前先配 `/app/` location**（否则 SDK 上报全量 404 静默丽数）；
-  `/app` 一并并入「动态接口禁缓存」清单（网关注释清单+CDN 控制台两处）。
+  `/app` 一并并入「动态接口禁缓存」清单（网关注释清单+CDN 控制台两处）。平台域
+  **直连形态**（兜底 `location /` 直转 platform-server，如拾音 api.a-stock.top）
+  无须专门 location——兜底已覆盖（2026-11-03 拾音零写入探针实证：空 body 400
+  bad_request=路由通端点在线）。
 - 426 强升门槛=平台 `products.min_client_ver`（per-product；头缺失放行=宽下限设计）；
   **`/latest` 与官网静态页永不设版本门槛**（版本过低的客户端恰靠它获知升级地址，
   设门槛=强升死锁）。
@@ -145,7 +148,7 @@
 | init 同步段纪律 | 【核心】 | RethinkDnsApplication onCreate | 顺序不可倒：init → listener 注册 → pending 判定 → 权益协程（任何颠倒都有丢事件/空窗先例） |
 | 权益事件 UI 刷新 | 【核心】 | JingpingHomeActivity（任意 EntitlementChange→refresh；onStart/onStop 注册注销） | 后台 claim 到账/续费/恢复后界面须自动刷新（拾音教训：仅挂载时拉一次=首启试用到账状态滞后）；bridge 事件转发须带注销（reload 死监听泄漏） |
 | 6h 巡检 Worker 调度 | 【可选】（拍板） | RethinkDnsApplication（EntitlementSyncScheduler.schedule） | 不接=吊销/他机解绑止损延迟从 6h 退化为 token TTL（≤24h）；灰度可人工兜底，**放量前重估**；拍板须登记 |
-| install 活跃上报 | 【放量】 | EntitlementManager#reportInstall（开关） | 看板数据源；开启前置=网关 /app location（见接入总序） |
+| install 活跃上报 | 【放量】 | EntitlementManager#reportInstall（开关） | 看板数据源；开启前置=网关 /app location（**直连形态豁免**，见接入总序网关段）。**拾音已接（2026-11-03）**：`installReportEnabled=true` + 宿主 `ActivityLifecycleCallbacks.onActivityResumed` 挂 `reportInstall`（单 Activity 架构=回前台语义，appScope fire-and-forget）+平台看板明细补 per-product 过滤（dashboard_detail installDetail）；随 vc13 发版生效。备忘：未来引入第二 Activity 迁 `ProcessLifecycleOwner`（真回前台语义）；instrumented 基建落地后补接线单测锚 |
 | 遥测/崩溃上报 | 【可选】 | TelemetryClient/CrashReporter（净屏自有） | deviceId 复用 SDK 盐化哈希；非必选 |
 
 ### I 更新/强更

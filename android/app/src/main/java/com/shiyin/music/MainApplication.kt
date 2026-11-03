@@ -1,6 +1,8 @@
 package com.shiyin.music
 
+import android.app.Activity
 import android.app.Application
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
@@ -76,9 +78,12 @@ class MainApplication : Application(), ReactApplication {
       deviceSalt = BuildConfig.SDK_DEVICE_SALT,
       servicePubkeyHex = BuildConfig.SDK_SERVICE_PUBKEY_HEX,
       xClientVersion = BuildConfig.VERSION_NAME,
-      // install 活跃上报关闭（审查 S6）：网关无 /app 分流，开=全量 404 静默丽数；
-      // 未来接看板须先加网关 location 再开
-      installReportEnabled = false,
+      // install 活跃上报开启（2026-11-03 拍板，推翻批2 S6 关闭）：关闭理由「网关无
+      // /app 分流=全量 404 丽数」随七题 SDK 域直连拍板（2026-11-02）失效——
+      // api.a-stock.top 兜底 location / 直转 platform-server（jingping-api.conf:146），
+      // 零写入探针实证路由通（2026-11-03 线上 400 bad_request=端点在线）。看板
+      // 「安装设备（版本/首启/最近活跃）」数据源，SDK 接入清单【放量】项接线
+      installReportEnabled = true,
     )
     // RESTORED→「已恢复本机激活」toast（净屏 :193 同款常驻席：启动 restore 先行命中，或
     // 试用 claim 命中 409 trial_has_license 时 SDK 内部自动导航 restore 找回，找回成功即通知）
@@ -120,6 +125,23 @@ class MainApplication : Application(), ReactApplication {
         Log.w(BOOT_TAG, "activation startup failed: ${e.message}")
       }
     }
+    // install 活跃上报接线（SDK「每次回前台 fire-and-forget 上报」的宿主侧落实；
+    // 批2 接入时未挂此调用）：单 Activity 架构下 onActivityResumed=回前台（应用内
+    // 导航不触发，天然对齐 SDK 语义）；appScope 异步零 await（F-1 闸门纪律同款——
+    // 启动/回前台路径永不依赖网络），SDK 内 upsert 幂等+失败静默；频率=回前台次数，
+    // 服务端 install 桶 300 次/IP/日（per-product 独立桶；触顶=429 静默、last_seen
+    // 次日自愈）——回前台频率下单设备富余
+    registerActivityLifecycleCallbacks(object : ActivityLifecycleCallbacks {
+      override fun onActivityResumed(activity: Activity) {
+        appScope.launch { EntitlementManager.reportInstall(this@MainApplication) }
+      }
+      override fun onActivityCreated(activity: Activity, savedInstanceState: Bundle?) {}
+      override fun onActivityStarted(activity: Activity) {}
+      override fun onActivityPaused(activity: Activity) {}
+      override fun onActivityStopped(activity: Activity) {}
+      override fun onActivitySaveInstanceState(activity: Activity, outState: Bundle) {}
+      override fun onActivityDestroyed(activity: Activity) {}
+    })
   }
 
   // 权益启动协程域（进程生命周期；独立于 RN 吐司线程）
