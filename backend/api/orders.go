@@ -120,29 +120,50 @@ func (s *Server) skuExt() map[string]any {
 	}
 }
 
-// comboRate 组合折扣行（n=件数，r=千分比折扣）。
-type comboRate struct {
+// ComboRate 组合折扣行（n=件数，r=千分比折扣；W3-09 批5 导出供结算侧共享单源）。
+type ComboRate struct {
 	N int `json:"n"`
 	R int `json:"r"`
+}
+
+// ParseComboRates combo_rates 配置解析单源（W3-09 批5）：JSON 合法性+值域夹紧
+// （n≥2、r∈[500,1000] 五折下限~原价上限，审查 S-c 数值勘误），非法档丢弃、全非法
+// 返回空（消费方回退内置表）。管理台 config_set 无 schema 校验（W3-09 原证据），读侧夹紧=单人运营
+// 误填（r=100 一折/r=1200 加价）直接生效的防线；下发（comboRates）与结算
+// （main.go SetDiscountOverride）两处同源消费。升序重建不变量保留（批3代码审 I2）。
+// 审查 S-i（批5）：同 n 重复档去重保首个（防御 sort.Slice 非稳定排序下病态输入
+// 「下发/结算两次独立解析取档非确定」的 F-20 同型残留缝隙）。
+func ParseComboRates(raw string) []ComboRate {
+	if raw == "" {
+		return nil
+	}
+	var cfg []ComboRate
+	if err := json.Unmarshal([]byte(raw), &cfg); err != nil {
+		return nil
+	}
+	out := make([]ComboRate, 0, len(cfg))
+	seen := map[int]bool{}
+	for _, r := range cfg {
+		if r.N >= 2 && r.R >= 500 && r.R <= 1000 && !seen[r.N] {
+			seen[r.N] = true
+			out = append(out, r)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].N < out[j].N })
+	return out
 }
 
 // comboRates 折扣表下发（批3 方案审 C1-A 配置化拍板）：meta "combo_rates" 非空=按
 // 配置 JSON 下发（[{"n":2,"r":950}] 千分比；管理台运营可调——95折/9折/n4=1000）；
 // 空/非法=回退 ordercore DiscountPerMille 现表（净屏 2026-10-14 拍板表值随包共享：
 // 800/750/…/500）。净屏侧 api.go 同名逻辑不动（配置化仅拾音实例承载）。
-func (s *Server) comboRates() []comboRate {
-	if raw := s.St.Setting("combo_rates"); raw != "" {
-		var cfg []comboRate
-		if err := json.Unmarshal([]byte(raw), &cfg); err == nil && len(cfg) > 0 {
-			// 排序（批3代码审 I2）：客户端 rateFor 倒序取档依赖 n 升序不变量——旧实现
-			// for n:=2..8 天然升序，配置化后须服务端重建
-			sort.Slice(cfg, func(i, j int) bool { return cfg[i].N < cfg[j].N })
-			return cfg
-		}
+func (s *Server) comboRates() []ComboRate {
+	if cfg := ParseComboRates(s.St.Setting("combo_rates")); len(cfg) > 0 {
+		return cfg
 	}
-	out := make([]comboRate, 0, 7)
+	out := make([]ComboRate, 0, 7)
 	for n := 2; n <= 8; n++ {
-		out = append(out, comboRate{N: n, R: osv.DiscountPerMille(n)})
+		out = append(out, ComboRate{N: n, R: osv.DiscountPerMille(n)})
 	}
 	return out
 }
@@ -372,7 +393,12 @@ func (s *Server) handleNativeOrders(w http.ResponseWriter, r *http.Request) {
 				Status: o.Status, CloseReason: orderCloseReason(o), AmountCents: o.Amount,
 				Desc: s.DescribeOrder(o), IsCombo: osv.IsCombo(o.SKU), CreatedAt: o.CreatedAt, Full: true}
 			if o.Status == osv.OrderStatusDelivered && len(o.PoolIDs) > 0 {
-				dto.Codes = o.PoolIDs
+				// F-15（批5）：试用单（SYTRIAL- 前缀纯递增可枚举）nos 强凭证 full 视图
+				// 不下发 codes 明文——试用 per-device 免费一次价值低，收敛批量枚举暴露面
+				// （bb2fc3af 已收 uid 视图，本修补 nos 面）
+				if !strings.HasPrefix(o.OrderNo, "SYTRIAL-") {
+					dto.Codes = o.PoolIDs
+				}
 			}
 			out = append(out, dto)
 			if o.Status == osv.OrderStatusDelivered {

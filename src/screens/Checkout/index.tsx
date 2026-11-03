@@ -21,6 +21,7 @@ import { SPACING } from '@/config/spacing'
 import { SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
+import { trackXianyuClick } from '@/core/shiyin/xianyuTrack'
 import { fetchOrder, yuan, type CreateOrderResult, type OrderRecord } from '@/core/shiyin/order'
 import { pushOrdersScreen } from '@/navigation/navigation'
 
@@ -138,12 +139,17 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
   const handleOpenXianyu = useCallback(() => {
     hapticSelection()
     if (order.xianyuItemId) {
-      // 唤端失败（未装闲鱼）降级原链（PlanSkus.xianyuItemId 同语义）
+      // 唤端失败（未装闲鱼）降级原链（PlanSkus.xianyuItemId 同语义）。
+      // F-09 归因埋点（fire-and-forget 静默，不阻塞唤端）：scheme=发起即记
+      // （净屏同口径——openURL 的 promise reject 只证明未装闲鱼，唤端意图已发生）
+      trackXianyuClick('scheme')
       void Linking.openURL(`fleamarket://item?id=${order.xianyuItemId}`).catch(() => {
+        trackXianyuClick('fallback')
         if (order.xianyuUrl) void openUrl(order.xianyuUrl)
       })
       return
     }
+    trackXianyuClick('legacy')
     if (order.xianyuUrl) void openUrl(order.xianyuUrl)
     else toast(t('checkout_no_xianyu_url'))
   }, [order.xianyuItemId, order.xianyuUrl, t])

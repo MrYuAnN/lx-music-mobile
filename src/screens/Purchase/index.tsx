@@ -165,7 +165,9 @@ export default ({ componentId }: { componentId: string }) => {
       return
     }
     setSubmitting(true)
-    void createOrder(cartItems.map(i => i.id).join('+')).then(order => {
+    // F-18（批5）：sku 串段排序归一——同集合异顺序（购物车加入序不同）绕过
+    // client_token 幂等=重复建单（旧单 48h 自动关）；服务端 checkTokenReplay 同批归一
+    void createOrder(cartItems.map(i => i.id).sort().join('+')).then(order => {
       if (!mounted.current) return
       setSubmitting(false)
       // names=选中档位运营名（购物车加入序）——支付引导页商品名与购买页同源（七题回归

@@ -70,6 +70,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/order/create", s.handleNativeOrderCreate)
 	mux.HandleFunc("GET /api/orders", s.handleNativeOrders)
 	mux.HandleFunc("POST /api/order/cancel", s.handleNativeOrderCancel)
+	// F-09（批5）：闲鱼归因点击埋点（净屏 /site/xianyu 同语义；App 端 fire-and-forget，
+	// 白名单外取值宽容归一不 400 丢行——审查定稿埋点宽容原则）
+	mux.HandleFunc("POST /site/xianyu", s.handleSiteBuyClick("xianyu"))
 	// 业务面板（X-Panel-Token 服务间鉴权；平台管理台 per-product 代理接入）
 	if s.PanelToken != "" {
 		admin.RegisterPanelRoutes(mux, &admin.PanelServer{St: s.St, Token: s.PanelToken})
@@ -96,9 +99,16 @@ func (s *Server) handleLatest(w http.ResponseWriter, _ *http.Request) {
 		return
 	}
 	latest := rels[0]
+	// W3-16（批5）：releases[].url 版本化直链在 /dl/ internal 收敛后恒 404（数据
+	// 卫生）——下发时统一派生稳定入口杜绝未来消费方踩死链；登记值保留原样供审计
+	relsOut := make([]store.Release, len(rels))
+	for i, r := range rels {
+		r.URL = latestStableURL(r.URL)
+		relsOut[i] = r
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"version": latest.Version, "url": latestStableURL(latest.URL), "note": latest.Note,
-		"releases": rels,
+		"releases": relsOut,
 	})
 }
 
@@ -256,4 +266,35 @@ func serveFile(w http.ResponseWriter, r *http.Request, path string) {
 		return
 	}
 	http.ServeContent(w, r, filepath.Base(path), st.ModTime(), f)
+}
+
+// handleSiteBuyClick 闲鱼归因点击埋点（F-09 批5，净屏 handleSiteBuyClick 同语义
+// 搬运）：body {visitor_id, result, source}。result 记唤端结果（scheme=拉起成功/
+// fallback=降级现状链接/legacy=解析失败或未配置），source 区分 App 端。埋点宽容
+// 原则（净屏审查定稿）：result/source 白名单外与空值一律归一 legacy/web 不 400 丢
+// 行；visitor_id 空/超长为唯一 400 项（审查 S-d 歧义勘误——勿据「宽容」误删该校验）。
+func (s *Server) handleSiteBuyClick(kind string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			VisitorID string `json:"visitor_id"`
+			Result    string `json:"result"`
+			Source    string `json:"source"`
+		}
+		if err := json.NewDecoder(io.LimitReader(r.Body, 4<<10)).Decode(&req); err != nil ||
+			req.VisitorID == "" || len(req.VisitorID) > 128 {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad_request"})
+			return
+		}
+		if req.Result != "scheme" && req.Result != "fallback" {
+			req.Result = "legacy"
+		}
+		if req.Source != "app" {
+			req.Source = "web"
+		}
+		if err := s.St.RecordBuyClick(kind, req.VisitorID, req.Result, req.Source); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal"})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+	}
 }

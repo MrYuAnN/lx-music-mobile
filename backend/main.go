@@ -6,14 +6,13 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"net/http"
+	neturl "net/url"
 	"os"
-	"sort"
 	"time"
 
 	osv "ordercore/orderstore"
@@ -103,21 +102,16 @@ func cmdServe(args []string) error {
 	// 空/非法=回退 ordercore 内置表。仅注入本进程——净屏不注入零行为变化；与
 	// /api/skus 下发的 comboRates()（orders.go）同一配置源，保证「下发什么就按什么结算」。
 	osv.SetDiscountOverride(func(n int) int {
-		if raw := st.Setting("combo_rates"); raw != "" {
-			var rates []struct {
-				N int `json:"n"`
-				R int `json:"r"`
-			}
-			if err := json.Unmarshal([]byte(raw), &rates); err == nil && len(rates) > 0 {
-				sort.Slice(rates, func(i, j int) bool { return rates[i].N < rates[j].N })
-				best := 1000
-				for _, r := range rates {
-					if r.N >= 2 && r.N <= n {
-						best = r.R
-					}
+		// W3-09（批5）：解析单源 api.ParseComboRates（值域夹紧）——原裸 Unmarshal
+		// 无值域校验，误填（r=100 一折/r=1200 加价）直接生效
+		if rates := api.ParseComboRates(st.Setting("combo_rates")); len(rates) > 0 {
+			best := 1000
+			for _, r := range rates {
+				if r.N <= n {
+					best = r.R
 				}
-				return best
 			}
+			return best
 		}
 		return osv.DiscountPerMille(n)
 	})
@@ -152,6 +146,14 @@ func cmdLatestSet(args []string) error {
 	}
 	if *version == "" || *url == "" {
 		return errors.New("latest-set: -version 与 -url 必填")
+	}
+	// W3-17（批5）：登记 url host 白名单——/dl/ internal 收敛后唯一合法下载域双域；
+	// 误登记外域会被 /latest 原样下发（store 层仅校验 https 前缀，数据面 404 防呆
+	// 与登记面不对称补齐）。审查 S-j：host 比对大小写不敏感（URL host 规范化惯例）
+	if u, e := neturl.Parse(*url); e != nil {
+		return fmt.Errorf("latest-set: -url 解析失败: %w", e)
+	} else if h := u.Hostname(); h != "shiyinbox.top" && h != "sy-api.a-stock.top" {
+		return errors.New("latest-set: -url host 必须为 shiyinbox.top 或 sy-api.a-stock.top（防外域下发，W3-17）")
 	}
 	st, err := store.Open(*dbPath)
 	if err != nil {

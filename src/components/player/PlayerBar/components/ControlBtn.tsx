@@ -45,7 +45,7 @@ const TogglePlayBtn = () => {
       hapticImpactLight()
       togglePlay()
     }}>
-      // 播放条三键 light 细线（走查反馈 2026-10-29：regular 三角太粗犷）
+      {/* 播放条三键 light 细线（走查反馈 2026-10-29：regular 三角太粗犷） */}
       <Icon name={isPlay ? 'pause' : 'play'} weight='light' color={theme['c-button-font']} size={ICON_SIZE.control} />
     </TouchableOpacity>
   )

@@ -160,9 +160,14 @@ const doRegister = async(): Promise<ShiyinAuth> => {
     }
     throw shiyinError('ShiyinUpgradeRequired', global.i18n.t('shiyin_upgrade_required'))
   }
-  // 403 权益失效族（R1）：服务端核验失败/设备满——快速失败不进退避（每次必败重试还空耗
-  // 注册 IP 日限），文案区分失效与设备满
+  // 403 权益失效族（R1）：服务端核验失败/设备满/到期预拒（fork 批5 W3-14）——快速失败
+  // 不进退避（每次必败重试还空耗注册 IP 日限），文案三区分：到期（码没错是过期，错误
+  // 名入快抛名单与取链侧同族）/设备满/其余失效。审查 I-1：expired 落「激活码无效」
+  // 既误导又丢失过期语义（续费引导由 ActivationCard 过期态承接）
   if (resp.statusCode == 403) {
+    if (body.message == 'expired') {
+      throw shiyinError('ShiyinEntitlementExpired', global.i18n.t('shiyin_entitlement_expired'))
+    }
     throw shiyinError(
       'ShiyinEntitlementInvalid',
       body.message == 'device_limit'

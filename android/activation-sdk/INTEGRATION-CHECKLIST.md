@@ -112,7 +112,7 @@
 | 订单中心/下单 | 【可选】 | OrderCenterActivity+JingpingOrders | client_token 幂等+token_conflict 自动轮换；双源（本地快照+远端 nos/uid） |
 | 支付引导 | 【可选】 | OrderPayGuideActivity | 剪贴板订单文本+渠道拉起三级降级（scheme→https→纯文本） |
 | 待支付提醒 | 【可选】 | JingpingHomeActivity（iconCard+6h 去重） | 依赖在线售卖开启 |
-| 闲鱼归因上报 | 【可选】 | service/XianyuTracker（v1.3 起归宿主） | 渠道埋点；无闲鱼渠道则不接（**须登记拍板**——拾音曾因无落字被审计计漏网） |
+| 闲鱼归因上报 | 【可选】 | service/XianyuTracker（v1.3 起归宿主） | 渠道埋点；无闲鱼渠道则不接（**须登记拍板**——拾音曾因无落字被审计计漏网）。**拾音已接（2026-11-03 批5 F-09）**：RN 宿主侧 `src/core/shiyin/xianyuTrack.ts`（fire-and-forget+visitor_id 复用 deviceId）+轻服务 `/site/xianyu` 落 site_buy_clicks——SDK 零改动（归宿主拍板维持） |
 
 ### E 到期提醒
 

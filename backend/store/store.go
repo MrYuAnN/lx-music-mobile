@@ -80,6 +80,19 @@ func Open(path string) (*Store, error) {
 		db.Close()
 		return nil, fmt.Errorf("migrate: %w", err)
 	}
+	// F-09（批5）：闲鱼归因点击埋点（净屏 site_buy_clicks 同构——kind/visitor_id/at
+	// 基础列+result/source 两列照净屏 003 终态一步到位）。fire-and-forget 上报，
+	// 失败静默不阻断唤端主链路
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS site_buy_clicks(
+		kind TEXT NOT NULL,
+		visitor_id TEXT NOT NULL,
+		at INTEGER NOT NULL,
+		result TEXT NOT NULL DEFAULT 'legacy',
+		source TEXT NOT NULL DEFAULT 'web'
+	)`); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("migrate: %w", err)
+	}
 	// ordercore 订单域迁移（独立记账 ordercore_migrations；拾音新库按序执行
 	// 0001/0002 建终态 orders——批2 首启即建，无基线分支）
 	if err := s.Domain.Migrate(); err != nil {
@@ -156,4 +169,22 @@ func (s *Store) ListReleases(limit int) ([]Release, error) {
 		out = append(out, r)
 	}
 	return out, rows.Err()
+}
+
+// RecordBuyClick 闲鱼归因点击埋点（F-09 批5，净屏 store/site.go 同语义）：result=
+// 唤端结果（scheme/fallback/legacy，白名单校验在 API 层，此处兜底归一）；kind 路径
+// 即语义（xianyu）。上报方 fire-and-forget 失败静默，本层错误仅日志面。
+func (s *Store) RecordBuyClick(kind, vid, result, source string) error {
+	if vid == "" {
+		return nil
+	}
+	if result == "" {
+		result = "legacy"
+	}
+	if source == "" {
+		source = "web"
+	}
+	_, err := s.db.Exec(`INSERT INTO site_buy_clicks(kind,visitor_id,at,result,source) VALUES(?,?,?,?,?)`,
+		kind, vid, time.Now().Unix(), result, source)
+	return err
 }
