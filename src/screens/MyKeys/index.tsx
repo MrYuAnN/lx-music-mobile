@@ -42,6 +42,7 @@ import {
   detectClipboardCandidate,
   formatRemainHint,
   isExpiredAt,
+  isEntryExpired,
   APP_CN,
 } from '@/core/shiyin/activation'
 
@@ -115,6 +116,36 @@ export default ({ componentId }: { componentId: string }) => {
   // 未购态=SDK state 口径（审查 I-I）：全停权（码全带 mark/被清）时 getState 返回 Unactivated，恰是最需要输码的人群；
   // 首帧 info=null（state 异步就绪前）按未购渲染防分态闪烁（代码审查 S-a）
   const unactivated = info == null || info.state == 'unactivated'
+
+  // 码卡两组式排序（方案 activation-expiry-display-plan.md §四B，Q3 拍板对齐 Apple 订阅管理）：
+  // 生效在上（组内按最近有效到期升序，最快到期顶上；0=永久视为最远→生效组末）/
+  // 过期沉底（组内按过期时间倒序，最近过期顶上）。码级过期判定=isEntryExpired（全部源键
+  // 均过期）。渲染时计算，跨过期点不自动重排（方案 §五知情登记，重进页收敛）
+  const sortedEntries = useMemo(() => {
+    const live: KeyEntry[] = []
+    const expired: KeyEntry[] = []
+    for (const e of entries) (isEntryExpired(e) ? expired : live).push(e)
+    const nearestLive = (e: KeyEntry): number => {
+      const vals = Object.values(e.expiries ?? {}).filter(exp => exp != 0 && exp * 1000 > Date.now())
+      if (!vals.length) {
+        // 空 vals 两种成因区分（代码审查 I-2）：expiries 缺失（旧 native 桥窗口）按单值
+        // expiry 兜底参与升序（与 isEntryExpired/latestExpired 兜底口径对称，expiry=0
+        // 永久→最远）；expiries 在但全永久（无近期到期键）→ 生效组末
+        if (!Object.keys(e.expiries ?? {}).length) return e.expiry == 0 ? Infinity : e.expiry
+        return Infinity
+      }
+      return Math.min(...vals)
+    }
+    const latestExpired = (e: KeyEntry): number => {
+      const vals = Object.values(e.expiries ?? {})
+      return vals.length ? Math.max(...vals) : e.expiry
+    }
+    // 比较器恒等回 0（代码审查 S5）：Infinity-Infinity=NaN 依赖引擎按 0 处理的实现行为，
+    // 规范未保证——显式恒等分支消除
+    live.sort((a, b) => { const va = nearestLive(a), vb = nearestLive(b); return va === vb ? 0 : va - vb })
+    expired.sort((a, b) => latestExpired(b) - latestExpired(a))
+    return [...live, ...expired]
+  }, [entries])
 
   // 剪贴板检测（净屏规则，A-1）：仅未购态、进页检测命中显示提示行点击填入——不静默预填；
   // 已购弹窗无检测（净屏 chip 仅未购态口径，复审 R-I-3）
@@ -288,7 +319,7 @@ export default ({ componentId }: { componentId: string }) => {
           {/* 生效码卡（2026-11-01 审查 I-4 拍板放宽）：全停权（唯一码 OTHER/unbound→state
               Unactivated）也渲染——OTHER 换机自助远程解绑/UNBOUND 绑回是唯一自助路径，对齐
               净屏码卡常显口径；与输码卡并存不互斥 */}
-          {entries.length > 0 && entries.map(entry => (
+          {entries.length > 0 && sortedEntries.map(entry => (
             <KeyCard
               key={entry.key}
               entry={entry}
@@ -349,6 +380,10 @@ const KeyCard = memo(({
   const t = useI18n()
   // 设备列表折叠态（默认3）：仅本机在绑态默认收起；OTHER 态直显（远程解绑=用户主任务）
   const [selfExpanded, setSelfExpanded] = useState(false)
+  // 过期码卡整卡置灰（方案 §四B，Q4 拍板）：opacity 弱化≠禁用（复审证伪：不禁触摸，
+  // 三态操作钮/复制/设备区全保留可达）；0.55 数值本产品自定（Apple 无透明度记载），
+  // 明暗两态可读性真机收口。渲染时计算，跨过期点随重进页收敛（方案 §五登记）
+  const expired = isEntryExpired(entry)
 
   // mark 合流（审查 I-A）：binding.mark 网络值优先但 null=本机在绑是有效值——不得用 ??
   const mark = binding ? binding.mark : entry.mark
@@ -391,7 +426,7 @@ const KeyCard = memo(({
   const fallbackRemain = formatRemainHint(entry.expiry, t)
 
   return (
-    <View style={[styles.card, { backgroundColor: theme['c-content-background'] }]}>
+    <View style={[styles.card, { backgroundColor: theme['c-content-background'], opacity: expired ? 0.55 : 1 }]}>
       <Text size={12} color={theme['c-font-label']}>{t('keyinfo_current_key')}</Text>
       <TouchableOpacity style={styles.copyBlock} activeOpacity={0.6} onPress={() => { onCopy(entry.key) }}>
         <Text size={16} style={styles.keyText} selectable>{entry.key}</Text>

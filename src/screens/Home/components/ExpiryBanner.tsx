@@ -5,15 +5,17 @@ import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
-import { useActivationState, APP_CN, isExpiredAt, isExpiringSoonAt } from '@/core/shiyin/activation'
+import { useActivationState, APP_CN, isExpiredAt, isExpiringSoonAt, hasAnyValidKey, isKeyValid } from '@/core/shiyin/activation'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
 // +30s tick+事件驱动双刷，拾音对应物=首页横幅）。两态：即将到期（≤3 天，金）/已到期（红），
 // 点击直达选购页（批3 v1.2：续费动线一步到位，原 MyKeys 两跳改直跳）。无到期概念（未激活/永久）不渲染。
 // 多源归因（2026-11-01 用户多源提示需求；净屏审查 I8 口径=「文案按最早到期 app 归因——
-// per-app 混合权益不失真」）：bridge getState 下发 expiries 全集，横幅取「过期源优先、
-// 其次最早临期」单归因显示 {app}会员；全部同窗时用户续费最早源即可，详情码卡页逐源可见。
+// per-app 混合权益不失真」）：bridge getState 下发 expiries 全集。2026-11-03 语义修正
+// （方案 activation-expiry-display-plan.md）：有任一生效权益不出「已到期」红横幅（Q2 拍板，
+// 混合态不打全局红灯）；过期键被有效 shiyin 全源键兜底遮蔽不提醒；金临期保留（滤红留金），
+// 红仅在全部权益失效时按最早过期源归因。详情码卡页逐源可见。
 // 配色=HIG 语义色硬编码（主题无 warning/error token，明暗两态均可读；后续主题扩 token 时收编）
 // S8 时区注（审查）：dateText 走 dateFormat（设备本地时区）——与 remainHint 的 Asia/Shanghai
 // 口径在海外机可能差一天；横幅仅日期表述无天差计算，偏差知情接受（remainHint 天差才需固定时区）
@@ -30,14 +32,26 @@ interface BannerPick {
   expired: boolean
 }
 
-/** 归因：per-app expiries 全集中「过期源优先、其次最早临期（≤3 天）」；无命中=null */
+/** 归因（方案 activation-expiry-display-plan.md §四A 滤红留金口径，2026-11-03 审查 C-1 修订）：
+ *  allCovered=shiyin 全源兜底有效时 pool 收缩至 shiyin 键——被兜底放行的残留键（过期/临期）
+ *  不参与提醒（消 false alarm）；hasAnyValid（任一键有效）=混合态红不出（Q2 拍板：有生效码
+ *  不打全局红灯，过期源续费触点=播放弹窗），滤红留金只挑最早临期键；全失效→红显最早过期键。
+ *  组合边界复审已推演：{F,T} 不可达（allCovered 蕴含 hasAnyValid），无死路 */
 const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
   if (info.expiries == null) return null
+  const shiyinExp = info.expiries.shiyin
+  const allCovered = shiyinExp != null && isKeyValid(shiyinExp)
+  const pool: Array<[string, number]> = allCovered
+    ? [['shiyin', shiyinExp]]
+    : Object.entries(info.expiries)
+  const hasAnyValid = hasAnyValidKey(info.expiries)
   let pick: BannerPick | null = null
-  for (const [app, exp] of Object.entries(info.expiries)) {
+  for (const [app, exp] of pool) {
     if (exp == 0) continue // 永久不提醒
     const expired = isExpiredAt(exp)
     const soon = !expired && isExpiringSoonAt(exp)
+    // 滤红留金：有任一生效权益时过期键不参与（红色全局横幅只在全失效态出现）
+    if (expired && hasAnyValid) continue
     if (!expired && !soon) continue
     if (pick == null || (expired && !pick.expired) || (expired == pick.expired && exp < pick.exp)) {
       pick = { app, exp, expired }
@@ -70,14 +84,16 @@ export default () => {
   const theme = useTheme()
   const { info } = useActivationState()
   // 30s tick 对齐净屏 refreshTick：剩余窗跨档（如 3 天→不足 3 天）无需权益事件也自动收敛；
-  // 只 set 不读（setTick 变更即触发重渲染，mode 每次渲染按 Date.now() 重算）。
+  // 只 set 不读（翻转值变更即触发重渲染，mode 每次渲染按 Date.now() 重算）。
+  // 代码审查 I-1（2026-11-03）：原恒 set(true) 被 useState 同值短路，tick 第二轮起 no-op——
+  // 改翻转（v => !v）恢复跨档自动收敛。
   // S9（审查）：横幅不可见态停表——绝大多数用户（未激活/永久/远期）零空转
   const [, setHasTick] = useState(false)
   useEffect(() => {
     const active = info != null && pickBannerApp(info) != null
     setHasTick(active)
     if (!active) return
-    const timer = setInterval(() => { setHasTick(true) }, 30_000)
+    const timer = setInterval(() => { setHasTick(v => !v) }, 30_000)
     return () => { clearInterval(timer) }
   }, [info])
 

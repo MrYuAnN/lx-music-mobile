@@ -67,6 +67,18 @@ class ExpiryReminderWorker(
         for ((app, exp) in ent.expiries) {
             if (exp == 0L) continue // 永久不提醒
             if (app !in APP_CN) continue // 键域外不发（S-7）
+            // 双判定（doc/plans/activation-expiry-display-plan.md §四C，2026-11-03；与 RN 横幅
+            // 滤红留金同口径——同语义族五处联动复核纪律见 RN core/shiyin/activation）：
+            // ①遮蔽=shiyin 全源键有效时被覆盖源（非 shiyin 键）不提醒（多码 merged 集残留
+            //   旧码键，兜底放行下推送属 false alarm；对 pre 窗临期键同样遮蔽——shiyin 兜底
+            //   放行下单源临期提醒属噪音，与横幅 pool 收缩对称）；
+            // ②混合态收口=本键已过期但存在其他生效权益不推（试用过期+单源码生效实测场景：
+            //   刚买码即收残留键过期通知；续费触点=播放弹窗）。未被①②筛掉的临期键照推
+            //   （与横幅金保留对称）；「其他键」含不含本键数学等价（本键过期不贡献 valid）。
+            //   ①②静默期×post 窗滑过的漏推边缘同方案 §五 S-A 族（首页红横幅兜底）
+            val shiyinExp = ent.expiries["shiyin"]
+            if (app != "shiyin" && shiyinExp != null && (shiyinExp == 0L || shiyinExp > now)) continue
+            if (exp <= now && ent.expiries.any { (k, v) -> k != app && (v == 0L || v > now) }) continue
             // 双窗分支：pre=尚未到期落窗；post=已到期滑窗内补发（Worker 被 Doze 延迟
             // 数日时 pre 窗滑走，post 窗接住 win-back，不再依赖无下界补发）
             if (exp > now) {

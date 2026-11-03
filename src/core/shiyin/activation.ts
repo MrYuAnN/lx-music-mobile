@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 
-import { activationModule, onEntitlementChanged, type ActivationStateInfo } from '@/utils/nativeModules/activation'
+import { activationModule, onEntitlementChanged, type ActivationStateInfo, type KeyEntry } from '@/utils/nativeModules/activation'
 import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
@@ -246,6 +246,32 @@ export const isExpiredAt = (expiry: number): boolean => {
 export const isExpiringSoonAt = (expiry: number): boolean => {
   if (expiry == 0 || isExpiredAt(expiry)) return false
   return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
+}
+
+// 「键有效」判定语义族五处（方案 activation-expiry-display-plan.md §四B/§四C 收口单源；
+// 口径调整须五处联动复核，F-03 同型防线）：
+// ①到期档位 isExpiredAt/isExpiringSoonAt（本文件上方）②码级 hasAnyValidKey/isEntryExpired
+// （本文件下方）③unlockSource（本文件上方）④formatActivationState live 过滤（本文件上方）
+// ⑤原生 ExpiryReminderWorker 双判定（Kotlin，注释互指）；
+// 另有同语义内联参照 client.ts isSourceExpiredWithOthersActive（既有实现不收编，改动时对照本族）
+
+/** 单键有效判定（0=永久或未过期；代码审查 S6 收口：语义族单键谓词单点定义，五处联动
+ *  复核时表达式只对此一处比对） */
+export const isKeyValid = (exp: number): boolean => exp == 0 || exp * 1000 > Date.now()
+
+/** 任一键有效（方案 §四B）：横幅滤红留金闸门与码级过期判定的公共底座，
+ *  与 formatActivationState live 过滤、client.ts isSourceExpiredWithOthersActive 同语义收口 */
+export const hasAnyValidKey = (expiries: Record<string, number> | null | undefined): boolean => {
+  if (expiries == null) return false
+  return Object.values(expiries).some(isKeyValid)
+}
+
+/** 码卡过期判定（方案 §四B，Q3 拍板）：全部源键均过期=过期码卡（任一键有效=生效，与 SDK
+ *  anyValid 口径一致）；expiries 空/旧 native 桥 reload 窗口走 expiry 单值兜底——复用
+ *  isExpiredAt（含 0=永久语义，复审 S5 防永久码被置灰） */
+export const isEntryExpired = (entry: KeyEntry): boolean => {
+  if (Object.keys(entry.expiries ?? {}).length) return !hasAnyValidKey(entry.expiries)
+  return isExpiredAt(entry.expiry)
 }
 
 /** 到期剩余时长递进提示（净屏 remainHint 口径对齐+分钟延伸，2026-11-01 用户拍板）：

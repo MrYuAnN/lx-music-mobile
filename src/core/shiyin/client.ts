@@ -95,6 +95,8 @@ const guideSourceEntitlement = (source: string, kind: 'expired' | 'not_entitled'
 // W3-05 本机 expiries 预判：该源已过期且存在其他在期源（多码「tx 过期+wy 在期」弹
 // per-source 精准文案，不再误弹笼统「会员已到期」；unlockSource 同口径——0=永久）。
 // 矛盾态/无该源记录/全到期=false 走笼统引导（服务端 per-source 闸兜底语义兜住）
+// 「键有效」同语义族参照（代码审查 S3 指回）：口径调整时对照 core/shiyin/activation
+// 族注五处联动复核（isExpiredAt/isKeyValid/unlockSource/formatActivationState/Worker）
 const isSourceExpiredWithOthersActive = (source: string, expiries: Record<string, number>): boolean => {
   const own = expiries[source]
   const nowSec = Date.now() / 1000
