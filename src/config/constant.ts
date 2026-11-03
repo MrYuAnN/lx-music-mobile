@@ -102,6 +102,9 @@ export const storageDataPrefix = {
   batteryOptimizationCooldownUntil: '@battery_optimization_cooldown_until',
   // 标签嵌入迁移完成标记（2026-10-30 元数据绑定定稿）：存量下载一次性补写文件标签
   localTagEmbedMigrationDone: '@local_tag_embed_migration_done',
+  // 标签嵌入迁移一次性重跑标记（P0-A 修复③ 2026-11-03）：错名封面改名补跑后清位重跑嵌入，
+  // 回填此前因旁车错名而缺失的封面嵌入
+  localTagEmbedMigrationRerun: '@local_tag_embed_migration_rerun',
   // 孤儿旁车封面已嵌入清单（2026-10-30 元数据绑定定稿）：JSON 数组，防重扫重复嵌入
   localOrphanEmbedDone: '@local_orphan_embed_done',
   // 音质推导存量补齐完成标记（2026-10-30 语义放宽拍板）：首轮扫描一次性补推导

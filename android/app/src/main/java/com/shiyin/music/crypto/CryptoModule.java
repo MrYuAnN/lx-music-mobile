@@ -192,7 +192,12 @@ public class CryptoModule extends ReactContextBaseJavaModule {
     return h.length >= 2 && (h[0] & 0xFF) == 0xFF && (h[1] & 0xE0) == 0xE0;
   }
 
-  /** 单点变换（RandomAccessFile offset 读写 16B；AES-ECB 单块无 padding） */
+  /** 单点变换（RandomAccessFile offset 读写 16B；AES-ECB 单块无 padding）。
+   *  restore 采用「内存试算+验证落盘」（审查 C2）：AES 非对合（D(D(P))≠P），历史「restore
+   *  误 D 明文」每次播放加深一层损坏（D^k），需 E^k 回救——先试一层 D（覆盖误 E 残留），
+   *  不通过再连续试 E 至多 4 次（覆盖 k≤4），looksLikeAudio 验证通过才落盘，全部不通过
+   *  不动文件（封死「每播加深一层」的持续损坏路径）。obfuscate 仅接受明文头（乱头一律
+   *  不动，交由 restore 试算修复） */
   private static void xorHeaderBlock(String path, boolean encrypt, Promise promise) {
     try (RandomAccessFile f = new RandomAccessFile(path, "rw")) {
       if (f.length() < 16) { promise.resolve(false); return; }
@@ -200,16 +205,40 @@ public class CryptoModule extends ReactContextBaseJavaModule {
       f.seek(0);
       f.readFully(head);
       boolean plain = looksLikeAudio(head);
-      if (encrypt == plain) { promise.resolve(false); return; } // 幂等：目标态已达成
-      Cipher c = Cipher.getInstance("AES/ECB/NoPadding");
-      c.init(encrypt ? Cipher.ENCRYPT_MODE : Cipher.DECRYPT_MODE, new SecretKeySpec(HDR_KEY, "AES"));
-      byte[] out = c.doFinal(head);
-      f.seek(0);
-      f.write(out);
-      promise.resolve(true);
+      SecretKeySpec key = new SecretKeySpec(HDR_KEY, "AES");
+      if (encrypt) {
+        // 幂等判别（P0-A 修复①）：目标态=暗，已暗/乱头一律跳过——原 `encrypt == plain`
+        // 四格全反（混淆恒 no-op+还原误破明文）
+        if (!plain) { promise.resolve(false); return; }
+        Cipher c = Cipher.getInstance("AES/ECB/NoPadding");
+        c.init(Cipher.ENCRYPT_MODE, key);
+        writeHeader(f, c.doFinal(head));
+        promise.resolve(true);
+        return;
+      }
+      // restore：已明=幂等跳过
+      if (plain) { promise.resolve(false); return; }
+      // 试算修复（审查 C2）：验证通过才落盘，全部不通过不动文件
+      Cipher dec = Cipher.getInstance("AES/ECB/NoPadding");
+      dec.init(Cipher.DECRYPT_MODE, key);
+      byte[] d = dec.doFinal(head);
+      if (looksLikeAudio(d)) { writeHeader(f, d); promise.resolve(true); return; }
+      Cipher enc = Cipher.getInstance("AES/ECB/NoPadding");
+      enc.init(Cipher.ENCRYPT_MODE, key);
+      byte[] cur = head;
+      for (int i = 0; i < 4; i++) {
+        cur = enc.doFinal(cur);
+        if (looksLikeAudio(cur)) { writeHeader(f, cur); promise.resolve(true); return; }
+      }
+      promise.resolve(false);
     } catch (Exception e) {
       promise.reject("HDR_ERROR", e.getMessage(), e);
     }
+  }
+
+  private static void writeHeader(RandomAccessFile f, byte[] out) throws Exception {
+    f.seek(0);
+    f.write(out);
   }
 
   /** 混淆文件头（明→暗；已暗=幂等跳过 resolve(false)）。下载完成链调用 */

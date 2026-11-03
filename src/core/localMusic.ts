@@ -15,10 +15,12 @@ const MIN_SIZE_BYTES = 300 * 1024
 // 常见录音/缓存目录名黑名单（大小写不敏感；方案 [S3] 排除口径）
 const BLACKLIST_DIR_NAMES = ['recordings', 'recording', 'whatsapp audio', 'telegram', 'cache', '录音']
 
-// 扫描白名单（方案 [S3]：常用音乐目录口径；自定义目录留待后续拍板）
+// 扫描白名单（方案 [S3]：常用音乐目录口径；自定义目录留待后续拍板）。
+// P0-A 修复④：追加下载私有目录——「已下载」tab 数据链（差集剔除/增量入库）依赖扫描
+// 覆盖，不含即进页全量差集清库（11-01 ⑦b 回归主因之一）
 const getScanDirs = () => {
   const sd = externalStorageDirectoryPath
-  return [`${sd}/Music`, `${sd}/Download`]
+  return [`${sd}/Music`, `${sd}/Download`, DOWNLOAD_DIR]
 }
 
 /** 本 App 下载产物判定（2026-10-29 ③-1 定稿）：前缀必须带分隔符边界——裸 startsWith 会把
@@ -219,7 +221,11 @@ const scanDirRecursive = async(dirPath: string, depth = 0): Promise<ScanResult> 
     }
     if (!entry.isFile) continue
     const ext = extname(entry.name).toLowerCase()
-    if (AUDIO_EXTS.includes(ext)) files.push({ path: entry.path, size: entry.size })
+    // .shy=本 App 下载产物（⑦b 私有扩展名）：仅私有目录路径入扫描集（审查 S-a 收窄：外部
+    // .shy 落回 readMetadata 失败不入库口径），worker 按任务元数据合成（P0-A 修复④）
+    if (AUDIO_EXTS.includes(ext) || (ext == 'shy' && isAppDownloadedPath(entry.path))) {
+      files.push({ path: entry.path, size: entry.size })
+    }
   }
   return { files, failedDirs }
 }
@@ -299,8 +305,9 @@ const recoverOrphanCover = async(
     if (!(await existsFile(coverPath))) return extractEmbeddedArt(file, item)
     const doneList = await getData<string[]>(storageDataPrefix.localOrphanEmbedDone) ?? []
     let result = { ...item, picUrl: `file://${coverPath}` }
-    const parsed = /^(.*) - (.*)$/.exec(fileName.slice(0, fileName.lastIndexOf('.')))
-    if (parsed) result = { ...result, singer: parsed[1].trim(), name: parsed[2].trim() }
+    // .shy 产物身份解析（P0-A 修复④）：parseDownloadStem 单源（剥 .shy 壳+真实扩展名）
+    const parsed = parseDownloadStem(fileName)
+    if (parsed.matched) result = { ...result, singer: parsed.singer, name: parsed.name }
     if (!result._qualitys) {
       try {
         const info = meta ?? await readMetadata(file.path)
@@ -309,7 +316,9 @@ const recoverOrphanCover = async(
       } catch { /* 音质推导失败不阻塞恢复 */ }
     }
     if (!doneList.includes(file.path)) {
-      await writePic(file.path, coverPath)
+      // .shy 产物跳过本体嵌入（审查 C1/I2：jaudiotagger 扩展名分派对 .shy 必败；旁车直读
+      // 已回填 picUrl，嵌入层仅在任务上下文经改名往返通道执行）——直接记 doneList 防重扫空转
+      if (!file.path.endsWith('.shy')) await writePic(file.path, coverPath)
       await saveData(storageDataPrefix.localOrphanEmbedDone, [...doneList, file.path])
     }
     return result
@@ -344,6 +353,69 @@ const applyDownloadMeta = async(
   // 下载实际档（单档形态点亮列表音质标签）
   if (task.metadata.quality) enriched._qualitys = { [task.metadata.quality]: true }
   return enriched
+}
+
+/** 在线时长「mm:ss」/「hh:mm:ss」→ 秒（下载曲合成用：暗头不可读，时长取原曲在线身份）；
+ *  纯数字串按秒兜底（审查 S-c：源站数据异常形态防误当分钟） */
+const parseInterval = (s: string): number => {
+  const parts = s.split(':').map(p => parseInt(p, 10))
+  if (!parts.length || parts.some(Number.isNaN)) return 0
+  if (parts.length == 1) return parts[0]
+  return parts.length == 3
+    ? parts[0] * 3600 + parts[1] * 60 + parts[2]
+    : parts[0] * 60 + (parts[1] || 0)
+}
+
+/** 下载命名解析（单源，审查 S-b）：「歌手 - 歌名.ext[.shy]」→ 身份三元组；先剥 .shy 壳
+ *  再剥真实扩展名（「周杰伦 - 花海.flac.shy」→ 周杰伦/花海/flac）；matched=是否含「 - 」分隔 */
+const parseDownloadStem = (fileName: string): { matched: boolean, singer: string, name: string, ext: string } => {
+  const bare = fileName.replace(/\.shy$/i, '')
+  const dot = bare.lastIndexOf('.')
+  const stem = dot > -1 ? bare.slice(0, dot) : bare
+  const parsed = /^(.*) - (.*)$/.exec(stem)
+  return {
+    matched: parsed != null,
+    singer: parsed ? parsed[1].trim() : '',
+    name: parsed ? parsed[2].trim() : stem,
+    ext: dot > -1 ? bare.slice(dot + 1) : 'mp3',
+  }
+}
+
+/** .shy 下载文件条目合成（P0-A 修复④）：.shy 扩展名+暗头使 jaudiotagger 必败（readMetadata
+ *  按扩展名分派），跳过读取按任务元数据合成。身份：任务 musicInfo 优先（时长取在线身份），
+ *  无任务（卸载重装孤儿）按下载命名「歌手 - 歌名」解析；音质取任务实际档（孤儿缺档不推
+ *  ——暗头不可读，符合音质推导「可靠子集」口径）；时长不过滤（碎片过滤针对扫描碎片，
+ *  下载曲皆为完整文件，体积阈值保留防脏文件） */
+const buildShyMusicItem = async(
+  file: { path: string, size: number },
+  downloadByPath: Map<string, SY.Download.ListItem>,
+): Promise<LocalMusicItem | null> => {
+  if (file.size < MIN_SIZE_BYTES) return null
+  const task = downloadByPath.get(file.path)
+  if (task) {
+    const mi = task.metadata.musicInfo
+    const item = toLocalMusicItem(file.path, {
+      name: mi.name,
+      singer: mi.singer,
+      albumName: mi.meta.albumName || '',
+      interval: parseInterval(mi.interval ?? ''),
+      size: file.size,
+      ext: task.metadata.ext,
+    })
+    if (task.metadata.quality) item._qualitys = { [task.metadata.quality]: true }
+    return applyDownloadMeta(file, item, downloadByPath)
+  }
+  const base = file.path.slice(file.path.lastIndexOf('/') + 1)
+  const parsed = parseDownloadStem(base)
+  const item = toLocalMusicItem(file.path, {
+    name: parsed.name,
+    singer: parsed.singer,
+    albumName: '',
+    interval: 0,
+    size: file.size,
+    ext: parsed.ext,
+  })
+  return recoverOrphanCover(file, item)
 }
 
 export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
@@ -399,24 +471,30 @@ export const scanLocalMusic = async(): Promise<{ failedDirs: string[] }> => {
             : await recoverOrphanCover(file, enriched)
         } else {
           try {
-            const meta = await readMetadata(file.path)
-            if (meta && meta.interval >= MIN_INTERVAL_SEC && meta.size >= MIN_SIZE_BYTES) {
-              const item = toLocalMusicItem(file.path, {
-                // tag 缺失字段回退原曲身份（readMetadata 对无 tag 文件可能给出文件名解析值）
-                name: meta.name || undefined,
-                singer: meta.singer || undefined,
-                albumName: meta.albumName || undefined,
-                interval: meta.interval,
-                size: meta.size,
-                ext: meta.ext,
-              } as never)
-              // 规格推导（2026-10-30 语义放宽拍板）：全部本地歌缺档即推导，落在产品档内才标；
-              // 下载档回填（applyDownloadMeta 任务分支）随后覆盖为权威值
-              if (!item._qualitys) {
-                const quality = deriveQualityFromHeader(meta)
-                if (quality) item._qualitys = { [quality]: true }
+            // .shy 下载产物：跳过元数据读取按任务合成（暗头/扩展名必败，P0-A 修复④；
+            // 判定经 isAppDownloadedPath 收窄，审查 S-a）
+            if (isAppDownloadedPath(file.path) && file.path.endsWith('.shy')) {
+              results[index] = await buildShyMusicItem(file, downloadByPath)
+            } else {
+              const meta = await readMetadata(file.path)
+              if (meta && meta.interval >= MIN_INTERVAL_SEC && meta.size >= MIN_SIZE_BYTES) {
+                const item = toLocalMusicItem(file.path, {
+                  // tag 缺失字段回退原曲身份（readMetadata 对无 tag 文件可能给出文件名解析值）
+                  name: meta.name || undefined,
+                  singer: meta.singer || undefined,
+                  albumName: meta.albumName || undefined,
+                  interval: meta.interval,
+                  size: meta.size,
+                  ext: meta.ext,
+                } as never)
+                // 规格推导（2026-10-30 语义放宽拍板）：全部本地歌缺档即推导，落在产品档内才标；
+                // 下载档回填（applyDownloadMeta 任务分支）随后覆盖为权威值
+                if (!item._qualitys) {
+                  const quality = deriveQualityFromHeader(meta)
+                  if (quality) item._qualitys = { [quality]: true }
+                }
+                results[index] = await applyDownloadMeta(file, item, downloadByPath, meta)
               }
-              results[index] = await applyDownloadMeta(file, item, downloadByPath, meta)
             }
           } catch {
             // 单文件元数据读取失败：既有条目兜底保留（保守合并场景不被误剔）
@@ -472,6 +550,10 @@ const buildLocalMusicItem = async(filePath: string, size: number, downloadByPath
     return applyDownloadMeta({ path: filePath, size }, existing, downloadByPath)
   }
   try {
+    // .shy 下载产物合成（P0-A 修复④）：增量入库与扫描同口径（判定收窄，审查 S-a）
+    if (isAppDownloadedPath(filePath) && filePath.endsWith('.shy')) {
+      return await buildShyMusicItem({ path: filePath, size }, downloadByPath)
+    }
     const meta = await readMetadata(filePath)
     if (!meta || meta.interval < MIN_INTERVAL_SEC || meta.size < MIN_SIZE_BYTES) return null
     const item = toLocalMusicItem(filePath, {

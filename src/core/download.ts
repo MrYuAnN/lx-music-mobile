@@ -2,6 +2,7 @@ import { NativeModules } from 'react-native'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import settingState from '@/store/setting/state'
+import playerState from '@/store/player/state'
 import { getMusicUrl, getLyricInfo } from '@/core/music/online'
 import { downloadFile, stopDownload, unlink, mkdir, moveFile, writeFile, readDir, existsFile, externalStorageDirectoryPath, RNFSExternalDirectoryPath } from '@/utils/fs'
 import { obfuscateFileHeader } from '@/utils/nativeModules/crypto'
@@ -76,20 +77,41 @@ const embedTaskTags = async(task: SY.Download.ListItem): Promise<void> => {
   const { musicInfo, filePath } = task.metadata
   const dir = filePath.slice(0, filePath.lastIndexOf('/'))
   const fileName = filePath.slice(filePath.lastIndexOf('/') + 1)
-  try {
-    await lmWriteMetadata(filePath, {
-      name: musicInfo.name,
-      singer: musicInfo.singer,
-      albumName: musicInfo.meta.albumName || '',
-    }, false)
-  } catch (err) {
-    console.warn('[download] embed tags failed:', (err as Error)?.message)
+  const coverPath = `${dir}/.${fileName}.cover.jpg`
+  // .shy 嵌入通道（审查 C1 修复）：jaudiotagger 按扩展名分派读写器，.shy 读必败写亦必败
+  // （库的失败兜底临时文件也保留原扩展名二次必败）——写入前同目录改名成真实扩展名
+  // （壳内名即真实名：歌名.flac.shy→歌名.flac），完成后 finally 改回；改名失败=放弃本次
+  // 嵌入文件保持原状。调用前提=明文态（完成链/迁移链时序已保证先嵌后混）
+  const isShy = filePath.endsWith('.shy')
+  const realPath = isShy ? filePath.slice(0, -'.shy'.length) : filePath
+  if (isShy) {
+    const renamed = await moveFile(filePath, realPath).then(() => true).catch((err) => {
+      console.warn('[download] embed rename failed:', filePath, (err as Error)?.message)
+      return false
+    })
+    if (!renamed) return
   }
   try {
-    const coverPath = `${dir}/.${fileName}.cover.jpg`
-    if (await existsFile(coverPath)) await lmWritePic(filePath, coverPath)
-  } catch (err) {
-    console.warn('[download] embed cover failed:', (err as Error)?.message)
+    try {
+      await lmWriteMetadata(realPath, {
+        name: musicInfo.name,
+        singer: musicInfo.singer,
+        albumName: musicInfo.meta.albumName || '',
+      }, false)
+    } catch (err) {
+      console.warn('[download] embed tags failed:', (err as Error)?.message)
+    }
+    try {
+      if (await existsFile(coverPath)) await lmWritePic(realPath, coverPath)
+    } catch (err) {
+      console.warn('[download] embed cover failed:', (err as Error)?.message)
+    }
+  } finally {
+    if (isShy) {
+      await moveFile(realPath, filePath).catch((err) => {
+        console.warn('[download] embed rename back failed:', realPath, (err as Error)?.message)
+      })
+    }
   }
 }
 
@@ -103,10 +125,11 @@ const migrateEmbedTags = async(): Promise<void> => {
   await saveData(storageDataPrefix.localTagEmbedMigrationDone, '1')
 }
 
-/** ⑦b 存量迁移（2026-11-01）：旧公共 Music/拾音/ 全部文件搬入私有目录（音频加 .shy+混淆头，
- *  lrc/封面跟随不加壳）。装机实测修正：原 store 记录判定会静默漏搬（downloadList 可能为空/
- *  记录缺失），改物理扫描不依赖 store；store 内仍指旧目录的任务按 fileName 映射同步更新。
- *  尽力而为：单文件失败不断链 */
+/** ⑦b 存量迁移（2026-11-01；P0-A 修复③ 改名补跑）：旧公共 Music/拾音/ 全部文件搬入私有
+ *  目录——音频加 .shy（混淆移至迁移链尾部统一执行，防嵌入打在暗文件上）；.lrc 直搬；
+ *  隐藏封面 .旧音频名.cover.jpg 随音频名同步改名（读取侧期望 .新音频名.shy.cover.jpg，
+ *  原实现把它当音频错搬成 ....cover.jpg.shy 且永不匹配）。装机实测修正：物理扫描不依赖
+ *  store；store 内仍指旧目录的任务按 fileName 映射同步更新。尽力而为：单文件失败不断链 */
 const migrateLegacyDownloads = async(): Promise<void> => {
   let entries
   try {
@@ -114,32 +137,86 @@ const migrateLegacyDownloads = async(): Promise<void> => {
   } catch { return } // 旧目录不存在=无存量
   if (!entries.length) return
   await mkdir(DOWNLOAD_DIR).catch(() => {})
+  // store 内仍指旧目录的任务：先预写新路径（审查 I3 修复：先于搬移循环，防迁移中途扫描
+  // 拿旧路径匹配不到已搬文件→误判孤儿/同曲双条目），搬移循环后按文件在位性回滚失败条目
+  const pendingTasks: Array<{ task: SY.Download.ListItem, oldPath: string }> = []
+  for (const task of downloadList) {
+    const p = task.metadata.filePath
+    if (p?.includes(LEGACY_DOWNLOAD_DIR_MARK)) {
+      pendingTasks.push({ task, oldPath: p })
+      task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
+    }
+  }
   let moved = 0
   for (const entry of entries) {
     if (!entry.isFile) continue
     const isLrc = entry.name.endsWith('.lrc')
-    const newPath = `${DOWNLOAD_DIR}/${entry.name}${isLrc ? '' : '.shy'}`
+    const isCover = !isLrc && entry.name.startsWith('.') && entry.name.endsWith('.cover.jpg')
+    const newPath = isLrc
+      ? `${DOWNLOAD_DIR}/${entry.name}`
+      : isCover
+        ? `${DOWNLOAD_DIR}/${entry.name.slice(0, -'.cover.jpg'.length)}.shy.cover.jpg`
+        : `${DOWNLOAD_DIR}/${entry.name}.shy`
     try {
       await unlink(newPath).catch(() => {})
       await moveFile(entry.path, newPath)
-      if (!isLrc) await obfuscateFileHeader(newPath).catch(() => {})
       moved++
     } catch (err) {
-      console.warn('legacy download migrate failed:', entry.name, err)
+      console.warn('[download] legacy migrate failed:', entry.name, err)
     }
   }
-  // store 内仍指旧目录的任务：按 fileName 映射新路径（fileName 与搬移前音频名同源）
-  let storeUpdated = 0
-  for (const task of downloadList) {
-    const p = task.metadata.filePath
-    if (p?.includes(LEGACY_DOWNLOAD_DIR_MARK)) {
-      task.metadata.filePath = `${DOWNLOAD_DIR}/${task.metadata.fileName}.shy`
-      storeUpdated++
+  // 回滚：预写后搬移失败的条目（新路径文件不在位）恢复旧路径
+  let rolledBack = 0
+  for (const { task, oldPath } of pendingTasks) {
+    if (!(await existsFile(task.metadata.filePath).catch(() => false))) {
+      task.metadata.filePath = oldPath
+      rolledBack++
     }
   }
+  if (rolledBack > 0) console.warn('[download] legacy migrate rolled back tasks:', rolledBack)
+  const storeUpdated = pendingTasks.length - rolledBack
   if (moved > 0 || storeUpdated > 0) {
     saveList()
     global.state_event.downloadStateChanged([...downloadList])
+  }
+}
+
+/** 错名封面补跑（P0-A 修复③，幂等）：11-01 迁移把旧格式隐藏封面错搬成 .旧音频名.cover.jpg.shy
+ *  （当音频加了 .shy），读取侧期望 .旧音频名.shy.cover.jpg 永不匹配 → 内嵌封面静默缺失。
+ *  还原为正确命名；无错名文件=零动作（unlink 前置与搬移口径对齐，审查 S-f） */
+const fixCoverSidecarNames = async(): Promise<void> => {
+  let entries
+  try {
+    entries = await readDir(DOWNLOAD_DIR)
+  } catch { return }
+  for (const entry of entries) {
+    if (!entry.isFile || !entry.name.endsWith('.cover.jpg.shy')) continue
+    const base = entry.name.slice(0, -'.shy'.length) // .旧音频名.cover.jpg
+    const target = `${DOWNLOAD_DIR}/${base.slice(0, -'.cover.jpg'.length)}.shy.cover.jpg`
+    await unlink(target).catch(() => {})
+    await moveFile(entry.path, target).catch((err) => {
+      console.warn('[download] cover sidecar rename failed:', entry.name, err)
+    })
+  }
+}
+
+/** 私有目录全量头混淆（P0-A 修复①存量半边；审查 I4 修复改 readDir 全目录口径）——判别
+ *  修复前混淆全程 no-op，存量下载文件实为明文：downloadList 有无记录（孤儿）一律纳入，
+ *  幂等判别保证已暗零副作用。播放中文件跳过（审查 I1：混淆写入可击穿播放链读取；跳过
+ *  后下次启动兜底链重试，幂等安全） */
+const obfuscateAllDownloadedFiles = async(): Promise<void> => {
+  let entries
+  try {
+    entries = await readDir(DOWNLOAD_DIR)
+  } catch { return }
+  const playingPath = (playerState.playMusicInfo.musicInfo as SY.Music.MusicInfoLocal | null)?.meta?.songId
+  for (const entry of entries) {
+    if (!entry.isFile || !entry.name.endsWith('.shy')) continue
+    const path = `${DOWNLOAD_DIR}/${entry.name}`
+    if (path == playingPath) continue
+    await obfuscateFileHeader(path).catch((err) => {
+      console.warn('[download] obfuscate file failed:', path, (err as Error)?.message)
+    })
   }
 }
 
@@ -166,13 +243,27 @@ export const initDownloadList = async(): Promise<void> => {
         if (entry.isFile && entry.name.endsWith('.tmp')) await unlink(entry.path).catch(() => {})
       }
     } catch {}
-    void migrateLegacyDownloads().catch(err => {
-      console.warn('legacy downloads migration failed', err)
-    })
+    // 迁移链（P0-A 修复②③，顺序即依赖，串行防交叉竞态）：一次性清嵌入标记（错名封面
+    // 改名补跑后重跑嵌入，回填缺失封面）→ 搬移（不混淆）→ 错名封面改名 → 标签嵌入
+    // （明文态）→ 全量统一混淆（存量此前因判别 no-op 实为明文）
+    void (async() => {
+      try {
+        if (!(await getData(storageDataPrefix.localTagEmbedMigrationRerun))) {
+          await saveData(storageDataPrefix.localTagEmbedMigrationDone, '')
+          await saveData(storageDataPrefix.localTagEmbedMigrationRerun, '1')
+        }
+        await migrateLegacyDownloads()
+        await fixCoverSidecarNames()
+        // 嵌入步独立兜底（审查 S-g）：置位失败不阻断兜底混淆
+        await migrateEmbedTags().catch(err => {
+          console.warn('[download] embed tags migration failed', err)
+        })
+        await obfuscateAllDownloadedFiles()
+      } catch (err) {
+        console.warn('download migration chain failed', err)
+      }
+    })()
     global.state_event.downloadStateChanged([...downloadList])
-    void migrateEmbedTags().catch(err => {
-      console.warn('embed tags migration failed', err)
-    })
   })()
   return initPromise
 }
@@ -251,11 +342,10 @@ const runDownload = async(task: SY.Download.ListItem) => new Promise<void>((reso
     if (res && res.statusCode >= 400) {
       throw new Error(`${global.i18n.t('download_failed_audio')}（HTTP ${res.statusCode}）`)
     }
-    // .tmp → 成品（重下载同名场景先清目标）；⑦b：完成即混淆文件头（破坏魔数，
-    // 播放前 restoreFileHeader 幂等还原）
+    // .tmp → 成品（重下载同名场景先清目标）。⑦b 头混淆移至完成链嵌入之后（P0-A 修复②：
+    // 判别修复后混淆真执行，先嵌后混防 jaudiotagger 打在暗文件上击穿标签嵌入）
     await unlink(task.metadata.filePath).catch(() => {})
     await moveFile(tmpPath, task.metadata.filePath)
-    await obfuscateFileHeader(task.metadata.filePath).catch(() => {})
   }).then(() => { resolve() }).catch(reject)
 })
 
@@ -373,8 +463,16 @@ const startTask = async(task: SY.Download.ListItem) => {
   toast(global.i18n.t('download_task_completed', { name: task.metadata.musicInfo.name }))
   notifyChanged()
   pump()
-  // 标签嵌入（2026-10-30 元数据绑定定稿）：完成态后写文件本体，失败不影响下载结果
-  void embedTaskTags(task)
+  // 完成链顺序（P0-A 修复②）：标签嵌入（明文态，本地文件快速操作 await 不拖反馈）
+  // → 头混淆。嵌入内部全 catch 尽力而为；混淆失败/播放中跳过均由启动兜底链幂等补齐
+  await embedTaskTags(task)
+  // 混淆前跳过当前播放文件（审查 I1 同款守卫；下次启动兜底链幂等重试）
+  const playingPath = (playerState.playMusicInfo.musicInfo as SY.Music.MusicInfoLocal | null)?.meta?.songId
+  if (playingPath != task.metadata.filePath) {
+    await obfuscateFileHeader(task.metadata.filePath).catch((err) => {
+      console.warn('[download] obfuscate header failed:', (err as Error)?.message)
+    })
+  }
 }
 
 /** 并发调度（N=download.maxConcurrency；status 同步占位防双拾，跳过 Wi-Fi 挂起任务） */
