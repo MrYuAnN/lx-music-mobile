@@ -1,10 +1,12 @@
-// 更新检查（批1 阶段4 改自建 /latest；方案 §七）：单地址 GET https://shiyinbox.top/latest
+// 更新检查（批1 阶段4 改自建 /latest；方案 §七）：单地址 GET https://sy-api.a-stock.top/latest
 // → {version, url, note, releases}。404=服务端未发版（全新部署常态）→独立标记 notPublished，
 // 由 core/version.ts 映射 isLatest（不复用 0.0.0 错误路径）。下载改跳浏览器（url 交给系统
 // 浏览器），应用内 APK 下载/安装链（downloadFile/installApk/ABI 拼装）整链退役。
+// 2026-11-03 音乐域直连批：shiyinbox.top（EdgeOne）→ sy-api.a-stock.top（直连），
+// 方案 doc/plans/music-domain-direct.md；下载 url 由服务端登记值派生（已随批换域）。
 import { httpFetch } from '@/utils/request'
 
-export const LATEST_URL = 'https://shiyinbox.top/latest'
+export const LATEST_URL = 'https://sy-api.a-stock.top/latest'
 
 export const getVersionInfo = async() => {
   const resp = await httpFetch(LATEST_URL, { timeout: 10000 }).promise

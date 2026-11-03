@@ -148,8 +148,9 @@ class MainApplication : Application(), ReactApplication {
 
   companion object {
     private const val BOOT_TAG = "ShiyinBoot"
-    // 双源：src/core/shiyin/config.ts SHIYIN_BASE_URL（换域名须同改）
-    private const val SHIYIN_HOST = "shiyinbox.top"
+    // 双源：src/core/shiyin/config.ts SHIYIN_BASE_URL（换域名须同改）；
+    // 2026-11-03 音乐域直连批：shiyinbox.top（EdgeOne）→ sy-api.a-stock.top（直连）
+    private const val SHIYIN_HOST = "sy-api.a-stock.top"
     private const val PRECONNECT_TIMEOUT_MS = 5_000
   }
 }
