@@ -13,6 +13,7 @@ import commonActions from '@/store/common/action'
 import { checkUpdate } from '@/core/version'
 import { bootLog } from '@/utils/bootLog'
 import { initRecentPlay } from '@/core/player/recentPlay'
+import { initUsageStats } from '@/core/stats'
 import settingState from '@/store/setting/state'
 import { navigations } from '@/navigation'
 
@@ -37,6 +38,10 @@ export default async() => {
   if (isInited) return handlePushedHomeScreen
   bootLog('Initing...')
   commonActions.setFontSize(global.sy.fontSize)
+  // 使用统计尽早挂载（2026-11-03 定稿 §四.C）：①先于 initPlayer 注册播放会话监听
+  // （playerEnded 自然完播闭会话次序依赖，统计先注册先执行）；②先于首页渲染防首启
+  // 会话丢失（审查 R-S5）。initUsageStats 同步返回，内部链路全异步不阻塞启动
+  initUsageStats()
   bootLog('Font size changed.')
   const setting = await initSetting()
   bootLog('Setting inited.')

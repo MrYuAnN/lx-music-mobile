@@ -1,6 +1,7 @@
 import searchMusicState, { type Source } from '@/store/search/music/state'
 import searchMusicActions, { type SearchResult } from '@/store/search/music/action'
 import musicSdk from '@/utils/musicSdk'
+import { trackSearch } from '@/core/stats'
 
 export const setSource: typeof searchMusicActions['setSource'] = (source) => {
   searchMusicActions.setSource(source)
@@ -17,7 +18,10 @@ export const clearListInfo: typeof searchMusicActions.clearListInfo = (source) =
 }
 
 
-export const search = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
+// 搜索埋点包装（2026-11-03 使用统计定稿 §四.C）：仅 page=1 新查询记数——翻页不
+// 计（审查 R-I6，翻页高频不稀释搜索指标）；源集空窗期空返回同记（result_count=0
+// 即内容缺口真实信号）。埋点 fire-and-forget 零 await（统计铁律）
+const searchRaw = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
   if (!text) return []
   // 源集就绪闸门（2026-10-30 拍板：搜索面=服务端配置面；F-1 后契约更新见 config.ts 头注）：
   // 闸门 resolve 仅保证 qualityList 已同步填充，**不保证源集已收敛**——有缓存路径 resolve
@@ -66,5 +70,11 @@ export const search = async(text: string, page: number, sourceId: Source): Promi
       throw err
     })
   }
+}
+
+export const search = async(text: string, page: number, sourceId: Source): Promise<SY.Music.MusicInfoOnline[]> => {
+  const result = await searchRaw(text, page, sourceId)
+  if (text && page === 1) trackSearch(text, page, Array.isArray(result) ? result.length : 0)
+  return result
 }
 

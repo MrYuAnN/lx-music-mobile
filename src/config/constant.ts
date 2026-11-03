@@ -137,6 +137,9 @@ export const storageDataPrefix = {
   shiyinOrderRemind: '@shiyin_order_remind',
   // 选购页目录缓存（七题 Q1，2026-11-02 拍板=净屏 PlanSkus 同构 SWR）：原始响应 body+fetchedAt
   shiyinSkus: '@shiyin_skus',
+  // 使用统计（2026-11-03 定稿）：上报队列持久化+播放会话孤儿快照（杀进程补 play_end 用）
+  usageQueue: '@usage_queue',
+  usageSession: '@usage_session',
 } as const
 
 // v0.x.x 版本的 data keys

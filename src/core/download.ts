@@ -13,6 +13,7 @@ import { getOnlineQualitys } from '@/utils/music'
 import { writeMetadata as lmWriteMetadata, writePic as lmWritePic } from '@/utils/localMediaMetadata'
 import { throttle } from '@/utils/common'
 import { toast } from '@/utils/tools'
+import { trackDownloadOk, trackDownloadFail } from '@/core/stats'
 
 // 下载引擎（multifix 问题 4）：并发 N 队列、自建音质回退链、RNFS 写公共 Music/拾音/、
 // 成功判定=音频+歌词+封面全部成功（走查拍板 10-23，任一失败标错可重试；RNFS 对 HTTP 4xx
@@ -511,6 +512,9 @@ const startTask = async(task: SY.Download.ListItem) => {
     }
     task.status = 'error'
     task.statusText = failed.message || global.i18n.t('download_failed')
+    // 下载失败埋点（2026-11-03 使用统计定稿 §四.C：挂点=error 赋值处，主动中止/
+    // Wi-Fi 挂起静默分支在其前 return 天然排除——审查 R-S8）
+    trackDownloadFail(task.metadata.musicInfo, task.metadata.quality)
     console.warn('[download] task error:', task.id, failed.message) // 排查插桩（疑案结案即删）
     // 全局 toast 反馈（2026-10-29 走查反馈：播放页/任意页面发起下载后无成败感知）；
     // 主动中止（暂停/删除）不提示
@@ -524,6 +528,7 @@ const startTask = async(task: SY.Download.ListItem) => {
   task.isComplate = true
   task.progress = 100
   task.speed = ''
+  trackDownloadOk(task.metadata.musicInfo, task.metadata.quality) // 下载成功埋点（2026-11-03 定稿 §四.C）
   toast(global.i18n.t('download_task_completed', { name: task.metadata.musicInfo.name }))
   notifyChanged()
   pump()
