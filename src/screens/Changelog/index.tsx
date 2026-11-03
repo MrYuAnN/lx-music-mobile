@@ -1,6 +1,7 @@
 // 更新日志页（净屏 ChangelogActivity 对标，方案 §2.6 + 批 R 重构）：全量渲染 releases 历史
 // （不迁 VersionModal 的 compareVer 过滤——那是更新弹窗「只显更新」语义，审查 I-4）；
-// 卡片=版本号+发布日期（releasedAt 缺省不显示）+橙「当前版本」徽标（D2 例外·净屏对标）
+// 卡片=版本号+发布日期（releasedAt 缺省不显示；「当前版本」徽标已随 f602d1d6 删除，
+// 与净屏形态分叉=有意，DR1 批6 回填）
 // +note 分组渲染（ChangelogNote 共用组件，行前缀新增/修复/优化，D5 三端同规则）；
 // 进页静默刷新（30s 去重，refreshVersionInfoSilently 不弹窗不污染手动检查状态）；
 // 空态/失败态分显（净屏刻意区分，不把失败伪装成暂无——S-PM2）。

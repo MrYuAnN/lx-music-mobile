@@ -138,3 +138,9 @@ tx `i.y.qq.com` query 形态及其他变体：实施时以各源实际分享落�
 **实施留档偏差**：i18n 实落 4 键/语言（方案原列 3 键）——卡头文字按钮用完整标题「导入歌单」过长，补 `list_import_link_button`（导入/Import/匯入）短标签键。
 
 **代码审查处置（2026-10-20 三席代码分支，审查包 context-link-import-code.md）**：无席级 Critical 漏网；PM 席报 Critical 1（wy 网页版 hash 链接 `#/playlist?id=` 解析必失败且 toast 引导自相矛盾——官方手册/导出工具 gist 实锤该形态）+ Important 4；架构席 Important 3（其中取消竞态重开错跳屏与 PM 席独立命中合并；error 重试/刷新链路无回填为本批空 props 入口新暴露边界）；优化师 Important 1（tx 缺 taoge 分享页形态，外呼 GoMusic qqmusic.go 四形态实锤）。用户拍板全修：C1 wy hash 正则、I1 竞态作废贯通（session token+AbortSignal+toast 查标志）、I2 handleLoadMore page==1/handleRefresh 成功补 syncDetailInfo 回填、I3 tx taoge 正则、I4 mg /music/ 段可选+query 正则放宽、D1 对标留档补录；S1 hostname 精确匹配+全角括号边界、S2 componentId 守卫前移 hide 前、S3 死缓存分支注记（激活缓存另批评估）、S4 哨兵契约注释、S5 zh-tw 清單→歌單统一，全部随批落地；架构席「lang 字母序」被优化师证伪不采纳（文件本非严格字母序）。真机走查新增确认项：mg v5 形态实测、tx 短链展开落点实测、error 重试成功后头部回填观感。
+
+### 后续拍板补记（批6 DR5 落字，2026-11-03）
+
+- §六 R4 歌单页入口形态已过时：首页「导入」按钮已改**图标形态**（真机拍板
+  2026-10-20），i18n 短标签键 `list_import_link_button`（导入/Import/匯入）即此
+  形态配套——本文「文字按钮」描述不再准确，以现实现为准（audit 窗① DR5）。

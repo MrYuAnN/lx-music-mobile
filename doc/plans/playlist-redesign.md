@@ -160,3 +160,9 @@
 - **I1-I6** 全修：假成功 toast 随 C2 源头不可达（守卫 toast 为最后防线）；歌单页曲数/播放钮惰性加载失效补 activeListId 预载 bump；在线页 ambientPic 补落（编辑失败遗漏）；AddMusicSheet 改 musicSdk 直连（搜索状态不再被污染）+keyboardShouldPersistTaps+catch；shuffle 改两段式（首页即播后台补全量）；在线页未收藏副行显示歌曲总数（AM 元信息行对标）。
 - **S1-S8** 全采纳：playCount 死链清理、克隆/AddMusicSheet/spinner 偏差补记（上 7-9）、LoveCard 播放钮主题 token 化、ensureListPic 失败会话级退避、克隆/随机失败 toast、thirdIcon 死分支清理、滚动漂移注释、注释路径修正。
 - 证伪 22 条存档审查包（同步绕行豁免/useCoverAmbient 竞态等价/getItemLayout×numColumns 正确等）。
+
+### 后续拍板补记（批6 DR3 落字，2026-11-03）
+
+- §3「三钮行」与偏差4「随机不切模式」描述已过时：现行为=QQ 式双胶囊 + 随机=切全局
+  random 并自首曲起播（播放全部/随机二钮语义，实现锚 core/player player.ts random
+  链）。D1/D2/D3 拍板此前只在代码注释未落本文档，本段即补记（audit 窗① DR3）。

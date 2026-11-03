@@ -6,7 +6,7 @@
 // 闸门 resolve 新契约（0.88 批 F-1 审查 I-4）：resolve 仅保证 qualityList 已按当前值
 // 同步填充，**不保证源集已收敛/服务端集已到达**——无缓存空窗期源集可能仍为空集。
 // TTL 24h 仅作缓存新鲜度参考（过期不再阻塞，只意味着后台刷新更必要）。
-// /url 遇 403 source_disabled 时由 client 调 refreshShiyinConfig 立即重拉。
+// /url 遇 403 source_disabled 时由 client 调 fetchShiyinConfig 立即重拉（DR2 批6 勘误）。
 import { httpFetch } from '@/utils/request'
 import { compareVer } from '@/utils'
 import { getData, saveData } from '@/plugins/storage'

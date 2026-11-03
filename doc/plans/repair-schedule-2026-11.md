@@ -74,7 +74,11 @@
 - 验证：五仓 build+test 全绿（license-platform store/api、order-core 全包、backend api、fork fixture 8/8、App tsc/eslint/assembleStage）；**净屏 golden 未破**（store/pay/presets ok；admin 包 TestSDKDriftSnapshot FAIL=F-07 既有 SDK 副本漂移与本批零关联，挂账中）；净屏同源生效项（F-14/F-18/W3-10/W3-11）随净屏下次部署生效
 - 挂起：四仓部署（backend scp+restart/fork scp+compose/平台二进制/order-core 随 backend 构建）——**写操作与 S3 发布窗口合并执行**；App 侧随 vc14
 - **三席审查（2026-11-03，四仓 patch 分审）**：0C/1I/23S→全收口。**I-1 双席同发现**（W3-14 跨端配套缺口——fork 预拒 expired 后 App auth.ts 注册 403 无映射，过期用户见「激活码无效」误导+丢过期语义）→已修（auth.ts 补 expired→ShiyinEntitlementExpired，键在快抛名单）；S 13 修 1 登记 frustrated（行为类：W3-11 apps 精确比对/ParseComboRates 同 n 去重/W3-17 EqualFold/toSrvComboItems 单点化/ReleaseCount30d 正路径断言/entitlement_apps dev 路径初始化顺带修既有缺陷；注释类 7 条全修）；**登记**：site_buy_clicks 索引+统计端点挂 S8、净屏同文注释歧义登记、Scan 阻断裁决采信优化师（驱动级错误回滚正确）。被证伪 28 条存档三席报告。冲突裁决 1 项（校验锚 Scan 阻断）采信优化师证伪
-### S8 批6 文档/登记：DR1-6 + F-08 余三处（净屏批提交后回灌）+ DEPLOY.md 勘误（R-a）+ F-13 FAQ 口径修正 + **F-21 products.min_client_ver 配置（S0 拍板：发版后执行）** + R-c 运营内容上架（待用户供给；放量前置）
+### S8 批6 文档/登记 —— **可执行项完成（2026-11-03），F-21/R-c 双挂起**
+- **已完成**：DR1（Changelog 徽标注释回填 f602d1d6）/DR2（config.ts fetchShiyinConfig 勘误）/DR3/5/6（三方案文档尾部「后续拍板补记」段，DR4 审计清单内已自洽互指免动）/R-a（DEPLOY.md §8.1「已拦」勘误——生产 409 闸全局关闭=有意关闭态注记，开闸须核对 W3-01 族）/F-13（faq.html「每月 1 次」→「每 30 天限 1 次（30 天滚动窗）」，footer 客服占位归 R-c）/F-08 余三处回填（I 426 行 UpgradeRequiredModal+register 已修；已知待修段全收口 526ab344+R8 冒烟 11-02；B 欢迎提示模态卡片 11-01 拍板推翻轻 toast）
+- **批5 审查登记承接**：site_buy_clicks 索引+统计端点挂 S8 后续（运营查询面出现再加 (kind,at) 索引+BuyClickStats 同款）；净屏 handleSiteBuyClick 同文注释歧义（「空值不 400」）登记净屏仓域随下次触及修正
+- **挂起①**：F-21 products.min_client_ver 配置——**须 S3 发布（vc13 装机存世）后执行**（S0 拍板：防 11-01 同型断链；meta 上调前提=新版本 App 存世）
+- **挂起②**：R-c 运营内容上架（contact_url/xianyu_url/item_id/FAQ 客服内容/闲鱼文案）——**待用户供给**（放量硬前置）；N-07 定价观察（运营决策面）同待
 
 ## 需要你参与的节点
 1. S0：逐笔 commit 确认 + 4 个决策项拍板 + R-c 运营内容供给

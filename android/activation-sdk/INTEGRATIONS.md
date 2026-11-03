@@ -26,7 +26,7 @@
 | A 剪贴板检测 | 弹窗内提示行而非首页 chip；规则=清单同款（前缀+6-64+点击填入+仅未购态） | 单入口形态；**A-1 已修 2026-10-31** |
 | A 多码融合确认 | **净屏=按源精准化+trial 恒重叠标记（⑥件②方案①前置查码 2026-11-02，净屏适配+方案 A 2026-11-03）；拾音=宽触发 fail-closed（Q7-C 2026-11-02，code-overlap 查询层退役——下述端点为净屏专用，拾音消费状态在此更正，2026-11-03 方案 A 批修订）**：净屏 JP- 码激活前调平台 `POST /api/code-overlap {code,device_id}→{overlap:[重叠源键]}`——overlap 非空弹精准文案（APP_CN 指名源+按源到期，停权码不计入）/空=纯跨源不弹直接激活；查询失败保守回退粗触发确认框。**方案 A trial 全折契约（2026-11-03 v3，两产品统一）**：服务端 mergeSameApp 对同产品 isTrialTier（auto3/trial7/trial3）在绑码**整码全折**——剩余 R=全部键 max 加到新码每个声明键、trial 码整码剥夺释放（RedeemCode 充值码续费不触发，刻意边界）；**同产品有效 trial 在绑时 CodeOverlap 返回数组追加保留标记键 `"trial"`**（trial.go TrialOverlapMarker；过期 trial 不标、跨产品不标）→ 客户端恒弹融合确认（消「overlap 空=直提 merge=false × 首兑无条件特判」零确认烧码窗口）。**跨仓契约：产品键集与 `"trial"` 字面量互斥**（product_apps 录入已加校验拒收；两产品键集亦互斥——非 trial 相交融合的跨产品免疫依赖此前提）。净屏侧：SDK v1.5 `codeOverlap`（独立短超时 5s/5s+parseOverlapKeys 纯数组透传）+ JingpingSheets#doActivate 三分支（`"trial"` 标记渲染「试用码」条款）；拾音侧：宽触发已有在绑码必弹（天然覆盖 trial 场景）+ merge=true 恒传 | **A-2 已修 2026-10-31；⑥件② 2026-11-02；净屏适配+方案 A 2026-11-03** |
 | A 在途防重 | 已实现（submitting 锁+双钮禁用+在途锁弹窗） | **A-3 已修 2026-10-31** |
-| B 欢迎提示 | 轻 toast 非模态（净屏资格卡） | 防与强更弹窗叠加；批2 v3 F 表拍板 |
+| B 欢迎提示 | **模态卡片弹窗**（confirmDialog 三段式，延迟 2s 错峰强更——2026-11-01 用户拍板推翻本行原「轻 toast」落字；批6 F-08④ 回填 2026-11-03） | 防与强更弹窗叠加改错峰承担：强更在途先不消费（下个前台重试） |
 | B 体验卡 | 不上架 | 无渠道售卖形态 |
 | C 解绑月限事前文案 | 已补（三语含「每 30 天限 1 次」+新设备重激活语义） | **A-4 已修 2026-10-31；文案口径 11-03 对齐 30 天滚动窗** |
 | C 远程解绑/绑定三态/设备列表 | **已实现（D1 提前，2026-10-31 KeyInfo 批）**：设置页「激活码」分组→「我的激活码」屏（码卡三态+设备列表+按码解绑+UNBOUND 一键绑回绕过融合编排+远程解绑双要素） | 用户 10-31 拍板提前；方案 doc/plans/activation-keyinfo-page.md（三角色审查 v3 定稿）；关于页激活弹窗退役（单入口） |
@@ -42,10 +42,11 @@
 | H install 上报 | 关闭 | 网关无 /app 分流；开启前置=配 location（审计 D6） |
 | H 权益事件 UI 刷新 | 已实现（bridge NativeEventEmitter 转发+注销+useActivationState 订阅，事件名 entitlement-changed） | **A-7 已修 2026-10-31** |
 | I /latest | 自建轻服务（无 meta 三键回退） | 全新建库表即权威；10-26 拍板裁剪 |
-| I 426 | /url 426→openUrl；/config min 自判强更弹窗（超越净屏）；/register 缺头待修（审计 A-6） | /config 不带版本头恒可达=有意设计（防强升死锁同 /latest 逻辑） |
+| I 426 | /url 426→UpgradeRequiredModal 统一出口（versionState 驱动，F5 直达，原 openUrl 跳浏览器退役——client.ts 批2）；/config min 自判强更弹窗（超越净屏）；/register 缺头**已修**（auth.ts :157 带头，A-6 终态；批6 F-08② 回填 2026-11-03） | /config 不带版本头恒可达=有意设计（防强升死锁同 /latest 逻辑） |
 
 ### 已知待修（引用审计报告，不在此重复维护）
 
-放量前 P1 两项（A-5 检查失败也节流/A-6 /register 缺版本头）+ F5 直达升级（并入 A-6 机制）
-+ R8 混淆包冒烟（验证门槛）；灰度前 P0 六项（A-1/A-2/A-3/A-4/A-7/F5 文案）已于
-2026-10-31 修复验证绿（tsc+eslint+compileStageKotlin）。
+**全部收口（批6 F-08③ 回填 2026-11-03）**：放量前 P1 两项（A-5 检查失败也节流/A-6
+/register 缺版本头）+ F5 直达升级已随 `526ab344` 修复验证绿；R8 混淆包冒烟 11-02 收口
+（净屏审计修复批，见 activation-audit-jingping 记录）；灰度前 P0 六项（A-1/A-2/A-3/
+A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageKotlin）。
