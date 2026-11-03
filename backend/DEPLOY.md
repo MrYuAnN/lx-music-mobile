@@ -105,7 +105,7 @@ WantedBy=multi-user.target
 
 APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `location /dl/ { alias /root/shiyin/apk/; }`（大文件走 CDN 缓存可留 EdgeOne 默认策略）。
 
-## 3. 网关 server block（**2026-10-27 已上线**，netgate 仓 commit 7e2eda1+691660b+a2990db）
+## 3. 网关 server block（**2026-10-27 已上线**，netgate 仓 commit 7e2eda1+691660b+a2990db；**2026-11-03 直连批更新：撤回源白名单判定+新增 limit_req，已部署**，方案 doc/plans/music-domain-direct.md）
 
 `deploy/shiyin-api.conf` + `deploy/shiyin-sec-headers.conf` 已拷入 nginx-gateway 仓 `nginx/conf.d/`（对外域=shiyinbox.top、回源子域=sy-api.a-stock.top、证书 lineage=sy-api.a-stock.top）。白名单两文件由 §6 观测脚本在 VPS 直接重写（仓内留基线）：**`shiyin-edge-allow.geo`（geo 判定表，.geo 后缀防 conf.d/*.conf 通配双加载）+ `shiyin-edge-realip.conf`**。`/dl/` APK 托管目录 `/root/shiyin/apk` 以 **`/srv/shiyin-apk:ro`** 挂载进网关容器（commit a2990db）。
 
@@ -115,7 +115,7 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 
 上线检查单全过（2026-10-27）：证书 SAN 覆盖回源子域 ✓（SNI 握手实测）；回源 TLS 握手 ✓（525 消除）；白名单外直连 403 ✓（本机直打源站实测）；realip 生效 ✓（日志 `$remote_addr`=用户 IP、`$realip_remote_addr`=边缘 IP）；动态接口响应头 no-store ✓（EdgeOne 控制台规则**待用户配置**）；/dl/ 直链 200 ✓；净屏回归 a-stock.top 200 / jp 301 零影响 ✓。
 
-上线检查单（拷入后逐项过）：证书 SAN 覆盖回源子域；回源 TLS 握手通过；白名单外直连源站被拒（403）；realip 生效（带 X-Forwarded-For 的回源请求，上游看到的 X-Real-IP=真实客户端 IP）；**动态接口禁缓存**（响应头已带 no-store + EdgeOne 控制台规则双保险，清单=/url /config /register /activate /redeem /device /api /latest /dash）；**/dl/ APK 直链 200**（先放一个测试文件到 /root/shiyin/apk/ 后 curl）；**凭据三处同步核对**（redis 密码：compose `.env` 与 `data/config.json` 同值；srv_token：取链 `data/config.json` 与轻服务 systemd `SHIYIN_SRV_TOKEN` 同源；Server酱/TG：取链 config notify 节与 `/root/shiyin/notify.env` 两套独立）；`upgrade_url`（`https://shiyinbox.top/download`）与轻服务官网实际下载页路由对拍防 404。
+上线检查单（拷入后逐项过）：证书 SAN 覆盖回源子域；回源 TLS 握手通过；~~白名单外直连源站被拒（403）~~（**2026-11-03 撤判定，403 检查项退役**——若再现 403=旧判定残留需排查）；realip 生效（带 X-Forwarded-For 的回源请求，上游看到的 X-Real-IP=真实客户端 IP）；**动态接口禁缓存**（响应头已带 no-store + EdgeOne 控制台规则双保险，清单=/url /config /register /activate /redeem /device /api /latest /dash）；**/dl/ APK 直链 200**（先放一个测试文件到 /root/shiyin/apk/ 后 curl）；**凭据三处同步核对**（redis 密码：compose `.env` 与 `data/config.json` 同值；srv_token：取链 `data/config.json` 与轻服务 systemd `SHIYIN_SRV_TOKEN` 同源；Server酱/TG：取链 config notify 节与 `/root/shiyin/notify.env` 两套独立）；`upgrade_url`（**2026-11-03 起=`https://sy-api.a-stock.top/download`**，426 body.url 同源同字段）与轻服务官网实际下载页路由对拍防 404；**limit_req（2026-11-03 新增）**：/url+/register 共用 zone（10r/s burst 20）+/config 独立 zone，`limit_req_status 429`——验收=无 token 压频 /url 响应码 401→429 转变（limit_req 先于上游鉴权），429 语义=App 提示不自动重试（勿改回默认 503，会触发 App 交换源链重试放大）。
 
 ## 4. 源站证书（DNS-01，**2026-10-27 已签发**；SAN=shiyinbox.top+sy-api.a-stock.top，至 2027-01-25）
 
@@ -153,6 +153,14 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
   4. 网关 realip 落地（审查 C-1）：观测法脚本 `deploy/edge-allow-update.sh`（详见 §6）——allow/realip 同源自动生成；**DEPLOY.md §3/§6 原定「EdgeOne API 拉取」口径作废**（免费套餐源站防护停用无 API，2026-10-27 拍板观测法）。
 - 部署形态：`/root/shiyin/apiserver/`（compose+config），fork 仓独立演进（上游 merge 用）。
 
+## 5.4 防滥用加固批（**2026-11-03 成稿待部署**，方案 `doc/plans/url-abuse-hardening.md`，三席审查定稿）
+
+- **批① 反脚本三件套+四小件**（fork 仓）：per-token 唯一曲目闸（`url_uniq_limit` 120/h，Lua 原子「判→写→首次 EXPIRE」，SET 幂等=同歌/多音质不重复计数，0=停用）+ refresh 子闸（`url_refresh_limit` 12/h，掐 refresh=1 缓存穿透放大器）+ songId 格式白名单（先 kg lower 归一再校验，`songid_validate`）+ 429 统一带 Retry-After；dev_test_key 撤生产模板+启动断言（`assert_startup_safety`，enable=true 时键非空即 critical 哨兵）+ 激活码格式前置校验（锚定 license-platform NewID：`{prefix}-5×5` base32，宽集宁漏勿错，`key_format_validate`）+ 归属地查询 Redis 缓存（24h+负缓存 10min，ip.py 布尔陷阱顺带修）。**网关件**：jingping-api.conf /register limit_req 1r/s burst 3 不带 nodelay + limit_req_status 429（本 block=现网注册唯一公网面，可独立先行部署）。
+- **批② 分级熔断**（fork 仓）：url 模块异常分类改造（tx.py 连接级=aiohttp.ClientError/TimeoutError/OSError → `UpstreamConnectionError` 带 uin；业务级=FailedException 响应码族，**风控特征码清单初版留空，实测采样定义**）+ `modules/refresh/breaker.py` 连接级熔断（**与 health.py 凭证链完全分轨**：键族 conn_fail:/conn_down:/conn_alldown:，独立参数组 conn_fail_window/threshold/cool_down，禁走 mark_ok/mark_fail——保活与取链非同一上游互清会振荡；粒度=融合案拍板 7：{source}:{uin} 记账→选号过滤出池（tx.py 选号前置）→全账号 down 升级源级 conn_alldown（/config 剔除+/url 403）+半开探测定时任务（独立于保活链，u.y.qq.com 可达性探测，status<500=网络通））+ 业务级窗口计数告警（不摘源）+ notify 全局日配额分级闸（high 4/low 2 条每日，Server酱 5 条/天防击穿）。
+- **口径迁移（I-E 显式声明）**：原「wy/kw 不参与自动摘源」修订为「**凭证级**摘源仍仅 tx/kg；**连接级熔断覆盖全部配置源**」（health.py 头注释+breaker.py 头注释已同步）。
+- **回滚**：fork revert 后须 `DEL` Redis `shiyin:source_down:*` 与 `shiyin:conn_down:*`/`conn_alldown:*`（标记 TTL 最长 3 天残留被既有消费点续用）；uniq:/refr:/conn_fail:/biz_fail: 带短 TTL 自然消亡。
+- **验收**：见方案 §四（curl 超阈值 429/边界值/熔断演练 hosts 定向阻断 u.y.qq.com/正常批量下载无 429/真码正向注册）。
+
 ## 5.5 tx CDN 域名健康巡检（**2026-10-29 上线**，装机走查 #1 发现 ws.stream.music.qq.com NXDOMAIN 后建）
 
 - **事件**：QQ 已下线老 CDN 域名 `ws.stream.music.qq.com`（DNS NXDOMAIN）——服务端取 vkey 正常（/url 全 200）但拼出的播放 URL 域名不存在 → App 永远缓冲 → url 缓存过期 → 切歌。§八#2「维护接力风险」首例实锤。
@@ -161,10 +169,11 @@ APK 托管：`/latest` 的 url 指向对外域 `/dl/` 路径 → 网关加 `loca
 - **风控纪律（脚本头注释在案，勿破坏）**：①永不调用 QQ 账号态接口（u.y.qq.com 取 vkey 等）——探测零账号交互；②音量 30min×3 域名×100B，低于真实用户一分钟播放流量（播放器 seek 即 Range 请求形态）。
 - **遗留**：vkey 缓存中存有旧域名 URL——换域名后需清 Redis `shiyin:url:tx_*`（2026-10-29 已手动清）；脚本剔除/恢复时自动重启容器但**不清 vkey 缓存**，若剔除后播放仍异常先查此缓存。
 
-## 6. EdgeOne 回源白名单自动更新（防线 2 运维项；**2026-10-27 拍板改观测法**）
+## 6. EdgeOne 回源白名单自动更新（防线 2 运维项；**2026-10-27 拍板改观测法**；**2026-11-03 直连批更新：观测输入改回源形态**）
 
 - **拍板背景**：EdgeOne 免费套餐 2025-10 已停用「源站防护」——回源网段无公开列表、无 API（`DescribeOriginProtection` 体系付费专属；官方对免费版的推荐替代=回源鉴权头/mTLS）。**2026-10-27 用户拍板：观测法自建**（免费；业界主流=CDN 厂商公开网段+自动拉取如 Cloudflare /ips，本产品偏离业界的原因=厂商免费档不提供数据源；后续升付费可无缝切换官方 API 数据源）。
-- 机制（fork 仓 `deploy/edge-allow-update.sh`，cron 每 5 分钟）：从网关拾音 block 访问日志（`log_format shiyin_edge`，status 恒行尾）提取**被 403 拒的回源请求**来源 IP → 三层判据（SNI∈拾音域 / XFF 非空=回源形态 / whois 腾讯归属，whois 带 10s 超时+7 天缓存）→ 入观测表（带时间戳只增不删，容量上限 200 超限告警）→ 生成 `shiyin-edge-allow.conf`（`allow <网段>;`）与 `shiyin-edge-realip.conf`（`set_real_ip_from <网段>;`，审查 C-1 realip 信任源）同源两文件 → `nginx -t` 通过后 reload（失败自动回滚备份+告警）。/24 聚合为生成时派生视图（同前缀 ≥3 个纯 IP），不改写观测表。
+- **2026-11-03 直连批更新**（方案 doc/plans/music-domain-direct.md §三.1）：网关撤 403 判定后无「被拒请求」可观测——脚本观测输入从「被 403 拒的请求」改为「全部回源形态请求」（三层判据不变），正常回源边缘 IP 持续入表喂 realip 网段（C-1 注册日限还原依赖，停更=边缘 IP 分桶误伤回归）；**allow.geo 不再被 conf 引用但同源照常生成**（回退「conf 改回防护形态」时的判定依据，停更=回退链自带故障——EdgeOne 扩段后回退即 403）。realip 是 limit_req 的前置依赖（realip PREACCESS 改写先于 limit_req ACCESS 求值，key=$binary_remote_addr 已是还原后真实 IP）。
+- 机制（fork 仓 `deploy/edge-allow-update.sh`，cron 每 5 分钟）：从网关拾音 block 访问日志（`log_format shiyin_edge`，status 恒行尾）提取**回源形态请求**来源 IP → 三层判据（SNI∈拾音域 / XFF 非空=回源形态 / whois 腾讯归属，whois 带 10s 超时+7 天缓存）→ 入观测表（带时间戳只增不删，容量上限 200 超限告警）→ 生成 `shiyin-edge-allow.geo`（geo 判定表）与 `shiyin-edge-realip.conf`（`set_real_ip_from <网段>;`，审查 C-1 realip 信任源）同源两文件 → `nginx -t` 通过后 reload（失败自动回滚备份+告警）。/24 聚合为生成时派生视图（同前缀 ≥3 个纯 IP），不改写观测表。
 - **安全边界知情条（三席审查 I-8 记录）**：SNI/XFF 可伪造、whois 无法区分 EdgeOne 边缘与腾讯云租户——白名单边界实为「腾讯全系 IP」而非「EdgeOne 回源」；伪造入表者仍需有效激活码才可注册，realip 伪造 XFF 逃逸注册限流收益低。根本安全边界=鉴权链五闸。
 - **自愈时效**：被 deny 请求照样记日志 → 新边缘 IP「首次被拒」与「被观测到」同时发生，cron 5 分钟窗口自愈；读日志与 truncate 之间有 copytruncate 型丢行窗口（影响=单 IP 观测延迟一轮，审查 I-5 取舍记录）。首版：VPS tcpdump 443 抓真实回源边缘 IP → `first-batch` 样本文件生成（自动过 whois 判定）。
 - 自检（脚本每轮自动）：`curl https://shiyinbox.top/latest` 全链回源——200/404=通（404=轻服务未发版正常）、**403=EdgeOne 被白名单拒=网段漂移立即告警**、525=回源 TLS 失败（证书问题）、000=边缘不可达。告警 Server酱/TG 双通道（`/root/shiyin/notify.env`，1h 节流）。
@@ -283,10 +292,10 @@ trial_min_client_ver=1.7.0→1.0.0（全局单键，即时生效免重启；备�
 stdout 只有净屏域——查拾音请求别 grep 错日志；
 ③ 外部探针纪律见上 dev key 节。
 
-**测试包分发链 SOP（2026-11-01 收口）**：`/dl/` 已 nginx internal 收敛——版本化 APK 直链一律 404，
-唯一入口 `https://shiyinbox.top/dl/latest`（轻服务 X-Accel 转发 app_releases 表首条）。外发测试包：
+**测试包分发链 SOP（2026-11-01 收口；2026-11-03 直连批起登记 url 换新域）**：`/dl/` 已 nginx internal 收敛——版本化 APK 直链一律 404，
+唯一入口 `https://sy-api.a-stock.top/dl/latest`（轻服务 X-Accel 转发 app_releases 表首条；latestStableURL 按登记值 host 派生，**下载域=登记值域**——换域跟切靠登记，非自动跟随请求域；旧域 shiyinbox.top/dl/latest 仍通=存量装机回退兜底）。外发测试包：
 上传 `/root/shiyin/apk/`（容器内 `/srv/shiyin-apk`）→ `/root/shiyin/shiyin-server latest-set
--db /root/shiyin/shiyin.db -version <不升则同版> -url https://shiyinbox.top/dl/<file> -note ...`
+-db /root/shiyin/shiyin.db -version <不升则同版> -url https://sy-api.a-stock.top/dl/<file> -note ...`
 （同版登记=检查更新静默不弹无发版语义；note 中文**经 ssh 参数必乱码，必须 `<<'EOF'` stdin+
 `$(cat)` 传**；note 逐行「新增：/修复：/优化：」前缀分组，规则单源 App `src/utils/changelog.ts`，
 无前缀归「更新」组——94debf06 起 App 弹窗/更新日志页/官网 download.html 三端同规则）。
