@@ -20,11 +20,14 @@
 
 ## 各阶段明细
 
-### S0 工作区清账+决策项速拍
-- **commit 序列**（逐笔确认）：①方案A trial 三仓提交（净屏混入件②需拆开）②全源停售批（Purchase/index.tsx 摘 tab）③平台仓两笔（造数债+差异确认分层修复，另涉部署）④审计文档落库（doc/plans/audit/ + functional-audit-program.md）
-- **决策项速拍**（6 拍 4，两项已消解）：F-09 闲鱼归因（补交付 or 砍范围）/F-21（建议落字「平台域不设闸，强升靠 /config 自判」）/W3-11 单段 SKU 快照/R-c 运营占位内容（**客服方式+xianyu_url+FAQ 文案——需你供给内容，放量前置**）；~~N-07~~（全源停售消解）~~W3-07~~（全源停售消解）
+### S0 工作区清账+决策项速拍 —— **已完成（2026-11-03）**
+- **commit 9 笔落库**：主仓五笔（直连批 2abfc318 / trial·App 侧 2ef03898 / F-02 faq 修复 4eb6e954 / 全源停售摘 tab da515654 / 审计文档 657b23fe）+ 平台 trial 补账 afaffac + order-core gofmt dc067ec + fork 白名单脚本 7c2c1e8 + 净屏 trial 侧 06ad686。vc13 bump（package.json）暂缓随 S3；净屏 iOS 调研报告 untracked 留用户处置；`backend/DEPLOY.md`+`url-abuse-hardening.md` 为并行会话在途改动未触碰。
+- **决策四项拍板**：F-09 闲鱼归因=**补交付**（挂 S6/S7）；F-21 426 闸=**发版后配置**（S8 节点执行，防 11-01 同型断链）；W3-11=**补齐快照锚**（挂 S7）；R-c=**先修 FAQ 口径**（F-13 入 S8），客服方式/xianyu_url/item_id/FAQ 内容待供给——**放量前必须补齐（硬前置）**。
 
-### S1 批1 · P0-A ⑦b 下载私有化回归族【最高优先】
+### S1 批1 · P0-A ⑦b 下载私有化回归族【最高优先】—— 代码+审查+修复完成（2026-11-03），待装机回归
+- 五步实施+迁移链重排（判别翻转/先嵌后混/改名补跑/白名单+合成/存量统一混淆）后跑三角色审查：**C×2/I×4/S×9/证伪×8**，处置全拍板并已修复重验（tsc/eslint/assembleStage 绿）
+- **审查回溯登记（产品席 I-2，落此存证）**：①「存量统一混淆」为判别修复的连带新增（拍板文字外），方向与 ⑦b 承诺一致，审查后追认；②备案语义更新——「首次播放 restore 后永久明文」（窗①备案）改为「播放后明文、下次启动兜底链复暗（播放中文件跳过）」；③⑦b 承诺实证文本的正确指路=doc/plans/audit/audit-app-core.md :245-254 + audit-summary.md §二 P0-A（此前误指 self-hosted-music-server.md，该文件无⑦b 关键词）
+- **审查修复清单**：C1 .shy 嵌入通道改名往返复活（jaudiotagger 扩展名分派必败——⑦b 起嵌入层实为死通道，本修复兑现 10-30 元数据绑定承诺）/C2 restore 试算验证式（AES 非对合，封死「每播加深一层」+真自愈 k≤4）/I1 混淆前播放态跳过/I2 孤儿跳过嵌入直回 picUrl+记 doneList/I3 迁移 store 预写+失败回滚/I4 兜底混淆改全目录口径/S-a 判定收窄 isAppDownloadedPath/S-b parseDownloadStem 单源/S-c 纯数字串按秒/S-f unlink 前置/S-g 嵌入步独立兜底/S-h 日志前缀统一；挂起：S-d 孤儿时长占位符（UI 语义）、S-e IO 让路（待量化）
 - 五步硬互锁（顺序即依赖）：①判别修 `encrypt == !plain`（CryptoModule :203）②同批调序 完成链 moveFile→embedTaskTags→obfuscateFileHeader ③迁移改名补跑+`localTagEmbedMigrationDone` 清位 ④扫描白名单追加 DOWNLOAD_DIR+`.shy` 元数据合成 ⑤存量损坏自愈验证（修正版 restore XOR 对合播放）
 - 验收口径：真机 flac 下载→本地可播；已下载 tab 恢复显示；存量 `退后.flac.shy` 播放自愈；mp3 标签嵌入完好
 - 置信度升级：本批验收顺带完成窗① V1/V3/V4 残项真机实证
@@ -36,7 +39,7 @@
 
 ### S3 下版窗口（发布列车）
 - 车上内容：批1 + 全源停售摘 tab + 方案A trial App 侧 + config.ts:19 注释修正（P0-B 残余）+ 直连登记值（若 S2 赶上）
-- 发布 checklist：versionCode 11→12 单调；app_releases 表首=最新语义核查（DEPLOY 坑单）；更新通道 /latest 登记
+- 发布 checklist：versionCode 12→13 单调（工作区已 bump 待随车提交）；app_releases 表首=最新语义核查（DEPLOY 坑单）；更新通道 /latest 登记
 - 发布后真机回归包：V1/V3/V4+U1 三态封锁实测 + trial 两场景 + 购买页全源 tab 消失/组合购正常/存量 d7 权益卡 + 直连时延复测
 
 ### S4 批2 · 放量硬前置（跨库，顺序即依赖）
@@ -45,9 +48,9 @@
 - 解锁：**wy/kg/kw 开售资格（硬门槛）+ 正式放量**
 
 ### S5 批3：W3-02 play() 续播闸（缓存路径随之收敛）+ W3-05 跨源 403 文案分离（fork message+客户端适配）
-### S6 批4 App RN 小修批：F-04/F-05/F-10/F-16/F-17/F-19 + W3-12 + ①下载-1/2/4 + 评论两修 + 歌手桶 + ⭐P2 搭车（清单见 audit-summary §四）
-### S7 批5 服务端+order-core：F-14/F-18/W3-08/09/10/13/14/16/17 + F-15/F-20（W3-07 已消解剔除；W3-11 若 S0 拍板「要求快照」则入本批）
-### S8 批6 文档/登记：DR1-6 + F-08 余三处（净屏批提交后回灌）+ DEPLOY.md 勘误（R-a）+ F-09/F-21/W3-11 落字 + R-c 运营内容上架
+### S6 批4 App RN 小修批：F-04/F-05/F-10/F-16/F-17/F-19 + W3-12 + ①下载-1/2/4 + 评论两修 + 歌手桶 + **F-09 闲鱼归因基础版交付（S0 拍板）**+ ⭐P2 搭车（清单见 audit-summary §四）
+### S7 批5 服务端+order-core：F-14/F-18/W3-08/09/10/13/14/16/17 + F-15/F-20 + **W3-11 单段 SKU 快照锚（S0 拍板补齐）**（W3-07 已消解剔除）
+### S8 批6 文档/登记：DR1-6 + F-08 余三处（净屏批提交后回灌）+ DEPLOY.md 勘误（R-a）+ F-13 FAQ 口径修正 + **F-21 products.min_client_ver 配置（S0 拍板：发版后执行）** + R-c 运营内容上架（待用户供给；放量前置）
 
 ## 需要你参与的节点
 1. S0：逐笔 commit 确认 + 4 个决策项拍板 + R-c 运营内容供给
