@@ -249,10 +249,14 @@ func (ps *PanelServer) ordersSection() map[string]any {
 	tagPreset := ps.St.PresetTags()
 	skuOpts := []map[string]string{{"v": "", "label": "（选择 SKU）"}}
 	for _, sk := range ps.St.SKUsView() {
-		label := sk.Name + " ¥" + fmt.Sprintf("%.2f", float64(sk.PriceCents)/100)
+		// ⑨（2026-11-04 拍板）：建单下拉只列已上架 SKU（对标 Shopify 建单只列 active
+		// 商品——Draft/Archived 隐藏，PM 席已实核；Stripe 未核实不引用）；需补录旧 SKU 走
+		// 「SKU 管理临时上架→建单→再下架」，不加「含已下架」开关。回显命中已下架码
+		// 时下拉无匹配项自然回落首项空值，被下方「未选择 SKU」拦截，零额外兼容
 		if !sk.Enabled {
-			label += "（已下架）"
+			continue
 		}
+		label := sk.Name + " ¥" + fmt.Sprintf("%.2f", float64(sk.PriceCents)/100)
 		skuOpts = append(skuOpts, map[string]string{"v": sk.ID, "label": label})
 	}
 
@@ -311,13 +315,16 @@ func (ps *PanelServer) ordersSection() map[string]any {
 	manualForm["action_id"] = "manual_order_create"
 	manualForm["modal"] = true
 	manualForm["button"] = "＋ 新建订单"
-	manualForm["notice"] = "提交即建单+划码并弹出激活码复制；金额可按议价实收填写；标签选「送人/活动赠送」自动金额归 0、不计销售额与订单数；测试单建单后点详情「标测试」；组合 SKU 数量须为 1。"
-	manualForm["confirm"] = "请核对 SKU/数量/金额无误——提交即建单+划码并计入统计（送人/活动赠送自动标记非销售；可事后在订单行「详情」回池/作废补救）。"
+	manualForm["notice"] = "提交即建单+划码并弹出激活码复制；金额可按议价实收填写；标签选「送人/活动赠送/测试」自动金额归 0、不计销售额与订单数（测试单默认列表隐藏，类型筛选「测试」可查）；有实收金额请写入买家备注；组合 SKU 数量须为 1。"
+	manualForm["confirm"] = "请核对 SKU/数量/金额无误——提交即建单+划码并计入统计（送人/活动赠送/测试自动标记非销售；可事后在订单行「详情」回池/作废补救）。"
 	manualForm["fields"] = []map[string]any{
 		{"name": "sku", "label": "SKU", "type": "select", "options": skuOpts, "value": lastManual.SKU},
 		{"name": "qty", "label": "数量", "value": lastManualQty},
 		{"name": "amount", "label": "实收金额（元）", "placeholder": "留空=SKU 目录价×数量"},
-		{"name": "tag", "label": "用途标签（留空=未分类）", "type": "tags", "options": tagPreset, "value": lastManual.Tag},
+		// ⑩（2026-11-04 拍板）：标签不回显上次值——回显预选曾把「测试」标签静默继承进
+		// 新单（金额旁徽章=标签本身，用户侧「自动标注为测试」观感）；标签影响统计口径，
+		// 默认即结论是坑。SKU/数量回显保留（选品便利无害）
+		{"name": "tag", "label": "用途标签（留空=未分类）", "type": "tags", "options": tagPreset},
 		{"name": "contact", "label": "买家备注（闲鱼昵称/链接，可选，可搜索）"},
 		// 防重 token：每次 summary 渲染生成，提交必随（双击/重放幂等回显原单）
 		{"name": "form_token", "value": "mf-" + strconv.FormatInt(time.Now().UnixNano(), 10)},
@@ -877,6 +884,13 @@ func (ps *PanelServer) handleAction(w http.ResponseWriter, r *http.Request) {
 			respond(false, "未选择 SKU", nil)
 			return
 		}
+		// ⑩口径统一（2026-11-04 拍板）：「测试」标签=测试单自动置 is_test（金额非零由
+		// order-core CreateManualChannelOrder 归 0）。入口特判而非扩 FreeTags：
+		// NonSaleTags 同时是默认视图显示白名单（notPureTestWhere），扩集合会反转
+		// 「默认视图排测试」既有拍板（三席审查 I-1 架构/优化两席同发现否决）
+		if in.Tag == manualTestTag {
+			in.IsTest = true
+		}
 		if v := val("qty"); v != "" {
 			n, e := strconv.Atoi(v)
 			if e != nil || n <= 0 {
@@ -1022,6 +1036,10 @@ const (
 	panelNosLimit  = 200
 	panelNoMaxLen  = 32
 )
+
+// manualTestTag 「测试」标签字面量（平台 PoolPresetTags 预设成员；2026-11-04 ⑩口径统一
+// 入口特判用——建单带此标签自动置 is_test，见 manual_order_create 内注释）
+const manualTestTag = "测试"
 
 // deviceOrderRows 设备 360 订单行组装单源（orders_by_uid/orders_by_nos 共用；
 // 净屏同构：uid/channel/tag/created_at 为来源列原始键，desc 快照优先、实时回退）。
