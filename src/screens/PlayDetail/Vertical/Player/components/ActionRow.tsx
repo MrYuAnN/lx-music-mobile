@@ -21,6 +21,7 @@ import { toggleTranslation } from '@/core/lyric'
 import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
 import { reloadCurrentWithQuality } from '@/core/player/player'
 import { guardEntitlementGate } from '@/core/shiyin/client'
+import { useActivationState, isTrialOnly } from '@/core/shiyin/activation'
 import DownloadQualityModal, { type DownloadQualityModalType } from '@/components/common/DownloadQualityModal'
 import { createStyle, toast } from '@/utils/tools'
 import { PLAY_QUALITY_LIST } from '@/core/music/utils'
@@ -46,6 +47,8 @@ interface ActionItem {
   onPress: () => void
   onLongPress?: () => void
   disabled?: boolean
+  /** 灰态视觉但可点（点击轻提示原因，2026-11-04 试用下载置灰拍板）；disabled=纯禁用无反馈 */
+  dimmed?: boolean
 }
 
 const getOnlineMusicInfo = () => {
@@ -75,6 +78,9 @@ const ActionRow = ({ page }: ActionRowProps) => {
   // 实际播放档（题1 拍板4：本地命中=下载档、在线=落地档；null 回退全局设置档）
   const actualQuality = useActualQuality()
   const downloadedSet = useDownloadedSet()
+  // 试用码下载置灰（2026-11-04 用户拍板）：事件订阅驱动，试用激活正式码当下亮起
+  const { info: activationInfo } = useActivationState()
+  const trialOnly = isTrialOnly(activationInfo)
 
   // 当前歌在线身份（题1 拍板1 单源归一）：下载槽三态/音质面板取数全经此，禁用 meta.songId
   const identityMusicInfo = useMemo(() => {
@@ -235,18 +241,23 @@ const ActionRow = ({ page }: ActionRowProps) => {
             : t('download_failed')
       return { icon: 'download-2', label, disabled: false, onPress: openDownloadManager }
     }
+    // 试用码下载置灰（2026-11-04 用户拍板）：灰态可点轻提示（dimmed≠disabled 纯禁用）；
+    // 置于已下载分支前——已下载曲重下也是发起新下载，同受闸；任务管理态优先保留（管理≠发起）
+    if (trialOnly) {
+      return { icon: 'download-2', label: t('download_action'), disabled: false, dimmed: true, onPress: () => { toast(t('download_trial_disabled_hint')) } }
+    }
     if (actualMusicInfo && downloadedSet.has(downloadedAction.getDownloadedKey(actualMusicInfo.source, actualMusicInfo.id))) {
       return { icon: 'check-circle', label: t('download_mark_downloaded'), disabled: false, onPress: showQualityModal }
     }
     return { icon: 'download-2', label: t('download_action'), disabled: false, onPress: showQualityModal }
-  }, [identityMusicInfo, actualMusicInfo, identityIsBareLocal, taskState, downloadedSet, actualQuality, t, openDownloadManager])
+  }, [identityMusicInfo, actualMusicInfo, identityIsBareLocal, taskState, downloadedSet, actualQuality, t, openDownloadManager, trialOnly])
 
   // 封面页动作组（参考图1：收藏/评论/下载/音质/更多）
   const coverActions = useMemo<ActionItem[]>(() => {
     return [
       { id: 'collect', icon: 'heart-outline', label: t('collect'), onPress: showMusicAddModal },
       { id: 'comment', icon: 'comment', label: t('comment'), onPress: showCommentScreen },
-      { id: 'download', icon: downloadSlot.icon, label: downloadSlot.label, onPress: downloadSlot.onPress, disabled: downloadSlot.disabled },
+      { id: 'download', icon: downloadSlot.icon, label: downloadSlot.label, onPress: downloadSlot.onPress, disabled: downloadSlot.disabled, dimmed: downloadSlot.dimmed },
       // 无可消费档位（本地歌等）置灰 + 中性文案，不弹空壳（缺失能力不上界面）；
       // label 显实际播放档（拍板4：本地命中=下载档、在线=落地档，回退全局设置档）
       { id: 'quality', icon: 'album', label: hasQualityOptions ? qualityLabel(actualQuality ?? playQuality, t) : t('quality'), onPress: showQualitySheet, disabled: !hasQualityOptions },
@@ -283,8 +294,8 @@ const ActionRow = ({ page }: ActionRowProps) => {
               // size=动作图标半高（真机反馈 2026-10-20：默认 14dp 实心点与 24dp 线性图标同框显粗大——
               // 缩至 12dp 槽内点径 2.6dp，视觉密度对齐线性图标线宽）
               action.id === 'more'
-                ? <View style={styles.moreIconSlot}><DotsVertical size={ICON_SIZE_ACTION * 0.5} color={action.disabled ? theme['c-font-label'] : theme['c-font']} /></View>
-                : <Icon name={action.icon} size={ICON_SIZE_ACTION} color={action.disabled ? theme['c-font-label'] : theme['c-font']} />
+                ? <View style={styles.moreIconSlot}><DotsVertical size={ICON_SIZE_ACTION * 0.5} color={(action.disabled || action.dimmed) ? theme['c-font-label'] : theme['c-font']} /></View>
+                : <Icon name={action.icon} size={ICON_SIZE_ACTION} color={(action.disabled || action.dimmed) ? theme['c-font-label'] : theme['c-font']} />
             }
             <Text style={styles.label} size={11} numberOfLines={1} color={theme['c-font-label']}>{action.label}</Text>
           </TouchableOpacity>

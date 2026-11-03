@@ -724,5 +724,6 @@
   "setting_battery_protection_on": "已开启",
   "download_storage_hint": "下载内容存于应用私有目录，卸载应用后无法恢复",
   "activation_state_n_sources": "{n} 个音源",
-  "quality_unavailable_song": "该歌曲暂无{quality}音源"
+  "quality_unavailable_song": "该歌曲暂无{quality}音源",
+  "download_trial_disabled_hint": "试用期间不支持下载，开通后可用"
 }

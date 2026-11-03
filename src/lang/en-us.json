@@ -724,5 +724,6 @@
   "setting_battery_protection_on": "On",
   "download_storage_hint": "Downloads are stored in app-private storage and cannot be recovered after uninstall",
   "activation_state_n_sources": "{n} sources",
-  "quality_unavailable_song": "This song has no {quality} version"
+  "quality_unavailable_song": "This song has no {quality} version",
+  "download_trial_disabled_hint": "Downloads are unavailable during the trial. Activate to enable."
 }

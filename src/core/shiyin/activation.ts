@@ -49,6 +49,13 @@ export const formatActivationState = (info: ActivationStateInfo | null, t: (k: k
   }
 }
 
+/** 试用唯一态判定（2026-11-04 用户拍板「试用码下载置灰」判据单源）：生效且为试用档。
+ *  并存正价码时聚合锚 paid>trial → isTrial=false 自动放行；unactivated/expired 走
+ *  guardEntitlementGate 既有引导闸，不归本判据管 */
+export const isTrialOnly = (info: ActivationStateInfo | null | undefined): boolean => {
+  return info != null && info.state == 'active' && info.isTrial
+}
+
 /** 激活态快照 hook：挂载即拉一次+权益事件驱动刷新（审计 A-7，净屏 HomeActivity
  * 生命周期席对齐——后台 claim 到账/重装恢复后界面不再滞后），另返回 refresh 供动作后刷新 */
 export const useActivationState = () => {

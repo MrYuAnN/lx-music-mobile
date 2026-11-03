@@ -1,6 +1,7 @@
 import { useRef, useImperativeHandle, forwardRef, useState } from 'react'
 import { useI18n } from '@/lang'
 import ActionSheet, { type ActionSheetItem, type ActionSheetType, type Position } from '@/components/common/ActionSheet'
+import { useActivationState, isTrialOnly } from '@/core/shiyin/activation'
 import { existsFile } from '@/utils/fs'
 import { isReadonlyList } from './listAction'
 import { handleDislike } from '@/components/OnlineList/listAction'
@@ -45,6 +46,9 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
   const menuRef = useRef<ActionSheetType>(null)
   const selectInfoRef = useRef<SelectInfo>(initSelectInfo as SelectInfo)
   const [menus, setMenus] = useState<ActionSheetItem[]>([])
+  // 试用码下载置灰（2026-11-04 用户拍板）：同 OnlineList/ListMenu 口径
+  const { info } = useActivationState()
+  const trialOnly = isTrialOnly(info)
 
   useImperativeHandle(ref, () => ({
     show(selectInfo) {
@@ -72,7 +76,12 @@ export default forwardRef<ListMenuType, ListMenuProps>((props, ref) => {
     const menu: ActionSheetItem[] = [
       { action: 'play', label: t('play'), icon: 'play' },
       { action: 'playLater', label: t('play_later'), icon: 'play-later' },
-      ...(isBareLocal ? [] : [{ action: 'download', label: t('download_action'), icon: 'download-2' }]),
+      ...(isBareLocal ? [] : [{
+ action: 'download',
+label: t('download_action'),
+icon: 'download-2',
+        ...(trialOnly ? { disabled: true, disabledHint: t('download_trial_disabled_hint') } : {}),
+}]),
       { action: 'add', label: t('add_to'), icon: 'add-to' },
       ...(readonly ? [] : [{ action: 'move', label: t('move_to'), icon: 'move-to' }]),
       ...(isLocalFile && !readonly ? [{ action: 'editMetadata', disabled: !edit_metadata, label: t('edit_metadata'), icon: 'edit-metadata' }] : []),

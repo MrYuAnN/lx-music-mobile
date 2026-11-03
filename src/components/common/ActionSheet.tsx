@@ -5,7 +5,7 @@ import SheetBase, { sheetHandleStyles, type SheetBaseType } from './SheetBase'
 import Text from './Text'
 import { Icon } from './Icon'
 import { useTheme } from '@/store/theme/hook'
-import { createStyle } from '@/utils/tools'
+import { createStyle, toast } from '@/utils/tools'
 import { ICON_SIZE , DESTRUCTIVE_RED } from '@/config/constant'
 import { scaleSizeH, scaleSizeW } from '@/utils/pixelRatio'
 import { hapticSelection } from '@/utils/haptic'
@@ -17,6 +17,9 @@ export interface ActionSheetItem {
   action: string
   label: string
   disabled?: boolean
+  /** 置灰提示（2026-11-04 试用下载置灰拍板）：disabled 且带 hint=置灰可点，点击轻提示
+   *  说明原因（区别于无 hint 的能力缺失禁用——纯不可点无反馈）；hint 不入 onPress 分发 */
+  disabledHint?: string
   icon?: string
   destructive?: boolean
   /** 菜单项角标（如「新」；hero 改版批 D4 三义分流入口标注，向后兼容存量调用方） */
@@ -80,7 +83,7 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
       <ScrollView style={styles.list} keyboardShouldPersistTaps="always" showsVerticalScrollIndicator={false}>
         {
           menus.map(menu => (
-            menu.disabled
+            menu.disabled && !menu.disabledHint
               ? (
                   <View key={menu.action} style={styles.item}>
                     <Icon name={menu.icon ?? 'full_stop'} size={ICON_SIZE.list} color={theme['c-font-label']} style={styles.icon} />
@@ -88,7 +91,21 @@ const ActionSheet = ({ menus, onPress, onHide, title }: ActionSheetProps, ref: R
                     { renderBadge(menu) }
                   </View>
                 )
-              : (
+              : menu.disabled && menu.disabledHint
+                ? (
+                    // 置灰可点（disabledHint）：灰态视觉同禁用，点击轻提示原因后不关层不分发
+                    <TouchableOpacity
+                      key={menu.action}
+                      style={styles.item}
+                      activeOpacity={0.6}
+                      onPress={() => { toast(menu.disabledHint!) }}
+                    >
+                      <Icon name={menu.icon ?? 'full_stop'} size={ICON_SIZE.list} color={theme['c-font-label']} style={styles.icon} />
+                      <Text size={15} color={theme['c-font-label']} numberOfLines={1} style={styles.label}>{menu.label}</Text>
+                      { renderBadge(menu) }
+                    </TouchableOpacity>
+                  )
+                : (
                   <TouchableOpacity
                     key={menu.action}
                     style={styles.item}
