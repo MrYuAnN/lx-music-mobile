@@ -93,4 +93,55 @@ class EntitlementVectorsTest {
             )
         }
     }
+
+    /** 向量条目 → Entitlement（tier/deviceLimit 非断言对象，填桩值） */
+    private fun entOf(keyId: String, expiries: Map<String, Long>) =
+        EntitlementManager.Entitlement(keyId = keyId, expiries = expiries, tier = "m1", deviceLimit = 1)
+
+    @Test
+    fun maskingVectors() {
+        val root = loadVectors() ?: run { assumeTrue("[entitlement-vectors] 向量文件不可达，skip", false); return }
+        val arr = section(root, "masking") ?: return
+        for (i in 0 until arr.length()) {
+            val v = arr.getJSONObject(i)
+            val apps = HashMap<String, Long>()
+            v.optJSONObject("apps")?.let { jo -> jo.keys().forEach { k -> apps[k] = longOf(jo.opt(k)) } }
+            val allApps = HashMap<String, Long>()
+            v.optJSONObject("allApps")?.let { jo -> jo.keys().forEach { k -> allApps[k] = longOf(jo.opt(k)) } }
+            val cfg = EntitlementConfig(fallbackApp = v.optString("fallbackApp").takeIf { it.isNotEmpty() })
+            val got = EntitlementManager.maskApps(apps, allApps, v.optLong("nowSec"), cfg)
+            val expected = HashMap<String, Long>()
+            v.optJSONObject("expectedMasked")?.let { jo -> jo.keys().forEach { k -> expected[k] = longOf(jo.opt(k)) } }
+            assertTrue(
+                "${v.optString("id")}: got=$got expected=$expected",
+                got == expected,
+            )
+        }
+    }
+
+    @Test
+    fun primaryVectors() {
+        val root = loadVectors() ?: run { assumeTrue("[entitlement-vectors] 向量文件不可达，skip", false); return }
+        val arr = section(root, "primary") ?: return
+        for (i in 0 until arr.length()) {
+            val v = arr.getJSONObject(i)
+            val entries = ArrayList<Pair<String, EntitlementManager.Entitlement>>()
+            val ea = v.optJSONArray("entries")
+            if (ea != null) {
+                for (j in 0 until ea.length()) {
+                    val e = ea.getJSONObject(j)
+                    val exp = HashMap<String, Long>()
+                    e.optJSONObject("expiries")?.let { jo -> jo.keys().forEach { k -> exp[k] = longOf(jo.opt(k)) } }
+                    entries.add(e.optString("keyId") to entOf(e.optString("keyId"), exp))
+                }
+            }
+            val cfg = EntitlementConfig(fallbackApp = v.optString("fallbackApp").takeIf { it.isNotEmpty() })
+            val got = EntitlementManager.pickPrimary(entries, v.optLong("nowSec"), cfg)?.first
+            val expected = v.optString("expectedPrimary").takeIf { it.isNotEmpty() }
+            assertTrue(
+                "${v.optString("id")}: got=$got expected=$expected",
+                got == expected,
+            )
+        }
+    }
 }

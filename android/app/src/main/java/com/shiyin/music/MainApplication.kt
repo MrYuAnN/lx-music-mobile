@@ -27,6 +27,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 import top.astock.activation.ActivationSdk
+import top.astock.activation.EntitlementConfig
 import top.astock.activation.EntitlementManager
 import top.astock.activation.EntitlementSyncScheduler
 
@@ -84,6 +85,12 @@ class MainApplication : Application(), ReactApplication {
       // 零写入探针实证路由通（2026-11-03 线上 400 bad_request=端点在线）。看板
       // 「安装设备（版本/首启/最近活跃）」数据源，SDK 接入清单【放量】项接线
       installReportEnabled = true,
+      // T4 件5 权益判定配置（2026-11-04）：兜底键+五键表宿主注入——APP_CN 双源废止
+      // （原 RN activation.ts / ExpiryReminderWorker.kt 各一份，F-03 红线随单源化消解）
+      entitlementConfig = EntitlementConfig(
+        fallbackApp = "shiyin",
+        productApps = listOf("shiyin", "tx", "wy", "kg", "kw"),
+      ),
     )
     // RESTORED→「已恢复本机激活」toast（净屏 :193 同款常驻席：启动 restore 先行命中，或
     // 试用 claim 命中 409 trial_has_license 时 SDK 内部自动导航 restore 找回，找回成功即通知）

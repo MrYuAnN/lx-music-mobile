@@ -701,6 +701,61 @@ object EntitlementManager {
         }
     }
 
+    // ---- T4 件5 编排层：真值/选主单源入口（bridge 每键真值下发与 Worker 遮蔽
+    // 消费方迁移的 SDK 面；cfg 单源 ActivationSdk.entitlementConfig，净屏默认空配置）----
+
+    /** 每码真值视图：原始 expiries + 遮蔽后视图 + 每键 valid 标记（真值判定语义单源，
+     *  消费方不再自算时间比较——时钟口径随 effectiveNowSeconds 统一） */
+    data class EntryTruth(
+        val keyId: String,
+        val ent: Entitlement,
+        val masked: Entitlement,
+        val validKeys: Set<String>,
+    )
+
+    /** 选主结果（码卡主行新语义，审查 I-E；横幅归因/Worker 通知不切换） */
+    data class Primary(val keyId: String, val ent: Entitlement)
+
+    fun entryTruths(context: Context): List<EntryTruth> {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val entries = keyEntries(context)
+        val allApps = buildMap { entries.forEach { (_, ent) -> putAll(ent.expiries) } }
+        val now = effectiveNowSeconds(p)
+        val cfg = ActivationSdk.entitlementConfig
+        return entries.map { (key, ent) ->
+            val maskedExp = maskApps(ent.expiries, allApps, now, cfg)
+            EntryTruth(
+                keyId = key,
+                ent = ent,
+                masked = ent.copy(expiries = maskedExp),
+                validKeys = ent.expiries.filterValues { validAt(it, now) }.keys,
+            )
+        }
+    }
+
+    fun primarySelection(context: Context): Primary? {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val pick = pickPrimary(keyEntries(context), effectiveNowSeconds(p), ActivationSdk.entitlementConfig)
+        return pick?.let { Primary(it.first, it.second) }
+    }
+
+    /** 通知面编排（T4 件5；到期提醒 Worker 消费）：遮蔽后 merged 到期表 + SDK 判定
+     *  钟秒值。遮蔽/键真值/时钟口径（effectiveNowSeconds，回拨防护）全 SDK 单源——
+     *  调用方只做窗口算术与去重，不再自算时间比较（原裸系统钟分叉消解，拍板 #7）。
+     *  无权益返回空表（now 仍给判定钟，调用方循环空转）。 */
+    fun maskedMerged(context: Context): Pair<Map<String, Long>, Long> {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = effectiveNowSeconds(p)
+        val st = current(context)
+        val ent = (st as? State.Active)?.e ?: (st as? State.Expired)?.e ?: return Pair(emptyMap(), now)
+        return Pair(maskApps(ent.expiries, ent.expiries, now, ActivationSdk.entitlementConfig), now)
+    }
+
+    /** 混合态收口判定（通知面②）：本键已过期但存在其他键有效 → true。
+     *  原 Worker 内联「expiries.any { k != app && valid }」式的 SDK 单源代理。 */
+    fun hasOtherValidKey(apps: Map<String, Long>, excludeApp: String, nowSec: Long): Boolean =
+        anyActive(apps, nowSec, excludeApp)
+
     /**
      * 首启免费试用 claim（2026-10-13 拍板，方案 docs/首启免费试用3天实施方案-v1.md）：
      * 调用契约=restoreFromDevice 先行且未恢复出权益、本地 State==Unactivated
@@ -727,17 +782,57 @@ object EntitlementManager {
     internal fun shouldAttemptTrialAt(fails: Int, lastAt: Long, nowMs: Long): Boolean =
         lastAt <= 0L || nowMs - lastAt >= trialBackoffMs(fails)
 
-    // 权益真值判定 seam（T4 件3 测试面，2026-11-04：语义向量锁定的纯函数化——
-    // 向量=平台仓 sdk/android/tests/entitlement-vectors.json，跨仓语义契约锁，
-    // 方案 doc/plans/entitlement-semantics-single-source.md 件3/件5）。
-    // 现状谓词原样搬家（computeCurrent:375 聚合 + isEntitled:383 单值），零行为变化；
-    // 收编批三层化时编排层改调本 seam，向量断言对象切换、向量本身不变（等价性证明）。
+    // 权益真值判定 seam（T4 件3/件5，2026-11-04：语义向量锁定的纯函数化——
+    // 向量=tests/entitlement-vectors.json，跨仓语义契约锁，方案件3/件5）。
+    // 先导批=现状谓词原样搬家（computeCurrent/isEntitled 改调本 seam，零行为变化）；
+    // 收编批=断言对象即本层，masking/primary 段随本批启用（向量同步补段）。
     /** 单值真值：0=永久；到期在未（>nowSec）有效；否则过期（负值/脏值由调用方上游解析兜底） */
     internal fun validAt(exp: Long, nowSec: Long): Boolean = exp == 0L || exp > nowSec
 
-    /** 聚合视角：任一 app 真值即 active（多码合并表 any 语义，computeCurrent 同款） */
-    internal fun anyActive(apps: Map<String, Long>, nowSec: Long): Boolean =
-        apps.values.any { validAt(it, nowSec) }
+    /** 聚合视角：任一 app 真值即 active（多码合并表 any 语义，computeCurrent 同款）；
+     *  excludeApp=排除指定键（Worker 混合态收口「排除本键」消费，审查 S3） */
+    internal fun anyActive(apps: Map<String, Long>, nowSec: Long, excludeApp: String? = null): Boolean =
+        apps.any { (k, v) -> k != excludeApp && validAt(v, nowSec) }
+
+    /** 遮蔽（T4 件5 通用兜底机制）：cfg.fallbackApp 在全局聚合表 allApps 中有效 →
+     *  apps 键集被遮（只留 fallbackApp 键）；兜底未配置/无效 → 原样返回。
+     *  现状对应：Worker 通知遍历「app!=shiyin && shiyinExp 有效 → continue」（拾音
+     *  消费方迁移后走本函数，净屏 cfg 默认空=恒原样）。 */
+    internal fun maskApps(
+        apps: Map<String, Long>,
+        allApps: Map<String, Long>,
+        nowSec: Long,
+        cfg: EntitlementConfig,
+    ): Map<String, Long> {
+        val fb = cfg.fallbackApp ?: return apps
+        val fbExp = allApps[fb] ?: return apps
+        if (!validAt(fbExp, nowSec)) return apps
+        return apps.filterKeys { it == fb }
+    }
+
+    /** 选主（T4 件5 **新增语义**——码卡主行规则，向量 primary 段锁定；横幅归因/
+     *  Worker 通知不切换，审查 I-E 边界）：候选=遮蔽后仍任一键有效的码；排序=
+     *  ①含永久键优先 ②最快到期优先（无永久键时取最早到期）③同值按入参序。
+     *  无候选返回 null。 */
+    internal fun pickPrimary(
+        entries: List<Pair<String, Entitlement>>,
+        nowSec: Long,
+        cfg: EntitlementConfig,
+    ): Pair<String, Entitlement>? {
+        val candidates = entries.mapNotNull { (k, ent) ->
+            val masked = maskApps(ent.expiries, allAppsOf(entries), nowSec, cfg)
+            if (anyActive(masked, nowSec)) k to ent.copy(expiries = masked) else null
+        }
+        return candidates.minWithOrNull(
+            compareBy(
+                { if (it.second.expiries.values.any { v -> v == 0L }) 0L else 1L },
+                { it.second.expiries.values.filter { v -> v != 0L }.minOrNull() ?: Long.MAX_VALUE },
+            ),
+        )
+    }
+
+    private fun allAppsOf(entries: List<Pair<String, Entitlement>>): Map<String, Long> =
+        buildMap { entries.forEach { (_, ent) -> putAll(ent.expiries) } }
 
     // 409 分派 seam：仅 trial_has_license 语义导航 restore（审查 S9：防未来 409
     // 增义被误判「本机已有权益」白跑 restore）

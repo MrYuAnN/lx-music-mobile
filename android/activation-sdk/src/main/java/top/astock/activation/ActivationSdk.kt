@@ -59,6 +59,11 @@ object ActivationSdk {
     var managedAppsProvider: () -> List<ManagedApp> = { emptyList() }
         private set
 
+    /** T4 件5 权益判定配置（可选；默认全空=遮蔽/键域语义关闭，净屏零影响） */
+    @Volatile
+    var entitlementConfig: EntitlementConfig = EntitlementConfig()
+        private set
+
     /** 到期处置钩子（权益缺失/过期时挂起回调；null=宿主不做任何强制处置）。
      *  suspend：宿主处置常为挂起操作（如净屏关过滤），enforceExpiry 逐个顺序等待，
      *  与抽取前内联实现语义一致（三席审查后编译实证修正：非 suspend 签名调不动
@@ -80,6 +85,7 @@ object ActivationSdk {
         xClientVersion: String,
         webBaseUrl: String = "",
         installReportEnabled: Boolean = true,
+        entitlementConfig: EntitlementConfig = EntitlementConfig(),
     ) {
         // 公钥 fail-fast（三席审查 I-1）：空/格式错即抛——receipt 验签是防伪底线，
         // 静默跳过=接入期配置残缺被掩盖到运行期（原常量恒非空，SDK 化后必须拦在 init）
@@ -93,6 +99,7 @@ object ActivationSdk {
         this.xClientVersion = xClientVersion
         this.webBaseUrl = webBaseUrl
         this.installReportEnabled = installReportEnabled
+        this.entitlementConfig = entitlementConfig
     }
 
     /**

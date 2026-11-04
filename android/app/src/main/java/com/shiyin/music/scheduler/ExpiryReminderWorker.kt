@@ -9,13 +9,13 @@
  * 自动重置可再提醒。POST_NOTIFICATIONS（API 33+）未授权时通知静默跳过，不阻塞
  * 主流程（授权入口=RN 侧首播一次性请求 + 设置页找回，走查 F-4 既有拍板）。
  *
- * 继承边界（审查 I-1 降级登记）：isTrial 单值取自 SDK computeCurrent 聚合元数据
- * （锚「首个未停权的码」），试用码+正价码并存时档位可能继承旧试用码——常规
- * 路径已被三层清理兜住（pruneOrphanedKeys 孤儿清理 2026-08-24 拍板 / merge 融合
- * 吸收 / 6h 巡检 binding-check 停权），仅剩激活成功但 prune 前进程被杀等异常
- * 残留边角，SDK 侧正式修法=聚合改 paid>trial 优先级（单源，登记 INTEGRATIONS）。
- * 时钟口径（审查 S-6）：本 Worker 用裸系统时钟，与 SDK 判态的
- * effectiveNowSeconds（时钟回拨防护）存在分叉，影响仅通知时机异常，无资损。
+ * 继承边界（审查 I-1 降级登记）：isTrial 单值取自 SDK computeCurrent 聚合元数据——
+ * **T4 先导批（2026-11-04）聚合锚已改 paid>trial 优先（活源转正）**，试用+正价并存
+ * 场景档位不再继承旧试用码，本段风险消解。
+ * 时钟口径：**T4 件5 起判定与窗口算术统一走 SDK maskedMerged 判定钟
+ * （effectiveNowSeconds 回拨防护），原裸系统钟分叉消解（拍板 #7）**。
+ * 判定单源：遮蔽/键域/混合态收口全走 SDK 编排（maskedMerged/hasOtherValidKey/
+ * EntitlementConfig.productApps），键表判定双源废止（F-03 红线消解）。
  *
  * 提醒窗口（pre=试用 <36h / 正价 7d；post=试用 3d / 正价 7d）：24h 周期与 24h
  * 窗口同宽会大概率滑过，36h 保证至少一次有效送达（净屏 2026-10-13 拍板同口径）。
@@ -43,6 +43,7 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.shiyin.music.MainActivity
 import com.shiyin.music.R
+import top.astock.activation.ActivationSdk
 import top.astock.activation.EntitlementManager
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,29 +60,25 @@ class ExpiryReminderWorker(
         val st = EntitlementManager.current(ctx)
         if (st is EntitlementManager.State.Unactivated) return Result.success()
         val ent = (st as? EntitlementManager.State.Active)?.e ?: (st as EntitlementManager.State.Expired).e
-        val now = System.currentTimeMillis() / 1000
+        // T4 件5（2026-11-04）：判定全走 SDK 编排单源——maskedMerged 返回遮蔽后表
+        // （shiyin 兜底有效时非兜底键已移除=原遮蔽①天然表达）+ 判定钟秒值
+        // （effectiveNowSeconds 回拨防护，原裸系统钟分叉消解，拍板 #7）；
+        // 混合态收口②改 hasOtherValidKey（SDK 单源代理）。
+        val (masked, judgeNow) = EntitlementManager.maskedMerged(ctx)
         val p = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val isTrial = ent.isTrial()
+        val productApps = ActivationSdk.entitlementConfig.productApps
         val preWindowSec = if (isTrial) TRIAL_PRE_WINDOW_HOURS * 3600L else PRE_WINDOW_DAYS * 86400L
         val postWindowSec = if (isTrial) TRIAL_POST_WINDOW_DAYS * 86400L else POST_WINDOW_DAYS * 86400L
-        for ((app, exp) in ent.expiries) {
+        for ((app, exp) in masked) {
             if (exp == 0L) continue // 永久不提醒
-            if (app !in APP_CN) continue // 键域外不发（S-7）
-            // 2026-11-04 ⑧拍板登记：RN 码卡逐源行已按 /config 配置源过滤（全源键单行+
-            //   过滤，MyKeys KeyCard displayEntries），本 Worker 无 /config 通道，维持全集+
-            //   遮蔽口径不变——通知提醒的源键可多于码卡展示行（已知分叉，非漂移）
-            // 双判定（doc/plans/activation-expiry-display-plan.md §四C，2026-11-03；与 RN 横幅
-            // 滤红留金同口径——同语义族五处联动复核纪律见 RN core/shiyin/activation）：
-            // ①遮蔽=shiyin 全源键有效时被覆盖源（非 shiyin 键）不提醒（多码 merged 集残留
-            //   旧码键，兜底放行下推送属 false alarm；对 pre 窗临期键同样遮蔽——shiyin 兜底
-            //   放行下单源临期提醒属噪音，与横幅 pool 收缩对称）；
-            // ②混合态收口=本键已过期但存在其他生效权益不推（试用过期+单源码生效实测场景：
-            //   刚买码即收残留键过期通知；续费触点=播放弹窗）。未被①②筛掉的临期键照推
-            //   （与横幅金保留对称）；「其他键」含不含本键数学等价（本键过期不贡献 valid）。
-            //   ①②静默期×post 窗滑过的漏推边缘同方案 §五 S-A 族（首页红横幅兜底）
-            val shiyinExp = ent.expiries["shiyin"]
-            if (app != "shiyin" && shiyinExp != null && (shiyinExp == 0L || shiyinExp > now)) continue
-            if (exp <= now && ent.expiries.any { (k, v) -> k != app && (v == 0L || v > now) }) continue
+            // 键域外不发（S-7；键表 T4 件5 起单源 SDK EntitlementConfig.productApps，
+            // 原 APP_CN 判定双源废止——F-03「只改 RN 未跟原生」红线随单源化消解）
+            if (productApps != null && app !in productApps) continue
+            // 混合态收口=本键已过期但存在其他生效权益不推（试用过期+单源码生效实测场景：
+            //   刚买码即收残留键过期通知；续费触点=播放弹窗）。SDK 单源（T4 件5）
+            if (exp <= judgeNow && EntitlementManager.hasOtherValidKey(masked, app, judgeNow)) continue
+            val now = judgeNow // 窗口算术同用判定钟（Doze 延迟场景 post 窗以 SDK 钟为准）
             // 双窗分支：pre=尚未到期落窗；post=已到期滑窗内补发（Worker 被 Doze 延迟
             // 数日时 pre 窗滑走，post 窗接住 win-back，不再依赖无下界补发）
             if (exp > now) {
@@ -156,7 +153,9 @@ class ExpiryReminderWorker(
         private const val CHANNEL_ID = "shiyin_membership_expiry"
         // 显示名映射（审计 F-03 修复 2026-11-03）：原单键「shiyin→QQ音乐」既缺 tx/wy/kg/kw
         // 音源键（源卡到期零提醒——键域外不发）又错挂显示名；现对齐 RN 侧
-        // core/shiyin/activation APP_CN 五键单源口径（shiyin=全源兜底键显示「全部音源」）
+        // core/shiyin/activation APP_CN 五键单源口径（shiyin=全源兜底键显示「全部音源」）。
+        // T4 件5（2026-11-04）：**本表仅剩通知展示中文名用途**——键域过滤/判定已迁
+        // SDK EntitlementConfig.productApps（MainApplication 注入），展示映射归属宿主
         private val APP_CN = mapOf(
             "shiyin" to "全部音源",
             "tx" to "QQ音乐",
