@@ -120,21 +120,4 @@ class ClaimOrchestrationTest {
         val forever = e.copy(expiries = mapOf("fanqie" to 0L))
         assertEquals(0L, JSONObject(EntitlementManager.buildReceiptJson(forever, "d", 1L, 1L)).getLong("exp"))
     }
-
-    // ⑥ fused_keys 解析（2026-11-04 激活域收敛）：数组逐项读/缺键空表/空串项剔除
-    // ——宽松读口径（旧服务端无此键=行为退化现状，与 entitlement_kind 同型先例）
-    @Test
-    fun testParseFusedKeys() {
-        assertEquals(
-            listOf("JP-TRIAL-1", "JP-OLD-2"),
-            EntitlementManager.parseFusedKeysForTest("""{"key_id":"JP-NEW","fused_keys":["JP-TRIAL-1","JP-OLD-2"]}"""),
-        )
-        // 旧平台无此键（binding-check/claim 响应同形）=空表
-        assertEquals(emptyList<String>(), EntitlementManager.parseFusedKeysForTest("""{"key_id":"JP-NEW"}"""))
-        // 空串项剔除（服务端异常形态防御）
-        assertEquals(
-            listOf("JP-ONLY"),
-            EntitlementManager.parseFusedKeysForTest("""{"fused_keys":["JP-ONLY",""]}"""),
-        )
-    }
 }

@@ -1,7 +1,8 @@
 /*
  * v1.4 解绑结构化通道单测（拾音激活域入口重构批，方案 doc/plans/activation-keyinfo-page.md §2.1）：
- * ①releaseErrCode 三值映射+null 归并 ②releaseFailMessage 文案逐字回归（旧宿主消费的
- * Result.message/String? 即此文案，共用 err 提取重构最易漂移，快照锁定）。成功路径
+ * ①releaseErrCode 三值映射+null 归并 ②releaseFailMessage 文案回归（not_bound/
+ * trial_no_release 逐字锚 v1.3 原文；release_limit 锚 2026-11-03 口径对齐后文案——
+ * 「每月限 1 次」→「每 30 天限 1 次」，平台仓 4176cbf）。成功路径
  * clearKey 行为不属纯 JVM 可测面，由真机冒烟盖（README 检查单第 5 步）。
  */
 package top.astock.activation
@@ -23,8 +24,9 @@ class ReleaseOutcomeTest {
         assertNull(EntitlementManager.releaseErrCode("whatever_unknown"))
     }
 
-    // ② 文案逐字回归：v1.3 及之前 releaseDevice/releaseRemote when 分支原文（快照锁定，
-    // 任何措辞改动都意味着旧宿主（净屏 KeyInfo toast）用户可见文案变化，须明示拍板）
+    // ② 文案回归：not_bound/trial_no_release 锁 v1.3 原文（快照锁定，任何措辞改动都
+    // 意味着旧宿主（净屏 KeyInfo toast）用户可见文案变化，须明示拍板）；release_limit
+    // 锁 2026-11-03 口径对齐后文案（每月→每 30 天，平台仓 4176cbf 拍板，代码审查 I-1 声明改实）
     @Test
     fun testReleaseFailMessageWording() {
         // 本机解绑四态

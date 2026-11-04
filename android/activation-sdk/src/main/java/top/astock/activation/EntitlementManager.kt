@@ -162,8 +162,10 @@ object EntitlementManager {
         else -> null
     }
 
-    // v1.4：解绑失败文案单源（原 releaseDevice/releaseRemote when 分支原样迁入，
-    // 逐字回归锚点——旧宿主消费 Result.message/String? 即此文案；remote 仅影响 not_bound 措辞）
+    // v1.4：解绑失败文案单源（not_bound/trial_no_release 自原 when 分支逐字迁入；
+    // release_limit 2026-11-03 口径对齐改写「每月限 1 次」→「每 30 天限 1 次」，呼应
+    // 平台仓 4176cbf 30 天滚动窗——旧宿主消费 Result.message/String? 即此文案；
+    // remote 仅影响 not_bound 措辞）
     internal fun releaseFailMessage(err: String, httpCode: Int, remote: Boolean): String = when (err) {
         "not_bound" ->
             if (remote) "该设备已不在此码名下，刷新后查看最新列表"
@@ -381,7 +383,7 @@ object EntitlementManager {
         touchLastSeen(p)
         val effNow = effectiveNowSeconds(p)
         val ent = Entitlement(keyId = keyId, expiries = merged, tier = tier, deviceLimit = deviceLimit, kind = kind)
-        val anyValid = merged.values.any { it == 0L || it > effNow }
+        val anyValid = anyActive(merged, effNow)
         return if (anyValid) State.Active(ent) else State.Expired(ent)
     }
 
@@ -389,8 +391,7 @@ object EntitlementManager {
         val st = current(context)
         if (st !is State.Active) return false
         val exp = st.e.expiries[app] ?: return false
-        if (exp == 0L) return true
-        return exp > effectiveNowSeconds(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
+        return validAt(exp, effectiveNowSeconds(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)))
     }
 
     /** 是否存在任一 app 即将到期（≤3 天，含已到期的单独走 per-app 状态行）；永久不计数 */
@@ -452,6 +453,9 @@ object EntitlementManager {
                     // （全部 App 权益都已被新码接管的旧码，避免 KeyInfoSheet 展示失效旧码、
                     // 用户误点解绑报 not_bound）
                     pruneOrphanedKeys(context)
+                    // 手动激活成功=服务端已建立本机绑定 → 解除该码停权标记
+                    // （CZ- 纯续期不动 devices，标记必须保留，防「刚续费忽开忽关」审查 I1）
+                    setBindingMark(p, code, null)
                     // 被融合码即时清理（2026-11-04 激活域收敛）：fused_keys=服务端融合事务
                     // 整码清空+自动释放的旧码（试用全折/跨源换码，部分融合留痕的旧码有剩余
                     // 权益不下发）——激活当下逐个 clearKey，不再等 binding-check 巡检派生
@@ -460,9 +464,6 @@ object EntitlementManager {
                     for (fused in r.fusedKeys) {
                         if (fused != code) clearKey(context, fused)
                     }
-                    // 手动激活成功=服务端已建立本机绑定 → 解除该码停权标记
-                    // （CZ- 纯续期不动 devices，标记必须保留，防「刚续费忽开忽关」审查 I1）
-                    setBindingMark(p, code, null)
                 }
                 // 权益事件（2026-11-04 补齐）：激活/续费成功即通知宿主刷新——RN 首页横幅
                 // /状态行/码卡列表已订阅 onEntitlementChanged，此前激活不发事件致界面
@@ -533,9 +534,9 @@ object EntitlementManager {
                         invalidateStateCache()
                         // expired+released=被融合 auto-release/解绑失效码（服务端整码清空+
                         // 解绑，试用全折/跨源换码场景）：本地 receipt 停留旧值致码卡假
-                        // 「生效中」（2026-11-04 用户实测「试用码已融合仍显示生效」根因）
+                        // 「生效中」（2026-11-04 拾音实测「试用码已融合仍显示生效」根因）
                         // ——清 receipt 对齐孤儿清理语义（trial/正价统一）；「过期但在绑」
-                        // 正价码 released=false 保留置灰展示，三态模型 :467 口径不变
+                        // 正价码 released=false 保留置灰展示，三态模型口径不变
                         if (r.released) {
                             Log.i(TAG, "binding check $key -> expired+released (absorbed) -> clearKey")
                             clearKey(context, key)
@@ -625,9 +626,9 @@ object EntitlementManager {
      *  宿主刷新状态行（事件驱动替代 30s tick 轮询消费）。列表注册而非单槽——
      *  Application 常驻席（restore toast）与首页生命周期席（刷 UI）并存；生命周期席
      *  onStart 注册 / onStop 注销防泄漏，错过回调由 onResume 全量刷兜底。
+     *  回调在 SDK IO 线程触发，实现方自行切主线程。
      *  2026-11-04 补齐 ACTIVATED/CLEARED：手动激活/续费成功与本地清码（被融合/
-     *  吊销/无效）此前不发事件，首页横幅与码卡列表滞留旧态直到重进页。
-     *  回调在 SDK IO 线程触发，实现方自行切主线程。 */
+     *  吊销/无效）此前不发事件，首页横幅与码卡列表滞留旧态直到重进页。 */
     enum class EntitlementChange { CLAIMED, RESTORED, ACTIVATED, CLEARED }
 
     private val entitlementListeners =
@@ -725,6 +726,18 @@ object EntitlementManager {
 
     internal fun shouldAttemptTrialAt(fails: Int, lastAt: Long, nowMs: Long): Boolean =
         lastAt <= 0L || nowMs - lastAt >= trialBackoffMs(fails)
+
+    // 权益真值判定 seam（T4 件3 测试面，2026-11-04：语义向量锁定的纯函数化——
+    // 向量=平台仓 sdk/android/tests/entitlement-vectors.json，跨仓语义契约锁，
+    // 方案 doc/plans/entitlement-semantics-single-source.md 件3/件5）。
+    // 现状谓词原样搬家（computeCurrent:375 聚合 + isEntitled:383 单值），零行为变化；
+    // 收编批三层化时编排层改调本 seam，向量断言对象切换、向量本身不变（等价性证明）。
+    /** 单值真值：0=永久；到期在未（>nowSec）有效；否则过期（负值/脏值由调用方上游解析兜底） */
+    internal fun validAt(exp: Long, nowSec: Long): Boolean = exp == 0L || exp > nowSec
+
+    /** 聚合视角：任一 app 真值即 active（多码合并表 any 语义，computeCurrent 同款） */
+    internal fun anyActive(apps: Map<String, Long>, nowSec: Long): Boolean =
+        apps.values.any { validAt(it, nowSec) }
 
     // 409 分派 seam：仅 trial_has_license 语义导航 restore（审查 S9：防未来 409
     // 增义被误判「本机已有权益」白跑 restore）
@@ -886,12 +899,12 @@ object EntitlementManager {
     }
 
     /** 解绑指定 key 的本机设备（多码模型：KeyInfoSheet 指定码解绑）；成功后清除该
-     *  key 本地权益。每 30 天限 1 次（滚动窗）由服务端控制。体验卡（trial7/trial3）
-     *  除外：服务端禁止自助解绑（一码一用锁首绑设备，2026-10-24），仅管理台客诉
-     *  通道可解。
-     *  key 本地权益，激活码可在新设备重新激活（用户侧每 30 天限 1 次，服务端控制）
-     *  v1.4：委托 releaseDeviceEx（行为等价；唯一有意差异=网络异常 message 为 null 时
-     *  补「网络异常」兜底文案，旧版此路径 message=null，服务端三文案逐字不变） */
+     *  key 本地权益，激活码可在新设备重新激活（用户侧每 30 天限 1 次，服务端控制）。
+     *  体验卡（trial7/trial3）除外：服务端禁止自助解绑（一码一用锁首绑设备，
+     *  2026-10-24），仅管理台客诉通道可解。
+     *  v1.4：委托 releaseDeviceEx（行为等价；有意差异两处=①网络异常 message 为 null 时
+     *  补「网络异常」兜底文案（旧版此路径 message=null）②release_limit 文案 2026-11-03
+     *  口径对齐「每月限 1 次」→「每 30 天限 1 次」（平台仓 4176cbf），其余文案逐字不变） */
     suspend fun releaseDevice(context: Context, keyOverride: String? = null): Result<Unit> {
         val r = releaseDeviceEx(context, keyOverride)
         return if (r.ok) Result.success(Unit) else Result.failure(IllegalStateException(r.userMessage))
@@ -985,6 +998,57 @@ object EntitlementManager {
                 },
             )
         }
+
+    /**
+     * code-overlap 前置查询（⑥件②方案①净屏侧适配，2026-11-03）：输码激活前查新码
+     * 源键与本机（device_id 在绑维度）在绑码源键的重叠集——非空=同源融合会发生（客户端
+     * 弹精准融合确认），空=纯跨源/无在绑（服务端 mergeSameApp 跨 App 互不影响，无需
+     * 确认）。返回 null=查询失败（网络/限流/版本门槛等），调用方保守回退粗触发确认框
+     * （拾音同款形态；平台仓 sdk/android/INTEGRATIONS A-2）。code 归一与 activateOrRedeem
+     * 同口径（服务端 normalizeKey 汇合兜底，客户端归一为防御性对齐，审查 S-2）。
+     * 超时独立短档 5s/5s：确认前置的可选增强查询非关键路径（审查 I-2——主交易骨架
+     * 15/15 各自独立计时最坏 30s 不适用；业界共识预检短超时+fallback）。
+     * 方案 A（2026-11-03 v3 §九.1）注记：同产品有效 trial 在绑时服务端在数组末尾追加
+     * 保留标记键 "trial"（trial.go TrialOverlapMarker，product_apps 录入已禁该字面量），
+     * 本层纯字符串数组透传不感知语义——消费方（JingpingSheets describeOverlapSources）
+     * 对标记键渲染「试用码」条款。跨仓契约：产品键集与 "trial" 互斥（INTEGRATIONS.md）。
+     */
+    suspend fun codeOverlap(context: Context, code: String): List<String>? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                // body 构造置于 runCatching 内（代码审查 S-3：与两 Ex 函数骨架同构）
+                val body = JSONObject(
+                    mapOf(
+                        "code" to code.trim().uppercase().replace(" ", ""),
+                        "device_id" to deviceId(context),
+                    )
+                )
+                val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/code-overlap").openConnection() as HttpURLConnection
+                conn.connectTimeout = 5000
+                conn.readTimeout = 5000
+                conn.doOutput = true
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
+                conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                val http = conn.responseCode
+                val respBody = (if (http in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() } ?: ""
+                conn.disconnect()
+                if (http != 200) null else parseOverlapKeys(respBody)
+            }.getOrElse { e ->
+                Log.w(TAG, "code overlap failed: ${e.message}")
+                null
+            }
+        }
+
+    /** code-overlap 响应解析（纯函数，单测锚）：200 体 → overlap 源键列表；缺字段/坏
+     *  JSON → null（与 HTTP 失败同路回退）；空数组合法（=纯跨源/无在绑） */
+    internal fun parseOverlapKeys(body: String): List<String>? = runCatching {
+        val arr = JSONObject(body).getJSONArray("overlap")
+        List(arr.length()) { i -> arr.getString(i) }
+    }.getOrNull()
 
     /**
      * 到期处置（M3；决策 #6 per-app 化；SDK 化改造）：逐个受管 app 检查——权益

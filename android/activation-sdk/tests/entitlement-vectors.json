@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "name": "entitlement-semantics-vectors",
+    "version": 1,
+    "date": "2026-11-04",
+    "authority": "净屏活源仓（本文件）经 drift 锁镜像至 license-platform sdk/android/tests（语义登记侧）与拾音仓 android/activation-sdk/tests；方案 doc/plans/entitlement-semantics-single-source.md 件3",
+    "consumers": {
+      "validity": ["pytest (lx-music-api-server tests/test_entitlement_gate.py)", "JUnit 净屏活源仓 activation-sdk 现状基线（phase-1）→ 收编批 SDK 纯函数层（phase-2）"],
+      "aggregate": ["pytest any_source_active", "JUnit 同 validity 消费者"],
+      "verdict": ["pytest entitlement_verdict（唯一消费者；字段=Python 侧 token record snake_case）"]
+    },
+    "phases": {
+      "phase-1-pilot": ["validity", "aggregate", "verdict"],
+      "phase-2-refactor": ["masking", "primary（新增语义：码卡主行选主规则，现状无此判定，非现状对拍）"]
+    },
+    "semantics": {
+      "validity": "exp==0 永久有效；exp>nowSec 有效；否则过期（含负值/脏数据 fail-closed）",
+      "aggregate.any": "appsExp 非空=任一值 active（0=永久/大于 nowSec）；null/负值/脏字符串=过期收紧口径（2026-11-04 审查 I-G）；scope=any-only 为 SDK+pytest 共同域，scope=py-fallback（appsExp 空回退 expTs）仅 pytest 消费——SDK 现状无回退语义（merged 空=Unactivated）",
+      "verdict": "apps_exp 非空=源闸（缺失且无 shiyin 兜底→not_entitled_for_source fail-closed；shiyin 兜底；0=放行；负值=expired）；apps_exp 空/缺=exp_ts 聚合闸（0/缺省=放行）；仅 pytest 消费"
+    },
+    "assertionNote": "pytest 侧以向量内 nowSec mock time.time() 断言，禁止依赖真实时钟"
+  },
+  "validity": [
+    { "id": "V1-perm-zero-valid", "desc": "0=永久有效（核心语义族）", "exp": 0, "nowSec": 1700000000, "expectedValid": true },
+    { "id": "V2-future-valid", "desc": "到期在未=有效", "exp": 1700003600, "nowSec": 1700000000, "expectedValid": true },
+    { "id": "V3-one-second-before", "desc": "到期前一秒仍有效（边界）", "exp": 1700000001, "nowSec": 1700000000, "expectedValid": true },
+    { "id": "V4-expiry-moment-expired", "desc": "到期当刻即失效（>now 严格比较）", "exp": 1700000000, "nowSec": 1700000000, "expectedValid": false },
+    { "id": "V5-past-expired", "desc": "已过期", "exp": 1699999900, "nowSec": 1700000000, "expectedValid": false },
+    { "id": "V6-negative-dirty-expired", "desc": "负值脏数据=过期（fail-closed，2026-11-04 口径）", "exp": -5, "nowSec": 1700000000, "expectedValid": false }
+  ],
+  "aggregate": [
+    { "id": "A1-mixed-future-wins", "desc": "混合：过期+在期→任一有效", "appsExp": { "tx": 1699999900, "wy": 1700003600 }, "expTs": 1699999900, "nowSec": 1700000000, "expectedAnyActive": true },
+    { "id": "A2-all-expired", "desc": "全过期→无有效（预拒 403 expired 域）", "appsExp": { "tx": 1699999900, "wy": 1699999800 }, "expTs": 1699999800, "nowSec": 1700000000, "expectedAnyActive": false },
+    { "id": "A3-all-expired-plus-perm", "desc": "过期+永久→永久救全", "appsExp": { "tx": 0, "wy": 1699999900 }, "expTs": 1699999900, "nowSec": 1700000000, "expectedAnyActive": true },
+    { "id": "A4-perm-only", "desc": "仅永久", "appsExp": { "tx": 0 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true },
+    { "id": "A5-empty-apps-fallback-future", "desc": "空 map 回退聚合 expTs 在期", "appsExp": {}, "expTs": 1700003600, "nowSec": 1700000000, "expectedAnyActive": true, "scope": "py-fallback" },
+    { "id": "A6-empty-apps-fallback-expired", "desc": "空 map 回退聚合 expTs 已过", "appsExp": {}, "expTs": 1699999900, "nowSec": 1700000000, "expectedAnyActive": false, "scope": "py-fallback" },
+    { "id": "A7-empty-apps-fallback-perm", "desc": "空 map 回退聚合 expTs=0 永久", "appsExp": {}, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true, "scope": "py-fallback" },
+    { "id": "A8-empty-apps-fallback-null", "desc": "空 map 回退 expTs 缺省（null）=永久放行（现行预拒 elif 分支口径）", "appsExp": {}, "expTs": null, "nowSec": 1700000000, "expectedAnyActive": true, "scope": "py-fallback" },
+    { "id": "A9-null-values-dirty-expired", "desc": "值全 null=过期收紧口径（旧预拒 None→0 隐式放行已废止，审查 I-G）", "appsExp": { "tx": null, "wy": null }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": false },
+    { "id": "A10-negative-values-dirty-expired", "desc": "值全负=过期（旧预拒负值隐式放行已废止）", "appsExp": { "tx": -5, "wy": -1 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": false },
+    { "id": "A11-mixed-null-and-future", "desc": "null+在期混合→在期救全", "appsExp": { "tx": null, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true },
+    { "id": "A12-dirty-string-fail-closed", "desc": "脏字符串值 fail-closed=过期", "appsExp": { "tx": "abc" }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": false },
+    { "id": "A13-mixed-negative-and-future", "desc": "负值+在期混合→在期救全", "appsExp": { "tx": -5, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true }
+  ],
+  "verdict": [
+    { "id": "D1-source-expired", "desc": "源已到期=expired", "record": { "apps_exp": { "tx": 1699999900 } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "expired" },
+    { "id": "D2-source-future-pass", "desc": "源在期=放行", "record": { "apps_exp": { "tx": 1700003600 } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D3-source-perm-pass", "desc": "源永久=放行（0 值不误拒，W3-01 修复点②）", "record": { "apps_exp": { "tx": 0 } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D4-missing-source-fail-closed", "desc": "源不在 map 且无兜底=not_entitled_for_source（W3-05 分离）", "record": { "apps_exp": { "tx": 1700003600 } }, "source": "kg", "nowSec": 1700000000, "expectedVerdict": "not_entitled_for_source" },
+    { "id": "D5-shiyin-fallback-active", "desc": "shiyin 兜底在期=放行", "record": { "apps_exp": { "shiyin": 1700003600 } }, "source": "kg", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D6-shiyin-fallback-expired", "desc": "shiyin 兜底到期=expired（非分离态）", "record": { "apps_exp": { "shiyin": 1699999900 } }, "source": "kg", "nowSec": 1700000000, "expectedVerdict": "expired" },
+    { "id": "D7-legacy-aggregate-expired", "desc": "旧 record 聚合到期=expired", "record": { "exp_ts": 1699999900 }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "expired" },
+    { "id": "D8-legacy-aggregate-future", "desc": "旧 record 聚合在期=放行", "record": { "exp_ts": 1700003600 }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D9-legacy-aggregate-perm", "desc": "旧 record 聚合 0=永久放行", "record": { "exp_ts": 0 }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D10-legacy-no-fields", "desc": "旧 record 全空=放行", "record": {}, "source": "tx", "nowSec": 1700000000, "expectedVerdict": null },
+    { "id": "D11-empty-apps-fallback", "desc": "apps_exp 空 map 回退聚合=expired", "record": { "apps_exp": {}, "exp_ts": 1699999900 }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "expired" },
+    { "id": "D12-null-value-no-fallback", "desc": "源值显式 null 且无兜底=fail-closed（int(None or 0) 恒真误放路径已被源闸 None 分支拦截）", "record": { "apps_exp": { "tx": null } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "not_entitled_for_source" },
+    { "id": "D13-negative-value-expired", "desc": "源值负值=expired（truthy 且 now>负值恒真）", "record": { "apps_exp": { "tx": -5 } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "expired" }
+  ]
+}
