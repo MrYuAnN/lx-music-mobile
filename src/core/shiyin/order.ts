@@ -13,6 +13,7 @@ import { mergeOrders, mapOrderDTO, MAX_LOCAL_ORDERS, MAX_NOS_QUERY } from './ord
 import type { OrderRecord } from './orderMerge'
 import type { Message } from '@/lang'
 import { parseSkusPayload, SOURCE_KEYS, type Sku, type SkusCatalog } from './skuParse'
+import { PRODUCT_ID } from './product'
 
 const NETWORK_TIMEOUT = 15000
 // MAX_LOCAL_ORDERS/MAX_NOS_QUERY 随合流单源 orderMerge.ts（A5 批平移，2026-11-05；
@@ -86,7 +87,7 @@ export const fetchSkus = (): Promise<SkusCatalog> => {
   if (fetchingSkus != null) return fetchingSkus
   fetchingSkus = httpFetch(`${ORDER_BASE_URL}/api/skus`, {
     timeout: NETWORK_TIMEOUT,
-    headers: { 'X-Product': 'shiyin' },
+    headers: { 'X-Product': PRODUCT_ID },
   }).promise.then(resp => {
     if (resp.statusCode != 200) {
       throw new Error(`skus http ${resp.statusCode}`)
@@ -148,7 +149,7 @@ export const createOrder = async(skuIds: string, opts?: { clientToken?: string }
     method: 'post',
     timeout: NETWORK_TIMEOUT,
     headers: {
-      'X-Product': 'shiyin',
+      'X-Product': PRODUCT_ID,
       'Content-Type': 'application/json',
     },
     body: {
@@ -222,7 +223,7 @@ export const syncOrders = async(): Promise<OrderRecord[]> => {
   if (!params.toString()) return local
   const resp = await httpFetch(`${ORDER_BASE_URL}/api/orders?${params.toString()}`, {
     timeout: NETWORK_TIMEOUT,
-    headers: { 'X-Product': 'shiyin' },
+    headers: { 'X-Product': PRODUCT_ID },
   }).promise
   if (resp.statusCode != 200) {
     throw new Error(`orders http ${resp.statusCode}`)
@@ -247,7 +248,7 @@ export const fetchOrder = async(orderNo: string): Promise<OrderRecord | null> =>
   if (!params.toString()) return null
   const resp = await httpFetch(`${ORDER_BASE_URL}/api/orders?${params.toString()}`, {
     timeout: NETWORK_TIMEOUT,
-    headers: { 'X-Product': 'shiyin' },
+    headers: { 'X-Product': PRODUCT_ID },
   }).promise
   if (resp.statusCode != 200) throw new Error(`orders http ${resp.statusCode}`)
   // 解析契约（批3代码审 C-B）：{"orders":[...]} 包装
@@ -275,7 +276,7 @@ export const cancelOrder = async(orderNo: string): Promise<boolean> => {
     method: 'post',
     timeout: NETWORK_TIMEOUT,
     headers: {
-      'X-Product': 'shiyin',
+      'X-Product': PRODUCT_ID,
       'Content-Type': 'application/json',
     },
     body: {

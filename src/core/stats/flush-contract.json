@@ -1,0 +1,8 @@
+{
+  "contract": "使用统计上报批量（客户端单请求批量=服务端 usageMaxBatch 契约镜像）",
+  "authority": "src/core/stats/flushBatch.ts#FLUSH_BATCH",
+  "locked_at": "2026-11-05",
+  "notes": "真锚=FLUSH_BATCH（flusher.ts slice(0,FLUSH_BATCH) 分片决定单请求上限； QUEUE_FLUSH_THRESHOLD=攒满触发阈值非契约锚——同值纯巧合，T3 件7 勘误 I3）。消费方：平台仓 internal/api go test 并排对拍（T3 收编批笔⑤，断言 usageMaxBatch=flush_batch）。本文件测试专供禁 import（不进 metro 依赖图，S2；lint 兜底留待后续）。T3 方案=doc/plans/t3-contract-single-source.md。",
+  "keys": ["flush_batch", "queue_flush_threshold"],
+  "sample": { "flush_batch": 50, "queue_flush_threshold": 50 }
+}

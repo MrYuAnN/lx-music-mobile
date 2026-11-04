@@ -9,6 +9,7 @@
 import { httpFetch } from '@/utils/request'
 import { activationModule } from '@/utils/nativeModules/activation'
 import { SHIYIN_BASE_URL } from './config'
+import { PRODUCT_ID } from './product'
 
 export type XianyuTrackResult = 'scheme' | 'fallback' | 'legacy'
 
@@ -22,7 +23,7 @@ export const trackXianyuClick = (result: XianyuTrackResult): void => {
       method: 'post',
       timeout: 5000,
       headers: {
-        'X-Product': 'shiyin',
+        'X-Product': PRODUCT_ID,
         'Content-Type': 'application/json',
       },
       body: { visitor_id: vid, result, source: 'app' },

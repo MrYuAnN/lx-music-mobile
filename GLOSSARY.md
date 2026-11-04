@@ -12,9 +12,18 @@
 - **混合码（Mixed Key)**：部分 app 有效、部分过期的键。注册链预拒对混合码放行（「all 才拒」），取链闸按请求源单键判定（「单键过期即拒 + 源缺失 fail-closed」）——两处宽严差异是有意的。
 - **entitlement_kind**：平台下发字段（activate/binding-check/redeem 权益快照），承载 trial/ paid 语义，客户端不再二次解释 tier。redeem 路径补齐见先导批。
 - **权益闸（Entitlement Gate）**：取链/入口前的客户端权益拦截+引导编排层（A1 架构批 2026-11-04 拆出，自取链 client.ts 寄生位迁正）。三出口：`guardEntitlementGate`（入口闸：unactivated/expired 各引导一次返 blocked）、`ensurePlayable`（取链前置：unactivated 快抛不引导）、`handleSourceRejected`（取链 403 权益分支引导分流）。形态=纯工厂 `core/shiyin/gate.ts`（GateDeps 注入，node:test 直跑）+ 组合根 `gateApp.ts` 绑真实现；域错误族（shiyinError+isShiyinFastFail 快抛名单）单源 `errors.ts`；音源中文名表单源 `sources.ts`。闸只做编排不改判定（判定语义单源 SDK，见 ADR-0001）；行为语义锚=2026-11-01「锁播放+入口统一前置拦截」拍板。
+- **本地回落视图（Local Fallback View）**：服务端按源视图（/api/entitlements）不可得时的码卡页展示回落——getKeyEntries expiries max 口径本地聚合（每源行值=max(自身, shiyin 兜底)，段=贡献码单段），配「本地视图标注」提示。实现单源=keyDisplay.ts `buildLocalSourceViews`（2026-11-05 A5 批自 MyKeys 组件内联平移，ADR-0002），六规则①过滤=`filterSourceViews` 同文件。
+- **合流窗口保留（Merge Window Retention）**：订单 nos+uid 双凭证合流的窗口双口径——nos 查询窗口（MAX_NOS_QUERY=20）内未返回的单=丢弃（服务端权威，「服务端没返回」=单已不存在）；窗口外旧单原样保留（服务端不知道）。实现单源=orderMerge.ts `mergeOrders`（A5 批平移，ADR-0002）；maskedNo 回退键 vs localHit 仅按 orderNo 命中的不对称为已登记疑似 bug（排查件核实中，用例不锁该路径）。
 
 ## 域分工（本 ADR-0001 拍板）
 
 - **客户端域**：activation-sdk 单源（真值/选主/遮蔽/聚合）；RN 展示层消费 bridge 真值。
 - **服务端域**：api-server `entitlement_verdict` 唯一裁决（输入=Redis record {exp_ts, apps_exp}，源自 platform `GET /srv/key-entitlement`）。
 - **跨域对齐**：语义测试向量文件（平台仓 sdk/android/ 下）单源，SDK JUnit 与 api-server pytest 同读。
+
+## 契约锁（Contract Lock，T3 批 2026-11-05）
+
+- **契约锁（Contract Lock）**：跨仓协议知识的机械防线——golden 快照随语义权威仓存放，消费方仓测试并排 checkout 同读对拍，漂移在提交期暴露（取代「注释锚定+人工同步」纪律；立锁动机=批次 4.5 契约事故生产首单 0 元+注释锚三处腐烂实证）。机制与 T4 向量约定同构（无 broker 最小实现，业界对标 CDC/Pact）。方案单源=`doc/plans/t3-contract-single-source.md`；golden 目录=平台仓 `contracts/`（README 载漂移处置三律与接线约定）。
+- **golden**：契约形状/行为/常量的单一事实快照文件（双层结构=keys 断言数据+非零值全覆盖样例）。权威仓 freshness 测试从自身源码派生比对（golden 不可腐烂）；消费方禁止单侧改 golden（单侧改=双侧红，机械演示）。行为类 golden（如 version-compare 行为向量）期望值由现行实现派生，实现变更须同提交改向量（有意摩擦逼显式评审）。
+- **freshness**：权威仓自证 golden 新鲜的测试（如平台 `internal/store/sku_contract_test.go` marshal 自身结构体 ↔ golden DeepEqual）。规范=非零值样例+键集值双比对（纯键集检不出 omitempty/类型漂移）。
+- **并排同读**：消费方仓测试读权威仓 golden 的接线约定——env `CONTRACTS_DIR` 覆盖，缺省逐级上探并排 checkout；不可达=SKIP 不 FAIL（T4 惯例），但 SKIP 语义下 `go test ok` 不证明真跑，验收必 `-v`/查 skipped=0，且 golden 运行时读取不触发 go test 构建缓存（消费方侧必带 `-count=1`）。

@@ -1,7 +1,8 @@
 // skuParse.ts /api/skus 解析纯逻辑单源（T3 笔③ 自 order.ts 平移——RN 依赖模块
-// 无法进 node:test，A5 纯逻辑平移同款；零 import，本文件可被 node --test 直测）。
+// 无法进 node:test，A5 纯逻辑平移同款；本文件可被 node --test 直测）。
 // 解析面=服务端宿主 payload 契约（条目 7 字段小写+meta 8 键），fixture 对拍=
 // order-core server/shiyin/api/testdata/skus-payload-shiyin.json（skuParse.test.mts）。
+import { PRODUCT_ID } from './product.ts'
 
 export const SOURCE_KEYS = ['tx', 'wy', 'kg', 'kw'] as const
 export type SourceKey = typeof SOURCE_KEYS[number]
@@ -56,7 +57,7 @@ export const parseSkusPayload = (body: any): SkusCatalog => {
   const bySource: Partial<Record<SourceKey, Sku[]>> = {}
   const allSource: Sku[] = []
   for (const sku of list) {
-    if (sku.apps[0] == 'shiyin') allSource.push(sku)
+    if (sku.apps[0] == PRODUCT_ID) allSource.push(sku)
     else {
       const key = sku.apps[0] as SourceKey
       (bySource[key] ??= []).push(sku)

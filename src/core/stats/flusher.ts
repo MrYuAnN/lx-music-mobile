@@ -9,11 +9,12 @@ import BackgroundTimer from 'react-native-background-timer'
 import { httpFetch } from '@/utils/request'
 import { activationModule } from '@/utils/nativeModules/activation'
 import { ACTIVATION_BASE_URL } from '@/core/shiyin/config'
+import { PRODUCT_ID } from '@/core/shiyin/product'
 import {
   trackUsageEvent, takeQueueSnapshot, removeFromQueue, type UsageEvent,
 } from './tracker'
+import { FLUSH_BATCH } from './flushBatch'
 
-const FLUSH_BATCH = 50 // 服务端契约镜像（usageMaxBatch）
 const FLUSH_TIMEOUT = 10_000
 const SESSION_GAP_MINUTES = 5 // 退后台≥5min 计新会话
 const FLUSH_JITTER_MAX = 30_000
@@ -67,7 +68,7 @@ const sendBatch = async(deviceId: string, batch: UsageEvent[]): Promise<SendResu
       method: 'post',
       timeout: FLUSH_TIMEOUT,
       headers: {
-        'X-Product': 'shiyin',
+        'X-Product': PRODUCT_ID,
         'Content-Type': 'application/json',
       },
       body: { device_id: deviceId, events: batch },
