@@ -5,8 +5,9 @@ import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
-import { useActivationState, isExpiringSoonAt } from '@/core/shiyin/activation'
-import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
+import { useI18n } from '@/lang'
+import { useActivationState } from '@/core/shiyin/activation'
+import { pickBannerApp, bannerLabel } from '@/core/shiyin/keyDisplay'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
 // +30s tick+事件驱动双刷，拾音对应物=首页横幅）。两态：即将到期（≤3 天，金）/已到期（红），
@@ -26,58 +27,12 @@ const BANNER_COLORS = {
   danger: 'rgb(255, 59, 48)',
 } as const
 
-interface BannerPick {
-  exp: number
-  expired: boolean
-}
-
-/** 归因（方案 activation-expiry-display-plan.md §四A 滤红留金口径，2026-11-03 审查 C-1 修订）：
- *  T4 收编批（2026-11-04）真值消费：pool=bridge 下发 masked 遮蔽视图（SDK maskApps
- *  单源——shiyin 兜底有效时只留 shiyin 键，原 allCovered 收缩语义恒等）；每键真值=
- *  bridge valid（SDK validAt 单源，原内联时间比较退役）；hasAnyValid（任一键有效）=
- *  混合态红不出（Q2 拍板：有生效码不打全局红灯，过期源续费触点=播放弹窗），滤红留金
- *  只挑最早临期键；全失效→红显最早过期键。旧桥窗口（valid/masked 缺失）不渲染横幅。
- *  组合边界复审已推演：{F,T} 不可达（hasAnyValid 真时红被滤），无死路 */
-const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
-  if (info.expiries == null || info.valid == null || info.masked == null) return null
-  const pool = Object.entries(info.masked)
-  const hasAnyValid = Object.values(info.valid).some(Boolean)
-  let pick: BannerPick | null = null
-  for (const [app, exp] of pool) {
-    if (exp == 0) continue // 永久不提醒
-    const expired = info.valid[app] !== true
-    const soon = !expired && isExpiringSoonAt(exp, true)
-    // 滤红留金：有任一生效权益时过期键不参与（红色全局横幅只在全失效态出现）
-    if (expired && hasAnyValid) continue
-    if (!expired && !soon) continue
-    if (pick == null || (expired && !pick.expired) || (expired == pick.expired && exp < pick.exp)) {
-      pick = { exp, expired }
-    }
-  }
-  return pick
-}
-
-/** 临期文案三档粒度（2026-11-03 用户需求）：剩余<1h=分钟倒计时、<24h=小时倒计时、
- *  1-3 天=日期（此前恒日期粒度，当天到期只显日期不显紧迫度）。分粒度
- *  语义与 KeyInfo keyinfo_remain 对齐；30s tick 现成=倒计时分钟级自动刷新。
- *  2026-11-04 ⑫B 拍板精简：去源归因（详情码卡页可见，11-01 归因展示退役）、1-3 天档
- *  去时分与「即将」字样（'M-D' 短日期，3 天窗内无跨年歧义）——单行不再拥挤 */
-const bannerLabel = (pick: BannerPick): string => {
-  if (pick.expired) return global.i18n.t('home_banner_expired')
-  const remainSec = pick.exp - Date.now() / 1000
-  if (remainSec < 3600) {
-    const minutes = Math.max(1, Math.ceil(remainSec / 60))
-    return global.i18n.t('home_banner_expiring_minutes', { n: minutes })
-  }
-  if (remainSec < 86400) {
-    const hours = Math.max(1, Math.ceil(remainSec / 3600))
-    return global.i18n.t('home_banner_expiring_hours', { n: hours })
-  }
-  return global.i18n.t('home_banner_expiring', { date: dateFormat(pick.exp * 1000, 'M-D') })
-}
+// 归因 pickBannerApp（滤红留金）/文案 bannerLabel 三档粒度/BannerPick 类型：单源
+// keyDisplay.ts（A5 批平移，2026-11-05；t/dateFormat 由本组件调用点注入，行为不变）
 
 export default () => {
   const theme = useTheme()
+  const t = useI18n()
   const { info } = useActivationState()
   // 30s tick 对齐净屏 refreshTick：剩余窗跨档（如 3 天→不足 3 天）无需权益事件也自动收敛；
   // 只 set 不读（翻转值变更即触发重渲染，mode 每次渲染按 Date.now() 重算）。
@@ -95,7 +50,7 @@ export default () => {
 
   const pick = info != null ? pickBannerApp(info) : null
   if (pick == null || info == null) return null
-  const label = bannerLabel(pick)
+  const label = bannerLabel(pick, t, dateFormat)
 
   return (
     <TouchableOpacity

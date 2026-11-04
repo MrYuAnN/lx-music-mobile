@@ -4,11 +4,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import { AppState } from 'react-native'
 
-import { activationModule, onEntitlementChanged, type ActivationStateInfo, type KeyEntry } from '@/utils/nativeModules/activation'
+import { activationModule, onEntitlementChanged, type ActivationStateInfo } from '@/utils/nativeModules/activation'
 import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
 import { dateFormat } from '@/utils'
 import versionState from '@/store/version/state'
+import type { TranslateT } from './keyDisplay'
 import type { Message } from '@/lang'
 
 // 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；批3 v1.2 音源收费模型扩表）：
@@ -286,20 +287,17 @@ const shDayNumber = (unixSec: number): number => {
 // ①isEntryExpired——实现收拢 keyDisplay.ts 零依赖叶子单源（T4 代码审 S1：防双实现
 //   复发），此处 re-export 供既有消费方
 export { isEntryExpired } from './keyDisplay'
-// ②isExpiringSoonAt——≤3 天金色窗（soon 窗=展示参数留 RN，拍板 I-D：真值由调用方以
-//   bridge 下发 valid 传入，窗算术 Date.now() 豁免判定时钟口径拍板 #7）
-/** 是否即将到期（≤3 天未过期；ExpiryBanner 金色窗，净屏 expiringSoon 同口径） */
-export const isExpiringSoonAt = (expiry: number, isValid = true): boolean => {
-  if (!isValid || expiry == 0) return false
-  return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
-}
+// ②isExpiringSoonAt——A5 批（2026-11-05）实现单源下沉 keyDisplay.ts（本文件 re-export
+//   供既有消费方零改动——同 isEntryExpired 先例，防双实现复发；soon 窗=展示参数留 RN
+//   拍板 I-D、真值由调用方以 bridge 下发 valid 传入，语义注释单源 keyDisplay.ts）
+export { isExpiringSoonAt } from './keyDisplay'
 
 /** 到期剩余时长递进提示（净屏 remainHint 口径对齐+分钟延伸，2026-11-01 用户拍板）：
  *  天=自然日差（Asia/Shanghai，净屏 10-14 修复口径，shDayNumber 单源）→小时（向上取整
  *  不低估）→分钟（用户要求新增，净屏 <1h 即显「即将到期」无此档）→<1min 即将到期；
  *  永久(0)/已过期 不提示 */
-export const formatRemainHint = (expiry: number, t: (k: keyof Message, p?: Record<string, string | number | boolean>) => string): string => {
-  if (expiry == 0) return '' // 0=永久（KeyEntry.expiry 恒 number，审查 S11 收口）
+export const formatRemainHint = (expiry: number, t: TranslateT): string => {
+  if (expiry == 0) return '' // 0=永久（expiry 恒 number，审查 S11 收口）
   const remainSec = expiry - Math.floor(Date.now() / 1000)
   if (remainSec <= 0) return ''
   if (remainSec >= 86400) return t('keyinfo_remain_days', { n: Math.max(shDayNumber(expiry) - shDayNumber(Math.floor(Date.now() / 1000)), 0) })

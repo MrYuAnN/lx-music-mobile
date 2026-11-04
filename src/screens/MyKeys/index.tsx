@@ -50,6 +50,7 @@ import {
   detectClipboardCandidate,
   APP_CN,
 } from '@/core/shiyin/activation'
+import { buildLocalSourceViews, filterSourceViews } from '@/core/shiyin/keyDisplay'
 
 const BINDING_FETCH_INTERVAL = 60 * 1000
 
@@ -251,47 +252,20 @@ export default ({ componentId }: { componentId: string }) => {
   // 原码卡 S4 同口径）
   const configuredSources = useMemo(() => Object.keys(global.sy.qualityList ?? {}), [sourcesVersion])
 
-  // 本地回落视图（serverFailed/拉取失败）：getKeyEntries expiries max 口径——每源
-  // 行值=max(自身, shiyin 兜底)，段=贡献码单段（start 未知置 0；历史信息本地不可得=空；
-  // paid 段 skuName 置空串走行1「正式」兑底——尾号形态退役，审查 I-3 本地侧同语义）
-  const localSources = useMemo<EntSourceView[]>(() => {
-    const apps = configuredSources.length
-      ? configuredSources
-      : Array.from(new Set(entries.flatMap(e => Object.keys(e.expiries ?? {}))))
-    const out: EntSourceView[] = []
-    for (const app of apps) {
-      let expiry: number | null = null
-      const segs: EntSourceView['segments'] = []
-      for (const e of entries) {
-        const own = e.expiries?.[app]
-        const fb = app == 'shiyin' ? undefined : e.expiries?.shiyin
-        const candidates = [own, ...(app == 'shiyin' ? [] : [fb])].filter((v): v is number => v != null)
-        if (!candidates.length) continue
-        const agg = candidates.some(v => v == 0) ? 0 : Math.max(...candidates)
-        if (expiry == null || (expiry != 0 && (agg == 0 || agg > expiry))) expiry = agg
-        segs.push({
-          key: e.key,
-          skuName: e.isTrial ? t('activation_state_trial') : '',
-          kind: e.isTrial ? 'free' : 'paid',
-          start: 0,
-          end: agg,
-          valid: agg == 0 || agg * 1000 > Date.now(),
-        })
-      }
-      if (expiry != null) {
-        out.push({ app, expiry, valid: expiry == 0 || expiry * 1000 > Date.now(), segments: segs })
-      }
-    }
-    return out
-  }, [configuredSources, entries, t])
+  // 本地回落视图（serverFailed/拉取失败）：口径注释与实现单源 keyDisplay.ts
+  // buildLocalSourceViews（A5 批平移，2026-11-05；t 注入）——渲染时计算，跨过期点
+  // 不自动收敛（重进页收敛，§五知情登记）
+  const localSources = useMemo(
+    () => buildLocalSourceViews(entries, configuredSources, t),
+    [configuredSources, entries, t],
+  )
 
-  // 六规则①「仅显示已配置的源」（2026-11-04 真机修复）：服务端视图同本地口径按
-  // qualityList 交集过滤（空集不过滤防首启弱网闪变）；shiyin 兜底键恒排除——全源
-  // 权益=各源行各自聚合（六规则「无独立全部音源行」，服务端已收口，此处兜底回落路径）
-  const sources = useMemo(() => {
-    const raw = serverSources ?? localSources
-    return raw.filter(src => src.app != 'shiyin' && (configuredSources.length === 0 || configuredSources.includes(src.app)))
-  }, [serverSources, localSources, configuredSources])
+  // 六规则①「仅显示已配置的源」+ shiyin 键恒排除：口径注释与实现单源 keyDisplay.ts
+  // filterSourceViews（A5 批平移，2026-11-05）
+  const sources = useMemo(
+    () => filterSourceViews(serverSources ?? localSources, configuredSources),
+    [serverSources, localSources, configuredSources],
+  )
   const showLocalNotice = serverFailed && sources.length > 0
 
   // 段详情面板状态（拍板：码值复制/设备管理/解绑收段详情；秒级到期同面板）

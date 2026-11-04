@@ -261,7 +261,9 @@ export const fetchOrder = async(orderNo: string): Promise<OrderRecord | null> =>
       // skuIds=本地独有保留（DTO 无此键）
       const local = await getLocalOrders()
       const localHit = local.find(l => l.orderNo == orderNo)
-      const merged = { ...hit, skuIds: localHit?.skuIds ?? '' }
+      // 本地独有字段双保留（三席审查 I-A：与 orderMerge mergeOrders localHit 分支同口径——
+      // 继续支付重放凭证，upsert 覆盖前必须带回，否则「我已付款」轮询一次即抹空）
+      const merged = { ...hit, skuIds: localHit?.skuIds ?? '', clientToken: localHit?.clientToken ?? '' }
       await upsertLocalOrder(merged)
       return merged
     }
