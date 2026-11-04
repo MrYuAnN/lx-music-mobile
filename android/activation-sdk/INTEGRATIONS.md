@@ -17,7 +17,8 @@
 - 审计快照：lxmusic-custom `doc/plans/activation-audit-jingping.md`（A 类漂移 8 项
   +B-1+R8 发现，处置以该报告为准）
 - SDK：六文件与活源字节级一致；init 五参（无 webBaseUrl——无 WebView 域）+
-  installReportEnabled=false；RN 0.88 新架构+薄 bridge 六方法。
+  installReportEnabled=true（2026-11-03 批5 F-09 接线，随 vc13 发版生效）；RN 0.88
+  新架构+薄 bridge 六方法。
 
 ### 拍板偏离（对照清单条目）
 
@@ -39,7 +40,7 @@
 | G 到期停拦钩子 | 不接 enforceExpiry | 到期处置=取链 403 快抛链承担；v3 落字 |
 | H init 同步段纪律 | 已按序接线；**权益协程=refreshOnStart→未激活 restore 前置→claimTrial（2026-11-01 补）** | claim 契约「restore 先行」宿主侧落实；召回不再单点依赖 claim 409 分支（trial_min_client_ver 门槛 426 不再拦召回） |
 | H 6h 巡检 Worker | **已调度（2026-11-01 随 D2）**：MainApplication 启动段 `EntitlementSyncScheduler.schedule`（UPDATE 幂等，CONNECTED 约束） | 旧「不调度」落字作废；止损窗口 TTL≤24h→6h；Worker 内 enforceExpiry 空跑（宿主无钩子，见下行） |
-| H install 上报 | 关闭 | 网关无 /app 分流；开启前置=配 location（审计 D6） |
+| H install 上报 | **已接线（2026-11-03 批5 F-09，随 vc13 发版生效）**：installReportEnabled=true + 宿主 ActivityLifecycleCallbacks.onActivityResumed 挂 reportInstall（单 Activity=回前台语义，appScope fire-and-forget） | 旧「关闭」落字作废：直连形态豁免网关 /app location 前置（CHECKLIST 接入总序网关段） |
 | H 权益事件 UI 刷新 | 已实现（bridge NativeEventEmitter 转发+注销+useActivationState 订阅，事件名 entitlement-changed） | **A-7 已修 2026-10-31** |
 | I /latest | 自建轻服务（无 meta 三键回退） | 全新建库表即权威；10-26 拍板裁剪 |
 | I 426 | /url 426→UpgradeRequiredModal 统一出口（versionState 驱动，F5 直达，原 openUrl 跳浏览器退役——client.ts 批2）；/config min 自判强更弹窗（超越净屏）；/register 缺头**已修**（auth.ts :157 带头，A-6 终态；批6 F-08② 回填 2026-11-03） | /config 不带版本头恒可达=有意设计（防强升死锁同 /latest 逻辑） |
@@ -61,9 +62,12 @@ A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageK
   在拾音仓直接手改 SDK 拷贝、活源 view 改动滞留工作区未提交、平台 sdk/android 停在
   c491659；裸跑 `go test` 另有缓存假绿（Go 测试缓存 key 不含运行时读取的 SDK 文件，
   实证 cached ok 与实际红并存）。
-- 处置（件4 既定回灌链）：拾音 state 并入活源 → 姊妹件以拾音版回填活源（11-03 闲鱼
-  归因/install 上报登记此前漏回灌）→ 平台回灌（*.kt+RelayBatch3Test.kt+两姊妹件）→
-  拷回拾音；终态=两把锁 `-count=1` 全绿、三仓零 diff。
-- 防线加固：平台侧锁把两姊妹件纳入零 diff 断言（三仓同文 10-31 拍板背书）；两把锁
+- 处置（件4 既定回灌链）：拾音 state 并入活源 → 姊妹件以拾音版回填活源（实际范围=
+  10-31 后多批登记滞留——B/C/D/E/G/H/I 多行+已知待修节，非仅 11-03 闲鱼/install
+  两项）→ 平台回灌（*.kt+RelayBatch3Test.kt+两姊妹件）→ 拷回拾音；终态=两把锁
+  `-count=1` 全绿、三仓零 diff。
+- 防线加固：平台侧锁把两姊妹件纳入零 diff 断言（同文依据出处链=CHECKLIST 头部
+  「单源=净屏 App 仓随回灌/同步链走」+shiyin-pricing-model.md「SDK=三仓同文姊妹件」，
+  机械断言为本批升级）；两把锁
   注释+SDK README 检查单第 3 步补「`-count=1` 必带」纪律（净屏侧锁比对范围不动，
   维持 S10 双视角分工）。

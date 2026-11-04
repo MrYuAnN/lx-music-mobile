@@ -222,6 +222,10 @@ versionCode bump + 上表回归清单 + `latest-set` changelog；平台/取链�
 
 - **先导批**：四件各自独立 commit，逐件 revert 即时生效；向量/drift 测试 revert 无
   副作用；**漂移定性处置的回灌/拷回 commit 独立列入本清单**（审查 S12）。
+- **漂移处置 commit 清单（S12 回填，2026-11-04）**：①先导批 56 行漂移处置=平台镜像
+  三笔 7f8c2b4/8a840a4/c491659（chore(sdk) 活源镜像）+拾音侧随收编批件 7 commit；
+  ②收口批=净屏 a65f39e/平台 e1ed97f+4ecd42c/拾音 470ac17d（+审查修复批随各仓后续
+  fix 笔）。revert 逆序=拾音拷回 → 平台回灌 → 活源收口（先消费端后活源）。
 - **收编批**：App 侧回退=发版回退（`/dl/latest` 指回旧版本 APK，既有 internal 机制）；
   SDK 侧回退=三仓拷贝目录还原+drift 测试转绿确认；服务端无改动无需回滚。
 - **数据**：全程无 schema/数据迁移，零数据回滚面。

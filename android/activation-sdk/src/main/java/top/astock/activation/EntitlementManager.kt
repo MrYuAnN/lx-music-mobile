@@ -561,18 +561,27 @@ object EntitlementManager {
                 check(key.isNotEmpty()) { "本机未开通会员" }
                 val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
                 val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/entitlements").openConnection() as HttpURLConnection
-                conn.connectTimeout = 15000
-                conn.readTimeout = 15000
-                conn.doOutput = true
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
-                conn.setRequestProperty("X-Product", ActivationSdk.productId)
-                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-                val code = conn.responseCode
-                val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
-                    ?.bufferedReader()?.use { it.readText() } ?: ""
-                conn.disconnect()
+                val code: Int
+                val respBody: String
+                try {
+                    // 超时沿主链路 15s 档：视图含段全集数据量大于 codeOverlap 短超时
+                    // 5s 先例的查询面；宿主需更快回落可自包 withTimeout
+                    conn.connectTimeout = 15000
+                    conn.readTimeout = 15000
+                    conn.doOutput = true
+                    conn.requestMethod = "POST"
+                    conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                    conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
+                    conn.setRequestProperty("X-Product", ActivationSdk.productId)
+                    conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                    code = conn.responseCode
+                    respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                        ?.bufferedReader()?.use { it.readText() } ?: ""
+                } finally {
+                    // disconnect 入 try/finally（claimTrial S4 修复同款骨架：异常路径
+                    // 不泄漏连接）
+                    conn.disconnect()
+                }
                 if (code != 200) return@runCatching null
                 val arr = JSONObject(respBody).optJSONArray("sources") ?: return@runCatching null
                 (0 until arr.length()).mapNotNull { i ->
@@ -598,7 +607,10 @@ object EntitlementManager {
                         segments = segs,
                     )
                 }
-            }.getOrNull()
+            }.getOrElse {
+                Log.w(TAG, "entitlementsView failed: ${it.message}")
+                null
+            }
         }
 
     /** 单码只读校验：刷新 receipt 与绑定标记；返回绑定态快照。分派口径见 refreshOnStart。 */

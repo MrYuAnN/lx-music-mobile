@@ -87,13 +87,18 @@ ActivationSdk.registerExpiryHandler(
 2. **单测在 App 仓跑**（平台仓无 Android 构建环境）：`gradlew :activation-sdk:testDebugUnitTest`
    ——ClaimOrchestrationTest（claim 编排五件：退避/409 分派/单飞/监听/持久化往返）+
    Ed25519VerifyTest（RFC 8032 向量）/ActivationSdkConfigTest；
-3. 逐项目（净屏 App 仓 `activation-sdk/` + 后续接入项目）重新拷入 diff 对拍；
+3. 逐项目（净屏 App 仓 `activation-sdk/` + 后续接入项目）重新拷入 diff 对拍；收尾
+   验证=两把 drift 锁 `go test -count=1` 全绿（净屏侧锁 backend/admin 盖净屏↔平台；
+   平台侧锁 license-platform internal/sdkdrift 盖三仓 *.kt+向量+两姊妹件）——
+   **`-count=1` 必带**：裸跑 `go test` 会命中陈旧缓存假绿（Go 测试缓存 key 不含
+   运行时读取的 SDK 文件，2026-11-04 漂移收口批实证 cached ok 与实际红并存）；
 4. 契约变更（请求/响应字段）须同步方案文档「契约冻结」清单 + 平台侧兼容期；
    宿主自有平台端点（如净屏 TelemetryClient/JingpingOrders）同样须带 X-Product 头；
 5. 各项目跑盐不变断言测试 + 真机激活冒烟后才发版；
 6. **净屏 App 层商业化能力（宿主 UI/流程/worker，不在 SDK 源码内）新增或变更时**：
    同 commit 更新 INTEGRATION-CHECKLIST.md 对应条目+其头部清单版本号（+0.1），两份
-   文档随本目录回灌/同步链走（drift 锁当前只比 *.kt，md 同步靠本步纪律）；接入项目
+   文档随本目录回灌/同步链走（平台侧锁 2026-11-04 起已把两姊妹件纳入零 diff 断言，
+   内容演进仍靠本步纪律登记）；接入项目
    按新清单版本点检自己是否需跟进，跟进结果更新 INTEGRATIONS.md 本项目节。
 
 ## 版本
@@ -131,9 +136,37 @@ ActivationSdk.registerExpiryHandler(
   `releaseFailMessage`（纯函数）；单测 ReleaseOutcomeTest（映射+文案逐字回归双锚点；
   成功路径 clearKey 行为由真机冒烟盖）。
 
+- 2026-11-03 v1.5（⑥件②方案①净屏侧适配，三角色审查定稿）：code-overlap 前置查询——
+  `codeOverlap(context,code): List<String>?`（POST /api/code-overlap，200→overlap 源键
+  列表；非 200/异常/坏 JSON→null=失败信号，调用方保守回退粗触发确认框，拾音同款形态；
+  解析单源 `parseOverlapKeys` 纯函数+CodeOverlapParseTest；code 归一与 activateOrRedeem
+  同口径；connect/read 独立短超时 5s/5s——确认前置可选增强查询非关键路径，审查 I-2；
+  查询期按钮独立「检查中…」文案——分阶段 loading 标签惯例（PM 席 S-1 登记，非复用
+  激活语义））。
+  宿主侧按源到期文案纯函数 describeOverlapSources 在净屏 App 层（JingpingSheets
+  companion，停权码不计入取最大）。**同文副本纪律：v1.5 基线=净屏仓，平台仓
+  sdk/android chore 同步前以净屏仓为准；拾音=宿主 RN 层消费、净屏=SDK 层（层级差异
+  登记防对照审计误判）**。
+
+- 2026-11-04 v1.6（多源售卖 v2.4 两批+权益视图回灌收口，drift 漂移处置批）：三批
+  SDK 变更在拾音/活源落库后平台仓未回灌，本笔按活源链收口三仓归零——
+  ①relay 段接力配套（2e59ea2 已入库，本节补记）：`K_RELAY_MODE` 能力位（激活/巡检
+  任一通道 relay:true 单调置位）+`relayMode()` 宿主门控+`AuthResult.Success.relay`+
+  prune 条件化（relay 无融合→无孤儿概念；false 时 legacy 行为逐字节不变）；
+  ②按源权益视图（§五.3，拾音 5dcb6f0e）：`entitlementsView()`/`EntSourceView`/
+  `EntSegmentView`（POST /api/entitlements 显式拉取，失败=null 宿主回落本地视图）；
+  ③排队态桥（拾音 9c60f11f）：`EntSegmentView.state` 三态 active|queued|expired
+  （空串=旧服务端窗口，宿主回落 valid 两态）；④`RelayBatch3Test.kt` 平台补拷。
+  同批防线落字：平台侧锁姊妹件入锁+两把锁 `-count=1` 纪律（检查单第 3 步）+
+  INTEGRATIONS.md 漂移定性登记。
+
 - 2026-10-31 文档姊妹件首版（非 SDK 版本推进，SDK 源码零变化）：
   INTEGRATION-CHECKLIST.md（宿主层接入能力清单 v1.0——自拾音全域对照审计的净屏
   App 层 47 条能力提炼，四档分级+跨层配置项+验证门槛）+ INTEGRATIONS.md（接入登记，
   回填净屏/拾音两节）+ 检查单第 6 步（净屏 App 层能力变更同步清单）+ README 能力节
   加姊妹件指引；本 README 顺带拉平两仓既存 md 漂移（净屏仓曾落后平台仓 v1.3 段——
   md 不在 drift 锁内，本次起以净屏仓为单源同步）。
+
+## T4 语义向量同步（2026-11-04）
+
+tests/entitlement-vectors.json 为跨仓语义契约锁文件（方案 doc/plans/entitlement-semantics-single-source.md 件3），**随源拷贝**：活源改动回灌平台仓/拷入拾音仓时本文件必须同拷（internal/sdkdrift 三仓 drift 锁已机械覆盖本文件零 diff）。
