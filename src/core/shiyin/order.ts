@@ -9,39 +9,19 @@ import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import { ORDER_BASE_URL } from './config'
 import { activationModule } from '@/utils/nativeModules/activation'
+import { mergeOrders, mapOrderDTO, MAX_LOCAL_ORDERS, MAX_NOS_QUERY } from './orderMerge'
+import type { OrderRecord } from './orderMerge'
 import type { Message } from '@/lang'
+import { parseSkusPayload, SOURCE_KEYS, type Sku, type SkusCatalog } from './skuParse'
 
 const NETWORK_TIMEOUT = 15000
-const MAX_LOCAL_ORDERS = 100
-const MAX_NOS_QUERY = 20
+// MAX_LOCAL_ORDERS/MAX_NOS_QUERY 随合流单源 orderMerge.ts（A5 批平移，2026-11-05；
+// 本文件 import 供 upsert 截断与 nos 窗口消费）
 
-export const SOURCE_KEYS = ['tx', 'wy', 'kg', 'kw'] as const
-export type SourceKey = typeof SOURCE_KEYS[number]
-
-/** /api/skus 条目（服务端小写字段契约；apps 非单值的行跳过渲染，审查 S3） */
-export interface Sku {
-  id: string
-  name: string
-  apps: string[]
-  tier: string
-  days: number
-  deviceLimit: number
-  priceCents: number
-}
-
-export interface SkusCatalog {
-  /** 全源组（apps=["shiyin"]，全源兜底语义） */
-  allSource: Sku[]
-  /** 单源组：音源键→档位升序列表（days=0 永久排尾，净屏 groupByApps 排序口径） */
-  bySource: Partial<Record<SourceKey, Sku[]>>
-  comboRates: Array<{ n: number, r: number }>
-  payable: boolean
-  nativeCheckout: boolean
-  xianyuUrl: string
-  xianyuItemId: string
-  contactUrl: string
-  serviceHours: string
-}
+// SKU 目录解析纯逻辑单源 skuParse.ts（T3 笔③ 抽取，A5 平移同款——RN 依赖模块
+// 无法进 node:test）：类型与函数经此 re-export 供既有消费方零改动。
+export { SOURCE_KEYS, parseSkusPayload, isForeverSku } from './skuParse'
+export type { SourceKey, Sku, SkusCatalog } from './skuParse'
 
 /** 建单响应（服务端 orderCreateResponse 契约，支付引导页数据齐发免二次拉取） */
 export interface CreateOrderResult {
@@ -57,106 +37,16 @@ export interface CreateOrderResult {
   contactUrl: string
 }
 
-/** 订单快照（本地持久化 + /api/orders DTO 合流视图） */
-export interface OrderRecord {
-  orderNo: string
-  /** full 视图下发完整单号；uid 弱凭证视图为脱敏串（仅展示） */
-  maskedNo: string
-  status: string
-  closeReason: string
-  amountCents: number
-  desc: string
-  isCombo: boolean
-  createdAt: number
-  /** 仅 full + delivered 下发（本地有 order_no 的单恒 full） */
-  codes: string[]
-  /** 码生命周期六桶（2026-11-03 服务端派生单一事实源；平台未升级 v2 缺省=
-   *  undefined → 五态推断回退客户端推断）。assigned/rebind=可激活面；
-   *  boundSelf/mergedSelf=本机已完成面；boundOther=他机；expired=过期展示桶 */
-  codeAgg?: OrderCodeAgg
-  /** 建单 sku 串（本地独有，服务端不下发）——「继续支付」按同 token+同 sku 幂等重放取回
-   *  闲鱼链接齐发响应（服务端同 token 重试返回原单契约） */
-  skuIds: string
-  /** 建单时的 client_token（本地独有；审查批3代码审 I3/A：持久化后「继续支付」跨进程
-   *  重放仍幂等命中原单，杀 App 重启不失效；同 token 异内容 409 时轮换重建闭环） */
-  clientToken: string
-}
-
-/** 码生命周期六桶计数（服务端 code_agg 契约同构；纯计数不含码值，uid 弱视图同发） */
-export interface OrderCodeAgg {
-  assignedN: number
-  activatedN: number
-  rebindN: number
-  boundSelfN: number
-  mergedSelfN: number
-  boundOtherN: number
-  expiredN: number
-}
+// OrderRecord/OrderCodeAgg 类型单源 orderMerge.ts（A5 批下沉，2026-11-05）——re-export
+// 供既有消费方（orderReminder.ts 等）零改动（isEntryExpired 先例）
+export type { OrderRecord, OrderCodeAgg } from './orderMerge'
 
 // 本地快照结构（建单即写；轮询回写 status/codes；上限截断最旧）
 interface StoredOrders {
   orders: OrderRecord[]
 }
 
-const parseSkusPayload = (body: any): SkusCatalog => {
-  const list: Sku[] = []
-  const arr = Array.isArray(body?.skus) ? body.skus : []
-  for (const o of arr) {
-    const apps: string[] = Array.isArray(o?.apps) ? o.apps : []
-    // 渲染兜底（审查 S3）：仅收单值行（["shiyin"] 全源键长度亦为 1）；运营误建多值行跳过+留痕
-    if (apps.length != 1) {
-      console.log('[order] skip multi-app sku:', o?.id)
-      continue
-    }
-    if (typeof o?.id != 'string' || typeof o?.price_cents != 'number') continue
-    list.push({
-      id: o.id,
-      name: o.name ?? o.id,
-      apps,
-      tier: o.tier ?? '',
-      // 缺省 -1 与「显式 0=永久」区分（审查 S6：漏发 days 的行不再误显永久档）
-      days: typeof o?.days == 'number' ? o.days : -1,
-      deviceLimit: o.device_limit ?? 1,
-      priceCents: o.price_cents,
-    })
-  }
-  const bySource: Partial<Record<SourceKey, Sku[]>> = {}
-  const allSource: Sku[] = []
-  for (const sku of list) {
-    if (sku.apps[0] == 'shiyin') allSource.push(sku)
-    else {
-      const key = sku.apps[0] as SourceKey
-      (bySource[key] ??= []).push(sku)
-    }
-  }
-  // 组内档位升序、永久排尾（净屏 groupByApps 口径）；组间按 SOURCE_KEYS 固定序（消费方遍历）
-  for (const key of Object.keys(bySource) as SourceKey[]) {
-    bySource[key]!.sort((a, b) => sortTier(a) - sortTier(b))
-  }
-  allSource.sort((a, b) => sortTier(a) - sortTier(b))
-  const comboRates = Array.isArray(body?.combo_rates)
-    ? body.combo_rates
-      .filter((o: any) => typeof o?.n == 'number' && typeof o?.r == 'number')
-      .map((o: any) => ({ n: o.n as number, r: o.r as number }))
-    : []
-  return {
-    allSource,
-    bySource,
-    comboRates,
-    payable: body?.payable !== false,
-    nativeCheckout: body?.native_checkout === true,
-    xianyuUrl: typeof body?.xianyu_url == 'string' ? body.xianyu_url : '',
-    xianyuItemId: typeof body?.xianyu_item_id == 'string' ? body.xianyu_item_id : '',
-    contactUrl: typeof body?.contact_url == 'string' ? body.contact_url : '',
-    serviceHours: typeof body?.service_hours == 'string' ? body.service_hours : '',
-  }
-}
-
-// days=0 永久排尾，缺省 -1 次之，其余升序（净屏 groupByApps 同口径）
-const sortTier = (a: Sku): number => (a.days == 0 ? Number.MAX_VALUE : (a.days < 0 ? Number.MAX_VALUE - 1 : a.days))
-
-/** 是否永久档（显式 days=0；缺省 -1 不算——审查 S6 口径单源） */
-export const isForeverSku = (sku: Sku): boolean => sku.days == 0
+// parseSkusPayload/sortTier/isForeverSku 单源 skuParse.ts（T3 笔③ 平移，头部 re-export）
 
 // ---- skus 本地缓存（七题 Q1，2026-11-02 拍板=净屏 PlanSkus 同构 SWR）----
 // fetchSkus 成功即写缓存（净屏 fetch() 同构），存原始 body+fetchedAt；读时经 parseSkusPayload
@@ -340,56 +230,12 @@ export const syncOrders = async(): Promise<OrderRecord[]> => {
   // 解析契约（批3代码审 C-B）：服务端 writeJSON 包装 {"orders":[...]}，非顶层数组
   const body = resp.body as any
   const rawList = Array.isArray(body?.orders) ? body.orders : []
-  const list: OrderRecord[] = rawList.map(mapOrderDTO)
-  // 合流（批3代码审 I3/E）：服务端为准回写状态与码；本地独有字段保留；**未进本次 nos
-  // 查询窗口（>20 条的旧单）的本地记录原样保留**——「服务端没返回」≠「单不存在」
-  const merged = new Map<string, OrderRecord>()
-  for (const o of list) merged.set(o.orderNo || o.maskedNo, o)
-  const out: OrderRecord[] = []
-  for (const [key, o] of merged) {
-    const localHit = local.find(l => l.orderNo == key)
-    // 服务端数据为准；skuIds/clientToken=本地独有字段保留（DTO 无此键，防覆盖丢失继续支付能力）
-    out.push(localHit
-      ? { ...o, skuIds: localHit.skuIds || '', clientToken: localHit.clientToken || '', orderNo: localHit.orderNo || o.orderNo }
-      : o)
-  }
-  const queriedNos = new Set(local.slice(0, MAX_NOS_QUERY).map(l => l.orderNo))
-  for (const l of local) {
-    if (l.orderNo && !queriedNos.has(l.orderNo) && !merged.has(l.orderNo)) out.push(l)
-  }
-  out.sort((a, b) => b.createdAt - a.createdAt)
-  if (out.length > MAX_LOCAL_ORDERS) out.length = MAX_LOCAL_ORDERS
+  // 合流单源 orderMerge.ts（A5 批平移，2026-11-05）：服务端为准回写状态与码；本地独有
+  // 字段保留；nos 窗口内未返回=丢弃（服务端权威）窗口外旧单原样保留；createdAt 降序；
+  // MAX 截断（口径注释与用例单源彼处）
+  const out = mergeOrders(local, rawList.map(mapOrderDTO))
   await saveData(storageDataPrefix.shiyinOrders, { orders: out } satisfies StoredOrders)
   return out
-}
-
-const mapOrderDTO = (o: any): OrderRecord => {
-  const rawAgg = o?.code_agg
-  return {
-    orderNo: typeof o?.order_no == 'string' ? o.order_no : '',
-    maskedNo: typeof o?.masked_no == 'string' ? o.masked_no : '',
-    status: o?.status ?? '',
-    closeReason: typeof o?.close_reason == 'string' ? o.close_reason : '',
-    amountCents: o?.amount_cents ?? 0,
-    desc: o?.desc ?? '',
-    isCombo: o?.is_combo === true,
-    createdAt: o?.created_at ?? 0,
-    codes: Array.isArray(o?.codes) ? o.codes.filter((c: any) => typeof c == 'string') : [],
-    codeAgg: rawAgg && typeof rawAgg == 'object'
-      ? {
-          assignedN: typeof rawAgg.assigned_n == 'number' ? rawAgg.assigned_n : 0,
-          activatedN: typeof rawAgg.activated_n == 'number' ? rawAgg.activated_n : 0,
-          rebindN: typeof rawAgg.rebind_n == 'number' ? rawAgg.rebind_n : 0,
-          boundSelfN: typeof rawAgg.bound_self_n == 'number' ? rawAgg.bound_self_n : 0,
-          mergedSelfN: typeof rawAgg.merged_self_n == 'number' ? rawAgg.merged_self_n : 0,
-          boundOtherN: typeof rawAgg.bound_other_n == 'number' ? rawAgg.bound_other_n : 0,
-          expiredN: typeof rawAgg.expired_n == 'number' ? rawAgg.expired_n : 0,
-        }
-      : undefined,
-    // 本地独有字段：DTO 无此键，合流时由 localHit 保留（继续支付重放依赖）
-    skuIds: '',
-    clientToken: '',
-  }
 }
 
 /** 单查（支付引导页「我已付款」密集轮询用；nos 强凭证，本地无单号时退化为 uid 视图） */
