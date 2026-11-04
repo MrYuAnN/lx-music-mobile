@@ -1,5 +1,11 @@
 # 项目约定
 
+## 仓库边界（2026-11-05 T2 迁移）
+
+本仓=纯 RN App（src/android/doc）：Go 轻服务已迁 `order-core` 仓 `server/shiyin/`
+（部署 Runbook 随迁，方案文档群仍留本仓 doc/plans/）；订单域库=order-core 仓根。
+activation-sdk 拷贝仍在 android/（三仓活源，drift 防线见平台仓 sdkdrift）。
+
 ## 构建变体：什么时候用哪个包（2026-10-10 拍板）
 
 | 变体 | 命令 | 什么时候走 | 特性 |
