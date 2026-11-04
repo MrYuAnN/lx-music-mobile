@@ -12,8 +12,8 @@
 - **混合码（Mixed Key)**：部分 app 有效、部分过期的键。注册链预拒对混合码放行（「all 才拒」），取链闸按请求源单键判定（「单键过期即拒 + 源缺失 fail-closed」）——两处宽严差异是有意的。
 - **entitlement_kind**：平台下发字段（activate/binding-check/redeem 权益快照），承载 trial/ paid 语义，客户端不再二次解释 tier。redeem 路径补齐见先导批。
 - **权益闸（Entitlement Gate）**：取链/入口前的客户端权益拦截+引导编排层（A1 架构批 2026-11-04 拆出，自取链 client.ts 寄生位迁正）。三出口：`guardEntitlementGate`（入口闸：unactivated/expired 各引导一次返 blocked）、`ensurePlayable`（取链前置：unactivated 快抛不引导）、`handleSourceRejected`（取链 403 权益分支引导分流）。形态=纯工厂 `core/shiyin/gate.ts`（GateDeps 注入，node:test 直跑）+ 组合根 `gateApp.ts` 绑真实现；域错误族（shiyinError+isShiyinFastFail 快抛名单）单源 `errors.ts`；音源中文名表单源 `sources.ts`。闸只做编排不改判定（判定语义单源 SDK，见 ADR-0001）；行为语义锚=2026-11-01「锁播放+入口统一前置拦截」拍板。
-- **本地回落视图（Local Fallback View）**：服务端按源视图（/api/entitlements）不可得时的码卡页展示回落——getKeyEntries expiries max 口径本地聚合（每源行值=max(自身, shiyin 兜底)，段=贡献码单段），配「本地视图标注」提示。实现单源=keyDisplay.ts `buildLocalSourceViews`（2026-11-05 A5 批自 MyKeys 组件内联平移，ADR-0002），六规则①过滤=`filterSourceViews` 同文件。
-- **合流窗口保留（Merge Window Retention）**：订单 nos+uid 双凭证合流的窗口双口径——nos 查询窗口（MAX_NOS_QUERY=20）内未返回的单=丢弃（服务端权威，「服务端没返回」=单已不存在）；窗口外旧单原样保留（服务端不知道）。实现单源=orderMerge.ts `mergeOrders`（A5 批平移，ADR-0002）；maskedNo 回退键 vs localHit 仅按 orderNo 命中的不对称为已登记疑似 bug（排查件核实中，用例不锁该路径）。
+- **本地回落视图（Local Fallback View）**：服务端按源视图（/api/entitlements）不可得时的码卡页展示回落——getKeyEntries expiries max 口径本地聚合（每源行值=max(自身, shiyin 兜底)，段=贡献码单段），配「本地视图标注」提示。实现单源=keyDisplay.ts `buildLocalSourceViews`（2026-11-05 A5 批自 MyKeys 组件内联平移，ADR-0003），六规则①过滤=`filterSourceViews` 同文件。
+- **合流窗口保留（Merge Window Retention）**：订单 nos+uid 双凭证合流的窗口双口径——nos 查询窗口（MAX_NOS_QUERY=20）内未返回的单=丢弃（服务端权威，「服务端没返回」=单已不存在）；窗口外旧单原样保留（服务端不知道）。实现单源=orderMerge.ts `mergeOrders`（A5 批平移，ADR-0003）；maskedNo 回退键 vs localHit 仅按 orderNo 命中的不对称为已登记疑似 bug（排查件核实中，用例不锁该路径）。
 
 ## 域分工（本 ADR-0001 拍板）
 
