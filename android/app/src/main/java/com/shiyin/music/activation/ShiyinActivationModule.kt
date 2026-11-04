@@ -104,6 +104,9 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
   fun getKeyEntries(promise: Promise) {
     try {
       val entries = Arguments.createArray()
+      // T4 件7：每码真值单源——validKeys（SDK validAt 判定）/maskedExpiries（遮蔽视图）
+      // 随条目下发，码卡排序/分组不再自算时间比较
+      val truths = EntitlementManager.entryTruths(reactContext).associateBy { it.keyId }
       EntitlementManager.keyEntries(reactContext).forEach { (key, e) ->
         val m: WritableMap = Arguments.createMap()
         m.putString("key", key)
@@ -115,6 +118,17 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
         val mark = EntitlementManager.bindingState(reactContext, key)
         if (mark != null) m.putString("mark", mark) else m.putNull("mark")
         m.putInt("deviceLimit", e.deviceLimit)
+        val truth = truths[key]
+        if (truth != null) {
+          val validArr = Arguments.createArray()
+          truth.validKeys.forEach { validArr.pushString(it) }
+          m.putArray("validKeys", validArr)
+          val maskedMap = Arguments.createMap()
+          truth.masked.expiries.forEach { (app, exp) -> maskedMap.putDouble(app, exp.toDouble()) }
+          m.putMap("maskedExpiries", maskedMap)
+        } else {
+          m.putNull("validKeys"); m.putNull("maskedExpiries")
+        }
         entries.pushMap(m)
       }
       promise.resolve(entries)
@@ -177,9 +191,14 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
     }
   }
 
-  // 激活态快照：{state, expiry, expiries, isTrial, key}。expiry=本 app 到期 unix 秒（0=永久，
-  // null=无权益）；expiries=生效范围全集（app 键→到期，净屏 entitlementRows 口径；Home 横幅
-  // 多源「最早到期 app 归因」数据源，净屏审查 I8 同语义，2026-11-01 用户多源提示需求）
+  // 激活态快照：{state, expiry, expiries, isTrial, key, valid?, masked?, primary?}。
+  // expiry=本 app 到期 unix 秒（0=永久，null=无权益）；expiries=生效范围全集（app 键→
+  // 到期，净屏 entitlementRows 口径；Home 横幅多源「最早到期 app 归因」数据源，净屏审查
+  // I8 同语义，2026-11-01 用户多源提示需求）。
+  // T4 件7（2026-11-04）：Active/Expired 追加每键真值 valid（app→bool，SDK validAt+
+  // effectiveNow 口径）/遮蔽视图 masked（兜底有效时只留兜底键）/选主 primary
+  // （码卡主行新语义）——RN 展示层不自算时间比较（判定族单源化，拍板 #2/#7）；
+  // Unactivated 三字段 null。
   @ReactMethod
   fun getState(promise: Promise) {
     try {
@@ -190,6 +209,9 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
           map.putNull("expiry")
           map.putNull("expiries")
           map.putBoolean("isTrial", false)
+          map.putNull("valid")
+          map.putNull("masked")
+          map.putNull("primary")
         }
         is State.Active -> {
           map.putString("state", "active")
@@ -198,6 +220,7 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
           for ((app, exp) in s.e.expiries) all.putDouble(app, exp.toDouble())
           map.putMap("expiries", all)
           map.putBoolean("isTrial", s.e.isTrial())
+          putTruth(map)
         }
         is State.Expired -> {
           map.putString("state", "expired")
@@ -206,12 +229,39 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
           for ((app, exp) in s.e.expiries) all.putDouble(app, exp.toDouble())
           map.putMap("expiries", all)
           map.putBoolean("isTrial", s.e.isTrial())
+          putTruth(map)
         }
       }
       map.putString("key", EntitlementManager.storedKey(reactContext))
       promise.resolve(map)
     } catch (e: Exception) {
       promise.reject("get_state", e.message, e)
+    }
+  }
+
+  /** T4 件7：valid/masked/primary 三字段下发（SDK mergedTruth/primarySelection 单源） */
+  private fun putTruth(map: WritableMap) {
+    val truth = EntitlementManager.mergedTruth(reactContext)
+    if (truth == null) {
+      map.putNull("valid"); map.putNull("masked"); map.putNull("primary")
+      return
+    }
+    val validMap: WritableMap = Arguments.createMap()
+    for ((app, v) in truth.valid) validMap.putBoolean(app, v)
+    map.putMap("valid", validMap)
+    val maskedMap: WritableMap = Arguments.createMap()
+    for ((app, exp) in truth.masked) maskedMap.putDouble(app, exp.toDouble())
+    map.putMap("masked", maskedMap)
+    val sel = EntitlementManager.primarySelection(reactContext)
+    if (sel == null) {
+      map.putNull("primary")
+    } else {
+      val pm: WritableMap = Arguments.createMap()
+      pm.putString("key", sel.keyId)
+      val pe: WritableMap = Arguments.createMap()
+      for ((app, exp) in sel.ent.expiries) pe.putDouble(app, exp.toDouble())
+      pm.putMap("expiries", pe)
+      map.putMap("primary", pm)
     }
   }
 

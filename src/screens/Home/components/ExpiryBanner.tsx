@@ -5,7 +5,7 @@ import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
-import { useActivationState, isExpiredAt, isExpiringSoonAt, hasAnyValidKey, isKeyValid } from '@/core/shiyin/activation'
+import { useActivationState, isExpiringSoonAt } from '@/core/shiyin/activation'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 
 // Home 顶部到期警示横幅（2026-11-01 用户拍板，对齐净屏「打开即见」交互：净屏=卡片状态行
@@ -32,23 +32,21 @@ interface BannerPick {
 }
 
 /** 归因（方案 activation-expiry-display-plan.md §四A 滤红留金口径，2026-11-03 审查 C-1 修订）：
- *  allCovered=shiyin 全源兜底有效时 pool 收缩至 shiyin 键——被兜底放行的残留键（过期/临期）
- *  不参与提醒（消 false alarm）；hasAnyValid（任一键有效）=混合态红不出（Q2 拍板：有生效码
- *  不打全局红灯，过期源续费触点=播放弹窗），滤红留金只挑最早临期键；全失效→红显最早过期键。
- *  组合边界复审已推演：{F,T} 不可达（allCovered 蕴含 hasAnyValid），无死路 */
+ *  T4 收编批（2026-11-04）真值消费：pool=bridge 下发 masked 遮蔽视图（SDK maskApps
+ *  单源——shiyin 兜底有效时只留 shiyin 键，原 allCovered 收缩语义恒等）；每键真值=
+ *  bridge valid（SDK validAt 单源，原内联时间比较退役）；hasAnyValid（任一键有效）=
+ *  混合态红不出（Q2 拍板：有生效码不打全局红灯，过期源续费触点=播放弹窗），滤红留金
+ *  只挑最早临期键；全失效→红显最早过期键。旧桥窗口（valid/masked 缺失）不渲染横幅。
+ *  组合边界复审已推演：{F,T} 不可达（hasAnyValid 真时红被滤），无死路 */
 const pickBannerApp = (info: ActivationStateInfo): BannerPick | null => {
-  if (info.expiries == null) return null
-  const shiyinExp = info.expiries.shiyin
-  const allCovered = shiyinExp != null && isKeyValid(shiyinExp)
-  const pool: Array<[string, number]> = allCovered
-    ? [['shiyin', shiyinExp]]
-    : Object.entries(info.expiries)
-  const hasAnyValid = hasAnyValidKey(info.expiries)
+  if (info.expiries == null || info.valid == null || info.masked == null) return null
+  const pool = Object.entries(info.masked)
+  const hasAnyValid = Object.values(info.valid).some(Boolean)
   let pick: BannerPick | null = null
-  for (const [, exp] of pool) {
+  for (const [app, exp] of pool) {
     if (exp == 0) continue // 永久不提醒
-    const expired = isExpiredAt(exp)
-    const soon = !expired && isExpiringSoonAt(exp)
+    const expired = info.valid[app] !== true
+    const soon = !expired && isExpiringSoonAt(exp, true)
     // 滤红留金：有任一生效权益时过期键不参与（红色全局横幅只在全失效态出现）
     if (expired && hasAnyValid) continue
     if (!expired && !soon) continue

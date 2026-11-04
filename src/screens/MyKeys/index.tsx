@@ -38,11 +38,10 @@ import {
   unbindRemoteDevice,
   detectClipboardCandidate,
   formatRemainHint,
-  isExpiredAt,
   isEntryExpired,
-  isKeyValid,
   APP_CN,
 } from '@/core/shiyin/activation'
+import { sortKeyEntries } from '@/core/shiyin/keyDisplay'
 
 const BINDING_FETCH_INTERVAL = 60 * 1000
 
@@ -123,35 +122,9 @@ export default ({ componentId }: { componentId: string }) => {
   // 首帧 info=null（state 异步就绪前）按未购渲染防分态闪烁（代码审查 S-a）
   const unactivated = info == null || info.state == 'unactivated'
 
-  // 码卡两组式排序（方案 activation-expiry-display-plan.md §四B，Q3 拍板对齐 Apple 订阅管理）：
-  // 生效在上（组内按最近有效到期升序，最快到期顶上；0=永久视为最远→生效组末）/
-  // 过期沉底（组内按过期时间倒序，最近过期顶上）。码级过期判定=isEntryExpired（全部源键
-  // 均过期）。渲染时计算，跨过期点不自动重排（方案 §五知情登记，重进页收敛）
-  const sortedEntries = useMemo(() => {
-    const live: KeyEntry[] = []
-    const expired: KeyEntry[] = []
-    for (const e of entries) (isEntryExpired(e) ? expired : live).push(e)
-    const nearestLive = (e: KeyEntry): number => {
-      const vals = Object.values(e.expiries ?? {}).filter(exp => exp != 0 && exp * 1000 > Date.now())
-      if (!vals.length) {
-        // 空 vals 两种成因区分（代码审查 I-2）：expiries 缺失（旧 native 桥窗口）按单值
-        // expiry 兜底参与升序（与 isEntryExpired/latestExpired 兜底口径对称，expiry=0
-        // 永久→最远）；expiries 在但全永久（无近期到期键）→ 生效组末
-        if (!Object.keys(e.expiries ?? {}).length) return e.expiry == 0 ? Infinity : e.expiry
-        return Infinity
-      }
-      return Math.min(...vals)
-    }
-    const latestExpired = (e: KeyEntry): number => {
-      const vals = Object.values(e.expiries ?? {})
-      return vals.length ? Math.max(...vals) : e.expiry
-    }
-    // 比较器恒等回 0（代码审查 S5）：Infinity-Infinity=NaN 依赖引擎按 0 处理的实现行为，
-    // 规范未保证——显式恒等分支消除
-    live.sort((a, b) => { const va = nearestLive(a), vb = nearestLive(b); return va === vb ? 0 : va - vb })
-    expired.sort((a, b) => latestExpired(b) - latestExpired(a))
-    return [...live, ...expired]
-  }, [entries])
+  // 码卡两组式排序（方案 §四B Q3 拍板）：T4 收编批件7 抽纯函数 core/shiyin/keyDisplay
+  // （node:test 消费，A5 最小版——完整 A5 另立批次），逻辑不变
+  const sortedEntries = useMemo(() => sortKeyEntries(entries), [entries])
 
   // 剪贴板检测（净屏规则，A-1）：仅未购态、进页检测命中显示提示行点击填入——不静默预填；
   // 已购弹窗无检测（净屏 chip 仅未购态口径，复审 R-I-3）
@@ -373,15 +346,19 @@ const KeyCard = memo(({
   // 生效范围行显示集（2026-11-04 ⑧拍板，取代 2026-11-01「净屏 entitlementRows 对齐」App 侧
   // 口径——净屏维持全集渲染不跟随，跨端分叉=有意决定）：全源键（shiyin）单行；按源收费码
   // 逐源行按 /config 配置源过滤（「配置源=唯一边界」applySources 单源，未启用源键不显示）。
-  // 纯展示过滤，判定语义族（isKeyValid 四处）不动。S4（审查）：配置未加载（qualityList
-  // 空集）不过滤显全集，防首启弱网「全集→过滤集」口径闪变
+  // 纯展示过滤（判定语义族 T4 收编批退役，真值=bridge validKeys 下发）。S4（审查）：配置未加载（qualityList
+  // 空集）不过滤显全集，防首启弱网「全集→过滤集」口径闪变。
+  // T4 收编批（2026-11-04）：shiyin 有效性改消费 bridge validKeys 真值（SDK 单源，
+  // 原内联时间比较退役；旧桥 null 兜底保留原式）
   const expiryEntries = Object.entries(entry.expiries ?? {})
   const configuredSources = Object.keys(global.sy.qualityList ?? {})
   // 全源键单行条件带有效性（代码审查 I-3）：混合态 {shiyin 过期, 单源键有效} 时若恒收缩
   // 单行，生效码卡唯一行显「已到期」——对齐横幅 pickBannerApp allCovered 同口径（shiyin
   // 有效才收缩，无效回落逐源过滤集）
-  const filteredEntries = expiryEntries.some(([app, exp]) => app == 'shiyin' && isKeyValid(exp))
-    ? expiryEntries.filter(([app, exp]) => app == 'shiyin' && isKeyValid(exp))
+  const shiyinValid = entry.validKeys?.includes('shiyin')
+    ?? expiryEntries.some(([app, exp]) => app == 'shiyin' && exp != 0 && exp * 1000 > Date.now())
+  const filteredEntries = shiyinValid
+    ? expiryEntries.filter(([app]) => app == 'shiyin')
     : configuredSources.length
       ? expiryEntries.filter(([app]) => configuredSources.includes(app))
       : expiryEntries
@@ -400,10 +377,11 @@ const KeyCard = memo(({
   // 逐源行渲染（expiries 键=产品 app 键，APP_CN 映射显示名）；日期口径=净屏 app_row 同款
   // date-only（剩余递进由 remainHint 承担）。状态分态（2026-11-01 用户装机反馈：过期码卡
   // 曾恒显「试用中」；净屏 :445 口径——已到期标签优先于码级档位）。
-  // S2（审查）：expired 判定单源=isExpiredAt（activation.ts）
+  // S2（审查）+T4 收编批（2026-11-04）：expired 判定改消费 bridge validKeys 真值
+  // （SDK 单源；旧桥 null 兜底保留原式，0=永久语义不变）
   const renderExpiryRow = (app: string, exp: number) => {
     const remain = formatRemainHint(exp, t)
-    const expired = isExpiredAt(exp)
+    const expired = !(entry.validKeys?.includes(app) ?? (exp != 0 && exp * 1000 > Date.now()))
     const expiryPhrase = exp == 0
       ? t('activation_permanent')
       : `${expired ? `${t('activation_state_expired')} · ` : entry.isTrial ? `${t('activation_state_trial')} · ` : ''}${t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}${remain ? ` · ${remain}` : ''}`
@@ -447,10 +425,11 @@ const KeyCard = memo(({
             : (
             // 旧 native 桥接无 expiries 时的兜底（reload 窗口期）：单值 expiry 行
             // S6（审查）：同步④分态口径——过期加「已到期」标签（净屏 :445 同源）
+            // T4 收编批：旧桥兜底分支内联判定保留（isExpiredAt 退役）
             <Text size={15} color={theme['c-font']} style={styles.expiryText}>
               {entry.expiry == 0
                 ? t('activation_permanent')
-                : `${isExpiredAt(entry.expiry) ? `${t('activation_state_expired')} · ` : ''}${t('activation_until')} ${dateFormat(entry.expiry * 1000, 'Y-M-D')}${fallbackRemain ? ` · ${fallbackRemain}` : ''}`}
+                : `${(entry.expiry != 0 && entry.expiry * 1000 <= Date.now()) ? `${t('activation_state_expired')} · ` : ''}${t('activation_until')} ${dateFormat(entry.expiry * 1000, 'Y-M-D')}${fallbackRemain ? ` · ${fallbackRemain}` : ''}`}
             </Text>
           ))}
       </TouchableOpacity>

@@ -13,25 +13,16 @@ import type { Message } from '@/lang'
 // 生效范围行显示名（2026-11-01 拍板=净屏 entitlementRows 对齐；批3 v1.2 音源收费模型扩表）：
 // 产品 app 键→音源显示名。shiyin 翻转为全源兜底语义（审查 I1：旧值「QQ音乐」随全源拍板作废
 // ——全源码用户原会看到「QQ音乐会员即将到期」），音源键=product_apps 登记（tx/wy/kg/kw），
-// 命名与 self-hosted-music-server.md §五音质映射表同源
+// 命名与 self-hosted-music-server.md §五音质映射表同源。
+// T4 收编批（2026-11-04）：**本表仅剩展示中文名用途**——键域过滤/判定已迁 SDK
+// EntitlementConfig.productApps（MainApplication 注入，含原生 Worker；原「双改」注释废止，
+// F-03 红线随单源化消解）
 export const APP_CN: Record<string, string> = {
-  // 双源表（批2 审查 S-1 登记）：原生 ExpiryReminderWorker.kt APP_CN 同款五键——改动须双改，
-  // 防重演 F-03（af3f2fa2 只改 RN 未跟原生=源卡到期零提醒）
   shiyin: '全部音源',
   tx: 'QQ音乐',
   wy: '网易云音乐',
   kg: '酷狗音乐',
   kw: '酷我音乐',
-}
-
-// 音源权益判定（批3 v1.2 拍板：shiyin key=全源兜底）：先查 expiries["shiyin"]，命中（未过期
-// 或永久）=全源放行；否则查具体音源键。单源码用户无 shiyin 键自然落逐源判定。
-export const unlockSource = (source: string, expiries: Record<string, number> | null): boolean => {
-  if (expiries == null) return false
-  const all = expiries.shiyin
-  if (all != null && (all == 0 || all * 1000 > Date.now())) return true
-  const own = expiries[source]
-  return own != null && (own == 0 || own * 1000 > Date.now())
 }
 
 // 状态行文案（设置页「我的激活码」行值，2026-11-04 拍板①短状态词）：只返回状态词，
@@ -221,41 +212,26 @@ const shDayNumber = (unixSec: number): number => {
   }
   return Date.UTC(Number(map.year), Number(map.month) - 1, Number(map.day)) / 86400000
 }
-/** 是否已过期（码卡/兜底行分态单源判据，秒级） */
-export const isExpiredAt = (expiry: number): boolean => {
-  return expiry != 0 && expiry * 1000 <= Date.now()
-}
-/** 是否即将到期（≤3 天未过期；ExpiryBanner 金色窗，净屏 expiringSoon 同口径） */
-export const isExpiringSoonAt = (expiry: number): boolean => {
-  if (expiry == 0 || isExpiredAt(expiry)) return false
-  return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
-}
-
-// 「键有效」判定语义族四处（方案 activation-expiry-display-plan.md §四B/§四C 收口单源；
-// 口径调整须四处联动复核，F-03 同型防线）：
-// ①到期档位 isExpiredAt/isExpiringSoonAt（本文件上方）②码级 hasAnyValidKey/isEntryExpired
-// （本文件下方）③unlockSource（本文件上方）
-// ④原生 ExpiryReminderWorker 双判定（Kotlin，注释互指）；
-// （2026-11-04 ①拍板：formatActivationState 短状态词化，其 live 过滤展示分支退役出族）
-// 另有同语义内联参照 client.ts isSourceExpiredWithOthersActive（既有实现不收编，改动时对照本族）
-
-/** 单键有效判定（0=永久或未过期；代码审查 S6 收口：语义族单键谓词单点定义，五处联动
- *  复核时表达式只对此一处比对） */
-export const isKeyValid = (exp: number): boolean => exp == 0 || exp * 1000 > Date.now()
-
-/** 任一键有效（方案 §四B）：横幅滤红留金闸门与码级过期判定的公共底座，
- *  与 client.ts isSourceExpiredWithOthersActive 同语义收口 */
-export const hasAnyValidKey = (expiries: Record<string, number> | null | undefined): boolean => {
-  if (expiries == null) return false
-  return Object.values(expiries).some(isKeyValid)
-}
-
-/** 码卡过期判定（方案 §四B，Q3 拍板）：全部源键均过期=过期码卡（任一键有效=生效，与 SDK
- *  anyValid 口径一致）；expiries 空/旧 native 桥 reload 窗口走 expiry 单值兜底——复用
- *  isExpiredAt（含 0=永久语义，复审 S5 防永久码被置灰） */
+// 「键有效」判定语义族——T4 收编批（2026-11-04）**退役**：真值判定单源迁 SDK
+// （validAt/anyActive，bridge getState.valid/getKeyEntries.validKeys 下发，拍板 #2/#7），
+// 原 RN 五处实现（unlockSource/isKeyValid/hasAnyValidKey/isExpiredAt/Worker 双判定）
+// 与 client.ts 内联版（ADR-0001 推翻「不收编」）全部删除，F-03「改一侧忘一侧」整类
+// 事故结构性消灭。保留两个薄包装：
+// ①isEntryExpired——码级过期展示态（消费 bridge validKeys 真值；旧桥窗口退化为 expiry
+//   单值兜底，含 0=永久语义防永久码被置灰，复审 S5 口径不变）
+/** 码卡过期判定：全部源键均过期=过期码卡（真值=SDK validKeys 下发） */
 export const isEntryExpired = (entry: KeyEntry): boolean => {
-  if (Object.keys(entry.expiries ?? {}).length) return !hasAnyValidKey(entry.expiries)
-  return isExpiredAt(entry.expiry)
+  if (entry.validKeys != null) {
+    return Object.keys(entry.expiries ?? {}).length > 0 && entry.validKeys.length === 0
+  }
+  return entry.expiry != 0 && entry.expiry * 1000 <= Date.now()
+}
+// ②isExpiringSoonAt——≤3 天金色窗（soon 窗=展示参数留 RN，拍板 I-D：真值由调用方以
+//   bridge 下发 valid 传入，窗算术 Date.now() 豁免判定时钟口径拍板 #7）
+/** 是否即将到期（≤3 天未过期；ExpiryBanner 金色窗，净屏 expiringSoon 同口径） */
+export const isExpiringSoonAt = (expiry: number, isValid = true): boolean => {
+  if (!isValid || expiry == 0) return false
+  return expiry - Math.floor(Date.now() / 1000) <= 3 * 86400
 }
 
 /** 到期剩余时长递进提示（净屏 remainHint 口径对齐+分钟延伸，2026-11-01 用户拍板）：

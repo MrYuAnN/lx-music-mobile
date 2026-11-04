@@ -6,6 +6,7 @@
 import { httpFetch } from '@/utils/request'
 import { requestMsg } from '@/utils/message'
 import { APP_CN } from './activation'
+import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 import { ensureAuth, signRequest, clearStoredAuth } from './auth'
 import { fetchShiyinConfig, getClientVersion, getShiyinSources, SHIYIN_BASE_URL } from './config'
 import versionActions from '@/store/version/action'
@@ -93,19 +94,15 @@ const guideSourceEntitlement = (source: string, kind: 'expired' | 'not_entitled'
 }
 
 // W3-05 本机 expiries 预判：该源已过期且存在其他在期源（多码「tx 过期+wy 在期」弹
-// per-source 精准文案，不再误弹笼统「会员已到期」；unlockSource 同口径——0=永久）。
-// 矛盾态/无该源记录/全到期=false 走笼统引导（服务端 per-source 闸兜底语义兜住）
-// 「键有效」同语义族参照（代码审查 S3 指回）：口径调整时对照 core/shiyin/activation
-// 族注四处联动复核（isExpiredAt/isKeyValid/unlockSource/Worker；formatActivationState
-// 已随 2026-11-04 ①短词化退役出族，见 activation.ts 族注）
-const isSourceExpiredWithOthersActive = (source: string, expiries: Record<string, number>): boolean => {
-  const own = expiries[source]
-  const nowSec = Date.now() / 1000
-  if (own == null || !(own > 0 && nowSec > own)) return false
-  return Object.entries(expiries).some(([, exp]) => {
-    const e = Math.trunc(Number(exp) || 0)
-    return e === 0 || nowSec <= e
-  })
+// per-source 精准文案，不再误弹笼统「会员已到期」）。
+// T4 收编批（2026-11-04，ADR-0001 推翻「内联版不收编」）：真值消费改 bridge 下发
+// valid（SDK validAt+effectiveNow 单源，拍板 #2/#7）——原内联时间比较退役；
+// 矛盾态/无该源记录/旧桥无 valid=false 走笼统引导（服务端 per-source 闸兜底语义兜住）
+const isSourceExpiredWithOthersActive = (source: string, st: ActivationStateInfo): boolean => {
+  if (st.expiries == null || st.valid == null) return false
+  const own = st.expiries[source]
+  if (own == null || own == 0 || st.valid[source] === true) return false // 无记录/永久/在期=非「该源过期」
+  return Object.entries(st.valid).some(([k, v]) => k != source && v === true)
 }
 
 /** ⑧ 入口权益闸（2026-11-01 用户拍板「所有需要权限的入口统一前置拦截」）：unactivated/
@@ -226,7 +223,7 @@ export const getShiyinMusicUrl = (source: string, songInfo: Record<string, any>,
         // 不自动重试，立即重拉 /config 收敛本地源集
         if (body.message == 'expired') {
           const st = await activationModule.getState().catch(() => null)
-          if (st?.expiries && isSourceExpiredWithOthersActive(source, st.expiries)) {
+          if (st != null && isSourceExpiredWithOthersActive(source, st)) {
             guideSourceEntitlement(source, 'expired')
           } else {
             guideEntitlementExpired(st?.isTrial ?? false)

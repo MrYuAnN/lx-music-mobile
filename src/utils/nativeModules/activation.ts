@@ -24,6 +24,13 @@ export interface ActivationStateInfo {
   isTrial: boolean
   /** 主 key（最近激活；试用码亦写主 key——claim persist 即 storedKey） */
   key: string
+  /** T4 件7（2026-11-04）每键真值（SDK validAt+effectiveNow 口径单源下发）；
+   *  RN 展示层不自算时间比较（判定族退役，拍板 #2/#7）；unactivated=null */
+  valid?: Record<string, boolean> | null
+  /** 遮蔽视图（兜底键有效时只留兜底键，SDK maskApps 单源）；unactivated=null */
+  masked?: Record<string, number> | null
+  /** 选主（码卡主行新语义，SDK pickPrimary 单源）；unactivated/无候选=null */
+  primary?: { key: string; expiries: Record<string, number> } | null
 }
 
 /** 码卡条目（KeyInfo 页）：mark=null=本机在绑（本地 SP 初值，三态即时渲染） */
@@ -36,6 +43,10 @@ export interface KeyEntry {
   isTrial: boolean
   mark: string | null
   deviceLimit: number
+  /** T4 件7：该码 valid 键集（SDK validAt 单源；null=旧桥窗口兜底） */
+  validKeys?: string[] | null
+  /** 该码遮蔽视图（兜底有效时只留兜底键）；null=旧桥窗口兜底 */
+  maskedExpiries?: Record<string, number> | null
 }
 
 export interface BoundDevice {

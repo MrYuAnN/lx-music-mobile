@@ -388,7 +388,7 @@ export default ({ componentId }: { componentId: string }) => {
             onPress={() => { inputSheetRef.current?.show() }}
             disabled={redeeming}
           >
-            <Icon name="key" size={ICON_SIZE.nav} color={theme['c-font']} />
+            <Icon name="key" size={ICON_SIZE.navAction} color={theme['c-font']} />
           </TouchableOpacity>
         }
       />
@@ -398,7 +398,8 @@ export default ({ componentId }: { componentId: string }) => {
 
 // 分态权益卡（批3 v1.2）：未激活/永久=隐藏；试用=🎁剩 N 天全源；全源=✅至 date（≤3 天
 // 警示橙，审查 I-C 补拍板态）；纯音源权益=单源名+日期或 N 源摘要（exp==0 永久=生效中
-// 计入，批3代码审 I4 同批口径统一）。数据=SDK expiries，shiyin 兜底判定 unlockSource 同源
+// 计入，批3代码审 I4 同批口径统一）。数据=SDK expiries；T4 收编批（2026-11-04）：
+// soon 窗真值入参改消费 bridge 下发 valid（SDK 单源）
 const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t: Translate }) => {
   const theme = useTheme()
   if (info == null || info.expiries == null || info.state != 'active') return null
@@ -416,7 +417,7 @@ const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t
   }
   if (allExp != null) {
     if (allExp == 0) return null // 永久不提示
-    const soon = isExpiringSoonAt(allExp)
+    const soon = isExpiringSoonAt(allExp, info.valid?.shiyin === true)
     return (
       <View style={[styles.entCard, { backgroundColor: theme['c-content-background'] }]}>
         <Text size={13} color={soon ? warningColor : successColor}>
@@ -432,7 +433,7 @@ const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t
   const label = live.length == 1
     ? t('purchase_ent_source', { name: APP_CN[first[0]] ?? first[0], date: first[1] == 0 ? t('activation_permanent') : fmtDate(first[1]) })
     : t('purchase_ent_sources', { n: live.length })
-  const anySoon = live.some(([, exp]) => exp != 0 && isExpiringSoonAt(exp))
+  const anySoon = live.some(([app, exp]) => exp != 0 && isExpiringSoonAt(exp, info.valid?.[app] === true))
   return (
     <View style={[styles.entCard, { backgroundColor: theme['c-content-background'] }]}>
       <Text size={13} color={anySoon ? warningColor : successColor}>{label}</Text>
