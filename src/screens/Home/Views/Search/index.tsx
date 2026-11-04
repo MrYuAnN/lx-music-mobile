@@ -79,6 +79,14 @@ export default ({ scrollYAnimated, contentPaddingTop }: SearchViewProps) => {
     const handleTypeChange = (type: SearchType) => {
       searchInfo.current.searchType = type
       void saveSearchSetting({ type })
+      // 头部源列表随类型联动（对齐上方挂载时分支 2026-11-04）：chips 切换后仍显示旧类型
+      // 源集（歌单缺 all 聚合位/音乐集无 all）；源不在新集→重置首项并持久化
+      const store = type == 'music' ? searchMusicState : searchSonglistState
+      if (store.sources.length && !store.sources.includes(searchInfo.current.source)) {
+        searchInfo.current.source = store.sources[0]
+        void saveSearchSetting({ source: searchInfo.current.source })
+      }
+      headerBarRef.current?.setSourceList(store.sources, searchInfo.current.source)
       listRef.current?.loadList(searchState.searchText, searchInfo.current.source, type)
     }
     global.app_event.on('searchTypeChanged', handleTypeChange)

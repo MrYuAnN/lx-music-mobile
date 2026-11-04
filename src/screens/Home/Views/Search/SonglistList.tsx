@@ -30,8 +30,14 @@ export default forwardRef<MusicListType, SearchSonglistListProps>(({ scrollYAnim
       // const listDetailInfo = searchSonglistState.listDetailInfo
       listRef.current?.setList([], source == 'all')
       if (searchSonglistState.searchText == text && searchSonglistState.source == source && searchSonglistState.listInfos[searchSonglistState.source]?.list.length) {
+        // 缓存恢复空窗竞态（同 MusicList.tsx 2026-11-04 修复，对称）：loading 挡空窗翻页
+        // + searchInfoRef 就位防 stale 空词，rAF 内恢复并解锁
+        listRef.current?.setStatus('loading')
+        searchInfoRef.current.text = text
+        searchInfoRef.current.source = source
         requestAnimationFrame(() => {
           listRef.current?.setList(searchSonglistState.listInfos[searchSonglistState.source]?.list ?? [], source == 'all')
+          listRef.current?.setStatus('idle')
         })
       } else {
         listRef.current?.setStatus('loading')

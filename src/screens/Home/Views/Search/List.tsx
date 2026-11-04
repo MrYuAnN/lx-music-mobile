@@ -27,6 +27,11 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
   // 待执行搜索（走查反馈：点热搜/历史词切结果页后 rAF 时 listRef 尚未挂载，loadList 被可选链
   // 静默吞掉=只填词不搜索）。改为 ref 回调内消费：挂载 commit 同步点必然就绪，消除竞态。
   const pendingSearchRef = useRef<{ text: string, source: MusicSource | SongListSource } | null>(null)
+  // 当前列表类型镜像（chips 切换竞态修复 2026-11-04）：loadList 里 setListType 是异步提交，
+  // 同帧读 listRef.current 仍指旧列表——快路径会把 pending 消费在旧列表上（命中其同词缓存
+  // =no-op），新挂载列表收不到搜索（切歌单不自动搜+空列表触底空词 loadMore→「加载失败」
+  // footer 的根因）。跨列表切换时不走快路径，pending 交给新列表 ref 回调派发
+  const listTypeRef = useRef<SearchState['searchType']>('music')
 
   const handleListRef = (r: MusicListType | null) => {
     listRef.current = r
@@ -42,11 +47,13 @@ export default forwardRef<ListType, ListProps>(({ onSearch, scrollYAnimated, con
       scrollYAnimated?.setValue(0)
       if (text) {
         setShowListView(false)
+        const switching = type != listTypeRef.current
+        listTypeRef.current = type
         setListType(type)
         // const listDetailInfo = searchMusicState.listDetailInfo
         pendingSearchRef.current = { text, source }
-        // 列表已在树上时（连续搜索）ref 回调不再触发，此处直接消费
-        if (listRef.current) {
+        // 同列表重搜：列表已在树上 ref 回调不再触发，此处直接消费；跨列表切换留给 ref 回调
+        if (!switching && listRef.current) {
           const pending = pendingSearchRef.current
           pendingSearchRef.current = null
           listRef.current.loadList(pending.text, pending.source)

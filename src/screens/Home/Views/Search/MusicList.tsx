@@ -29,8 +29,16 @@ export default forwardRef<MusicListType, SearchMusicListProps>(({ scrollYAnimate
       // const listDetailInfo = searchMusicState.listDetailInfo
       listRef.current?.setList([], false, source == 'all')
       if (searchMusicState.searchText == text && searchMusicState.source == source && searchMusicState.listInfos[searchMusicState.source]?.list.length) {
+        // 缓存恢复空窗竞态（2026-11-04 用户实测「切回歌曲偶现空列表+到底啦~」）：清空后到
+        // rAF 恢复前一帧内，内容不足半屏即满足 onEndReached（守卫只放行 idle）——空窗期用
+        // loading 挡翻页，且 searchInfoRef 必须就位（否则空窗兜底路径用实例初始空词发请求，
+        // 越页空结果 append+maxPage≤page → 'end' footer）
+        listRef.current?.setStatus('loading')
+        searchInfoRef.current.text = text
+        searchInfoRef.current.source = source
         requestAnimationFrame(() => {
           listRef.current?.setList(searchMusicState.listInfos[searchMusicState.source]?.list ?? [], false, source == 'all')
+          listRef.current?.setStatus('idle')
         })
       } else {
         listRef.current?.setStatus('loading')
