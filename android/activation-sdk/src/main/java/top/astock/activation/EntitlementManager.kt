@@ -41,6 +41,14 @@ object EntitlementManager {
     private const val K_RECEIPT = "receipt_json"      // 旧单码 receipt（迁移源）
     // 多 key 存储（2026-08-22 拍板：每 App 一个码）：app→key 归属映射 + key→receipt
     private const val K_APP_KEYS = "app_keys_json"    // {"fanqie":"JP-A","hongguo":"JP-B"}
+    private const val K_RELAY_MODE = "relay_mode"     // 服务端段接力能力位（v2.4 批3；单调置位，clear 全清）
+
+    /** relay 能力位读取（v2.4 批4 宿主门控）：宿主 Q7 确认弹窗退役/解绑回落预告等
+     *  relay-only 行为的门=本标记。语义=「服务端已知支持段接力」——激活/巡检任一通道
+     *  携带 relay:true 即置位（persist 单调）；fresh install 未联网前 false=保守走 legacy
+     *  交互（legacy 服务端 merge 剥离语义仍需确认，防静默烧码）。 */
+    fun relayMode(context: Context): Boolean =
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(K_RELAY_MODE, false)
     private const val K_RECEIPTS = "receipts_json"    // {"JP-A":{...},"JP-B":{...}}
     private const val K_PRIMARY = "primary_key"       // 最近激活的 key（CZ- 充值目标）
     private const val K_LAST_SEEN = "last_seen"
@@ -177,11 +185,14 @@ object EntitlementManager {
 
     sealed class AuthResult {
         /** fusedKeys=本次激活事务整码清空+自动释放的被融合旧码（2026-11-04 响应下发，
-         *  激活成功即清本地 receipt；旧服务端无此字段=空表，行为退化为现状） */
+         *  激活成功即清本地 receipt；旧服务端无此字段=空表，行为退化为现状）。
+         *  relay=服务端段接力能力位（v2.4 批3）：persist 落 K_RELAY_MODE 驱动 prune
+         *  条件化（relay 无融合→无孤儿概念）；旧服务端缺省 false=legacy 行为 */
         data class Success(
             val e: Entitlement,
             val devices: List<BoundDevice> = emptyList(),
             val fusedKeys: List<String> = emptyList(),
+            val relay: Boolean = false,
         ) : AuthResult()
         data class Failure(
             val userMessage: String,
@@ -484,6 +495,12 @@ object EntitlementManager {
      */
     private fun pruneOrphanedKeys(context: Context) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // relay 条件化（v2.4 批3 SDK 配套；shiyin-pricing-model.md §五.2）：段接力无
+        // 「被接管」——非归属≠无贡献段（他码贡献段在役），归属排除法判定在 relay 下会
+        // 误清有段贡献码（批2 实施计划 I-B 识别）。能力位=激活/巡检响应 relay:true
+        // （K_RELAY_MODE 单调置位）——false 时行为不变（legacy 融合照旧产生孤儿，且
+        // 回滚态清理链是必需资产，与 fused 清理链同待遇：不摘代码，只条件化）
+        if (p.getBoolean(K_RELAY_MODE, false)) return
         val owned = appKeys(p).values.toSet()
         val orphans = receiptsMap(p).keys.filter { it !in owned }
         for (key in orphans) clearKey(context, key)
@@ -985,6 +1002,7 @@ object EntitlementManager {
     fun clear(context: Context) {
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
             .remove(K_RECEIPT).remove(K_LICENSE_KEY).remove(K_APP_KEYS).remove(K_RECEIPTS)
+            .remove(K_RELAY_MODE)
             .remove(K_KEY_BINDING)
             .remove(K_PRIMARY).remove(K_LAST_SEEN).remove(K_MAC)
             .remove(K_TRIAL_FAILS).remove(K_TRIAL_LAST).remove(K_TRIAL_DONE)
@@ -1000,11 +1018,30 @@ object EntitlementManager {
      *  通知宿主收敛界面（首页横幅/码卡列表此前滞留到重进页）；未移除（码不存在）
      *  早退不发 */
     fun clearKey(context: Context, key: String) {
+        clearKeyInternal(context, key, null)
+    }
+
+    /** clearKey 核心（v2.4 批3 扩展）：relayAggs 非空=relay 解绑拆回场景——服务端
+     *  /device/release 应答 relay_aggs={app:其余码联合聚合}，归属重指向依据。流程：
+     *  ①移除该 key receipt+归属条目（原 clearKey 语义）②对每个 relay app，在剩余
+     *  receipt 中找持有该 app 且到期与聚合一致者，重指向归属（keys[app]==null 会放行
+     *  任意 receipt，过期码可混入聚合——:379 防护正是归属存在的理由）；无匹配保持
+     *  null（降级为现状语义，不阻塞）。legacy 调用（relayAggs=null）行为不变。 */
+    private fun clearKeyInternal(context: Context, key: String, relayAggs: Map<String, Long>?) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val rcpts = receiptsMap(p).toMutableMap()
         if (rcpts.remove(key) == null) return
         setBindingMark(p, key, null)
-        val keys = appKeys(p).filterValues { it != key }
+        val keys = appKeys(p).filterValues { it != key }.toMutableMap()
+        if (relayAggs != null) {
+            for ((app, aggExp) in relayAggs) {
+                if (keys.containsKey(app)) continue // 他码仍归属（未受本次解绑影响）
+                val owner = rcpts.entries.firstOrNull { (_, raw) ->
+                    parseReceipt(raw)?.expiries?.get(app) == aggExp
+                }?.key
+                if (owner != null) keys[app] = owner
+            }
+        }
         // macLock：同 persist（竞态修复 2026-10-14）
         synchronized(macLock) {
             p.edit()
@@ -1061,7 +1098,18 @@ object EntitlementManager {
                         userMessage = releaseFailMessage(err, code, remote = false),
                     )
                 }
-                clearKey(context, key)
+                // relay 拆回消费（v2.4 批3；shiyin-pricing-model.md §五.2 SDK 配套 a）：
+                // 服务端 release 应答 relay_aggs={app:该设备其余码联合聚合}（legacy 无此
+                // 键=null=原行为）——清本码 receipt 同时把受影响 app 的归属重指向其余
+                // 持有码（否则 keys[app]==null 放行任意 receipt，过期码可混入聚合）
+                val relayAggs = runCatching {
+                    JSONObject(respBody).optJSONObject("relay_aggs")?.let { o ->
+                        o.keys().asSequence().mapNotNull { app ->
+                            o.optLong(app, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }?.let { app to it }
+                        }.toMap()
+                    }
+                }.getOrNull()
+                clearKeyInternal(context, key, relayAggs)
                 ReleaseOutcome(ok = true, errCode = null, userMessage = "")
             }.fold(
                 { it },
@@ -1322,7 +1370,12 @@ object EntitlementManager {
                 kind = root.optString("entitlement_kind", ""),
             ),
             devices = parseDevices(root),
-            fusedKeys = parseFusedKeys(root)
+            fusedKeys = parseFusedKeys(root),
+            // relay 能力位（v2.4 批3；shiyin-pricing-model.md §五.2 SDK 配套）：relay
+            // 产品激活/binding-check/restore 恒携带（服务端 activationResp 下发），
+            // persist 落 K_RELAY_MODE 驱动 prune 条件化。旧服务端无此键=false=legacy
+            // 行为不变（宽松读同 fused_keys/entitlement_kind 先例）
+            relay = root.optBoolean("relay", false)
         )
     }.getOrElse {
         Log.e(TAG, "parseActivationResp failed", it)
@@ -1399,6 +1452,9 @@ object EntitlementManager {
                 .putString(K_PRIMARY, key)
                 .putLong(K_LAST_SEEN, System.currentTimeMillis())
                 .apply()
+            // relay 能力位（v2.4 批3）：与凭证同事务落——任一激活/巡检通道携带即置位，
+            // legacy 响应不回退（能力位单调，防 legacy 巡检误降级 relay 态；全清走 clear()）
+            if (r.relay) p.edit().putBoolean(K_RELAY_MODE, true).apply()
             // 注意：persist 不清绑定态标记——/redeem 续期路径也复用本函数而服务端
             // RedeemCode 不触碰 devices 行，「清标记=恢复绑定」语义归调用方表达
             // （refreshOnStart ok / activateOrRedeem JP- 成功两处显式清理）

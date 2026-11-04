@@ -230,6 +230,9 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
         }
       }
       map.putString("key", EntitlementManager.storedKey(reactContext))
+      // relay 能力位（v2.4 批4）：宿主 Q7 退役/解绑预告门控（SDK relayMode 单源；
+      // Unactivated 态也下发——fresh install 输码前即可读到，false=保守 legacy 交互）
+      map.putBoolean("relayMode", EntitlementManager.relayMode(reactContext))
       promise.resolve(map)
     } catch (e: Exception) {
       promise.reject("get_state", e.message, e)

@@ -725,5 +725,11 @@
   "download_storage_hint": "Downloads are stored in app-private storage and cannot be recovered after uninstall",
   "activation_state_n_sources": "{n} sources",
   "quality_unavailable_song": "This song has no {quality} version",
-  "download_trial_disabled_hint": "Downloads are unavailable during the trial. Activate to enable."
+  "download_trial_disabled_hint": "Downloads are unavailable during the trial. Activate to enable.",
+  "activation_relay_toast": "Stacked: {apps}",
+  "activation_relay_forever": "Permanent",
+  "activation_unbind_relay_preview": "After unbinding, {detail}. Other keys are unaffected. Unbind anyway?",
+  "activation_relay_fallback_to": "{app} will fall back to {date}",
+  "activation_relay_fallback_none": "{app} access will end",
+  "activation_relay_joiner": ", "
 }

@@ -7,6 +7,7 @@ import { AppState } from 'react-native'
 import { activationModule, onEntitlementChanged, type ActivationStateInfo, type KeyEntry } from '@/utils/nativeModules/activation'
 import { ensureAuth, clearStoredAuth } from './auth'
 import { toast, confirmDialog } from '@/utils/tools'
+import { dateFormat } from '@/utils'
 import versionState from '@/store/version/state'
 import type { Message } from '@/lang'
 
@@ -79,45 +80,48 @@ export const detectClipboardCandidate = (text: string | null | undefined): strin
   return candidate
 }
 
-/** 输码激活（F.3 → Q7-C 案重构，2026-11-02 用户拍板「跟净屏对齐」=净屏 JingpingSheets
- *  doActivate 同构）：纯本地判定零网络前置。判定（fail-closed——code-overlap 查询层整体
- *  退役，事故洞 a「keys 失败静默跳过」/洞 b「查询异常整链静默死」/洞 c「空表无条件信任」
- *  三洞随层消解）：CZ- 前缀跳过整链（续费不融合）；getKeys 失败(null)→视为可能有在绑码
- *  →弹窗（不再静默跳过直通顶替路径）；有其他在绑码（判定只排除当前输入码自身，防误确认
- *  绕过 SDK「已使用过」拦截）→弹窗。文案=既有规则式合并确认（同源并入/跨源并存两态恒
- *  真实，复用 activation_merge_confirm_title/msg）。确认恒 merge=true——同源=剩余时长
- *  并入（事故「月卡被顶替」的正确防护）；跨源=服务端 mergeSameApp 按新码声明键集过滤
- *  no-op 无害（license-platform licenses.go；方案 A 2026-11-03 例外：同产品 trial 码
- *  跨源也整码全折——服务端 CodeOverlap 恒标记/首兑无条件特判，本宽触发已天然覆盖）。
- *  取消=中止不激活。整链 try/catch：任何
- *  异常→失败 toast（不再静默死）。服务端 Q7-E 409 merge_required（重激活路径同源接管且
- *  无 merge 时拦截）=纵深兜底，正常流（确认后恒带 merge）不命中，命中即异常态由 SDK
- *  errCode 白名单文案兜底（「app 版本过旧请升级」映射，见 DEPLOY.md ⑥批方案②）。
- *  activateOrRedeem 成功 → toast+立即建注册链；失败 toast SDK 本地化文案 */
+/** 输码激活（F.3 → Q7-C 案重构，2026-11-02 用户拍板「跟净屏对齐」；v2.4 批4 Q7 门控
+ *  退役）：纯本地判定零网络前置。**relay 能力位门控（v2.4 终态）**：getState
+ *  relayMode=true=服务端段接力已知——无顶替风险（relay 无融合概念：不剥夺/不整码清空），
+ *  Q7 确认弹窗退役=直接 merge=true 激活，成功 toast 逐源「已叠加：QQ音乐至 2027-11-04」；
+ *  false/undefined（fresh install 未联网/legacy 服务端/旧桥窗口）=保守保留 legacy 确认链
+ *  ——legacy merge=剥夺式融合（旧码剥离/整码清空），确认弹窗是事故「月卡被顶替」的
+ *  正确防护，静默跳过=烧码回归。即 v2.2「文案两层」的落地形态：窗口期（legacy）弹窗+
+ *  现文案（对 legacy 全折行为本来就准确）；终态（relay）弹窗消失无文案。legacy 链内判定
+ *  （fail-closed 三洞消解）见 git 历史；CZ- 前缀两态都跳过整链（续费不融合）。
+ *  服务端 Q7-E 409 merge_required=纵深兜底（relay 下 MergeGate/CodeOverlap 恒空不触发，
+ *  legacy 窗口正常流恒带 merge 也不命中）。activateOrRedeem 成功 → toast+立即建注册链；
+ *  失败 toast SDK 本地化文案 */
 export const activateByCode = async(input: string, onDone: () => void): Promise<void> => {
   const code = normalizeCode(input)
   if (!code) return
   let merge = false
+  let relay = false
   if (!code.startsWith('CZ-')) {
-    // getKeyEntries 一次拿全（键集+isTrial）：keys 失败(null) fail-closed 同旧 getKeys 口径；
-    // 分态文案（代码审查优化师 S-2 用户拍板 2026-11-03）：本机含在绑试用码→trial 条款版
-    // （全折承诺），否则 plain 版——确认框内容与实际操作一致；失败态保守用含条款版
-    const entries = await activationModule.getKeyEntries().catch(() => null)
-    if (entries == null || entries.some(e => normalizeCode(e.key) !== code)) {
-      const hasTrial = entries?.some(e => e.isTrial) ?? false
-      const confirmed = await confirmDialog({
-        title: global.i18n.t('activation_merge_confirm_title'),
-        message: global.i18n.t(hasTrial ? 'activation_merge_confirm_msg' : 'activation_merge_confirm_msg_plain'),
-        bgClose: false,
-      }).catch(() => false)
-      if (!confirmed) return
-      merge = true
+    const info = await activationModule.getState().catch(() => null)
+    relay = info?.relayMode == true
+    if (!relay) {
+      // legacy 链（原样保留）：keys 失败(null) fail-closed；分态文案（S-2 拍板）trial
+      // 条款版/plain 版；取消=中止不激活
+      const entries = await activationModule.getKeyEntries().catch(() => null)
+      if (entries == null || entries.some(e => normalizeCode(e.key) !== code)) {
+        const hasTrial = entries?.some(e => e.isTrial) ?? false
+        const confirmed = await confirmDialog({
+          title: global.i18n.t('activation_merge_confirm_title'),
+          message: global.i18n.t(hasTrial ? 'activation_merge_confirm_msg' : 'activation_merge_confirm_msg_plain'),
+          bgClose: false,
+        }).catch(() => false)
+        if (!confirmed) return
+        merge = true
+      }
+    } else {
+      merge = true // relay：恒 merge=true（旧服务端参数通道兼容；relay 服务端 no-op）
     }
   }
   try {
     const r = await activationModule.activate(code, merge)
     if (r.ok) {
-      toast(global.i18n.t('activation_toast_activated'))
+      toast(relay ? await relayActivatedToast(code) : global.i18n.t('activation_toast_activated'))
       onDone()
       void ensureAuth(true).catch(() => {})
     } else {
@@ -128,13 +132,73 @@ export const activateByCode = async(input: string, onDone: () => void): Promise<
   }
 }
 
+/** relay 成功 toast 组装（v2.3 拍板「已叠加，QQ音乐至 X」）：激活后读码卡条目取该码
+ *  expiries，逐源 APP_CN+日期（0=永久）拼接；条目缺失（桥窗口/时序）降级通用文案 */
+const relayActivatedToast = async(code: string): Promise<string> => {
+  const fallback = global.i18n.t('activation_toast_activated')
+  try {
+    const entries = await activationModule.getKeyEntries()
+    const target = entries.find(e => normalizeCode(e.key) === code)
+    if (target == null || Object.keys(target.expiries).length == 0) return fallback
+    const parts = Object.entries(target.expiries).map(([app, exp]) => {
+      const name = APP_CN[app] ?? app
+      return exp == 0
+        ? `${name} ${global.i18n.t('activation_relay_forever')}`
+        : `${name} ${global.i18n.t('activation_until')} ${dateFormat(exp * 1000, 'Y-M-D')}`
+    })
+    return global.i18n.t('activation_relay_toast', { apps: parts.join(global.i18n.t('activation_relay_joiner')) })
+  } catch {
+    return fallback
+  }
+}
+
 /** 解绑本机（F.4+KeyInfo 按码，审查 I-1）：确认 → releaseDevice(key) → 凭证分支清理
  *  （重拉码列表，存在 mark==null 的在绑码才保留取链，否则 clearStoredAuth 断链——
- *  判定口径=「有本机在绑码」而非「列表非空」，防停权态码残留 token，复审 S-复3） */
+ *  判定口径=「有本机在绑码」而非「列表非空」，防停权态码残留 token，复审 S-复3）。
+ *  relay 回落预告（v2.3 拍板，批4-c）：relayMode 已知时确认弹窗动态预告「解绑后该源
+ *  权益回落至 X 日（其余码不变）」——数据=本地码卡其余在绑码对该码声明 app 的联合
+ *  聚合（与 SDK relay_aggs 同口径的本地推算）；无其余持有=「权益将失效」；回落值与
+ *  本码现值相同（不产生可见变化）的 app 不预告（降噪）。legacy 服务端不预告（其解绑
+ *  后其余码不变是 legacy 语义本态，通用文案已覆盖） */
 export const unbindDevice = async(key: string | null, onDone: () => void): Promise<void> => {
+  let message = global.i18n.t('activation_unbind_confirm')
+  try {
+    const info = await activationModule.getState()
+    if (info?.relayMode == true) {
+      const entries = await activationModule.getKeyEntries()
+      const target = key == null
+        ? null
+        : entries.find(e => normalizeCode(e.key) === normalizeCode(key))
+      if (target != null) {
+        const others = entries.filter(e => e.mark == null && e.key !== target.key)
+        const parts: string[] = []
+        for (const [app, ownExp] of Object.entries(target.expiries)) {
+          const rest = others.map(o => o.expiries[app]).filter((v): v is number => v != null)
+          const agg = rest.length > 0 ? Math.max(...rest) : null
+          if (agg != null && agg === ownExp) continue // 无可见变化，不预告
+          const name = APP_CN[app] ?? app
+          parts.push(agg == null
+            ? global.i18n.t('activation_relay_fallback_none', { app: name })
+            : global.i18n.t('activation_relay_fallback_to', {
+              app: name,
+              date: agg == 0
+                ? global.i18n.t('activation_relay_forever')
+                : dateFormat(agg * 1000, 'Y-M-D'),
+            }))
+        }
+        if (parts.length > 0) {
+          // 拼接而非整体替换（审查 IM-8 修复，对齐净屏形态）：通用文案的「已下载歌曲
+          // 无法播放/每 30 天限 1 次」关键知情在 relay 态同样适用
+          message = global.i18n.t('activation_unbind_relay_preview', { detail: parts.join('；') }) +
+            '\n\n' + global.i18n.t('activation_unbind_confirm')
+        }
+      }
+    }
+  } catch { // 预告数据不可得=降级通用文案，不阻塞解绑
+  }
   const confirmed = await confirmDialog({
     title: global.i18n.t('activation_btn_unbind'),
-    message: global.i18n.t('activation_unbind_confirm'),
+    message,
   }).catch(() => false)
   if (!confirmed) return
   const r = await activationModule.releaseDevice(key ?? '')

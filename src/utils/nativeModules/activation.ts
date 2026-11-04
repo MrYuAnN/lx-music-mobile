@@ -33,6 +33,10 @@ export interface ActivationStateInfo {
    *  **预留字段**：消费方接线推迟至发版后增强批（T4 代码审 I-C 拍板——UI 形态
    *  （置顶行/徽标）未拍，pickPrimary 与 sortKeyEntries 排序方向相反需先定形态） */
   primary?: { key: string; expiries: Record<string, number> } | null
+  /** relay 能力位（v2.4 批4）：服务端段接力已知=true（激活/巡检通道置位）。
+   *  宿主 Q7 确认弹窗退役/解绑回落预告的门——false（fresh install 未联网/legacy
+   *  服务端）=保守 legacy 交互。旧桥窗口（字段缺失）=undefined 同 false 保守 */
+  relayMode?: boolean
 }
 
 /** 码卡条目（KeyInfo 页）：mark=null=本机在绑（本地 SP 初值，三态即时渲染） */
