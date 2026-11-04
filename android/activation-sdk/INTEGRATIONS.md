@@ -50,3 +50,20 @@
 /register 缺版本头）+ F5 直达升级已随 `526ab344` 修复验证绿；R8 混淆包冒烟 11-02 收口
 （净屏审计修复批，见 activation-audit-jingping 记录）；灰度前 P0 六项（A-1/A-2/A-3/
 A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageKotlin）。
+
+## 三仓镜像漂移定性（2026-11-04 收口批）
+
+- 现象：两把 drift 锁 `go test -count=1` 实测双红——`EntitlementManager.kt` 三仓
+  hash 互异 + `RelayBatch3Test.kt` 平台缺失。任务口径「漂移 56 行」=T4 件4 建锁时
+  登记快照（EntitlementManager.kt 拾音↔平台），此后 relay 配套/按源视图/排队态三批
+  落库使漂移扩大。
+- 根因：拾音侧三批（1ebf2c79/5dcb6f0e/9c60f11f）收尾未跑锁、未走活源链——state 字段
+  在拾音仓直接手改 SDK 拷贝、活源 view 改动滞留工作区未提交、平台 sdk/android 停在
+  c491659；裸跑 `go test` 另有缓存假绿（Go 测试缓存 key 不含运行时读取的 SDK 文件，
+  实证 cached ok 与实际红并存）。
+- 处置（件4 既定回灌链）：拾音 state 并入活源 → 姊妹件以拾音版回填活源（11-03 闲鱼
+  归因/install 上报登记此前漏回灌）→ 平台回灌（*.kt+RelayBatch3Test.kt+两姊妹件）→
+  拷回拾音；终态=两把锁 `-count=1` 全绿、三仓零 diff。
+- 防线加固：平台侧锁把两姊妹件纳入零 diff 断言（三仓同文 10-31 拍板背书）；两把锁
+  注释+SDK README 检查单第 3 步补「`-count=1` 必带」纪律（净屏侧锁比对范围不动，
+  维持 S10 双视角分工）。
