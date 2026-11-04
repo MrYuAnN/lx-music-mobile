@@ -533,6 +533,70 @@ object EntitlementManager {
             checkKeyOnce(context, context.getSharedPreferences(PREFS, Context.MODE_PRIVATE), key)
         }
 
+    /** 按源权益视图行（§五.3 展示重构批B；服务端 /api/entitlements 形态投影）。
+     *  valid 服务端单源（置灰判据）；段全集含已耗尽（历史折叠区）。 */
+    data class EntSegmentView(
+        val key: String, val skuName: String, val kind: String,
+        val start: Long, val end: Long, val valid: Boolean,
+    )
+
+    data class EntSourceView(
+        val app: String, val expiry: Long, val valid: Boolean,
+        val segments: List<EntSegmentView>,
+    )
+
+    /**
+     * 按源权益视图（显式拉取，宿主自管节流）：POST /api/entitlements（key+device_id
+     * 同 binding-check 鉴权骨架），返回按配置源逐源行。失败（网络/4xx/解析）=null，
+     * 宿主回落本地视图（getKeyEntries 聚合）——视图是展示优化面，判定真值仍在本地
+     * computeCurrent（unlockSource），拉取失败不阻塞页面。
+     */
+    suspend fun entitlementsView(context: Context): List<EntSourceView>? =
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val key = storedKey(context)
+                check(key.isNotEmpty()) { "本机未开通会员" }
+                val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
+                val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/entitlements").openConnection() as HttpURLConnection
+                conn.connectTimeout = 15000
+                conn.readTimeout = 15000
+                conn.doOutput = true
+                conn.requestMethod = "POST"
+                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+                conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
+                conn.setRequestProperty("X-Product", ActivationSdk.productId)
+                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                val code = conn.responseCode
+                val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()?.use { it.readText() } ?: ""
+                conn.disconnect()
+                if (code != 200) return@runCatching null
+                val arr = JSONObject(respBody).optJSONArray("sources") ?: return@runCatching null
+                (0 until arr.length()).mapNotNull { i ->
+                    val o = arr.optJSONObject(i) ?: return@mapNotNull null
+                    val segArr = o.optJSONArray("segments")
+                    val segs = (0 until (segArr?.length() ?: 0)).mapNotNull { j ->
+                        segArr!!.optJSONObject(j)?.let { sg ->
+                            EntSegmentView(
+                                key = sg.optString("key"),
+                                skuName = sg.optString("sku_name"),
+                                kind = sg.optString("kind"),
+                                start = sg.optLong("start", 0L),
+                                end = sg.optLong("end", 0L),
+                                valid = sg.optBoolean("valid", false),
+                            )
+                        }
+                    }
+                    EntSourceView(
+                        app = o.optString("app"),
+                        expiry = o.optLong("expiry", 0L),
+                        valid = o.optBoolean("valid", false),
+                        segments = segs,
+                    )
+                }
+            }.getOrNull()
+        }
+
     /** 单码只读校验：刷新 receipt 与绑定标记；返回绑定态快照。分派口径见 refreshOnStart。 */
     private suspend fun checkKeyOnce(
         context: Context,

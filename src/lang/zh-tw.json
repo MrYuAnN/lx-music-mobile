@@ -539,7 +539,7 @@
   "upgrade_required_btn_update": "立即更新",
   "setting_activation": "激活管理",
   "setting_activation_section": "激活碼",
-  "setting_my_keys": "我的激活碼",
+  "setting_my_keys": "我的權益",
   "setting_get_code": "獲取激活碼",
   "about_changelog": "更新日誌",
   "keyinfo_no_keys": "本機暫無激活碼，在上方輸入框輸入即可激活",
@@ -731,5 +731,12 @@
   "activation_unbind_relay_preview": "解綁後{detail}，其餘啟用碼權益不變。確定解綁？",
   "activation_relay_fallback_to": "{app}權益將回落至 {date}",
   "activation_relay_fallback_none": "{app}權益將失效",
-  "activation_relay_joiner": "、"
+  "activation_relay_joiner": "、",
+  "ent_history": "歷史啟用碼（{n}）",
+  "ent_kind_free": "試用/贈送",
+  "ent_sec_until": "止於 {time}",
+  "ent_fallback_until": "全源兜底至 {date}",
+  "ent_local_fallback": "伺服器檢視暫不可用，當前為本地概要（權益判定不受影響）",
+  "ent_close": "關閉",
+  "ent_state_active": "生效中"
 }

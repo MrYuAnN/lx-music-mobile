@@ -539,7 +539,7 @@
   "upgrade_required_btn_update": "Update now",
   "setting_activation": "Activation",
   "setting_activation_section": "Activation Codes",
-  "setting_my_keys": "My Activation Codes",
+  "setting_my_keys": "My Entitlements",
   "setting_get_code": "Get an Activation Code",
   "about_changelog": "What's New",
   "keyinfo_no_keys": "No activation codes on this device yet. Enter one above to activate.",
@@ -731,5 +731,12 @@
   "activation_unbind_relay_preview": "After unbinding, {detail}. Other keys are unaffected. Unbind anyway?",
   "activation_relay_fallback_to": "{app} will fall back to {date}",
   "activation_relay_fallback_none": "{app} access will end",
-  "activation_relay_joiner": ", "
+  "activation_relay_joiner": ", ",
+  "ent_history": "Expired keys ({n})",
+  "ent_kind_free": "Trial/Gift",
+  "ent_sec_until": "Expires at {time}",
+  "ent_fallback_until": "Full-source fallback until {date}",
+  "ent_local_fallback": "Server view unavailable — showing local summary (unlocks unaffected)",
+  "ent_close": "Close",
+  "ent_state_active": "Active"
 }

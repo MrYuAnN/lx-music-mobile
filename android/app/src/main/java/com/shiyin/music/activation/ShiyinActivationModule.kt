@@ -8,6 +8,7 @@ import com.facebook.react.bridge.Promise
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.bridge.ReactContextBaseJavaModule
 import com.facebook.react.bridge.ReactMethod
+import com.facebook.react.bridge.WritableArray
 import com.facebook.react.bridge.WritableMap
 import com.facebook.react.modules.core.DeviceEventManagerModule
 import kotlinx.coroutines.CoroutineScope
@@ -94,6 +95,44 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
       promise.resolve(EntitlementManager.keyEntries(reactContext).map { it.first })
     } catch (e: Exception) {
       promise.reject("get_keys", e.message, e)
+    }
+  }
+
+  // 按源权益视图（§五.3 批B）：服务端 /api/entitlements 拉取（SDK entitlementsView
+  // 单源）；失败/未开通=null → RN 回落本地聚合视图（展示优化面，判定真值在本地）
+  @ReactMethod
+  fun getEntitlements(promise: Promise) {
+    scope.launch {
+      try {
+        val view = EntitlementManager.entitlementsView(reactContext)
+        if (view == null) {
+          promise.resolve(null)
+          return@launch
+        }
+        val arr: WritableArray = Arguments.createArray()
+        for (src in view) {
+          val m: WritableMap = Arguments.createMap()
+          m.putString("app", src.app)
+          m.putDouble("expiry", src.expiry.toDouble())
+          m.putBoolean("valid", src.valid)
+          val segs: WritableArray = Arguments.createArray()
+          for (sg in src.segments) {
+            val sm: WritableMap = Arguments.createMap()
+            sm.putString("key", sg.key)
+            sm.putString("skuName", sg.skuName)
+            sm.putString("kind", sg.kind)
+            sm.putDouble("start", sg.start.toDouble())
+            sm.putDouble("end", sg.end.toDouble())
+            sm.putBoolean("valid", sg.valid)
+            segs.pushMap(sm)
+          }
+          m.putArray("segments", segs)
+          arr.pushMap(m)
+        }
+        promise.resolve(arr)
+      } catch (e: Exception) {
+        promise.reject("get_entitlements", e.message, e)
+      }
     }
   }
 

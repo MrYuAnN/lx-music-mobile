@@ -75,6 +75,24 @@ export interface ActivationResult {
   errCode: string | null
 }
 
+/** 按源权益视图段（§五.3 批B；服务端 /api/entitlements 形态投影，valid 服务端单源） */
+export interface EntSegmentView {
+  key: string
+  skuName: string
+  kind: string // paid|free（free=试用/赠送徽标）
+  start: number
+  end: number // 0=永久段；<now=已耗尽（历史折叠区）
+  valid: boolean
+}
+
+/** 按源权益视图源行（行值=自身键与 shiyin 兜底取较晚者；段全集含已耗尽） */
+export interface EntSourceView {
+  app: string
+  expiry: number
+  valid: boolean
+  segments: EntSegmentView[]
+}
+
 export const activationModule = {
   getDeviceId: ShiyinActivation.getDeviceId as () => Promise<string>,
   getStoredKey: ShiyinActivation.getStoredKey as () => Promise<string>,
@@ -84,6 +102,8 @@ export const activationModule = {
   getKeys: ShiyinActivation.getKeys as () => Promise<string[]>,
   // 码卡列表六字段（KeyInfo 页）
   getKeyEntries: ShiyinActivation.getKeyEntries as () => Promise<KeyEntry[]>,
+  // 按源权益视图（§五.3）：服务端拉取，null=失败（回落本地聚合视图）
+  getEntitlements: ShiyinActivation.getEntitlements as () => Promise<EntSourceView[] | null>,
   // 按码绑定态网络校验（60s/码节流在 RN 侧）
   getBindingInfo: ShiyinActivation.getBindingInfo as (key: string) => Promise<BindingInfo>,
   // key 空串=解主 key（兼容默认）
