@@ -437,7 +437,7 @@ export default ({ componentId }: { componentId: string }) => {
             onPress={() => { hapticSelection(); recoverSheetRef.current?.show() }}
             accessibilityLabel={t('orders_recover_action')}
           >
-            <Icon name="history" size={ICON_SIZE.nav} color={theme['c-font']} />
+            <Icon name="history" size={ICON_SIZE.navAction} color={theme['c-font']} />
           </TouchableOpacity>
         }
       />
