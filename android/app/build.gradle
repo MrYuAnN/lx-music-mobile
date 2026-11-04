@@ -202,11 +202,17 @@ android {
         // Fast acceptance build: release config without R8 minification (not
         // for store release). Signed with the release key and installed
         // alongside the store build via the ".stage" applicationId suffix.
+        // 版本身份错开（2026-11-04 用户拍板「测试包不与正式包重合」）：versionName 加
+        // 构建日期数字段（1.0.0.1104）——①手机设置/文件名一眼区分测试与官方件；②纯数字
+        // 段刻意避开字母（compareVer 对字母段取负值字符码，"1.0.0-test" 反而小于官方
+        // "1.0.0"，测试机会被官方更新通道提示去装旧包）；数字段恒大于官方 → 测试机永不被
+        // /latest 提示降级。日期格式MMdd：当月重编同号=覆盖装，跨月天然递增
         stage {
             matchingFallbacks = ["release"]
             minifyEnabled false
             signingConfig signingConfigs.release
             applicationIdSuffix ".stage"
+            versionNameSuffix "." + new Date().format("MMdd")
         }
     }
 
@@ -218,14 +224,17 @@ android {
             // Example: versionCode 1 will generate 1001 for armeabi-v7a, 1002 for x86, etc.
             def versionCodes = ["armeabi-v7a": 1, "x86": 2, "arm64-v8a": 3, "x86_64": 4]
             def abi = output.getFilter(OutputFile.ABI)
+            // 文件名用 variant.versionName（合并后含 stage 的日期后缀）而非
+            // defaultConfig.versionName——测试包文件名自带身份数字段，与官方件永不重名
+            // （release 无 suffix 文件名零变化）
             if (abi == null) {  // null for the universal-debug, universal-release variants
                 output.outputFileName =
-                        "${applicationName}-v${defaultConfig.versionName}-universal.apk"
+                        "${applicationName}-v${variant.versionName}-universal.apk"
             } else {
                 output.versionCodeOverride =
                         defaultConfig.versionCode * 1000 + versionCodes.get(abi)
                 output.outputFileName =
-                        "${applicationName}-v${defaultConfig.versionName}-${abi}.apk"
+                        "${applicationName}-v${variant.versionName}-${abi}.apk"
             }
 
         }
