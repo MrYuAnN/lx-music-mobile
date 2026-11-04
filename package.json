@@ -10,6 +10,8 @@
     "sc": "react-native start --reset-cache",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
+    "test": "node scripts/check-lang.mjs && jest",
+    "check:lang": "node scripts/check-lang.mjs",
     "bump:versionCode": "node scripts/bump-versioncode.mjs",
     "rd": "react-devtools",
     "menu": "adb shell input keyevent 82",
