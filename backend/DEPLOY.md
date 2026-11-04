@@ -70,7 +70,10 @@ go run ./cmd/platform-admin srv-token-set --db jingping.db --product shiyin
 cd backend
 GOOS=linux GOARCH=amd64 go build -ldflags "-X main.buildCommit=$(git rev-parse --short HEAD) -X main.buildTime=$(date +%Y-%m-%dT%H:%M)" -o shiyin-server .
 # 上传 VPS：/root/shiyin/{shiyin-server,web/}（shiyin.db 首次 serve 自动创建）
-# ⚠️ scp 后必须重启服务：systemctl restart shiyin-web（换文件不重启=进程仍跑旧二进制）
+# ⚠️ scp 后必须重启服务：systemctl restart shiyin-web（换文件不重启=进程仍跑旧二进制）；
+# ⚠️ 临时名上传再 mv 的部署路径须 chmod +x——.new 为新文件按 scp 默认 644 无执行位，
+# systemd 203/EXEC 无限重启循环（直覆旧文件不受此坑：scp 打开已存在目标写入保留其
+# 权限位；2026-11-03 实证修复=chmod +x 后 restart 即活）
 scp -r shiyin-server web root@8.137.126.215:/root/shiyin/
 ```
 
