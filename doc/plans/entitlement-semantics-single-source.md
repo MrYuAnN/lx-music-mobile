@@ -11,7 +11,7 @@
 | # | 决策 | 内容 |
 |---|---|---|
 | 1 | 收口形态 | 双域单源+契约锁（客户端域 SDK 单源 / 服务端域 verdict 单源 / 跨域语义测试向量） |
-| 2 | 收编边界 | 真值+选主+遮蔽进 Kotlin 单源；列表排序/过滤/倒计时文案留 RN 展示层。**选主（primary）为新增语义**（2026-11-04 审查定）：SDK 定义通用选主规则，本版消费方=码卡主行展示（MyKeys）；横幅归因/Worker 逐键遍历保持现状语义，留展示编排层，切换为后续可选项 |
+| 2 | 收编边界 | 真值+选主+遮蔽进 Kotlin 单源；列表排序/过滤/倒计时文案留 RN 展示层。**选主（primary）为新增语义**（2026-11-04 审查定）：SDK 定义通用选主规则，消费方=码卡主行展示（MyKeys）；横幅归因/Worker 逐键遍历保持现状语义，留展示编排层，切换为后续可选项。**代码审查 I-C 回写（2026-11-04）：primary 已下发未接线——消费方 UI 接线推迟至发版后增强批（UI 形态未拍：置顶行/徽标，pickPrimary 与 sortKeyEntries 排序方向相反需先定形态，审 S5）；maskedExpiries 同状登记预留** |
 | 3 | Kotlin 落点 | SDK 通用遮蔽机制：`fallback_app`+产品键表（`productApps`）宿主注入，默认值向后兼容净屏 |
 | 4 | 契约锁落点 | 向量文件单源放平台仓 `sdk/android/tests/`（语义权威侧）；SDK JUnit + api-server pytest 同读（并排 checkout 约定）；**物理拷贝靠 drift 锁对齐**（见件 3/件 4 分工） |
 | 5 | 批次 | 先导批（P1+S6+向量+drift 测试）→ 收编批（随发版） |
@@ -236,3 +236,8 @@ versionCode bump + 上表回归清单 + `latest-set` changelog；平台/取链�
   业界先例；不取 Pact broker 形态（引入 broker 服务与零工具链拍板 #4 冲突）。
 - 「一份语义定义生成两端代码」权益域无业界先例，且生成的仅是谓词常数（零工具链拍板
   排除），不采用。
+- **权益事件驱动宿主刷新**（ACTIVATED/CLEARED，拾音演进并入笔；代码审 S-7 补登）：
+  RevenueCat addCustomerInfoUpdateListener/customerInfoStream 同构先例（检索 2026-11-04
+  核实），非自定项。
+- 快照化展示延迟知情登记（代码审 S-2 补登）：逐源行过期态随码卡排序同策略——
+  getKeyEntries 拉取时刻 SDK 快照，页面停留跨过期点不即时翻灰，重进页收敛。

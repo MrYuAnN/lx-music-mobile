@@ -29,7 +29,9 @@ export interface ActivationStateInfo {
   valid?: Record<string, boolean> | null
   /** 遮蔽视图（兜底键有效时只留兜底键，SDK maskApps 单源）；unactivated=null */
   masked?: Record<string, number> | null
-  /** 选主（码卡主行新语义，SDK pickPrimary 单源）；unactivated/无候选=null */
+  /** 选主（码卡主行新语义，SDK pickPrimary 单源）；unactivated/无候选=null。
+   *  **预留字段**：消费方接线推迟至发版后增强批（T4 代码审 I-C 拍板——UI 形态
+   *  （置顶行/徽标）未拍，pickPrimary 与 sortKeyEntries 排序方向相反需先定形态） */
   primary?: { key: string; expiries: Record<string, number> } | null
 }
 
@@ -45,7 +47,8 @@ export interface KeyEntry {
   deviceLimit: number
   /** T4 件7：该码 valid 键集（SDK validAt 单源；null=旧桥窗口兜底） */
   validKeys?: string[] | null
-  /** 该码遮蔽视图（兜底有效时只留兜底键）；null=旧桥窗口兜底 */
+  /** 该码遮蔽视图（兜底有效时只留兜底键）；null=旧桥窗口兜底。
+   *  **预留字段**：当前无 RN 消费方（与 primary 同状，T4 代码审 S10 登记） */
   maskedExpiries?: Record<string, number> | null
 }
 

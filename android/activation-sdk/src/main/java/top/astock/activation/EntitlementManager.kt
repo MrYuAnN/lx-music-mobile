@@ -394,7 +394,9 @@ object EntitlementManager {
         return validAt(exp, effectiveNowSeconds(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)))
     }
 
-    /** 是否存在任一 app 即将到期（≤3 天，含已到期的单独走 per-app 状态行）；永久不计数 */
+    /** 是否存在任一 app 即将到期（≤3 天，含已到期的单独走 per-app 状态行）；永久不计数。
+     *  T4 豁免注（代码审 S-4，2026-11-04）：复合窗口谓词（非 0 且在期且 ≤3d）不收编
+     *  判定 seam——真值部分与 validAt 重合、窗算术属展示参数域（拍板 #7 豁免同源） */
     fun expiringSoon(context: Context): Boolean {
         val st = current(context)
         if (st !is State.Active) return false
@@ -756,6 +758,26 @@ object EntitlementManager {
     fun hasOtherValidKey(apps: Map<String, Long>, excludeApp: String, nowSec: Long): Boolean =
         anyActive(apps, nowSec, excludeApp)
 
+    /** merged 每键真值视图（T4 件7 bridge getState 下发单源）：多码合并表的
+     *  原始到期/遮蔽视图/每键 validAt——RN 展示层不自算时间比较（拍板 #2/#7）。
+     *  Unactivated 返回 null。 */
+    data class MergedTruth(
+        val expiries: Map<String, Long>,
+        val masked: Map<String, Long>,
+        val valid: Map<String, Boolean>,
+        val nowSec: Long,
+    )
+
+    fun mergedTruth(context: Context): MergedTruth? {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val now = effectiveNowSeconds(p)
+        val st = current(context)
+        val ent = (st as? State.Active)?.e ?: (st as? State.Expired)?.e ?: return null
+        val masked = maskApps(ent.expiries, ent.expiries, now, ActivationSdk.entitlementConfig)
+        val valid = ent.expiries.mapValues { (_, v) -> validAt(v, now) }
+        return MergedTruth(ent.expiries, masked, valid, now)
+    }
+
     /**
      * 首启免费试用 claim（2026-10-13 拍板，方案 docs/首启免费试用3天实施方案-v1.md）：
      * 调用契约=restoreFromDevice 先行且未恢复出权益、本地 State==Unactivated
@@ -819,13 +841,17 @@ object EntitlementManager {
         nowSec: Long,
         cfg: EntitlementConfig,
     ): Pair<String, Entitlement>? {
+        // 全局聚合表循环外单次构建（T4 代码审 S5：原 lambda 内逐候选重算 O(n²)）
+        val allApps = allAppsOf(entries)
         val candidates = entries.mapNotNull { (k, ent) ->
-            val masked = maskApps(ent.expiries, allAppsOf(entries), nowSec, cfg)
+            val masked = maskApps(ent.expiries, allApps, nowSec, cfg)
             if (anyActive(masked, nowSec)) k to ent.copy(expiries = masked) else null
         }
         return candidates.minWithOrNull(
             compareBy(
                 { if (it.second.expiries.values.any { v -> v == 0L }) 0L else 1L },
+                // 次键=非 0 值最早到期；纯永久码（仅 0 值）MAX_VALUE——双永久 tie-break
+                // 回落入参序（向量 P7 锁定；带过期键的码此键胜出=向量 P8 锁定，语义审 S8）
                 { it.second.expiries.values.filter { v -> v != 0L }.minOrNull() ?: Long.MAX_VALUE },
             ),
         )

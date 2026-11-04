@@ -217,15 +217,9 @@ const shDayNumber = (unixSec: number): number => {
 // 原 RN 五处实现（unlockSource/isKeyValid/hasAnyValidKey/isExpiredAt/Worker 双判定）
 // 与 client.ts 内联版（ADR-0001 推翻「不收编」）全部删除，F-03「改一侧忘一侧」整类
 // 事故结构性消灭。保留两个薄包装：
-// ①isEntryExpired——码级过期展示态（消费 bridge validKeys 真值；旧桥窗口退化为 expiry
-//   单值兜底，含 0=永久语义防永久码被置灰，复审 S5 口径不变）
-/** 码卡过期判定：全部源键均过期=过期码卡（真值=SDK validKeys 下发） */
-export const isEntryExpired = (entry: KeyEntry): boolean => {
-  if (entry.validKeys != null) {
-    return Object.keys(entry.expiries ?? {}).length > 0 && entry.validKeys.length === 0
-  }
-  return entry.expiry != 0 && entry.expiry * 1000 <= Date.now()
-}
+// ①isEntryExpired——实现收拢 keyDisplay.ts 零依赖叶子单源（T4 代码审 S1：防双实现
+//   复发），此处 re-export 供既有消费方
+export { isEntryExpired } from './keyDisplay'
 // ②isExpiringSoonAt——≤3 天金色窗（soon 窗=展示参数留 RN，拍板 I-D：真值由调用方以
 //   bridge 下发 valid 传入，窗算术 Date.now() 豁免判定时钟口径拍板 #7）
 /** 是否即将到期（≤3 天未过期；ExpiryBanner 金色窗，净屏 expiringSoon 同口径） */

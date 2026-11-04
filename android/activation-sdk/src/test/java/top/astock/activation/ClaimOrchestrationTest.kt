@@ -120,4 +120,20 @@ class ClaimOrchestrationTest {
         val forever = e.copy(expiries = mapOf("fanqie" to 0L))
         assertEquals(0L, JSONObject(EntitlementManager.buildReceiptJson(forever, "d", 1L, 1L)).getLong("exp"))
     }
+    // ⑥fused_keys 解析（T4 代码审 S9 补回覆盖：拾音侧测试随对齐删除后本入口回归锚——
+    // 「试用码已融合仍显示生效」用户实测根因的解析面，宽松读+空串剔除语义）
+    @Test
+    fun testParseFusedKeys() {
+        // 常规：数组透传
+        assertEquals(listOf("JP-A", "JP-B"), EntitlementManager.parseFusedKeysForTest(
+            JSONObject(mapOf("fused_keys" to org.json.JSONArray(listOf("JP-A", "JP-B")))).toString()))
+        // 旧服务端无此键=空表（行为退化现状）
+        assertEquals(emptyList<String>(), EntitlementManager.parseFusedKeysForTest(JSONObject(mapOf("tier" to "m1")).toString()))
+        // 空串条目剔除（宽松读防御）
+        assertEquals(listOf("JP-A"), EntitlementManager.parseFusedKeysForTest(
+            JSONObject(mapOf("fused_keys" to org.json.JSONArray(listOf("JP-A", "")))).toString()))
+        // 空数组=空表
+        assertEquals(emptyList<String>(), EntitlementManager.parseFusedKeysForTest(
+            JSONObject(mapOf("fused_keys" to org.json.JSONArray())).toString()))
+    }
 }

@@ -75,6 +75,7 @@ class EntitlementVectorsTest {
     fun aggregateVectors() {
         val root = loadVectors() ?: run { assumeTrue("[entitlement-vectors] 向量文件不可达，skip", false); return }
         val arr = section(root, "aggregate") ?: return
+        var asserted = 0
         for (i in 0 until arr.length()) {
             val v = arr.getJSONObject(i)
             // scope=py-fallback（appsExp 空回退 expTs）仅 pytest 消费——SDK 现状无回退
@@ -86,12 +87,18 @@ class EntitlementVectorsTest {
             }
             val apps = HashMap<String, Long>()
             appsJo.keys().forEach { k -> apps[k] = longOf(appsJo.opt(k)) }
-            val got = EntitlementManager.anyActive(apps, v.optLong("nowSec"))
+            // excludeApp 形态（AE 段）=Worker 混合态收口消费（代码审 S8 补）
+            val exclude = v.optString("excludeApp").takeIf { it.isNotEmpty() }
+            val got = EntitlementManager.anyActive(apps, v.optLong("nowSec"), exclude)
+            val expected = if (exclude != null) v.optBoolean("expectedAnyActiveExcluding") else v.optBoolean("expectedAnyActive")
             assertTrue(
-                "${v.optString("id")}: apps=$apps now=${v.optLong("nowSec")} got=$got",
-                got == v.optBoolean("expectedAnyActive"),
+                "${v.optString("id")}: apps=$apps now=${v.optLong("nowSec")} exclude=$exclude got=$got",
+                got == expected,
             )
+            asserted++
         }
+        // 最小断言数防护（代码审 S7）：段被整体改为跳过域时防线不无声失效
+        assertTrue("aggregate 段 SDK 域断言条目数为 0（防线空转）", asserted > 0)
     }
 
     /** 向量条目 → Entitlement（tier/deviceLimit 非断言对象，填桩值） */

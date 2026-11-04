@@ -105,30 +105,27 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
     try {
       val entries = Arguments.createArray()
       // T4 件7：每码真值单源——validKeys（SDK validAt 判定）/maskedExpiries（遮蔽视图）
-      // 随条目下发，码卡排序/分组不再自算时间比较
-      val truths = EntitlementManager.entryTruths(reactContext).associateBy { it.keyId }
-      EntitlementManager.keyEntries(reactContext).forEach { (key, e) ->
+      // 随条目下发，码卡排序/分组不再自算时间比较。
+      // T4 代码审 S4（2026-11-04）：单次读取——直接遍历 entryTruths（内含 ent 全字段），
+      // 消原 truths+keyEntries 双读的一致性窗口与重复 SP 解析
+      EntitlementManager.entryTruths(reactContext).forEach { t ->
+        val e = t.ent
         val m: WritableMap = Arguments.createMap()
-        m.putString("key", key)
+        m.putString("key", t.keyId)
         val expiriesMap = Arguments.createMap()
         e.expiries.forEach { (app, exp) -> expiriesMap.putDouble(app, exp.toDouble()) }
         m.putMap("expiries", expiriesMap)
         m.putDouble("expiry", (e.expiries[appKey] ?: 0L).toDouble())
         m.putBoolean("isTrial", e.isTrial())
-        val mark = EntitlementManager.bindingState(reactContext, key)
+        val mark = EntitlementManager.bindingState(reactContext, t.keyId)
         if (mark != null) m.putString("mark", mark) else m.putNull("mark")
         m.putInt("deviceLimit", e.deviceLimit)
-        val truth = truths[key]
-        if (truth != null) {
-          val validArr = Arguments.createArray()
-          truth.validKeys.forEach { validArr.pushString(it) }
-          m.putArray("validKeys", validArr)
-          val maskedMap = Arguments.createMap()
-          truth.masked.expiries.forEach { (app, exp) -> maskedMap.putDouble(app, exp.toDouble()) }
-          m.putMap("maskedExpiries", maskedMap)
-        } else {
-          m.putNull("validKeys"); m.putNull("maskedExpiries")
-        }
+        val validArr = Arguments.createArray()
+        t.validKeys.forEach { validArr.pushString(it) }
+        m.putArray("validKeys", validArr)
+        val maskedMap = Arguments.createMap()
+        t.masked.expiries.forEach { (app, exp) -> maskedMap.putDouble(app, exp.toDouble()) }
+        m.putMap("maskedExpiries", maskedMap)
         entries.pushMap(m)
       }
       promise.resolve(entries)

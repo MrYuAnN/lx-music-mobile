@@ -60,3 +60,7 @@
 3. 向量断言时序：先导批净屏活源跑现状基线（validity/aggregate），收编批断言对象
    切换、向量不变（等价性证明）；masking/primary 段随收编批启用（审查 I-A/I-E）。
 4. 漂移回灌路径经活源三步闭环（本 ADR「后果」第 1 条重申，审查 C1）。
+5. **primary 消费方接线推迟至发版后增强批**（代码审查 I-C 拍板，2026-11-04）：
+   SDK pickPrimary+bridge 下发三层就绪，MyKeys 主行 UI 接线待 UI 形态拍板
+   （置顶行/徽标——pickPrimary 与 sortKeyEntries 排序方向相反，接线前先定形态）；
+   maskedExpiries 同状登记预留。

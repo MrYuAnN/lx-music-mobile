@@ -426,8 +426,12 @@ const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t
       </View>
     )
   }
-  // live 含永久（exp==0=生效中，批3代码审 I4：与 activation.ts 同批口径统一）
-  const live: Array<[string, number]> = Object.entries(info.expiries).filter(([, exp]) => exp == 0 || exp * 1000 > Date.now())
+  // live 含永久（exp==0=生效中，批3代码审 I4：与 activation.ts 同批口径统一）。
+  // T4 代码审 I-B（2026-11-04）：生效判定改消费 bridge valid 真值（SDK 单源，判定族
+  // 第六处收口——同函数 soon 窗已真值化，混两钟回拨分叉消解）；旧桥 null 兜底保留原式
+  const live: Array<[string, number]> = info.valid != null
+    ? Object.entries(info.expiries).filter(([app, exp]) => exp == 0 || info.valid![app] === true)
+    : Object.entries(info.expiries).filter(([, exp]) => exp == 0 || exp * 1000 > Date.now())
   if (!live.length) return null
   const first = live[0]
   const label = live.length == 1

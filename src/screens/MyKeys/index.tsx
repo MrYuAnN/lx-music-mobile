@@ -349,14 +349,14 @@ const KeyCard = memo(({
   // 纯展示过滤（判定语义族 T4 收编批退役，真值=bridge validKeys 下发）。S4（审查）：配置未加载（qualityList
   // 空集）不过滤显全集，防首启弱网「全集→过滤集」口径闪变。
   // T4 收编批（2026-11-04）：shiyin 有效性改消费 bridge validKeys 真值（SDK 单源，
-  // 原内联时间比较退役；旧桥 null 兜底保留原式）
+  // 原内联时间比较退役）；旧桥兜底含 0=永久语义（代码审 S-新1：与原 isKeyValid 逐字等价）
   const expiryEntries = Object.entries(entry.expiries ?? {})
   const configuredSources = Object.keys(global.sy.qualityList ?? {})
   // 全源键单行条件带有效性（代码审查 I-3）：混合态 {shiyin 过期, 单源键有效} 时若恒收缩
   // 单行，生效码卡唯一行显「已到期」——对齐横幅 pickBannerApp allCovered 同口径（shiyin
   // 有效才收缩，无效回落逐源过滤集）
   const shiyinValid = entry.validKeys?.includes('shiyin')
-    ?? expiryEntries.some(([app, exp]) => app == 'shiyin' && exp != 0 && exp * 1000 > Date.now())
+    ?? expiryEntries.some(([app, exp]) => app == 'shiyin' && (exp == 0 || exp * 1000 > Date.now()))
   const filteredEntries = shiyinValid
     ? expiryEntries.filter(([app]) => app == 'shiyin')
     : configuredSources.length

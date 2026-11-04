@@ -56,3 +56,12 @@ test('旧桥窗口兜底：validKeys 缺失走 expiry 单值（0=永久最远，
   // legacy-past：过期→expired 组
   assert.deepEqual(sorted.map(e => e.key), ['legacy-perm', 'legacy-past'])
 })
+
+test('空 expiries 码（旧格式 receipt 空串可达路径）回落 expiry 单值兜底（代码审 S3）', () => {
+  const sorted = sortKeyEntries([
+    entry({ key: 'empty-past', expiries: {}, validKeys: [], expiry: NOW_SEC - 100 }),
+    entry({ key: 'live-1', expiries: { tx: NOW_SEC + 3600 }, validKeys: ['tx'] }),
+  ])
+  // empty-past：validKeys=[] 但 expiries 空→回落 expiry 单值兜底→过期沉底（旧版语义保持）
+  assert.deepEqual(sorted.map(e => e.key), ['live-1', 'empty-past'])
+})

@@ -14,11 +14,11 @@
       "phase-2-refactor": ["masking", "primary（收编批件5 启用；primary=新增语义：码卡主行选主规则，现状无此判定，非现状对拍）"]
     },
     "semantics": {
-      "validity": "exp==0 永久有效；exp>nowSec 有效；否则过期（含负值/脏数据 fail-closed）",
-      "aggregate.any": "appsExp 非空=任一值 active（0=永久/大于 nowSec）；null/负值/脏字符串=过期收紧口径（2026-11-04 审查 I-G）；scope=any-only 为 SDK+pytest 共同域，scope=py-fallback（appsExp 空回退 expTs）仅 pytest 消费——SDK 现状无回退语义（merged 空=Unactivated）",
+      "validity": "exp==0 永久有效；exp>nowSec 有效；否则过期（含负值/脏数据 fail-closed——SDK 域脏值在 receipt 解析层 getLong 抛异常整码拦截，值级断言仅为跨语言对拍口径，2026-11-04 代码审 S6 补注）",
+      "aggregate.any": "appsExp 非空=任一值 active（0=永久/大于 nowSec）；null/负值/脏字符串=过期收紧口径（2026-11-04 审查 I-G）；scope=any-only 为 SDK+pytest 共同域，scope=py-fallback（appsExp 空回退 expTs）仅 pytest 消费——SDK 现状无回退语义（merged 空=Unactivated）；excludeApp 形态（AE 段）=Worker 混合态收口消费（2026-11-04 代码审 S8 补）",
       "verdict": "apps_exp 非空=源闸（缺失且无 shiyin 兜底→not_entitled_for_source fail-closed；shiyin 兜底；0=放行；负值=expired）；apps_exp 空/缺=exp_ts 聚合闸（0/缺省=放行）；仅 pytest 消费",
       "masking": "cfg.fallbackApp 在全局聚合表 allApps 有效（validAt）→ apps 键集只留 fallbackApp（其余被遮=不参与判定/展示/提醒）；兜底未配置/无效/键不存在 → apps 原样",
-      "primary": "新增语义（码卡主行；横幅归因/Worker 通知不切换）：候选=遮蔽后仍任一键有效的码；排序=含永久键优先 → 最快到期优先（无永久键取最早到期）→ 同值按入参序；无候选=null"
+      "primary": "新增语义（码卡主行；横幅归因/Worker 通知不切换）：候选=遮蔽后仍任一键有效的码；排序=含永久键优先 → 非零值最早到期优先（纯永久码=MAX_VALUE，双永久 tie-break 回落入参序，P7/P8 锁定——2026-11-04 代码审 S8 补）→ 同值按入参序；无候选=null"
     },
     "assertionNote": "pytest 侧以向量内 nowSec mock time.time() 断言，禁止依赖真实时钟"
   },
@@ -43,7 +43,9 @@
     { "id": "A10-negative-values-dirty-expired", "desc": "值全负=过期（旧预拒负值隐式放行已废止）", "appsExp": { "tx": -5, "wy": -1 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": false },
     { "id": "A11-mixed-null-and-future", "desc": "null+在期混合→在期救全", "appsExp": { "tx": null, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true },
     { "id": "A12-dirty-string-fail-closed", "desc": "脏字符串值 fail-closed=过期", "appsExp": { "tx": "abc" }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": false },
-    { "id": "A13-mixed-negative-and-future", "desc": "负值+在期混合→在期救全", "appsExp": { "tx": -5, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true }
+    { "id": "A13-mixed-negative-and-future", "desc": "负值+在期混合→在期救全", "appsExp": { "tx": -5, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "expectedAnyActive": true },
+    { "id": "AE1-exclude-excluded-valid", "desc": "excludeApp 指定键有效但不计入（Worker 混合态收口形态：本键过期+他键有效→不推）", "appsExp": { "tx": 1699999900, "wy": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "excludeApp": "tx", "expectedAnyActiveExcluding": true },
+    { "id": "AE2-exclude-only-key", "desc": "仅剩被排除键（排除后空集→非 active）", "appsExp": { "tx": 1700003600 }, "expTs": 0, "nowSec": 1700000000, "excludeApp": "tx", "expectedAnyActiveExcluding": false }
   ],
   "verdict": [
     { "id": "D1-source-expired", "desc": "源已到期=expired", "record": { "apps_exp": { "tx": 1699999900 } }, "source": "tx", "nowSec": 1700000000, "expectedVerdict": "expired" },
@@ -75,6 +77,8 @@
     { "id": "P3-soonest-beats-later", "desc": "无永久码时最快到期优先", "entries": [ { "keyId": "k1", "expiries": { "tx": 1700003600 } }, { "keyId": "k2", "expiries": { "wy": 1700007200 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": "k1" },
     { "id": "P4-masking-produces-candidate", "desc": "遮蔽使过期码出候选、兜底码成主行", "entries": [ { "keyId": "k1", "expiries": { "tx": 1699999900 } }, { "keyId": "k2", "expiries": { "shiyin": 1700003600 } } ], "fallbackApp": "shiyin", "nowSec": 1700000000, "expectedPrimary": "k2" },
     { "id": "P5-all-expired-null", "desc": "全部过期=无主行", "entries": [ { "keyId": "k1", "expiries": { "tx": 1699999900 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": null },
-    { "id": "P6-expired-fallback-no-rescue", "desc": "兜底自身过期不遮也不救→无候选", "entries": [ { "keyId": "k1", "expiries": { "tx": 1699999900 } }, { "keyId": "k2", "expiries": { "shiyin": 1699999900 } } ], "fallbackApp": "shiyin", "nowSec": 1700000000, "expectedPrimary": null }
+    { "id": "P6-expired-fallback-no-rescue", "desc": "兜底自身过期不遮也不救→无候选", "entries": [ { "keyId": "k1", "expiries": { "tx": 1699999900 } }, { "keyId": "k2", "expiries": { "shiyin": 1699999900 } } ], "fallbackApp": "shiyin", "nowSec": 1700000000, "expectedPrimary": null },
+    { "id": "P7-dual-perm-input-order", "desc": "双永久码 tie-break=入参序首个（次键 MAX_VALUE 平局）", "entries": [ { "keyId": "k1", "expiries": { "shiyin": 0 } }, { "keyId": "k2", "expiries": { "tx": 0 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": "k1" },
+    { "id": "P8-perm-plus-expired-key-beats-pure-perm", "desc": "永久+带非零到期键的码胜纯永久码（次键=非零最早到期，语义审 S8 边界锁定）", "entries": [ { "keyId": "k1", "expiries": { "tx": 0 } }, { "keyId": "k2", "expiries": { "shiyin": 0, "wy": 1699999900 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": "k2" }
   ]
 }
