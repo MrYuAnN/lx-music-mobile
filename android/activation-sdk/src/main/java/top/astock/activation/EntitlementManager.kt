@@ -534,10 +534,13 @@ object EntitlementManager {
         }
 
     /** 按源权益视图行（§五.3 展示重构批B；服务端 /api/entitlements 形态投影）。
-     *  valid 服务端单源（置灰判据）；段全集含已耗尽（历史折叠区）。 */
+     *  valid 服务端单源（置灰判据）；state 服务端单源三态 active|queued|expired
+     *  （2026-11-04 排队态批——queued=relay 排队段 start>now 待消耗；空串=旧服务端
+     *  窗口，App 回落 valid 两态）；段全集含已耗尽（历史折叠区）。 */
     data class EntSegmentView(
         val key: String, val skuName: String, val kind: String,
         val start: Long, val end: Long, val valid: Boolean,
+        val state: String = "",
     )
 
     data class EntSourceView(
@@ -584,6 +587,7 @@ object EntitlementManager {
                                 start = sg.optLong("start", 0L),
                                 end = sg.optLong("end", 0L),
                                 valid = sg.optBoolean("valid", false),
+                                state = sg.optString("state", ""),
                             )
                         }
                     }

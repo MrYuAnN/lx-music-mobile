@@ -10,6 +10,14 @@
 // 预告（activation.ts unbindDevice）/60s 节流（视图拉取与逐码 binding 共用口径）。
 // 视觉微调（2026-11-04 拍板）：入口卡统一 12 圆角（加挂 card）；行首图标三处裸化
 // 去圆底（key/plus/music 裸 20 主色，对标 M3 行首裸图标/HIG 应用内列表主流形态）。
+// 子卡改版（2026-11-04 grilling 七题+三席方案审定稿）：段=同色平面行组+细分隔线划界（弃灰底嵌套卡）；行1 档位=
+// sku_name 直出（缺失 free 兑「试用/赠送」paid 兑「正式」，free 兑底命中省徽标防同
+// 词重复）；行2 完整码 tap 复制（脱敏退役，泄露面用户拍板接受）；行3 起止（排队段=
+// 「待生效 X 起 · 至 Y」，end=0 变体「· 永久」）；行4 到期时刻 h:m:s（兜 seg.valid，
+// 永久/历史段不显）；行内解绑=正式段+valid+bindings 回填后显（stale mark 误显收敛为
+// 零，拍板 I-5）。面板瘦身为设备面板（信息行全在段行组；设备开关行三态 mark 均渲染=
+// 修复 UNBOUND 时绑回钮不可达死路径，审查 I-4 随批修）。排队态=服务端段 state 单源
+// 三态 active|queued|expired（空串/undefined 回落 valid 两态，T4 判定族口径 RN 不自算）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Image, Modal, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
@@ -31,7 +39,7 @@ import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from 
 import { useStatusbarHeight } from '@/store/common/hook'
 import { dateFormat } from '@/utils'
 import { pushPurchaseScreen } from '@/navigation/navigation'
-import { onEntitlementChanged, BINDING_MARK, type KeyEntry, type BindingInfo, type EntSourceView, type EntSegmentView } from '@/utils/nativeModules/activation'
+import { onEntitlementChanged, BINDING_MARK, SEG_STATE, type KeyEntry, type BindingInfo, type EntSourceView, type EntSegmentView } from '@/utils/nativeModules/activation'
 import { activationModule } from '@/utils/nativeModules/activation'
 import {
   useActivationState,
@@ -45,6 +53,10 @@ import {
 
 const BINDING_FETCH_INTERVAL = 60 * 1000
 
+// 触控命中区补偿（代码审查 I-A：行内小号文字钮命中区补至 ≈44px，视觉密度不变——
+// HIG 允许可见元素小于命中区；left 补偿解绑小钮的左向热区）
+const HIT_SLOP_V = { top: 12, bottom: 12, left: 12 }
+
 // 源官方图标（2026-11-04 装机反馈拍板：各音源用官方 logo，圆角矩形渲染；资产=各平台
 // iOS 官方 App 图标 512px 落仓，新源上线随源补图）
 const SOURCE_ICONS: Record<string, number> = {
@@ -54,8 +66,8 @@ const SOURCE_ICONS: Record<string, number> = {
   kw: require('@/resources/images/sources/kw.png'),
 }
 
-// 码值脱敏中段（段卡行2）：前 5 + … + 后 5，全量码值在段详情面板
-const maskKey = (key: string): string => (key.length > 12 ? `${key.slice(0, 5)}…${key.slice(-5)}` : key)
+// 段行2 完整码直出（2026-11-04 子卡改版拍板 Q3）：脱敏退役，tap 复制交互承接原面板
+// 码值行；码=可兑换资产，列表页截图暴露面用户已知情拍板接受
 
 export default ({ componentId }: { componentId: string }) => {
   const theme = useTheme()
@@ -240,7 +252,8 @@ export default ({ componentId }: { componentId: string }) => {
   const configuredSources = useMemo(() => Object.keys(global.sy.qualityList ?? {}), [sourcesVersion])
 
   // 本地回落视图（serverFailed/拉取失败）：getKeyEntries expiries max 口径——每源
-  // 行值=max(自身, shiyin 兜底)，段=贡献码单段（start 未知置 0；历史信息本地不可得=空）
+  // 行值=max(自身, shiyin 兜底)，段=贡献码单段（start 未知置 0；历史信息本地不可得=空；
+  // paid 段 skuName 置空串走行1「正式」兑底——尾号形态退役，审查 I-3 本地侧同语义）
   const localSources = useMemo<EntSourceView[]>(() => {
     const apps = configuredSources.length
       ? configuredSources
@@ -258,7 +271,7 @@ export default ({ componentId }: { componentId: string }) => {
         if (expiry == null || (expiry != 0 && (agg == 0 || agg > expiry))) expiry = agg
         segs.push({
           key: e.key,
-          skuName: e.isTrial ? t('activation_state_trial') : `…${e.key.slice(-6)}`,
+          skuName: e.isTrial ? t('activation_state_trial') : '',
           kind: e.isTrial ? 'free' : 'paid',
           start: 0,
           end: agg,
@@ -295,15 +308,11 @@ export default ({ componentId }: { componentId: string }) => {
 
   const destructiveColor = theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light
 
-  const segLabel = useCallback((seg: EntSegmentView): string => {
-    if (seg.skuName) return seg.skuName
-    return APP_CN[seg.key.slice(0, 2)] ?? `…${seg.key.slice(-6)}`
-  }, [])
-
   const panelEntry = panelSeg != null ? entries.find(e => e.key == panelSeg.seg.key) : undefined
   const panelMark = panelSeg != null ? (bindings[panelSeg.seg.key]?.mark ?? panelEntry?.mark ?? null) : null
-  // 试用/赠送段隐藏解绑（原码卡 trialCard 同口径：服务端 trial_no_release 硬闸，UI 前置）
-  const panelHideUnbind = panelEntry?.isTrial == true || panelSeg?.seg.kind == 'free'
+  // 网络校验回填后的 binding（审查 I-B：兜底解绑钮显隐判据——不用本地 mark 兜底值，
+  // 只认回填真值；面板打开即强制重拉，弱网行内钮缺失时开面板必得可靠入口）
+  const panelBinding = panelSeg != null ? bindings[panelSeg.seg.key] : undefined
   const panelDevices = panelSeg != null
     ? [...(bindings[panelSeg.seg.key]?.devices ?? [])].sort((a, b) => (a.isSelf === b.isSelf ? 0 : (a.isSelf ? -1 : 1)))
     : []
@@ -358,7 +367,11 @@ export default ({ componentId }: { componentId: string }) => {
             <SourceCard
               key={src.app}
               source={src}
+              bindings={bindings}
+              acting={actingKey != null}
               onSegPress={seg => { setPanelSeg({ seg, app: src.app }) }}
+              onSegCopy={handleCopy}
+              onSegUnbind={handleUnbind}
             />
           ))}
         </AnimatedScrollView>
@@ -374,7 +387,9 @@ export default ({ componentId }: { componentId: string }) => {
         onConfirm={handleSheetActivate}
       />
 
-      {/* 段详情面板（拍板：码值复制/秒级到期/设备管理/解绑收段详情） */}
+      {/* 段详情面板（子卡改版定稿：瘦身为设备面板——档位/码值/起止/到期时刻/解绑
+          全在段行组，此处只留设备管理+绑回；设备开关行三态 mark 均渲染=修复 UNBOUND
+          时折叠区永不可开、绑回钮不可达死路径，审查 I-4） */}
       <Modal
         visible={panelSeg != null}
         transparent
@@ -387,44 +402,21 @@ export default ({ componentId }: { componentId: string }) => {
               <TouchableOpacity style={styles.panelMaskTouch} activeOpacity={1} onPress={() => { setPanelSeg(null) }} />
               <View style={[styles.panel, { backgroundColor: theme['c-content-background'] }]}>
                 <Text size={16} style={styles.panelTitle} color={theme['c-font']}>
-                  {panelSeg.seg.skuName || APP_CN[panelSeg.app] || panelSeg.app}
-                  {panelSeg.seg.kind == 'free'
+                  {panelSeg.seg.skuName || (panelSeg.seg.kind == 'free' ? t('ent_kind_free') : t('ent_kind_paid'))}
+                  {panelSeg.seg.kind == 'free' && (panelSeg.seg.skuName || '') != t('ent_kind_free')
                     ? (
                       <Text size={11} color={theme['c-font-label']}>{`  ${t('ent_kind_free')}`}</Text>
                       )
                     : null}
                 </Text>
-                {/* 码值（tap 复制，原码卡 copyBlock 同交互） */}
-                <TouchableOpacity style={styles.panelKeyRow} activeOpacity={0.6} onPress={() => { handleCopy(panelSeg.seg.key) }}>
-                  <Text size={14} style={styles.keyText} selectable color={theme['c-font']}>{panelSeg.seg.key}</Text>
-                  <Text size={11} color={theme['c-primary']}>{t('keyinfo_copy_hint')}</Text>
-                </TouchableOpacity>
-                {/* 起~止（日）+ 止于秒级（六规则④：秒级退段详情） */}
-                <Text size={13} color={theme['c-font-label']} style={styles.panelLine}>
-                  {panelSeg.seg.start > 0 ? `${dateFormat(panelSeg.seg.start * 1000, 'Y-M-D')} ~ ` : ''}
-                  {panelSeg.seg.end == 0
-                    ? t('activation_permanent')
-                    : `${dateFormat(panelSeg.seg.end * 1000, 'Y-M-D')}`}
-                </Text>
-                {panelSeg.seg.end != 0
-                  ? (
-                    <Text size={12} color={theme['c-font-label']} style={styles.panelLine}>
-                      {t('ent_sec_until', { time: dateFormat(panelSeg.seg.end * 1000, 'h:m:s') })}
-                    </Text>
-                    )
-                  : null}
                 {/* 设备管理（原码卡绑定折叠区迁入；远程解绑/绑回链复用） */}
-                {panelMark == null || panelMark == BINDING_MARK.OTHER
-                  ? (
-                    <TouchableOpacity
-                      style={styles.panelActionRow}
-                      activeOpacity={0.6}
-                      onPress={() => { setPanelDevicesOpen(v => !v) }}
-                    >
-                      <Text size={13} color={theme['c-font-label']}>{t('keyinfo_devices_title')} {panelDevicesOpen ? '▲' : '▼'}</Text>
-                    </TouchableOpacity>
-                    )
-                  : null}
+                <TouchableOpacity
+                  style={styles.panelActionRow}
+                  activeOpacity={0.6}
+                  onPress={() => { setPanelDevicesOpen(v => !v) }}
+                >
+                  <Text size={13} color={theme['c-font-label']}>{t('keyinfo_devices_title')} {panelDevicesOpen ? '▲' : '▼'}</Text>
+                </TouchableOpacity>
                 {panelDevicesOpen
                   ? (
                     <View style={styles.panelDevices}>
@@ -462,11 +454,12 @@ export default ({ componentId }: { componentId: string }) => {
                     </View>
                     )
                   : null}
-                {/* 解绑（试用/赠送段隐藏；确认链=unbindDevice 内置回落预告） */}
-                {!panelHideUnbind && panelMark == null
+                {/* 兜底解绑（审查 I-B：行内钮 bindings 未回填时静默不显的兜底入口——显隐
+                    只认回填真值 panelBinding，试用/赠送/历史段不显；确认链同 handleUnbind） */}
+                {panelSeg.seg.kind == 'paid' && panelSeg.seg.valid && panelBinding != null && panelBinding.mark == null
                   ? (
                     <TouchableOpacity
-                      style={styles.unbindSelfBtn}
+                      style={styles.panelUnbindBtn}
                       disabled={actingKey != null}
                       onPress={() => { handleUnbind(panelSeg.seg.key); setPanelSeg(null) }}
                     >
@@ -492,15 +485,23 @@ export default ({ componentId }: { componentId: string }) => {
   )
 }
 
-// 按源卡（六规则①②③+装机反馈 2026-11-04）：官方 logo 圆角矩形+源名+行值**同行**；
-// 无折叠箭头——整卡点击展开/收起；展开=段三行小卡（老码卡结构化语言：名称+徽标+状态/
-// 码值脱敏/起~止），tap 卡开段详情面板；已耗尽段入历史折叠区（默认收起，卡同构置灰）
-const SourceCard = memo(({ source, onSegPress }: {
+// 按源卡（六规则①②③+装机反馈 2026-11-04；子卡改版 2026-11-04 定稿）：官方 logo
+// 圆角矩形+源名+行值**同行**；无折叠箭头——整卡点击展开/收起；展开=段平面行组
+// （同色无灰底，细分隔线划界）：行1=档位+kind 徽标+状态三态/行2=完整码 tap 复制/
+// 行3=起止（排队段「待生效 X 起 · 至 Y」）/行4=到期时刻 h:m:s；行内解绑=正式段+
+// valid+bindings 回填后显；tap 行组=设备面板；已耗尽段入历史折叠区（默认收起，置灰
+// 纯查看，复制随块禁用）；末附兜底摘要行（兜底口径同前批）
+const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSegUnbind }: {
   source: EntSourceView
+  bindings: Record<string, BindingInfo>
+  acting: boolean
   onSegPress: (seg: EntSegmentView) => void
+  onSegCopy: (key: string) => void
+  onSegUnbind: (key: string) => void
 }) => {
   const theme = useTheme()
   const t = useI18n()
+  const destructiveColor = theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light
   const [expanded, setExpanded] = useState(false)
   const [historyOpen, setHistoryOpen] = useState(false)
   const name = APP_CN[source.app] ?? source.app
@@ -516,33 +517,71 @@ const SourceCard = memo(({ source, onSegPress }: {
   const expiryText = source.expiry == 0
     ? t('activation_permanent')
     : `${source.valid ? '' : `${t('activation_state_expired')} · `}${t('activation_until')} ${dateFormat(source.expiry * 1000, 'Y-M-D')}`
-  // 段三行小卡（装机反馈④：老激活码卡结构化语言）：行1=名称+kind 徽标+状态；行2=码值
-  // 脱敏；行3=起 ~ 止。tap=段详情面板（拍板：动作不散落列表层）
-  const SegMiniCard = (seg: EntSegmentView, history: boolean) => (
-    <TouchableOpacity
-      key={seg.key + String(seg.end)}
-      style={[styles.segCard, { backgroundColor: theme.isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.035)' }, history && styles.historySegCard]}
-      activeOpacity={0.6}
-      disabled={history}
-      onPress={() => { onSegPress(seg) }}
-    >
-      <View style={styles.segLine}>
-        <Text size={13} color={theme['c-font']} style={styles.segName}>{seg.skuName || APP_CN[seg.key.slice(0, 2)] || `…${seg.key.slice(-6)}`}</Text>
-        {seg.kind == 'free'
-          ? (
-            <Text size={10} color={theme['c-font-label']} style={styles.segBadge}>{t('ent_kind_free')}</Text>
-            )
+  // 段平面行组（子卡改版定稿）：状态三态=state 服务端单源（queued 排队中主色/active
+  // 生效中绿/expired 已过期灰；空串/undefined 回落 valid 两态——T4 口径 RN 不自算
+  // 时间比较）；行4 兜 seg.valid（state 空串窗口下历史段不误显，审查 I-2）；行内解绑=
+  // 正式段+valid+bindings[key] 回填且 mark==null 才显（stale mark 误显收敛为零，
+  // 拍板 I-5）；free 兑底命中省徽标（与档位名同词不重复，审查 S-6）
+  const SegRow = (seg: EntSegmentView, history: boolean, isLast: boolean) => {
+    const binding = bindings[seg.key]
+    const queued = seg.state == SEG_STATE.QUEUED
+    const expired = !seg.valid || seg.state == SEG_STATE.EXPIRED
+    const segName = seg.skuName || (seg.kind == 'free' ? t('ent_kind_free') : t('ent_kind_paid'))
+    const showFreeBadge = seg.kind == 'free' && segName != t('ent_kind_free')
+    const stateText = expired ? t('activation_state_expired') : queued ? t('ent_state_queued') : t('ent_state_active')
+    const stateColor = expired
+      ? theme['c-font-label']
+      : queued
+        ? theme['c-primary']
+        : SUCCESS_GREEN[theme.isDark ? 'dark' : 'light']
+    const canUnbind = !history && seg.kind == 'paid' && seg.valid && binding != null && binding.mark == null
+    const dateStart = seg.start > 0 ? dateFormat(seg.start * 1000, 'Y-M-D') : ''
+    const dateEnd = seg.end == 0 ? '' : dateFormat(seg.end * 1000, 'Y-M-D')
+    return (
+      <View key={seg.key + String(seg.end)} style={[styles.segBlock, history && styles.historySegCard, !isLast && styles.segDivider]}>
+        <TouchableOpacity style={styles.segBody} activeOpacity={0.6} disabled={history} onPress={() => { onSegPress(seg) }}>
+          <View style={styles.segLine}>
+            <Text size={13} color={theme['c-font']} style={styles.segName}>{segName}</Text>
+            {showFreeBadge
+              ? (
+                <Text size={10} color={theme['c-font-label']} style={styles.segBadge}>{t('ent_kind_free')}</Text>
+                )
+              : null}
+            <Text size={11} color={stateColor} style={styles.segState}>{stateText}</Text>
+          </View>
+          {/* 行2 完整码（tap 复制，历史段随块禁用+selectable 关闭保持纯查看拍板——审查 S-4/S-A） */}
+          <TouchableOpacity style={styles.segKeyRow} hitSlop={HIT_SLOP_V} activeOpacity={0.6} disabled={history} onPress={() => { onSegCopy(seg.key) }}>
+            <Text size={12} color={theme['c-font-label']} style={styles.segKeyText} selectable={!history}>{seg.key}</Text>
+          </TouchableOpacity>
+          <Text size={12} color={theme['c-font-label']} style={styles.segTextRow}>
+            {queued
+              ? (dateStart == ''
+                  ? (dateEnd == '' ? t('activation_permanent') : `${t('activation_until')} ${dateEnd}`)
+                  : (dateEnd == ''
+                      ? t('ent_pending_until_permanent', { start: dateStart })
+                      : t('ent_pending_until', { start: dateStart, end: dateEnd })))
+              : (dateStart == ''
+                  ? (dateEnd == '' ? t('activation_permanent') : `${t('activation_until')} ${dateEnd}`)
+                  : `${dateStart} ~ ${dateEnd == '' ? t('activation_permanent') : dateEnd}`)}
+          </Text>
+          {seg.end != 0 && seg.valid
+            ? (
+              <Text size={12} color={theme['c-font-label']} style={styles.segTextRow}>
+                {t('ent_expire_at', { time: dateFormat(seg.end * 1000, 'h:m:s') })}
+              </Text>
+              )
             : null}
-        <Text size={11} color={seg.valid ? SUCCESS_GREEN[theme.isDark ? 'dark' : 'light'] : theme['c-font-label']} style={styles.segState}>
-          {seg.valid ? t('ent_state_active') : t('activation_state_expired')}
-        </Text>
+        </TouchableOpacity>
+        {canUnbind
+          ? (
+            <TouchableOpacity style={styles.segUnbindRow} hitSlop={HIT_SLOP_V} disabled={acting} onPress={() => { onSegUnbind(seg.key) }}>
+              <Text size={12} color={destructiveColor}>{t('activation_btn_unbind')}</Text>
+            </TouchableOpacity>
+            )
+          : null}
       </View>
-      <Text size={12} color={theme['c-font-label']} style={styles.segLine}>{maskKey(seg.key)}</Text>
-      <Text size={12} color={theme['c-font-label']} style={styles.segLine}>
-        {seg.start > 0 ? `${dateFormat(seg.start * 1000, 'Y-M-D')} ~ ` : ''}{seg.end == 0 ? t('activation_permanent') : dateFormat(seg.end * 1000, 'Y-M-D')}
-      </Text>
-    </TouchableOpacity>
-  )
+    )
+  }
   return (
     <View style={[styles.card, { backgroundColor: theme['c-content-background'], opacity: source.valid ? 1 : 0.55 }]}>
       <TouchableOpacity style={styles.sourceRow} activeOpacity={0.6} onPress={() => { setExpanded(v => !v) }}>
@@ -557,8 +596,8 @@ const SourceCard = memo(({ source, onSegPress }: {
       {expanded
         ? (
           <View style={styles.segList}>
-            {activeSegs.map(seg => SegMiniCard(seg, false))}
-            {/* 历史激活码折叠区（六规则③：已耗尽段默认收起，卡同构置灰纯查看） */}
+            {activeSegs.map((seg, i) => SegRow(seg, false, i == activeSegs.length - 1))}
+            {/* 历史激活码折叠区（六规则③：已耗尽段默认收起，同构置灰纯查看） */}
             {historySegs.length
               ? (
                 <>
@@ -567,7 +606,7 @@ const SourceCard = memo(({ source, onSegPress }: {
                       {t('ent_history', { n: historySegs.length })} {historyOpen ? '▲' : '▼'}
                     </Text>
                   </TouchableOpacity>
-                  {historyOpen ? historySegs.map(seg => SegMiniCard(seg, true)) : null}
+                  {historyOpen ? historySegs.map((seg, i) => SegRow(seg, true, i == historySegs.length - 1)) : null}
                 </>
                 )
               : null}
@@ -632,11 +671,17 @@ const styles = createStyle({
     borderTopWidth: BorderWidths.normal,
     borderTopColor: 'rgba(128,128,128,0.18)',
     paddingTop: SPACING.s12,
-    gap: SPACING.s8,
+    gap: 0,
   },
-  segCard: {
-    borderRadius: 10,
-    padding: SPACING.s12,
+  // 段平面行组（子卡改版定稿 Q1）：同色无灰底卡，段间细分隔线划界（iOS 分组列表式）
+  segBlock: {
+    paddingVertical: SPACING.s10,
+  },
+  segDivider: {
+    borderBottomWidth: BorderWidths.normal,
+    borderBottomColor: 'rgba(128,128,128,0.18)',
+  },
+  segBody: {
     gap: 4,
   },
   segLine: {
@@ -658,6 +703,19 @@ const styles = createStyle({
   },
   segState: {
     flexShrink: 0,
+  },
+  segKeyRow: {
+    paddingVertical: 2,
+  },
+  segKeyText: {
+    fontFamily: 'monospace',
+  },
+  segTextRow: {
+    marginTop: -4,
+  },
+  segUnbindRow: {
+    alignSelf: 'flex-end',
+    paddingVertical: 2,
   },
   historyRow: {
     paddingVertical: 4,
@@ -686,19 +744,6 @@ const styles = createStyle({
   panelTitle: {
     fontWeight: 'bold',
   },
-  panelKeyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: SPACING.s8,
-  },
-  keyText: {
-    fontFamily: 'monospace',
-    flexShrink: 1,
-  },
-  panelLine: {
-    marginTop: -4,
-  },
   panelActionRow: {
     paddingVertical: 6,
   },
@@ -714,11 +759,9 @@ const styles = createStyle({
   deviceInfo: {
     flex: 1,
   },
-  unbindSelfBtn: {
+  panelUnbindBtn: {
     alignItems: 'center',
-    paddingVertical: 10,
-    borderRadius: 12,
-    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingVertical: 8,
   },
   panelCloseBtn: {
     alignItems: 'center',

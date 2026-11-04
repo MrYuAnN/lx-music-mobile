@@ -124,6 +124,7 @@ class ShiyinActivationModule(private val reactContext: ReactApplicationContext) 
             sm.putDouble("start", sg.start.toDouble())
             sm.putDouble("end", sg.end.toDouble())
             sm.putBoolean("valid", sg.valid)
+            sm.putString("state", sg.state)
             segs.pushMap(sm)
           }
           m.putArray("segments", segs)

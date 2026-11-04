@@ -14,6 +14,14 @@ export const BINDING_MARK = {
   OTHER: 'bound_other',
 } as const
 
+/** 段状态字面量锚（EntitlementsView.state；单源=license-platform entitlements_view.go
+ *  SegState* 常量，bridge 传原值——queued=relay 排队段 start>now 待消耗） */
+export const SEG_STATE = {
+  ACTIVE: 'active',
+  QUEUED: 'queued',
+  EXPIRED: 'expired',
+} as const
+
 export interface ActivationStateInfo {
   state: ActivationState
   /** 本 app 到期 unix 秒；0=永久；unactivated=null */
@@ -75,7 +83,7 @@ export interface ActivationResult {
   errCode: string | null
 }
 
-/** 按源权益视图段（§五.3 批B；服务端 /api/entitlements 形态投影，valid 服务端单源） */
+/** 按源权益视图段（§五.3 批B；服务端 /api/entitlements 形态投影，valid/state 服务端单源） */
 export interface EntSegmentView {
   key: string
   skuName: string
@@ -83,6 +91,10 @@ export interface EntSegmentView {
   start: number
   end: number // 0=永久段；<now=已耗尽（历史折叠区）
   valid: boolean
+  /** active|queued|expired 服务端单源三态（2026-11-04 排队态批，queued=relay 排队段
+   *  start>now 待消耗）；空串=旧服务端窗口、undefined=本地视图——两形态均由 RN 回落
+   *  valid 两态判定（T4 口径：RN 不自算时间比较） */
+  state?: string
 }
 
 /** 按源权益视图源行（行值=自身键与 shiyin 兜底取较晚者；段全集含已耗尽） */
