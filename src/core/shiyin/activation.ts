@@ -18,13 +18,15 @@ import type { Message } from '@/lang'
 // T4 收编批（2026-11-04）：**本表仅剩展示中文名用途**——键域过滤/判定已迁 SDK
 // EntitlementConfig.productApps（MainApplication 注入，含原生 Worker；原「双改」注释废止，
 // F-03 红线随单源化消解）
-export const APP_CN: Record<string, string> = {
-  shiyin: '全部音源',
-  tx: 'QQ音乐',
-  wy: '网易云音乐',
-  kg: '酷狗音乐',
-  kw: '酷我音乐',
-}
+// A1 架构批（2026-11-04）：表体迁纯模块 sources.ts（gate.ts 纯工厂零 RN import 需消费），
+// 此处 import+re-export 兼容既有 import 面（client 已随批切 './sources'）
+import { APP_CN } from './sources'
+
+/**
+ * @deprecated A1 后收敛：新代码直 `import { APP_CN } from './sources'`；
+ * MyKeys/Purchase 两处消费随下批迁移后删除本 re-export
+ */
+export { APP_CN }
 
 // 状态行文案（设置页「我的激活码」行值，2026-11-04 拍板①短状态词）：只返回状态词，
 // 来源与到期日期在「我的激活码」二级页码卡逐源可见——对标 iOS 设置 cell 标题单行+

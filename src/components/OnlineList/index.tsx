@@ -8,7 +8,7 @@ import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } fr
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
 import { handlePlay, handlePlayLater, handleShare, handleCopyLink } from './listAction'
-import { guardEntitlementGate } from '@/core/shiyin/client'
+import { guardEntitlementGate } from '@/core/shiyin/gateApp'
 import { createStyle } from '@/utils/tools'
 
 export interface OnlineListProps {

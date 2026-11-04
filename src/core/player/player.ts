@@ -27,7 +27,7 @@ import { filterList } from './utils'
 import { getOrderedPlayList } from './queue'
 import BackgroundTimer from 'react-native-background-timer'
 import { checkNotificationPermission, debounceBackgroundTimer } from '@/utils/tools'
-import { guardEntitlementGate } from '@/core/shiyin/client'
+import { guardEntitlementGate } from '@/core/shiyin/gateApp'
 import { LIST_IDS } from '@/config/constant'
 import { addListMusics, removeListMusics } from '@/core/list'
 import { addDislikeInfo } from '@/core/dislikeList'
@@ -754,7 +754,7 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
  * 续播已缓冲曲目不弹引导；空分支 setMusicUrl 走缓存命中完全绕过取链兜底层）。
  * 闸=纯本地态查询零网络开销，拦截即引导；调用方（通知栏/耳机/歌词链/深链）全
  * fire-and-forget，async 化无感。修后 getMusicUrl 缓存读被入口闸收敛——上游
- * handlePlay 中心闸/checkEntitlementBeforeUrl 兜底层/play 本闸三层闭环）
+ * handlePlay 中心闸/gate.ensurePlayable 兜底层/play 本闸三层闭环）
  */
 export const play = async() => {
   if (playerState.playMusicInfo.musicInfo == null) return

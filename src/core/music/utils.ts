@@ -9,7 +9,7 @@ import { langS2T, toNewMusicInfo, toOldMusicInfo } from '@/utils'
 import { assertApiSupport } from '@/utils/tools'
 import settingState from '@/store/setting/state'
 import { requestMsg } from '@/utils/message'
-import { isShiyinFastFail } from '@/core/shiyin/auth'
+import { isShiyinFastFail } from '@/core/shiyin/errors'
 import BackgroundTimer from 'react-native-background-timer'
 import { apis } from '@/utils/musicSdk/api-source'
 

@@ -15,6 +15,8 @@ import { storageDataPrefix } from '@/config/constant'
 import * as Keychain from 'react-native-keychain'
 import { activationModule } from '@/utils/nativeModules/activation'
 import { ACTIVATION_BASE_URL, getClientVersion } from './config'
+// 快速失败族构造器+名单单源 errors.ts（A1 架构批收口，原本地定义迁出；R1：均不进退避循环）
+import { shiyinError, isShiyinFastFail } from './errors'
 import versionActions from '@/store/version/action'
 import versionState from '@/store/version/state'
 
@@ -40,23 +42,6 @@ const TRIAL_WAIT_INTERVAL = 1000
 const TRIAL_WAIT_ATTEMPTS = 12
 
 const delay = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms))
-
-// 快速失败专用错误（R1）：均不进退避循环；换源链同 ShiyinRegisterFailed 待遇直接终止
-const shiyinError = (name: string, message: string): Error => {
-  const err = new Error(message)
-  err.name = name
-  return err
-}
-
-/** 非退避错误（快速失败族）：ensureAuth 与换源链按 name 识别直接终止 */
-export const isShiyinFastFail = (err: unknown): boolean => {
-  const name = (err as Error)?.name ?? ''
-  return (
-    name == 'ShiyinRegisterFailed' || name == 'ShiyinNotActivated' ||
-    name == 'ShiyinEntitlementExpired' || name == 'ShiyinEntitlementInvalid' ||
-    name == 'ShiyinUpgradeRequired'
-  )
-}
 
 export const getDeviceId = async(): Promise<string> => {
   // single-flight（审查 I-D）：并发首调共享同一 promise。SDK deviceId 首调现算后持久化

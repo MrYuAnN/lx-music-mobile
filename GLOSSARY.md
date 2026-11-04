@@ -11,6 +11,7 @@
 - **聚合视角（Aggregate View）**：对一组 per-app 到期 map 的 any/all 布尔判定（任一源有效 / 全部过期）。SDK 公开纯函数（map 入参，不绑定本地存储）；api-server register 预拒复用同一语义。
 - **混合码（Mixed Key)**：部分 app 有效、部分过期的键。注册链预拒对混合码放行（「all 才拒」），取链闸按请求源单键判定（「单键过期即拒 + 源缺失 fail-closed」）——两处宽严差异是有意的。
 - **entitlement_kind**：平台下发字段（activate/binding-check/redeem 权益快照），承载 trial/ paid 语义，客户端不再二次解释 tier。redeem 路径补齐见先导批。
+- **权益闸（Entitlement Gate）**：取链/入口前的客户端权益拦截+引导编排层（A1 架构批 2026-11-04 拆出，自取链 client.ts 寄生位迁正）。三出口：`guardEntitlementGate`（入口闸：unactivated/expired 各引导一次返 blocked）、`ensurePlayable`（取链前置：unactivated 快抛不引导）、`handleSourceRejected`（取链 403 权益分支引导分流）。形态=纯工厂 `core/shiyin/gate.ts`（GateDeps 注入，node:test 直跑）+ 组合根 `gateApp.ts` 绑真实现；域错误族（shiyinError+isShiyinFastFail 快抛名单）单源 `errors.ts`；音源中文名表单源 `sources.ts`。闸只做编排不改判定（判定语义单源 SDK，见 ADR-0001）；行为语义锚=2026-11-01「锁播放+入口统一前置拦截」拍板。
 
 ## 域分工（本 ADR-0001 拍板）
 
