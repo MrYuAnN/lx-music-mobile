@@ -10,8 +10,6 @@
     "sc": "react-native start --reset-cache",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
-    "test": "node scripts/check-lang.mjs && jest",
-    "check:lang": "node scripts/check-lang.mjs",
     "bump:versionCode": "node scripts/bump-versioncode.mjs",
     "rd": "react-devtools",
     "menu": "adb shell input keyevent 82",
@@ -29,6 +27,20 @@
   "engines": {
     "node": ">= 22.11",
     "npm": ">= 8.5.2"
+  },
+  "jest": {
+    "preset": "@react-native/jest-preset",
+    "resolver": "<rootDir>/jest.resolver.js",
+    "moduleNameMapper": {
+      "^@/(.*)$": "<rootDir>/src/$1"
+    },
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "<rootDir>/test.js"
+    ]
   },
   "keywords": [
     "music-player",
@@ -84,9 +96,12 @@
     "@react-native-community/cli": "20.2.0",
     "@react-native-community/cli-platform-android": "20.2.0",
     "@react-native/babel-preset": "0.88.1",
+    "@react-native/jest-preset": "0.88.1",
     "@react-native/metro-config": "0.88.1",
     "@react-native/typescript-config": "0.88.1",
+    "@testing-library/react-native": "~14.1.0",
     "@types/he": "^1.2.3",
+    "@types/jest": "~29.5.0",
     "@types/node": "^26.6.5",
     "@types/react": "^19.2.0",
     "@types/react-native-background-timer": "^2.0.2",
@@ -97,10 +112,12 @@
     "eslint-config-standard": "^17.1.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^5.2.0",
+    "jest": "~29.7.0",
     "patch-package": "^8.0.1",
     "svg-path-bounds": "^1.0.2",
     "svg2ttf": "~6.1.0",
     "svgicons2svgfont": "~16.0.0",
+    "test-renderer": "~1.3.1",
     "ts-morph": "^28.0.0",
     "typescript": "^5.9.3"
   },

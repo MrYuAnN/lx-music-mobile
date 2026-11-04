@@ -4,8 +4,9 @@
     /* Visit https://aka.ms/tsconfig.json to read more about this file */
 
     "module": "ESNext",
-    /* N2：@types/react-native 退役（RN 包自带类型），types 仅保留 node */
-    "types": ["node"],
+    /* N2：@types/react-native 退役（RN 包自带类型），types 保留 node；A5 批加 jest
+       （测试文件 test/expect/jest 全局类型，@types/jest ~29.5 对齐 jest 29） */
+    "types": ["node", "jest"],
     /* Completeness */
     "skipLibCheck": true,                                 /* Skip type checking all .d.ts files. */
 
