@@ -1,5 +1,5 @@
 const defaultSetting: SY.AppSetting = {
-  version: '2.0',
+  version: '2.1',
   'common.langId': null,
   'common.sourceNameType': 'real',
   'common.shareType': 'system',
