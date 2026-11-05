@@ -138,7 +138,7 @@ const styles = createStyle({
     left: 0,
     top: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderBottomRightRadius: 3,
+    borderBottomRightRadius: 4,
     paddingHorizontal: SPACING.s4,
     paddingBottom: SPACING.s2,
     overflow: 'hidden',

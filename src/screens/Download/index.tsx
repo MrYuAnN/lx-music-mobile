@@ -633,13 +633,13 @@ const styles = createStyle({
   },
   progressTrack: {
     height: 3,
-    borderRadius: 1.5,
+    borderRadius: 999,
     marginTop: SPACING.s4,
     overflow: 'hidden',
   },
   progressFill: {
     height: '100%',
-    borderRadius: 1.5,
+    borderRadius: 999,
   },
   taskAction: {
     width: 36,

@@ -175,7 +175,8 @@ export default () => {
     // 回退=透明底（API<31 无玻璃即现状观感，fallbackColor 透明）
     // 「四黑一红」（2026-10-21 拍板）：前后/播放/列表四动作键统一主字色，红仅播放模式状态
     <GlassSurface
-      style={{ ...containerStyle, borderRadius: 24, overflow: 'hidden' }}
+      style={containerStyle}
+      radius={999}
       fallbackColor="rgba(0, 0, 0, 0)"
       hairline="all"
     >

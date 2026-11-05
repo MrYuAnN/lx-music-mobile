@@ -150,7 +150,7 @@ const styles = createStyle({
   },
   progressBar: {
     height: '100%',
-    borderRadius: 3,
+    borderRadius: 999,
   },
   pressBar: {
     position: 'absolute',

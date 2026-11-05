@@ -302,7 +302,7 @@ const styles = createStyle({
   stepN: {
     width: 22,
     height: 22,
-    borderRadius: 11,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },

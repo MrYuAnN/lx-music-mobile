@@ -35,6 +35,6 @@ const styles = createStyle({
   dot: {
     width: 3,
     height: 3,
-    borderRadius: 1.5,
+    borderRadius: 999,
   },
 })

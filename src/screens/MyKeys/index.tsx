@@ -636,7 +636,7 @@ const styles = createStyle({
   sourceIcon: {
     width: 28,
     height: 28,
-    borderRadius: 7,
+    borderRadius: 8,
   },
   sourceName: {
     flex: 1,
@@ -673,7 +673,7 @@ const styles = createStyle({
     borderColor: 'rgba(128,128,128,0.4)',
     borderRadius: 4,
     paddingHorizontal: 4,
-    paddingVertical: 1,
+    paddingVertical: SPACING.s2,
     overflow: 'hidden',
   },
   segState: {

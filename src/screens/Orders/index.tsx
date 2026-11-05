@@ -642,10 +642,10 @@ const styles = createStyle({
   statusBadge: {
     borderRadius: 999,
     paddingHorizontal: SPACING.s10,
-    paddingVertical: 3,
+    paddingVertical: SPACING.s4,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
+    gap: SPACING.s4,
   },
   statusBadgeText: {
     fontFamily: FontFamilies.medium,

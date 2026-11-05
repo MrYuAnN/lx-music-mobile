@@ -169,8 +169,8 @@ const styles = createStyle({
   },
   currentBadge: {
     paddingHorizontal: SPACING.s8,
-    paddingVertical: 2,
-    borderRadius: 6,
+    paddingVertical: SPACING.s2,
+    borderRadius: 8,
   },
   verTitle: {
     fontFamily: FontFamilies.semibold,

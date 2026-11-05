@@ -330,7 +330,7 @@ const styles = createStyle({
   snBadge: {
     width: 22,
     height: 22,
-    borderRadius: 7,
+    borderRadius: 8,
     alignItems: 'center',
     justifyContent: 'center',
   },

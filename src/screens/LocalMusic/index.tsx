@@ -525,10 +525,11 @@ const AuthGuide = ({ onGoSettings, onLater }: { onGoSettings: () => void, onLate
   )
 }
 
-// 光盘线稿图标（View 绘制圆环+中孔，不依赖字体码点）
+// 光盘线稿图标（View 绘制圆环+中孔，不依赖字体码点）；色取 ramp 深档对保持线稿对比度（审查 I-3：
+// c-font-label 语义为次级文字且亮色档过浅，三席审裁定）
 const IconDisc = () => {
   const theme = useTheme()
-  const color = theme.isDark ? '#D8D8DC' : '#3A3A3C'
+  const color = theme.isDark ? theme['c-850'] : theme['c-750']
   return (
     <View style={{ ...styles.disc, borderColor: color }}>
       <View style={{ ...styles.discHole, borderColor: color }} />
@@ -672,7 +673,7 @@ const styles = createStyle({
   guideIcon: {
     width: 104,
     height: 104,
-    borderRadius: 52,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 56,
@@ -680,7 +681,7 @@ const styles = createStyle({
   disc: {
     width: 52,
     height: 52,
-    borderRadius: 26,
+    borderRadius: 999,
     borderWidth: 1.7,
     alignItems: 'center',
     justifyContent: 'center',
@@ -688,7 +689,7 @@ const styles = createStyle({
   discHole: {
     width: 13,
     height: 13,
-    borderRadius: 6.5,
+    borderRadius: 999,
     borderWidth: 1.7,
   },
   guideTitle: {

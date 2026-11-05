@@ -66,8 +66,8 @@ interface Props {
   style?: StyleProp<ViewStyle>
   /** 模糊强度 0-100（方案 §1 初值 24，校准点） */
   blurAmount?: number
-  /** 圆角半径：传入即本组件自持圆角+内部裁切（玻璃/回退两分支同享），圆角玻璃一律走此 prop。
-   *  存量 PlayDetail Btn/ControlBtn 暂留 style 自带圆角（幸免断线）随圆角取值体系治理批次迁移；
+  /** 圆角半径：传入即本组件自持圆角+内部裁切（玻璃/回退两分支同享），圆角玻璃一律走此 prop
+   *  （存量 PlayDetail Btn/ControlBtn 已于 2026-11-05 unslop 批迁移完毕）；
    *  style 内 borderRadius 会覆盖本 prop（style 居数组末位），勿同传；
    *  与 hairline='bottom' 组合现无消费方——RN Android 单边边框×圆角有历史绘制 quirk，启用前先真机核验 */
   radius?: number

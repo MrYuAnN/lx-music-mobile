@@ -25,6 +25,7 @@ export default ({ icon, color, onPress, plain = false }: {
           : (
               <GlassSurface
                 style={styles.glassCircle}
+                radius={999}
                 fallbackColor="rgba(0, 0, 0, 0)"
                 hairline="all"
               >
@@ -46,8 +47,6 @@ const styles = createStyle({
   glassCircle: {
     width: 36,
     height: 36,
-    borderRadius: 18,
-    overflow: 'hidden',
     justifyContent: 'center',
     alignItems: 'center',
   },

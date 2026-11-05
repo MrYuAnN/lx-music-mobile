@@ -154,7 +154,7 @@ const styles = createStyle({
   },
   brandText: {
     // 名称/版本紧贴（净屏两行几乎连排，间距由行高自然形成）
-    gap: 1,
+    gap: SPACING.s2,
     justifyContent: 'center',
   },
   brandName: {

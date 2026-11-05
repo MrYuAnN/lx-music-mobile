@@ -1,13 +1,13 @@
 import { memo, useEffect, useRef } from 'react'
-import { Animated, TouchableOpacity } from 'react-native'
+import { Animated, Easing, TouchableOpacity } from 'react-native'
 
 import { useTheme } from '@/store/theme/hook'
 import { createStyle } from '@/utils/tools'
 import { scaleSizeW } from '@/utils/pixelRatio'
 
 // iOS UISwitch 造型开关（2026-10-20 更多弹层重构拍板：行卡内 toggle 控件，业界标准开关形态）：
-// 51×31 圆角胶囊槽+滑球，激活主色底白球、未选中灰底；滑球 spring 滑动（底色两态硬切——主题切换
-// 低频事件，插值捕获旧色不值得引依赖）
+// 51×31 圆角胶囊槽+滑球，激活主色底白球、未选中灰底；滑球 timing 单源曲线滑动，无回弹
+// （design-principles §6 微交互档 250ms；底色两态硬切——主题切换低频事件，插值捕获旧色不值得引依赖）
 const TRACK_W = scaleSizeW(51)
 const TRACK_H = scaleSizeW(31)
 const THUMB = TRACK_H - scaleSizeW(4)
@@ -16,14 +16,14 @@ export default memo(({ check, onChange }: { check: boolean, onChange: (v: boolea
   const theme = useTheme()
   const anim = useRef(new Animated.Value(check ? 1 : 0)).current
   // 受控同步哨兵（审查 I-1）：仅外部改 check（批量重置/复用场景）才驱滑球动画；
-  // toggle 自身回流（prevCheck 已先行更新）跳过，避免打断进行中的 spring
+  // toggle 自身回流（prevCheck 已先行更新）跳过，避免打断进行中的动画
   const prevCheck = useRef(check)
 
   const animateTo = (toValue: number) => {
-    Animated.spring(anim, {
+    Animated.timing(anim, {
       toValue,
-      speed: 24,
-      bounciness: 4,
+      duration: 250,
+      easing: Easing.bezier(0.32, 0.72, 0, 1),
       useNativeDriver: true,
     }).start()
   }

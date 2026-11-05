@@ -189,7 +189,7 @@ const styles = createStyle({
     flexShrink: 1,
   },
   rowSub: {
-    marginTop: 1,
+    marginTop: SPACING.s2,
   },
   removeBtn: {
     padding: SPACING.s10,

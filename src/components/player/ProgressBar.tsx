@@ -167,7 +167,7 @@ const styles = createStyle({
   },
   progressBar: {
     height: progressHeight,
-    borderRadius: 1.5,
+    borderRadius: 999,
   },
   pressBar: {
     position: 'absolute',

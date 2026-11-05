@@ -90,7 +90,7 @@ const styles = createStyle({
   sectionBar: {
     width: 3,
     height: 14,
-    borderRadius: 1.5,
+    borderRadius: 999, // 胶囊端点（宽 3 的一半，杂值归档至胶囊档）
   },
   sectionTitle: {
     fontFamily: FontFamilies.semibold,
@@ -101,7 +101,7 @@ const styles = createStyle({
   badge: {
     alignSelf: 'flex-start',
     paddingHorizontal: SPACING.s8,
-    paddingVertical: 3,
+    paddingVertical: SPACING.s4,
     borderRadius: 8,
   },
   badgeText: {
@@ -116,8 +116,8 @@ const styles = createStyle({
   dot: {
     width: 5,
     height: 5,
-    borderRadius: 2.5,
-    marginTop: 6,
+    borderRadius: 999,
+    marginTop: SPACING.s6,
   },
   lineText: {
     flex: 1,

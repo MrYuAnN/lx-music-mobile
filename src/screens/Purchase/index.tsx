@@ -397,8 +397,8 @@ export default ({ componentId }: { componentId: string }) => {
   )
 }
 
-// 分态权益卡（批3 v1.2）：未激活/永久=隐藏；试用=🎁剩 N 天全源；全源=✅至 date（≤3 天
-// 警示橙，审查 I-C 补拍板态）；纯音源权益=单源名+日期或 N 源摘要（exp==0 永久=生效中
+// 分态权益卡（批3 v1.2）：未激活/永久=隐藏；试用=剩 N 天全源；全源=生效至 date（≤3 天
+// 警示橙，审查 I-C 补拍板态；emoji 已随 unslop 批从文案清除 2026-11-05）；纯音源权益=单源名+日期或 N 源摘要（exp==0 永久=生效中
 // 计入，批3代码审 I4 同批口径统一）。数据=SDK expiries；T4 收编批（2026-11-04）：
 // soon 窗真值入参改消费 bridge 下发 valid（SDK 单源）
 const EntitlementCard = memo(({ info, t }: { info: ActivationStateInfo | null, t: Translate }) => {
@@ -488,7 +488,7 @@ const TierRow = memo(({ sku, selected, locked, theme, t, onToggle }: {
       disabled={locked}
     >
       <View style={[styles.tick, { backgroundColor: selected ? theme['c-primary'] : theme['c-border-background'] }]}>
-        {selected && <Text size={12} color={theme['c-on-primary']}>✓</Text>}
+        {selected && <Icon name="check" size={ICON_SIZE.chevron} color={theme['c-on-primary']} />}
       </View>
       <View style={styles.tierInfo}>
         <Text size={15} style={{ fontWeight: '600' }}>{sku.name}</Text>
@@ -554,13 +554,13 @@ const styles = createStyle({
     gap: SPACING.s8,
   },
   skelLine: {
-    height: 13,
-    borderRadius: 6,
+    height: 12,
+    borderRadius: 8,
   },
   skelPrice: {
     width: 48,
     height: 18,
-    borderRadius: 6,
+    borderRadius: 8,
   },
   retryBtn: {
     borderRadius: 999,
@@ -648,7 +648,7 @@ const styles = createStyle({
   tick: {
     width: 20,
     height: 20,
-    borderRadius: 10,
+    borderRadius: 999,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -684,7 +684,7 @@ const styles = createStyle({
     textDecorationLine: 'line-through',
   },
   saveBadge: {
-    borderRadius: 6,
+    borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },

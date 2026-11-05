@@ -128,7 +128,7 @@ const styles = createStyle({
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 3,
+    gap: SPACING.s4,
     height: 38,
     borderRadius: 8,
     paddingHorizontal: SPACING.s10,

@@ -604,7 +604,7 @@ const styles = StyleSheet.create({
     // 36 实心 LOVE 圆（五轮拍板；LOVE_COLOR 模块常量静态可用）；hitSlop 6 补足 44+ 触区
     width: 36,
     height: 36,
-    borderRadius: 18,
+    borderRadius: 999,
     backgroundColor: LOVE_COLOR,
     justifyContent: 'center',
     alignItems: 'center',
@@ -674,7 +674,7 @@ const styles = StyleSheet.create({
     // 触区 44（AM-6 拍板），无底色不显形，仅扩大点击区
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 999,
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: -SPACING.s8,
