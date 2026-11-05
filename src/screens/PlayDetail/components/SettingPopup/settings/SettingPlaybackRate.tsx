@@ -48,8 +48,9 @@ export default () => {
           activeId={String(playbackRate)}
           onPress={menu => { handleRateChange(parseFloat(menu.action)) }}
           anchorActive
+          center
           fitMenuWidth
-          fontSize={13}
+          fontSize={15}
         >
           <View style={styles.rateBtn}>
             <Text size={13} color={theme['c-font-label']} style={styles.rateText}>{formatRate(playbackRate)}</Text>

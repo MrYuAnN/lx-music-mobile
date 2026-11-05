@@ -15,6 +15,8 @@ import { SPACING } from '@/config/spacing'
 const menuItemHeight = scaleSizeH(40)
 // 菜单兜底宽（fitMenuWidth 未启用/未估出时的固定宽），DorpDownMenu 的 fitWidth 下限同源引用
 export const menuItemWidth = scaleSizeW(100)
+// 面板上下留白（与 styles.menu paddingVertical 单源——定位公式高度计入）
+const MENU_PADDING_VERTICAL = 5
 
 export interface Position { w: number, h: number, x: number, y: number, menuWidth?: number, menuHeight?: number }
 export interface MenuSize { width?: number, height?: number }
@@ -34,6 +36,10 @@ const styles = createStyle({
     position: 'absolute',
     borderRadius: 8,
     backgroundColor: 'white',
+    // 上下留白（2026-11-05 速率菜单反馈：首尾项贴面板边/压圆角显粗糙）；定位公式
+    // menuHeight 同步计入 MENU_PADDING_VERTICAL，防贴底场景溢出
+    paddingTop: 5,
+    paddingBottom: 5,
     // 无阴影（真机反馈 2026-10-20 两轮：「外框+白块」两层分离感根源=elevation 阴影轮廓——
     // 用户拍板毛玻璃与页面融合一体）：层次由跨窗模糊+半透明 tint 承担；背景色由渲染层
     // 主题色/glassTint 覆盖，此处值仅为 outline 兜底
@@ -109,15 +115,15 @@ const Menu = ({
       ? menus.findIndex(menu => menu.action === activeId)
       : -1
     if (anchorActive && activeIndex >= 0) {
-      const menuHeight = menus.length * itemH
-      let top = buttonPosition.y + buttonPosition.h / 2 - (activeIndex + 0.5) * itemH
+      const menuHeight = menus.length * itemH + MENU_PADDING_VERTICAL * 2
+      let top = buttonPosition.y + buttonPosition.h / 2 - (activeIndex + 0.5) * itemH - MENU_PADDING_VERTICAL
       top = Math.min(Math.max(top, 8), windowSize.height - menuHeight - 8)
       let left = buttonPosition.x + buttonPosition.w / 2 - menuWidth / 2
       left = Math.min(Math.max(left, 8), windowSize.width - menuWidth - 8)
       return { height: menuHeight, width: menuWidth, top, left }
     }
 
-    let menuHeight = menus.length * itemH
+    let menuHeight = menus.length * itemH + MENU_PADDING_VERTICAL * 2
     const topHeight = buttonPosition.y - 20
     const bottomHeight = windowSize.height - buttonPosition.y - buttonPosition.h - 20
     if (menuHeight > topHeight && menuHeight > bottomHeight) menuHeight = Math.max(topHeight, bottomHeight)
