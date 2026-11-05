@@ -2,8 +2,8 @@ import { useRef, forwardRef, useImperativeHandle } from 'react'
 import { type ListInfoItem } from '@/store/songlist/state'
 // import LoadingMask, { LoadingMaskType } from '@/components/common/LoadingMask'
 import List, { type ListProps, type ListType, type Status } from './List'
-import { navigations } from '@/navigation'
-import commonState from '@/store/common/state'
+import { pushScreen } from '@/navigation'
+import { SONGLIST_DETAIL_SCREEN } from '@/navigation/screenNames'
 
 export interface SonglistProps {
   onRefresh: ListProps['onRefresh']
@@ -37,7 +37,7 @@ export default forwardRef<SonglistType, SonglistProps>(({
   }))
 
   const handleOpenDetail = (item: ListInfoItem, index: number) => {
-    navigations.pushSonglistDetailScreen(commonState.componentIds.home!, item)
+    pushScreen(SONGLIST_DETAIL_SCREEN, { info: item })
   }
 
   return (

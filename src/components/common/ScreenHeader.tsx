@@ -32,7 +32,8 @@ import { SPACING } from '@/config/spacing'
 // 10-19「搜索框即身份」豁免已随 2026-10-22 治理批 P15 撤销。
 
 interface Props {
-  componentId: string
+  /** 返回已不再经 RNN 栈句柄（pop 无参），保留入参兼容既有屏宿主传参 */
+  componentId?: string
   title?: string
   /** 顶栏右侧操作区（如本地音乐的 ⋮ 菜单入口） */
   right?: React.ReactNode
@@ -40,7 +41,7 @@ interface Props {
   progress: Animated.Value
   /** 恒显标题（默认 true，与 2026-10-23 修订判据同向防漏传）：唯一豁免=页内大标题页（About）显式传 false 回退滚动淡入，判据见组件头注释 */
   alwaysShowTitle?: boolean
-  /** 返回覆盖（缺省内置 pop(componentId)）：页内逐级返回场景（如添加歌曲页选歌态回歌单列表）
+  /** 返回覆盖（缺省内置 pop()）：页内逐级返回场景（如添加歌曲页选歌态回歌单列表）
    * 传入后点击返回执行自定义动作而不退出屏 */
   onBack?: () => void
 }
@@ -48,7 +49,7 @@ interface Props {
 // 玻璃底渐显区间=GLASS_FADE_RANGE（GlassSurface 单源，子头批 S-A 收敛）；标题淡入区间独立
 const TITLE_FADE_RANGE = [180, 320]
 
-export default ({ componentId, title, right, progress, alwaysShowTitle = true, onBack }: Props) => {
+export default ({ title, right, progress, alwaysShowTitle = true, onBack }: Props) => {
   const theme = useTheme()
   const statusBarHeight = useStatusbarHeight()
 
@@ -57,7 +58,7 @@ export default ({ componentId, title, right, progress, alwaysShowTitle = true, o
       onBack()
       return
     }
-    pop(componentId)
+    pop()
   }
 
   const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })

@@ -10,8 +10,8 @@ import SonglistPickerSheet, {
 } from './SonglistPickerSheet'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
-import { navigations } from '@/navigation'
-import commonState from '@/store/common/state'
+import { pushScreen } from '@/navigation'
+import { SONGLIST_DETAIL_SCREEN } from '@/navigation/screenNames'
 import songlistState, { type Source, type TagInfo } from '@/store/songlist/state'
 import { createStyle } from '@/utils/tools'
 import { SPACING } from '@/config/spacing'
@@ -63,14 +63,16 @@ export default ({
   }
 
   const handleOpenSonglist = (id: string) => {
-    navigations.pushSonglistDetailScreen(commonState.componentIds.home!, {
-      play_count: undefined,
-      id,
-      author: '',
-      name: '',
-      img: undefined,
-      desc: undefined,
-      source,
+    pushScreen(SONGLIST_DETAIL_SCREEN, {
+      info: {
+        play_count: undefined,
+        id,
+        author: '',
+        name: '',
+        img: undefined,
+        desc: undefined,
+        source,
+      },
     })
   }
 

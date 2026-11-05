@@ -10,8 +10,8 @@ import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { SPACING } from '@/config/spacing'
-import commonState from '@/store/common/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { SETTING_SECTION_SCREEN, MY_KEYS_SCREEN, PURCHASE_SCREEN, ORDERS_SCREEN, CHANGELOG_SCREEN } from '@/navigation/screenNames'
 import { checkUpdate } from '@/core/version'
 import { useUpdateStatusText } from '@/utils/hooks/useUpdateStatusText'
 import { formatActivationState, useActivationState } from '@/core/shiyin/activation'
@@ -52,11 +52,10 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
   }, [scrollYAnimated])
   const statusText = useUpdateStatusText()
   const { info } = useActivationState()
-  const componentId = commonState.componentIds.setting
 
   const handleSection = useCallback((id: SettingSectionTarget) => {
-    if (componentId) navigations.pushSettingSectionScreen(componentId, id)
-  }, [componentId])
+    pushScreen(SETTING_SECTION_SCREEN, { id })
+  }, [])
 
   const activationValue = formatActivationState(info, t)
 
@@ -90,19 +89,19 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
           icon="key"
           label={t('setting_my_keys')}
           value={activationValue}
-          onPress={() => { if (componentId) navigations.pushMyKeysScreen(componentId) }}
+          onPress={() => { pushScreen(MY_KEYS_SCREEN) }}
         />
         <SelectRow
           icon="help"
           label={t('setting_get_code')}
           value=''
-          onPress={() => { if (componentId) navigations.pushPurchaseScreen(componentId) }}
+          onPress={() => { pushScreen(PURCHASE_SCREEN) }}
         />
         <SelectRow
           icon="playlist-music"
           label={t('orders_entry')}
           value=''
-          onPress={() => { if (componentId) navigations.pushOrdersScreen(componentId) }}
+          onPress={() => { pushScreen(ORDERS_SCREEN) }}
         />
       </SettingSection>
 
@@ -119,7 +118,7 @@ export default ({ scrollYAnimated, contentPaddingTop }: SettingMainProps) => {
       <SettingSection title={t('setting_root_section_about')}>
         {/* 定案#2 微信式：value 仅新版未忽略时显示，点击短暂检查中→弹窗/已最新 toast */}
         <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={handleCheckUpdate} />
-        <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { if (componentId) navigations.pushChangelogScreen(componentId) }} />
+        <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { pushScreen(CHANGELOG_SCREEN) }} />
         {/* 定案#1 关于组去重：「关于拾音」行删除（独立 About 页退役），补联系客服直达 */}
         <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq`) }} />
       </SettingSection>

@@ -12,7 +12,8 @@ import { confirmDialog } from '@/utils/tools'
 import { getData, saveData } from '@/plugins/storage'
 import { storageDataPrefix } from '@/config/constant'
 import { getLocalOrders, syncOrders, type OrderRecord } from './order'
-import { pushOrdersScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { ORDERS_SCREEN } from '@/navigation/screenNames'
 
 const HOUR_MS = 3600_000
 const REMIND_1_AFTER = 6 * HOUR_MS
@@ -58,7 +59,7 @@ const pickDue = (orders: OrderRecord[], reminded: RemindedMap): { order: OrderRe
 
 /** Home 常驻挂载（useOrderReminder）：挂载+AppState active 触发判定；命中弹确认框，
  *  确认=先拉一次订单核实（状态可能已变）再跳订单中心；取消=仍记已提醒（不再弹） */
-export const useOrderReminder = (componentId: string): void => {
+export const useOrderReminder = (): void => {
   const lastCheck = useRef(0)
   const checking = useRef(false)
 
@@ -90,7 +91,7 @@ export const useOrderReminder = (componentId: string): void => {
       if (confirmed) {
         // 核实一次（可能已 paid/delivered/closed），同步本地后再跳
         await syncOrders().catch(() => {})
-        pushOrdersScreen(componentId)
+        pushScreen(ORDERS_SCREEN)
       }
     } finally {
       checking.current = false

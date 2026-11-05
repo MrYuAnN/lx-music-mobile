@@ -38,7 +38,8 @@ import {
 } from '@/core/shiyin/order'
 import { activationModule, type KeyEntry } from '@/utils/nativeModules/activation'
 import { ensureAuth } from '@/core/shiyin/auth'
-import { pushCheckoutScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { CHECKOUT_SCREEN } from '@/navigation/screenNames'
 
 const POLL_INTERVAL_MS = 20000
 
@@ -250,12 +251,12 @@ export default ({ componentId }: { componentId: string }) => {
     }
     void createOrder(o.skuIds, { clientToken: o.clientToken }).then(order => {
       if (!mounted.current) return
-      pushCheckoutScreen(componentId, order)
+      pushScreen(CHECKOUT_SCREEN, { order })
     }).catch(err => {
       if (!mounted.current) return
       toast(t(orderErrorKey(err as Error)))
     })
-  }, [componentId, t])
+  }, [t])
 
   // 一键激活（D4 拍板补齐，批3代码审 PM C-2：检测本地其它 delivered 单的未激活码——
   // 主钮=叠加激活全部（本单+跨单），次钮=仅激活本单；逐张 activate(code, true) 同 App

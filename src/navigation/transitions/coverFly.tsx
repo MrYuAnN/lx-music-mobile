@@ -48,7 +48,7 @@ let pendingFly: FlyInfo | null = null // push 已发起、等目标屏 layout �
 let activeFly: FlyInfo | null = null // 已接力（pop 反向飞回凭据）
 let settledTargetRect: CoverRect | null = null // 飞入落定时的目标矩形（pop 反飞起点，免转场期重测）
 
-// push 编排（navigation.pushSonglistDetailScreen 调用）：有已挂载源则实测源矩形后 push，否则普通 push
+// push 编排（pushScreen 调用方包装）：有已挂载源则实测源矩形后 push，否则普通 push
 export const withCoverSource = (id: string, uri: string, push: () => void) => {
   const measure = sourceMeasurers.get(id)
   if (!measure) {

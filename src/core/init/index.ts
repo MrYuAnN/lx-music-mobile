@@ -15,7 +15,8 @@ import { bootLog } from '@/utils/bootLog'
 import { initRecentPlay } from '@/core/player/recentPlay'
 import { initUsageStats } from '@/core/stats'
 import settingState from '@/store/setting/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { PLAY_DETAIL_SCREEN } from '@/navigation/screenNames'
 
 let isFirstPush = true
 const handlePushedHomeScreen = async() => {
@@ -26,9 +27,9 @@ const handlePushedHomeScreen = async() => {
     // getInitialURL 低概率 reject：兜底为无链接，防启动链悬挂+首推播放页永久丢失（审查 S1）
     const hasInitialLink = await initDeeplink().catch(() => false)
     // 「启动时打开播放页」（治理批 P1）：启动 push 从 Home 挂载 effect 上收到容器就绪后的启动链——
-    // N1 迁移后 Home effect 先于容器就绪执行，pushRoute 的 isReady 守卫必丢；deeplink 冷启动优先
+    // N1 迁移后 Home effect 先于容器就绪执行，pushScreen 的 isReady 守卫必丢；deeplink 冷启动优先
     if (!hasInitialLink && settingState.setting['player.startupPushPlayDetailScreen']) {
-      navigations.pushPlayDetailScreen('', true)
+      pushScreen(PLAY_DETAIL_SCREEN, undefined, { skipIntro: true })
     }
   }
 }

@@ -10,9 +10,9 @@ import { setTempList, setActiveList, updateUserListPosition, updateUserList } fr
 import { getListDetail } from '@/core/songlist'
 import { playList } from '@/core/player/player'
 import { updateSetting, setNavActiveId } from '@/core/common'
-import commonState from '@/store/common/state'
 import listState from '@/store/list/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { MYLIST_SCREEN, LOCAL_MUSIC_SCREEN, DOWNLOAD_SCREEN, LEADERBOARD_SCREEN, SONG_LIST_SCREEN, RECENT_PLAY_SCREEN } from '@/navigation/screenNames'
 import { Icon } from '@/components/common/Icon'
 import { getGlassHairlineColor } from '@/components/common/GlassSurface'
 import { BorderWidths } from '@/theme'
@@ -50,10 +50,8 @@ const LOVE_PLAY_GLYPH_SIZE = 16
 
 // 打开歌单页（模块级单源）：MusicHub 与 PlaylistShelf 共用（LoveCard 从 MyMusic 拆出后两侧各持调用）
 const openList = (id: string) => {
-  const componentId = commonState.componentIds.home
-  if (!componentId) return
   setActiveList(id)
-  navigations.pushMylistScreen(componentId)
+  pushScreen(MYLIST_SCREEN)
 }
 
 // 存量收藏歌单封面补齐（2026-10-16）：收藏动作落库 pic 之前的旧数据缺封面。对「有源缺图」条目
@@ -165,10 +163,10 @@ const MusicHub = ({ navMode = false }: { navMode?: boolean }) => {
   // 排行榜/歌单广场为 pane 切换，选中项用 fill 实心（拍板5 同规则接入，与横屏侧栏一致）
   const navActiveId = useNavActiveId()
   const navItems: Array<{ id: 'nav_local_music' | 'nav_download' | 'nav_top' | 'nav_songlist', icon: string, iconActive?: string, action: () => void }> = [
-    { id: 'nav_local_music', icon: 'folder-music', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushLocalMusicScreen(componentId) } },
-    { id: 'nav_download', icon: 'download-2', action: () => { const componentId = commonState.componentIds.home; if (componentId) navigations.pushDownloadScreen(componentId) } },
-    { id: 'nav_top', icon: 'leaderboard', iconActive: 'ranking-fill', action: () => { if (navMode) { setNavActiveId('nav_top'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushLeaderboardScreen(componentId) } },
-    { id: 'nav_songlist', icon: 'album', iconActive: 'vinyl-record-fill', action: () => { if (navMode) { setNavActiveId('nav_songlist'); return } const componentId = commonState.componentIds.home; if (componentId) navigations.pushSongListScreen(componentId) } },
+    { id: 'nav_local_music', icon: 'folder-music', action: () => { pushScreen(LOCAL_MUSIC_SCREEN) } },
+    { id: 'nav_download', icon: 'download-2', action: () => { pushScreen(DOWNLOAD_SCREEN) } },
+    { id: 'nav_top', icon: 'leaderboard', iconActive: 'ranking-fill', action: () => { if (navMode) { setNavActiveId('nav_top'); return } pushScreen(LEADERBOARD_SCREEN) } },
+    { id: 'nav_songlist', icon: 'album', iconActive: 'vinyl-record-fill', action: () => { if (navMode) { setNavActiveId('nav_songlist'); return } pushScreen(SONG_LIST_SCREEN) } },
   ]
 
   return (
@@ -225,19 +223,14 @@ const RecentPlayCard = () => {
   // 空态整块隐藏（含卡头，对标 AM/Spotify 空内容不显示区块；全量入口随之无必要）
   if (!list.length) return null
 
-  const componentId = commonState.componentIds.home
   return (
     <View style={{ ...styles.section, ...styles.card, backgroundColor: theme['c-content-background'], borderColor: getGlassHairlineColor(theme.isDark) }}>
       <View style={styles.cardHead}>
         <Text style={styles.cardTitle} size={17} color={theme['c-font']}>{t('home_recent_play')}</Text>
-        {
-          componentId
-            ? <TouchableOpacity style={styles.moreBtn} activeOpacity={0.6} onPress={() => { navigations.pushRecentPlayScreen(componentId) }}>
-                <Text size={13} color={theme['c-font-label']}>{t('more')}</Text>
-                <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
-              </TouchableOpacity>
-            : null
-        }
+        <TouchableOpacity style={styles.moreBtn} activeOpacity={0.6} onPress={() => { pushScreen(RECENT_PLAY_SCREEN) }}>
+          <Text size={13} color={theme['c-font-label']}>{t('more')}</Text>
+          <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+        </TouchableOpacity>
       </View>
       <FlatList
         horizontal

@@ -4,7 +4,8 @@ import { useTheme } from '@/store/theme/hook'
 import Text from '@/components/common/Text'
 import { SPACING } from '@/config/spacing'
 import { dateFormat } from '@/utils'
-import { pushPurchaseScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { PURCHASE_SCREEN } from '@/navigation/screenNames'
 import { useI18n } from '@/lang'
 import { useActivationState } from '@/core/shiyin/activation'
 import { pickBannerApp, bannerLabel } from '@/core/shiyin/keyDisplay'
@@ -56,7 +57,7 @@ export default () => {
     <TouchableOpacity
       activeOpacity={0.7}
       style={[styles.banner, { backgroundColor: theme['c-content-background'] }]}
-      onPress={() => { pushPurchaseScreen('') }}
+      onPress={() => { pushScreen(PURCHASE_SCREEN) }}
       accessibilityRole="button"
       accessibilityLabel={label}
     >

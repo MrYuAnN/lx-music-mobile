@@ -3,8 +3,8 @@ import { memo, useCallback } from 'react'
 import SettingSection from '../../components/SettingSection'
 import SelectRow from '../../components/SelectRow'
 import { useI18n } from '@/lang'
-import commonState from '@/store/common/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { MY_KEYS_SCREEN, PURCHASE_SCREEN } from '@/navigation/screenNames'
 import { formatActivationState, useActivationState } from '@/core/shiyin/activation'
 
 // 激活码节（KeyInfo 批，方案 §2.4）：设置页直通入口——「我的激活码」（value=状态摘要）+
@@ -18,14 +18,12 @@ export default memo(() => {
   const { info } = useActivationState()
 
   const handleMyKeys = useCallback(() => {
-    const componentId = commonState.componentIds.setting
-    if (componentId) navigations.pushMyKeysScreen(componentId)
+    pushScreen(MY_KEYS_SCREEN)
   }, [])
 
   const handleGetCode = useCallback(() => {
     // 批3 v1.2：应用内选购页直达（替换 tutorial.html 外链）
-    const componentId = commonState.componentIds.setting
-    if (componentId) navigations.pushPurchaseScreen(componentId)
+    pushScreen(PURCHASE_SCREEN)
   }, [])
 
   return (

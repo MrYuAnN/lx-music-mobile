@@ -3,8 +3,8 @@ import { forwardRef, useImperativeHandle, useRef, type JSX } from 'react'
 import InputSheet, { type InputSheetType } from './InputSheet'
 import { useI18n } from '@/lang'
 import { parseSonglistLink } from '@/utils/parseSonglistLink'
-import commonState from '@/store/common/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { SONGLIST_DETAIL_SCREEN } from '@/navigation/screenNames'
 import { toast } from '@/utils/tools'
 
 // 导入歌单弹层（歌单链接导入批，方案 doc/plans/playlist-link-import.md §三.2）：
@@ -59,14 +59,14 @@ const ImportListDialog = (_: unknown, ref: React.Ref<ImportListDialogType>) => {
         toast(global.i18n.t('list_import_link_invalid'))
         return
       }
-      const componentId = commonState.componentIds.home
-      if (!componentId) return
       sheetRef.current?.hide()
-      navigations.pushSonglistDetailScreen(componentId, {
-        id: parsed.id,
-        source: parsed.source,
-        name: '',
-        author: '',
+      pushScreen(SONGLIST_DETAIL_SCREEN, {
+        info: {
+          id: parsed.id,
+          source: parsed.source,
+          name: '',
+          author: '',
+        },
       })
     } finally {
       doingRef.current = false

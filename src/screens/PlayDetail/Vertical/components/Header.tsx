@@ -10,7 +10,6 @@ import { useTheme } from '@/store/theme/hook'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import Text from '@/components/common/Text'
 import { SCREEN_HEADER_HEIGHT as _HEADER_HEIGHT, NAV_SHEAR_NATIVE_IDS } from '@/config/constant'
-import commonState from '@/store/common/state'
 import { useStatusbarHeight } from '@/store/common/hook'
 import Btn from './Btn'
 import { SPACING } from '@/config/spacing'
@@ -38,7 +37,7 @@ export default memo(() => {
   const introStyle = useIntroStyle('header')
 
   const back = () => {
-    pop(commonState.componentIds.playDetail)
+    pop()
   }
 
   return (

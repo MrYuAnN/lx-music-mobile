@@ -83,7 +83,7 @@ export default ({ componentId, info }: { componentId: string, info: ListInfoItem
         progress={scrollY}
         onArtwork={!!(info.img || fetchedInfo.img)}
         showBack
-        onBack={() => { pop(componentId) }}
+        onBack={() => { pop() }}
         onSearchText={handleSearchText}
         onSearchExit={handleSearchExit}
       />

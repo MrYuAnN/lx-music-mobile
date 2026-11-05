@@ -38,7 +38,8 @@ import { BorderWidths } from '@/theme'
 import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { dateFormat } from '@/utils'
-import { pushPurchaseScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { PURCHASE_SCREEN } from '@/navigation/screenNames'
 import { onEntitlementChanged, BINDING_MARK, SEG_STATE, type KeyEntry, type BindingInfo, type EntSourceView, type EntSegmentView } from '@/utils/nativeModules/activation'
 import { activationModule } from '@/utils/nativeModules/activation'
 import {
@@ -317,7 +318,7 @@ export default ({ componentId }: { componentId: string }) => {
               <TouchableOpacity
                 style={[styles.card, styles.entryCard, { backgroundColor: theme['c-content-background'] }]}
                 activeOpacity={0.6}
-                onPress={() => { pushPurchaseScreen(componentId) }}
+                onPress={() => { pushScreen(PURCHASE_SCREEN) }}
               >
                 <Icon name="plus" size={20} color={theme['c-primary']} />
                 <View style={styles.emptyTextGroup}>

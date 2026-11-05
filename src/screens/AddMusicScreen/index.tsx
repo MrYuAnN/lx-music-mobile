@@ -349,8 +349,8 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
       exitPick()
       return
     }
-    pop(componentId)
-  }, [pickList, exitPick, componentId])
+    pop()
+  }, [pickList, exitPick])
 
   // 「其他歌单」两列网格卡（歌单广场卡同构：方形封面 r8+双行标题+来源角标；真机反馈 2026-10-20 拍板，
   // 替换原行式列表）——视觉单源共享组件 PlaylistGridCard（2026-10-21 起 MusicAddModal /

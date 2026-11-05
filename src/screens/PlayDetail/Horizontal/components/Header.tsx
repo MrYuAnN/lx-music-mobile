@@ -11,7 +11,6 @@ import { usePlayerMusicInfo } from '@/store/player/hook'
 import Text from '@/components/common/Text'
 import { scaleSizeH } from '@/utils/pixelRatio'
 import { HEADER_HEIGHT as _HEADER_HEIGHT, NAV_SHEAR_NATIVE_IDS, ICON_SIZE } from '@/config/constant'
-import commonState from '@/store/common/state'
 import CommentBtn from './CommentBtn'
 import Btn from './Btn'
 import SettingPopup, { type SettingPopupType } from '../../components/SettingPopup'
@@ -39,7 +38,7 @@ export default memo(() => {
   const introStyle = useIntroStyle('header')
 
   const back = () => {
-    pop(commonState.componentIds.playDetail)
+    pop()
   }
   const showSetting = () => {
     popupRef.current?.show()

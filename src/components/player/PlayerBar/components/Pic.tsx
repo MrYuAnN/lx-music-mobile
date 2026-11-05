@@ -1,12 +1,12 @@
 import { StyleSheet, TouchableOpacity } from 'react-native'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { PLAY_DETAIL_SCREEN } from '@/navigation/screenNames'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import playerState from '@/store/player/state'
 import { LIST_IDS } from '@/config/constant'
 import Image from '@/components/common/Image'
 import { useCallback } from 'react'
 import { setLoadErrorPicUrl, setMusicInfo } from '@/core/player/playInfo'
-import { useCurrentScreen } from '@/navigation/currentScreen'
 
 const PIC_HEIGHT = 52
 
@@ -20,12 +20,9 @@ const styles = StyleSheet.create({
 
 export default ({ isHome }: { isHome: boolean }) => {
   const musicInfo = usePlayerMusicInfo()
-  const currentScreen = useCurrentScreen()
   const handlePress = () => {
     if (!musicInfo.id) return
-    // push 到当前屏（overlay 不在 stack 内）；当前屏未就绪时忽略（v3 方案空值兜底）
-    if (!currentScreen) return
-    navigations.pushPlayDetailScreen(currentScreen.componentId)
+    pushScreen(PLAY_DETAIL_SCREEN)
   }
 
   const handleLongPress = () => {

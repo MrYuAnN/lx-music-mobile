@@ -20,7 +20,7 @@ export default ({ componentId }: Props) => {
   // 批2 F.1 首启试用欢迎提示（净屏 pending 消费对齐：AppState active 每次前台消费，轻 toast）
   useTrialWelcome()
   // 批3 待支付订单提醒（6h/40h 两次，本地快照判定+AppState active 双触发，审查 I4 挂载拍板）
-  useOrderReminder(componentId)
+  useOrderReminder()
   // 七题 Q1-C 选购页目录预热·前台回切席（冷启动首拉已在启动链 prefetchSkus，2026-11-02
   // 二次拍板；此处只管 AppState active 回切刷新，双触发面共享 >1h 节流与 in-flight 去重）
   useSkusPrefetch()

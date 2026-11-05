@@ -14,8 +14,8 @@ import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
 import { useI18n } from '@/lang'
 import playerState from '@/store/player/state'
-import { navigations } from '@/navigation'
-import commonState from '@/store/common/state'
+import { pushScreen } from '@/navigation'
+import { COMMENT_SCREEN, DOWNLOAD_SCREEN } from '@/navigation/screenNames'
 import { updateSetting } from '@/core/common'
 import { toggleTranslation } from '@/core/lyric'
 import { lockDesktopLyric, unlockDesktopLyric } from '@/core/desktopLyric'
@@ -138,7 +138,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   }, [])
 
   const showCommentScreen = useCallback(() => {
-    navigations.pushCommentScreen(commonState.componentIds.playDetail!)
+    pushScreen(COMMENT_SCREEN)
   }, [])
 
   const toggleDesktopLyric = useCallback(() => {
@@ -211,8 +211,7 @@ const ActionRow = ({ page }: ActionRowProps) => {
   // 下载当前播放歌（2026-10-29 走查反馈：播放页原无下载入口，拍板封面页动作组增第五槽，
   // 一级直达对标 QQ 音乐播放页；复用列表菜单同一下载链 addDownloadTask）
   const openDownloadManager = useCallback(() => {
-    const componentId = commonState.componentIds.playDetail
-    if (componentId) navigations.pushDownloadScreen(componentId)
+    pushScreen(DOWNLOAD_SCREEN)
   }, [])
 
   // 下载槽多态（2026-10-29 题1 拍板2）：未下载弹选档 / 下载中·xx% 跳管理（无业界对标，本产品

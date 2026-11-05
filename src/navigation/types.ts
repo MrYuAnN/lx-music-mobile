@@ -41,7 +41,7 @@ export type RootStackParamList = {
   [DOWNLOAD_SCREEN]: undefined
   [RECENT_PLAY_SCREEN]: undefined
   [LOCAL_MUSIC_SCREEN]: undefined
-  [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string, list: SY.Music.MusicInfoLocal[] }
+  [LOCAL_MUSIC_GROUP_SCREEN]: { type: 'album' | 'artist', value: string }
   [ADD_MUSIC_SCREEN]: { listId: string, listName: string }
   [DISLIKE_MANAGE_SCREEN]: undefined
   [MY_KEYS_SCREEN]: undefined
@@ -49,6 +49,8 @@ export type RootStackParamList = {
   [SETTING_SECTION_SCREEN]: { id: SettingSectionTarget }
   // 购买面三屏（批3）：Checkout 携建单响应（闲鱼链接齐发，免二次拉取）
   [PURCHASE_SCREEN]: undefined
-  [CHECKOUT_SCREEN]: { order: CreateOrderResult }
+  // names=购买页选中档位的运营名串（七题回归反馈：order.desc=服务端合成规格串与购买页
+  // 显示名不同源，Checkout 显示层优先 names 回退 desc）
+  [CHECKOUT_SCREEN]: { order: CreateOrderResult, names?: string }
   [ORDERS_SCREEN]: undefined
 }

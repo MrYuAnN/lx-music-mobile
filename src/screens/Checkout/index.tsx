@@ -23,7 +23,8 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import { SHIYIN_BASE_URL } from '@/core/shiyin/config'
 import { trackXianyuClick } from '@/core/shiyin/xianyuTrack'
 import { fetchOrder, yuan, type CreateOrderResult, type OrderRecord } from '@/core/shiyin/order'
-import { pushOrdersScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { ORDERS_SCREEN } from '@/navigation/screenNames'
 
 // 轮询（批3代码审 I-2）：8s 起步、失败倍增封顶 30s（对标 config.ts 退避先例）、成功复位；
 // 上限 40 次≈5min 后引导订单中心；AppState 退后台暂停、回前台续跑；closed 即停+反馈。
@@ -234,7 +235,7 @@ export default ({ componentId, order, names }: { componentId: string, order: Cre
                 <TouchableOpacity
                   style={[styles.primaryBtn, styles.ordersBtn, { backgroundColor: theme['c-primary'] }]}
                   activeOpacity={0.7}
-                  onPress={() => { pushOrdersScreen(componentId) }}
+                  onPress={() => { pushScreen(ORDERS_SCREEN) }}
                 >
                   <Text size={15} color={theme['c-on-primary']}>{t('checkout_go_orders')}</Text>
                 </TouchableOpacity>

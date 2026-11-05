@@ -4,8 +4,8 @@ import SettingSection from '../../components/SettingSection'
 import SelectRow from '../../components/SelectRow'
 import Text from '@/components/common/Text'
 import { useI18n } from '@/lang'
-import commonState from '@/store/common/state'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { CHANGELOG_SCREEN } from '@/navigation/screenNames'
 import { useTheme } from '@/store/theme/hook'
 import { checkUpdate } from '@/core/version'
 import { useUpdateStatusText } from '@/utils/hooks/useUpdateStatusText'
@@ -19,7 +19,6 @@ export default memo(() => {
   const t = useI18n()
   const theme = useTheme()
   const statusText = useUpdateStatusText()
-  const componentId = commonState.componentIds.setting
 
   const handleCheckUpdate = useCallback(() => {
     void checkUpdate().then(res => {
@@ -30,7 +29,7 @@ export default memo(() => {
   return (
     <SettingSection title={t('setting_about')}>
       <SelectRow icon="arrow-clockwise" label={t('about_check_update')} value={statusText} onPress={handleCheckUpdate} />
-      <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { if (componentId) navigations.pushChangelogScreen(componentId) }} />
+      <SelectRow icon="list-order" label={t('about_changelog')} value='' onPress={() => { pushScreen(CHANGELOG_SCREEN) }} />
       <SelectRow icon="help" label={t('setting_contact')} value='' onPress={() => { void openUrl(`${SHIYIN_BASE_URL}/faq`) }} />
       <Text size={11} color={theme['c-font-label']} style={styles.copyright}>
         {t('about_copyright', { year: new Date().getFullYear() })}

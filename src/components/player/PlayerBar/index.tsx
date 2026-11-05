@@ -11,8 +11,8 @@ import ProgressLine from './components/ProgressLine'
 import GlassSurface from '@/components/common/GlassSurface'
 import { useTheme } from '@/store/theme/hook'
 import { useSettingValue } from '@/store/setting/hook'
-import { useCurrentScreen, usePendingBlacklistHide } from '@/navigation/currentScreen'
-import { PLAY_DETAIL_SCREEN, COMMENT_SCREEN, HOME_SCREEN, PURCHASE_SCREEN, CHECKOUT_SCREEN, ORDERS_SCREEN } from '@/navigation/screenNames'
+import { useCurrentScreen, usePendingBlacklistHide, MINI_BAR_BLACKLIST } from '@/navigation/currentScreen'
+import { HOME_SCREEN } from '@/navigation/screenNames'
 import { NAV_WIDTH } from '@/config/constant'
 import { SPACING } from '@/config/spacing'
 import { BAR_HEIGHT, BAR_BOTTOM, BAR_SIDE, BAR_RADIUS } from './constants'
@@ -26,10 +26,8 @@ import { BAR_HEIGHT, BAR_BOTTOM, BAR_SIDE, BAR_RADIUS } from './constants'
 // import 路径不变
 export { BAR_HEIGHT, BAR_BOTTOM, BAR_SIDE } from './constants'
 
-// 页面黑名单（单源）：这些屏不显示迷你条（方案 §1 新4 修法3）。购买动线三屏加入（七题 Q2，
-// 2026-11-02 拍板）：吸底支付按钮区（底部 26-71dp）与迷你条区（14-74dp+inset）重叠致按钮
-// 被盖（真机实证）；对标=App Store/支付宝收银台等结账动线页无全局悬浮元素
-const HIDDEN_SCREENS = new Set<string>([PLAY_DETAIL_SCREEN, COMMENT_SCREEN, PURCHASE_SCREEN, CHECKOUT_SCREEN, ORDERS_SCREEN])
+// 黑名单屏不显示迷你条：集合单源 currentScreen.ts 的 MINI_BAR_BLACKLIST（与 push 侧
+// 提前隐藏标记共用，含购买面三屏；原本地 HIDDEN_SCREENS 已随 A7 三席审查 I-1 收敛退役）
 
 // 页面让位（底部穿行契约，2026-10-20 真机反馈定案）：占位块改为绝对定位悬浮——原兄弟布局块
 // 会把列表视口裁在迷你条上缘，行内容永远进不了条/底部玻璃条下面（玻璃无物可模糊，用户主诉）。
@@ -87,7 +85,7 @@ const PlayerBar = () => {
     </View>
   ), [theme, isHomeScreen, cardLeft, navBarBottom, navBarRight])
 
-  const hidden = currentScreen != null && HIDDEN_SCREENS.has(currentScreen.componentName)
+  const hidden = currentScreen != null && MINI_BAR_BLACKLIST.has(currentScreen.componentName)
   if (hidden || pendingHide || (autoHidePlayBar && keyboardShown)) return null
   return playerComponent
 }

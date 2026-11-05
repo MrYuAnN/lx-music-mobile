@@ -5,10 +5,10 @@ import { useStatusbarHeight } from '@/store/common/hook'
 import { Icon } from '@/components/common/Icon'
 import StatusBar from '@/components/common/StatusBar'
 import GlassSurface, { GLASS_BAR_FALLBACK, GLASS_FADE_RANGE } from '@/components/common/GlassSurface'
-import commonState from '@/store/common/state'
 import Text, { FontFamilies } from '@/components/common/Text'
 import ExpiryBanner from '../components/ExpiryBanner'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { SEARCH_SCREEN, SETTING_SCREEN } from '@/navigation/screenNames'
 import { ICON_SIZE } from '@/config/constant'
 import { setSpText } from '@/utils/pixelRatio'
 import { SPACING } from '@/config/spacing'
@@ -41,14 +41,8 @@ const Header = ({ children }: { children: React.ReactNode }) => {
     opacity: interpolate(scrollY.value, [70, 120], [0, 1], Extrapolation.CLAMP),
   }))
 
-  const openSearch = () => {
-    const componentId = commonState.componentIds.home
-    if (componentId) navigations.pushSearchScreen(componentId)
-  }
-  const openSetting = () => {
-    const componentId = commonState.componentIds.home
-    if (componentId) navigations.pushSettingScreen(componentId)
-  }
+  const openSearch = () => { pushScreen(SEARCH_SCREEN) }
+  const openSetting = () => { pushScreen(SETTING_SCREEN) }
 
   return (
     <View style={styles.container}>

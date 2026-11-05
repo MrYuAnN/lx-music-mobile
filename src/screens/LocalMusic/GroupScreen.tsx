@@ -21,12 +21,10 @@ export interface LocalMusicGroupProps {
   type: 'album' | 'artist'
   /** 专辑名/歌手名（页头标题） */
   value: string
-  /** 该聚合下的歌曲（push passProps 快照；实时派生改造后已不传，契约兼容保留） */
-  list?: SY.Music.MusicInfoLocal[]
 }
 
 /** 列表实时派生（2026-10-29 ③ 审查 I-G 定稿）：passProps 是静态快照，主列表删除后二级屏
- * 仍显示/可播已删文件——改为按 type+value 从本地列表现值过滤派生，passProps.list 仅留契约兼容 */
+ * 仍显示/可播已删文件——改为按 type+value 从本地列表现值过滤派生 */
 
 // 本地音乐聚合二级屏（问题 3 §4.4）：统一歌曲行，点击直接播放（与全应用行交互一致），
 // 长按/三点弹本地歌曲菜单；播放链与主页一致（快照列表注入临时列表）

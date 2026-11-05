@@ -5,7 +5,8 @@ import { handlePlayerAction, type PlayerAction } from './playerAction'
 import { handleSonglistAction } from './songlistAction'
 import { extname, stat } from '@/utils/fs'
 import { handleFileMusicAction, handleListFileAction } from './fileAction'
-import { pushMyKeysScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { MY_KEYS_SCREEN } from '@/navigation/screenNames'
 
 
 const handleLinkAction = async(link: string) => {
@@ -41,8 +42,8 @@ const handleLinkAction = async(link: string) => {
       break
     case 'activation':
       // D2 到期通知点击直达（2026-11-01 审查 S-3）：shiyin://activation/open →
-      // 我的激活码；pushRoute 内有 isReady 保护，冷启动点击不崩
-      pushMyKeysScreen('')
+      // 我的激活码；pushScreen 内有 isReady 保护，冷启动点击不崩
+      pushScreen(MY_KEYS_SCREEN)
       break
     // default: throw new Error('Unknown type: ' + type)
   }

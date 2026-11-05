@@ -24,7 +24,8 @@ import ListMusicSearch, { type ListMusicSearchType } from './ListMusicSearch'
 import MetadataEditModal, { type MetadataEditType, type MetadataEditProps } from '@/components/MetadataEditModal'
 import MusicToggleModal, { type MusicToggleModalType } from './MusicToggleModal'
 import { getListMusics as getCoreListMusics } from '@/core/list'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { ADD_MUSIC_SCREEN } from '@/navigation/screenNames'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
 import { playList, togglePlay } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
@@ -351,7 +352,7 @@ export default ({ showBack, onBack, scrollY }: { showBack?: boolean, onBack?: ()
       <DownloadQualityModal ref={downloadQualityModalRef} />
       <ListManageMenu
         ref={manageMenuRef}
-        onAddMusic={info => { navigations.pushAddMusicScreen('', info.id, info.name) }}
+        onAddMusic={info => { pushScreen(ADD_MUSIC_SCREEN, { listId: info.id, listName: info.name }) }}
         onCloneLocal={info => { handleCloneList(info).catch(() => { toast(global.i18n.t('list_clone_fail')) }) }}
         onRename={info => listNameEditRef.current?.show(info)}
         onEditLoveCover={() => listNameEditRef.current?.showLove()}

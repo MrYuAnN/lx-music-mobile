@@ -1,12 +1,12 @@
 import { TouchableOpacity, StyleSheet } from 'react-native'
-import { navigations } from '@/navigation'
+import { pushScreen } from '@/navigation'
+import { PLAY_DETAIL_SCREEN } from '@/navigation/screenNames'
 import { usePlayerMusicInfo } from '@/store/player/hook'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
 import playerState from '@/store/player/state'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { LIST_IDS } from '@/config/constant'
-import { useCurrentScreen } from '@/navigation/currentScreen'
 import { SPACING } from '@/config/spacing'
 
 // AM-6 迷你条双行文案：歌名 13/600 + 歌手 11 灰（Status 歌词行移除，歌词看播放页——方案 §3.7.2）
@@ -14,13 +14,10 @@ export default () => {
   const musicInfo = usePlayerMusicInfo()
   const theme = useTheme()
   const t = useI18n()
-  const currentScreen = useCurrentScreen()
 
   const handlePress = () => {
     if (!musicInfo.id) return
-    // push 到当前屏（overlay 不在 stack 内）；当前屏未就绪时忽略
-    if (!currentScreen) return
-    navigations.pushPlayDetailScreen(currentScreen.componentId)
+    pushScreen(PLAY_DETAIL_SCREEN)
   }
 
   const handleLongPress = () => {

@@ -35,7 +35,8 @@ import {
   type SkusCatalog,
   type SourceKey,
 } from '@/core/shiyin/order'
-import { pushCheckoutScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { CHECKOUT_SCREEN } from '@/navigation/screenNames'
 import type { ActivationStateInfo } from '@/utils/nativeModules/activation'
 import type { Message } from '@/lang'
 
@@ -173,13 +174,13 @@ export default ({ componentId }: { componentId: string }) => {
       setSubmitting(false)
       // names=选中档位运营名（购物车加入序）——支付引导页商品名与购买页同源（七题回归
       // 反馈：order.desc=服务端合成规格串）
-      pushCheckoutScreen(componentId, order, cartItems.map(i => i.name).join(' + '))
+      pushScreen(CHECKOUT_SCREEN, { order, names: cartItems.map(i => i.name).join(' + ') })
     }).catch(err => {
       if (!mounted.current) return
       setSubmitting(false)
       toast(t(orderErrorKey(err as Error)))
     })
-  }, [cartItems, catalog, submitting, componentId, t])
+  }, [cartItems, catalog, submitting, t])
 
   const tabEntries = useMemo(() => {
     const badgeOf = (source: string) => cartItems.filter(s => s.apps[0] == source).length

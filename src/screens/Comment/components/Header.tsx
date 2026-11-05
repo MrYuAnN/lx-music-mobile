@@ -12,7 +12,6 @@ import { createStyle } from '@/utils/tools'
 import Text, { FontFamilies } from '@/components/common/Text'
 import { HEADER_HEIGHT as _HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { scaleSizeH } from '@/utils/pixelRatio'
-import commonState from '@/store/common/state'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { SPACING } from '@/config/spacing'
 
@@ -35,7 +34,7 @@ export default memo(({ musicInfo, progress }: {
   const bgOpacity = progress.interpolate({ inputRange: GLASS_FADE_RANGE, outputRange: [0, 1], extrapolate: 'clamp' })
 
   const back = () => {
-    pop(commonState.componentIds.comment)
+    pop()
   }
 
   return (

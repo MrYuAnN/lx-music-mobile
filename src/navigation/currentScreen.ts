@@ -59,6 +59,20 @@ const SCREEN_NAMES_SET = new Set<string>([
   ORDERS_SCREEN,
 ])
 
+// 迷你条黑名单屏集合（A7 收敛单源）：这些屏不显示迷你条。两消费方共用本文件这一份——
+// push 侧（navigation.ts）凭它前置 markPendingBlacklist 置位提前隐藏，防转场期间迷你条
+// 浮在滑入页面上（NB-4 审查 I-1）；PlayerBar 隐藏判定凭它常隐——购买面三屏为吸底支付按钮
+// 区（底部 26-71dp）与迷你条区重叠（七题 Q2 拍板，2026-11-02；对标 App Store/支付宝收银台
+// 等结账动线页无全局悬浮元素）。新增黑名单屏在此登记，且须已在上面的 SCREEN_NAMES_SET
+// 登记（新增屏通用要求；Q2-0 曾漏登记致隐藏死配置，两名单同文件互锚防再漂移）
+export const MINI_BAR_BLACKLIST = new Set<string>([
+  PLAY_DETAIL_SCREEN,
+  COMMENT_SCREEN,
+  PURCHASE_SCREEN,
+  ORDERS_SCREEN,
+  CHECKOUT_SCREEN,
+])
+
 let currentScreen: CurrentScreen | null = null
 // push 黑名单屏的转场提前量（NB-4 审查 I-1）：push 发起时置位提前隐藏。
 // state 派生下 currentScreen 在 push 提交帧即切为黑名单屏，PlayerBar 的 HIDDEN_SCREENS 同帧生效，

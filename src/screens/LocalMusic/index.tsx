@@ -25,7 +25,8 @@ import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useSettingValue } from '@/store/setting/hook'
-import { pushLocalMusicGroupScreen } from '@/navigation/navigation'
+import { pushScreen } from '@/navigation/navigation'
+import { LOCAL_MUSIC_GROUP_SCREEN } from '@/navigation/screenNames'
 import { confirmDialog, createStyle, toast } from '@/utils/tools'
 import { ensureStoragePermission, isStorageGranted } from '@/utils/permissions'
 import { useBackHandler } from '@/utils/hooks/useBackHandler'
@@ -283,8 +284,8 @@ export default ({ componentId }: { componentId: string }) => {
 
   const handleGroupPress = useCallback((type: 'album' | 'artist', group: MusicGroup) => {
     // 二级屏按 type+value 自行实时派生（审查 I-G），passProps 不再传快照列表
-    pushLocalMusicGroupScreen(componentId, { type, value: group.name })
-  }, [componentId])
+    pushScreen(LOCAL_MUSIC_GROUP_SCREEN, { type, value: group.name })
+  }, [])
 
   const groupActions: GroupViewActions = useMemo(() => ({
     isLiked: id => likedSet.has(id),

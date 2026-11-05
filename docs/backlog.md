@@ -4,3 +4,5 @@
 - [ ] **scroll.ts 事件负载 mutation 改造**（同批审查 S-d 挂账）：`src/utils/scroll.ts` 接力滚动依赖就地改写 NativeScrollEvent.contentOffset（RN 0.88 起类型层 Readonly=契约信号）；后续改 `lx_scrollNextParams` 存 `{ y: number }` 结构快照，消除 RN 未来冻结/复用事件对象即静默破坏接力滚动的隐患。
 - [ ] **维护批清理**（同批审查 S-b/S-c）：scroll.ts:105 冗余条件行（无条件赋值完全覆盖条件分支，考证原 clamp 意图后二选一）；Button.tsx 死 props `onChangeText`/`onClearText`（零消费零调用方）。
 - [ ] **App 取链域名 fallback 列表**（2026-11-03 音乐域直连批三席审查 S-9 落账，方案 doc/plans/music-domain-direct.md）：`src/core/shiyin/config.ts:16` 与 `MainApplication.kt:152` 硬编码单域无容灾，域名层故障唯一恢复=发版回滚（升级周期窗口）；后续改「常量数组依序尝试」形态提升健壮性（对标自建 API 客户端多线路 fallback 通行形态；双源纪律随数组化一并梳理）。
+- [ ] **componentId 兼容尾巴整链清退**（2026-11-05 A7 批三席审查 S 级落账，三席同发）：ScreenHeader `Props.componentId`（已可选不解构）+ 7-12 处屏宿主传参 + SonglistDetail→MusicList→Header 转传死链一次性清退；顺带 Songlist/index.tsx `handleOpenDetail` 的 `index` 死形参（连动 List.tsx prop 类型链，存量问题）。
+- [ ] **componentIds 注册表退役评估**（同上落账，A7 架构师席 S-3）：A7 收敛后注册表仅剩 2 个活读点（componentIds.comment keepAwake 判定 ×2 / playDetail intro 初态 ×2，见审查报告）；评估以 currentScreen 单值（componentName 判定）替换后整套 setComponentId/removeComponentId/COMPONENT_IDS 机制退役（含 currentScreen.ts 出栈反查清理）。
