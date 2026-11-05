@@ -22,7 +22,7 @@ import sharedStyle from './style'
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2] as const
 
 // 展示格式（抖音同款：整数档补 .0 对齐小数点节奏）
-const RATE_LABELS: Record<string, string> = { '0.5': '0.5', '0.75': '0.75', '1': '1.0', '1.25': '1.25', '1.5': '1.5', '2': '2.0' }
+const RATE_LABELS: Record<string, string> = { 0.5: '0.5', 0.75: '0.75', 1: '1.0', 1.25: '1.25', 1.5: '1.5', 2: '2.0' }
 const formatRate = (rate: number) => RATE_LABELS[String(rate)] ?? `${rate}`
 
 export default () => {
