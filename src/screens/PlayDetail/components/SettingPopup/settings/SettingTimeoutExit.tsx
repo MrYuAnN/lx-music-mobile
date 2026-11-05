@@ -2,6 +2,8 @@ import { memo, useRef } from 'react'
 import { TouchableOpacity } from 'react-native'
 
 import Text from '@/components/common/Text'
+import { Icon } from '@/components/common/Icon'
+import { ICON_SIZE } from '@/config/constant'
 import TimeoutExitEditModal, { type TimeoutExitEditModalType, useTimeInfo, formatTime } from '@/components/TimeoutExitEditModal'
 import { useTheme } from '@/store/theme/hook'
 import { useI18n } from '@/lang'
@@ -11,6 +13,7 @@ import Card from './Card'
 
 // 「定时关闭」入口行（2026-10-20 播放页打磨批：原顶栏定时钮迁入更多弹层）。
 // 右侧状态值：关闭 / 播完停止（计时结束等待播完）/ 剩余倒计时（激活红字，每秒刷新）
+// 2026-11-05 弹窗重构：AM 动作行三件套——前置图标（timer）+文案+右值，三动作行同构
 const Status = ({ theme, t }: { theme: ReturnType<typeof useTheme>, t: ReturnType<typeof useI18n> }) => {
   const exitTimeInfo = useTimeoutExitTimeInfo()
 
@@ -43,7 +46,8 @@ export default memo(() => {
     <>
       <Card>
         <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={() => { modalRef.current?.show() }}>
-          <Text size={15}>{t('timeout_exit_title')}</Text>
+          <Icon name="timer" size={ICON_SIZE.list} color={theme['c-font']} style={styles.icon} />
+          <Text size={15} style={styles.label}>{t('timeout_exit_title')}</Text>
           <Status theme={theme} t={t} />
         </TouchableOpacity>
       </Card>
@@ -61,7 +65,13 @@ const styles = createStyle({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+  },
+  icon: {
+    marginRight: 12,
+  },
+  label: {
+    flexGrow: 1,
+    flexShrink: 1,
   },
   status: {
     fontVariant: ['tabular-nums'],

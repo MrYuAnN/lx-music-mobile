@@ -2,10 +2,11 @@ import { memo, useCallback } from 'react'
 import { TouchableOpacity } from 'react-native'
 
 import Text from '@/components/common/Text'
+import { Icon } from '@/components/common/Icon'
+import { DESTRUCTIVE_RED, ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { createStyle, toast } from '@/utils/tools'
-import { DESTRUCTIVE_RED } from '@/config/constant'
 import { dislikeMusic } from '@/core/player/player'
 import Card from './Card'
 
@@ -15,6 +16,7 @@ import Card from './Card'
 // （AM Suggest Less Like This=••• 菜单内混排 / Spotify Don't play this=菜单内红字同规格行，
 // 均无「孤立置底区」形态），防误触由菜单交互模型承担（点击即执行+关层）；色值=DESTRUCTIVE_RED
 // 语义单源（destructive 红不随 tint，治理批审查 I1）
+// 2026-11-05 弹窗重构：AM 动作行三件套——前置图标（dislike-add 红色）+文案，终结裸文字孤行
 interface Props {
   onDismiss: () => void
 }
@@ -33,6 +35,12 @@ const SettingDislike = ({ onDismiss }: Props) => {
   return (
     <Card>
       <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={handlePress}>
+        <Icon
+          name="dislike-add"
+          size={ICON_SIZE.list}
+          color={theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light}
+          style={styles.icon}
+        />
         <Text size={15} color={theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light}>{t('dislike_play_action')}</Text>
       </TouchableOpacity>
     </Card>
@@ -45,6 +53,9 @@ const styles = createStyle({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  icon: {
+    marginRight: 12,
   },
 })
 

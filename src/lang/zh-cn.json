@@ -179,7 +179,6 @@
   "parent_dir_name": "上一级文件夹",
   "pause": "暂停",
   "play": "播放",
-  "playback": "播放",
   "play_detail_setting_lrc_align": "歌词对齐方式",
   "play_detail_setting_lrc_align_center": "居中",
   "play_detail_setting_lrc_align_left": "居左",
@@ -702,5 +701,7 @@
   "ent_fallback_until": "全源兜底至 {date}",
   "ent_local_fallback": "服务端视图暂不可用，当前为本地概要（权益判定不受影响）",
   "ent_close": "关闭",
-  "ent_state_active": "生效中"
+  "ent_state_active": "生效中",
+  "setting_play_lrc_font_size_vertical": "竖屏歌词字号",
+  "setting_play_lrc_font_size_horizontal": "横屏歌词字号"
 }

@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 
 import { View } from 'react-native'
 import Text from '@/components/common/Text'
+import { Icon } from '@/components/common/Icon'
+import { ICON_SIZE } from '@/config/constant'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
@@ -20,6 +22,7 @@ import styles from './style'
 // 2026-10-21 布局治理拍板：block 布局标题独行 + glass 玻璃填充 + flush 贴 16dp 单一网格；
 // 真机反馈轮（同日）：wrap 5+1 掉行占三行难看——改 uniform 单行六等分（对标长视频倍速排），
 // 恒一行高度减半
+// 2026-11-05 弹窗重构：标题行加前置图标（playback-rate），AM 动作行三件套语言与定时/黑名单行同构
 const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 export default () => {
@@ -41,7 +44,8 @@ export default () => {
   return (
     <Card layout="block">
       <View style={styles.titleRow}>
-        <Text style={styles.title}>{t('play_detail_setting_playback_rate')}</Text>
+        <Icon name="playback-rate" size={ICON_SIZE.list} color={theme['c-font']} style={styles.icon} />
+        <Text size={15} style={styles.title}>{t('play_detail_setting_playback_rate')}</Text>
         {
           !isPreset
             ? <Text size={12} color={theme['c-font-label']} style={styles.rateText}>{`${playbackRate.toFixed(2)}x`}</Text>

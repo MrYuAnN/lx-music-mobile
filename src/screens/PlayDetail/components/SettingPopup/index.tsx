@@ -1,35 +1,30 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from 'react'
-import { ScrollView, StyleSheet, View } from 'react-native'
+import { ScrollView, View } from 'react-native'
 import Popup, { type PopupType, type PopupProps } from '@/components/common/Popup'
-import SectionHeader from '@/components/common/SectionHeader'
 import { useI18n } from '@/lang'
 import { createStyle } from '@/utils/tools'
-import { useTheme } from '@/store/theme/hook'
 import { SPACING } from '@/config/spacing'
 
 import SettingTimeoutExit from './settings/SettingTimeoutExit'
 import SettingDislike from './settings/SettingDislike'
-import SettingLyricProgress from './settings/SettingLyricProgress'
-import SettingLrcRoma from './settings/SettingLrcRoma'
 import SettingPlaybackRate from './settings/SettingPlaybackRate'
-import SettingLrcFontSize from './settings/SettingLrcFontSize'
-import SettingLrcAlign from './settings/SettingLrcAlign'
 
 export interface SettingPopupProps extends Omit<PopupProps, 'children'> {
-  direction: 'vertical' | 'horizontal'
+  /** @deprecated 2026-11-05 弹窗重构后横竖屏内容不再分流，字段无消费；遗留兼容，随下一批清理 */
+  direction?: 'vertical' | 'horizontal'
 }
 
 export interface SettingPopupType {
   show: () => void
 }
 
-// 「更多」弹层（2026-10-20 真机反馈重构：①标题对齐三点菜单 label「更多」（原「播放器设置」名实
-// 不符）②把手对齐全弹窗体系、去右上叉 ③音量滑杆移除（系统音量键/音量键直达已覆盖，弹层内冗余））
-// 2026-10-21 布局治理拍板：分「播放」「歌词」两节（节头 label 色小字+节间留白，节内发丝线），
-// 内容左缘 16dp 单一网格；倍速/对齐胶囊 wrap 整行全可见+glass 玻璃填充
-// 2026-10-23 走查反馈二轮：「加入黑名单」回归播放节末尾混排（对标 AM/Spotify 菜单内红字同规格
-// 行，原置底独立动作区无业界先例废；组件注释见 SettingDislike）
-export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...props }, ref) => {
+// 「更多」弹层（2026-10-20 真机反馈重构：标题对齐三点菜单 label「更多」+把手对齐全弹窗体系）
+// 2026-11-05 弹窗重构拍板（grilling 六拍板）：**动作清单化**——持久设置全迁设置页（AM/Spotify
+// 菜单纯动作同构）：拖拽歌词进度/罗马音/对齐/字号四项归设置页 Player 歌词组（罗马音为孤儿
+// 组件补挂，其余三组件重写迁移）；弹窗只留三动作（定时关闭/播放速率/加入黑名单）。
+// 形态：单组无节头（分组头为多组而设）紧凑列表；三动作 AM 行三件套（图标+文案+右值），
+// 组件注释见各 Setting*；行间发丝线（原「组间边界」语义随单组化自然消解，行距+发丝线承层级）
+export default forwardRef<SettingPopupType, SettingPopupProps>((props, ref) => {
   const [visible, setVisible] = useState(false)
   const popupRef = useRef<PopupType>(null)
   const t = useI18n()
@@ -52,27 +47,11 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
       ? (
         <Popup ref={popupRef} title={t('more_action')} handle closeBtn={false} {...props}>
           <ScrollView showsVerticalScrollIndicator={false}>
-            {/* AM 式直排布局（2026-10-21 真机反馈：白底行卡在玻璃上成白框——改玻璃面板直排裸行，
-                行间缩进发丝线分隔，层级靠行节奏+分隔线+控件体量） */}
+            {/* AM 式玻璃面板直排裸行（2026-10-21 拍板：白底行卡在玻璃上成白框——行间缩进发丝线） */}
             <View style={styles.cards} onStartShouldSetResponder={() => true}>
-              <SectionHeader label={t('playback')} />
               <SettingTimeoutExit />
               <SettingPlaybackRate />
-              {/* 加入黑名单混排播放节末尾（2026-10-23 走查反馈二轮修正，对标 AM Suggest Less Like
-                  This 菜单内混排/Spotify 菜单内红字同规格行；原「置底独立动作区」无业界先例已废） */}
               <SettingDislike onDismiss={() => { popupRef.current?.setVisible(false) }} />
-              {/* 横线语义反转（2026-10-21 真机反馈拍板）：线只作组间边界（组内无线靠行距），易误读的组内线废弃 */}
-              <Divider />
-              <SectionHeader label={t('lyric')} />
-              <SettingLyricProgress />
-              <Divider />
-              <SettingLrcRoma />
-              <Divider />
-              <SettingLrcAlign />
-              {/* 字体大小已上播放页歌词动作行（方案 §问题7 拍板：竖屏删、横屏留；歌词节行序=拖拽→罗马音→对齐→字体大小） */}
-              {direction == 'horizontal'
-                ? <SettingLrcFontSize direction={direction} />
-                : null}
             </View>
           </ScrollView>
         </Popup>
@@ -81,19 +60,9 @@ export default forwardRef<SettingPopupType, SettingPopupProps>(({ direction, ...
   )
 })
 
-// 行间发丝线（Apple Music 弹层同款缩进式：线起于 label 对齐位，不顶面板边缘）
-const Divider = () => {
-  const theme = useTheme()
-  return <View style={{ ...styles.divider, backgroundColor: theme['c-border-background'] }} />
-}
-
 const styles = createStyle({
   cards: {
     paddingTop: SPACING.s2,
     paddingBottom: SPACING.s16,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    marginLeft: SPACING.s16,
   },
 })

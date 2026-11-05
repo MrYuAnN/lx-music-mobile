@@ -38,6 +38,10 @@ export default createStyle({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  // 标题行前置图标（2026-11-05 弹窗重构 AM 三件套，与定时/黑名单行同构）
+  icon: {
+    marginRight: 12,
+  },
   title: {
     flexGrow: 1,
   },

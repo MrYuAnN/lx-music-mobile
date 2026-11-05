@@ -179,7 +179,6 @@
   "parent_dir_name": "Parent folder",
   "pause": "Pause",
   "play": "Play",
-  "playback": "Playback",
   "play_detail_setting_lrc_align": "Lyric Alignment",
   "play_detail_setting_lrc_align_center": "Center",
   "play_detail_setting_lrc_align_left": "Left",
@@ -702,5 +701,7 @@
   "ent_fallback_until": "Full-source fallback until {date}",
   "ent_local_fallback": "Server view unavailable — showing local summary (unlocks unaffected)",
   "ent_close": "Close",
-  "ent_state_active": "Active"
+  "ent_state_active": "Active",
+  "setting_play_lrc_font_size_vertical": "Lyric font size (portrait)",
+  "setting_play_lrc_font_size_horizontal": "Lyric font size (landscape)"
 }

@@ -36,6 +36,11 @@ const migrateSettingAcrossVersions = (setting: Partial<SY.AppSetting>): void => 
     if (setting['search.isShowHotSearch'] === false) setting['search.isShowHotSearch'] = true
     if (setting['search.isShowHistorySearch'] === false) setting['search.isShowHistorySearch'] = true
   }
+  // v2.1 → 2.2 拖拽歌词调整进度默认开启（2026-11-05 弹窗重构批拍板：设置项自播放页更多弹层
+  // 迁设置页歌词组 + 默认值 false→true；存量升级语义同上）
+  if (isVersionBefore(setting.version, '2.2')) {
+    if (setting['playDetail.isShowLyricProgressSetting'] === false) setting['playDetail.isShowLyricProgressSetting'] = true
+  }
 }
 
 const mergeSetting = (originSetting: SY.AppSetting, targetSetting?: Partial<SY.AppSetting> | null): {

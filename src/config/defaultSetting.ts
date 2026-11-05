@@ -1,5 +1,5 @@
 const defaultSetting: SY.AppSetting = {
-  version: '2.1',
+  version: '2.2',
   'common.langId': null,
   'common.sourceNameType': 'real',
   'common.shareType': 'system',
@@ -32,7 +32,7 @@ const defaultSetting: SY.AppSetting = {
   'playDetail.style.align': 'left',
   'playDetail.vertical.style.lrcFontSize': 210,
   'playDetail.horizontal.style.lrcFontSize': 220,
-  'playDetail.isShowLyricProgressSetting': false,
+  'playDetail.isShowLyricProgressSetting': true,
 
   'desktopLyric.enable': false,
   'desktopLyric.isLock': false,

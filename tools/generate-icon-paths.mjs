@@ -126,6 +126,8 @@ const EXTRA_NAMES = [
   { names: ['arrow-clockwise'], p: 'arrow-clockwise' },
   // 激活入口行图标（批 R·净屏 KeyInfoActivity 钥匙语义对标，D1/D3）
   { names: ['key'], p: 'key' },
+  // 播放页更多弹层动作行三件套（2026-11-05 弹窗重构拍板：AM 动作行图标化；timer=定时关闭语义）
+  { names: ['timer'], p: 'timer' },
 ]
 
 // ---------- 读取 selection.json 校验映射覆盖（断言 a：全量覆盖/显式 SKIP） ----------
