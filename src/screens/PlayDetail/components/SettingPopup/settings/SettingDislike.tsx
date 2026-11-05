@@ -37,7 +37,7 @@ const SettingDislike = ({ onDismiss }: Props) => {
   return (
     <Card>
       <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={handlePress}>
-        <Icon name="dislike-add" size={ICON_SIZE.list} color={destructiveColor} style={sharedStyle.icon} />
+        <Icon name="dislike-add" size={ICON_SIZE.list} weight="regular" color={destructiveColor} style={sharedStyle.icon} />
         <Text size={15} color={destructiveColor}>{t('dislike_play_action')}</Text>
       </TouchableOpacity>
     </Card>

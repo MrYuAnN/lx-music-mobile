@@ -128,6 +128,9 @@ const EXTRA_NAMES = [
   { names: ['key'], p: 'key' },
   // 播放页更多弹层动作行三件套（2026-11-05 弹窗重构拍板：AM 动作行图标化；timer=定时关闭语义）
   { names: ['timer'], p: 'timer' },
+  // 倍速行步进箭头（2026-11-05 真机反馈：全档位 chips 改单值上下步进）
+  { names: ['caret-up'], p: 'caret-up' },
+  { names: ['caret-down'], p: 'caret-down' },
 ]
 
 // ---------- 读取 selection.json 校验映射覆盖（断言 a：全量覆盖/显式 SKIP） ----------

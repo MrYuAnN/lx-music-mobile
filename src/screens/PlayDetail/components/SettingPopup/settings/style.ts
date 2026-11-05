@@ -12,9 +12,6 @@ export default createStyle({
     paddingBottom: SPACING.s8,
     alignItems: 'flex-start',
   },
-  // title: {
-
-  // },
   label: {
     width: 50,
     textAlign: 'center',
@@ -26,33 +23,10 @@ export default createStyle({
     flexWrap: 'nowrap',
     alignItems: 'center',
   },
-  list: {
-    flexGrow: 0,
-    flexShrink: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    paddingTop: SPACING.s6,
-  },
-  // 倍速行标题行（block 布局内嵌 row：label 撑满 + 右侧非预设当前值小字靠右）
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  // 行前置图标（2026-11-05 弹窗重构 AM 三件套：定时/倍速标题/黑名单三行同构，审查 S1 收口单源）
+  // 行前置图标（2026-11-05 弹窗重构 AM 三件套：定时/倍速/黑名单三行同构，审查 S1 收口单源）
   icon: {
     marginRight: SPACING.s12,
   },
-  title: {
-    flexGrow: 1,
-  },
-  // 非预设历史倍速当前值小字（审查过渡期补偿：点任一预设归化后消失）
-  rateText: {
-    width: 48,
-    textAlign: 'right',
-  },
-  // block 行内胶囊组与标题的行距（倍速/歌词对齐，2026-10-20 重构；
-  // 2026-10-21 去 flexGrow/flexShrink——病灶成因：flexShrink 在 row+wrap 下吃掉换行）
-  chips: {
-    marginTop: SPACING.s10,
-  },
+  // 2026-11-05 真机反馈轮：titleRow/title/rateText/chips/list 为旧倍速 chips 行专用键，
+  // 全档位 chips 改单值上下步进行后无消费，删除（SettingPlaybackRate 行内样式自持）
 })

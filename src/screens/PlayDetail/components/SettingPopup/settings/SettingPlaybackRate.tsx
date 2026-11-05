@@ -1,6 +1,6 @@
-import { useMemo } from 'react'
+import { Fragment, useState } from 'react'
+import { TouchableOpacity, View } from 'react-native'
 
-import { View } from 'react-native'
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
 import { ICON_SIZE } from '@/config/constant'
@@ -8,60 +8,122 @@ import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
-import CategoryChips from '@/components/common/CategoryChips'
 import { setPlaybackRate, updateMetaData } from '@/plugins/player'
 import { setPlaybackRate as setLyricPlaybackRate } from '@/core/lyric'
 import playerState from '@/store/player/state'
+import { createStyle } from '@/utils/tools'
 import Card from './Card'
-import styles from './style'
+import sharedStyle from './style'
 
-// 倍速行卡（2026-10-20 更多弹层重构拍板「预设胶囊」）：复用 CategoryChips 六预设单选——业界主流
-// （B 站预设列表/网易云横排预设/Spotify 循环切换，滑杆自定义小众）；点 1x 即重置（语义内化，
-// 原滑杆+重置钮废弃）。非预设历史值（如 0.62x）无勾选态，标题右侧显示当前值小字（审查过渡期
-// 补偿），点任一预设即归化、小字消失。
-// 2026-10-21 布局治理拍板：block 布局标题独行 + glass 玻璃填充 + flush 贴 16dp 单一网格；
-// 真机反馈轮（同日）：wrap 5+1 掉行占三行难看——改 uniform 单行六等分（对标长视频倍速排），
-// 恒一行高度减半
-// 2026-11-05 弹窗重构：标题行加前置图标（playback-rate），AM 动作行三件套语言与定时/黑名单行同构
-const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2]
+// 倍速行卡（2026-10-20 更多弹层重构「预设胶囊」→ 2026-11-05 真机反馈两轮演进）：
+// 全档位 chips 常驻展示不协调（一轮反馈）→ 单值步进误解为 ▲▼（二轮否决）→ 终态=**内联下拉**：
+// 平时只显示当前档位值（右值+caret 提示），点击行/值在该位置上下展开全部档位选项列
+// （降序 2x→0.5x，当前档主色+勾选标记，点选即收起归化；非预设历史值仅显示不勾选）。
+// 行结构与定时关闭行同构（图标+标题+右值）；选项列满铺 16dp 网格，行语言与弹层一致。
+// 图标显式 weight regular 细线（≤20dp 默认 bold 在菜单行显粗笨，与玻璃体系细线语言对齐）
+const RATES = [2, 1.5, 1.25, 1, 0.75, 0.5] // 展示序：快在上
+
+const formatRate = (rate: number) => `${rate}x`
 
 export default () => {
   const playbackRate = useSettingValue('player.playbackRate')
   const theme = useTheme()
   const t = useI18n()
-
-  const items = useMemo(() => RATES.map(rate => ({ id: String(rate), label: `${rate}x` })), [])
-  const isPreset = RATES.some(rate => rate == playbackRate)
+  const [expanded, setExpanded] = useState(false)
 
   const handleRateChange = (rate: number) => {
-    if (playbackRate == rate) return // 同值短路（审查 S-2）：重复点已选预设不重放播放器/通知元数据
+    if (playbackRate == rate) {
+      setExpanded(false) // 点当前档=仅收起
+      return
+    }
     void setPlaybackRate(rate)
     void setLyricPlaybackRate(rate)
     void updateMetaData(playerState.musicInfo, playerState.isPlay, true) // 更新通知栏的播放速率
     updateSetting({ 'player.playbackRate': rate })
+    setExpanded(false)
   }
 
   return (
-    <Card layout="block">
-      <View style={styles.titleRow}>
-        <Icon name="playback-rate" size={ICON_SIZE.list} color={theme['c-font']} style={styles.icon} />
-        <Text size={15} style={styles.title}>{t('play_detail_setting_playback_rate')}</Text>
-        {
-          !isPreset
-            ? <Text size={12} color={theme['c-font-label']} style={styles.rateText}>{`${playbackRate.toFixed(2)}x`}</Text>
-            : null
-        }
-      </View>
-      <CategoryChips
-        items={items}
-        activeId={String(playbackRate)}
-        onChange={id => { handleRateChange(parseFloat(id)) }}
-        style={styles.chips}
-        fill="glass"
-        layout="uniform"
-        flush
-        expandTouch
-      />
+    <Card>
+      <TouchableOpacity
+        style={styles.container}
+        activeOpacity={0.6}
+        onPress={() => { setExpanded(!expanded) }}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
+        <Icon name="playback-rate" size={ICON_SIZE.list} weight="regular" color={theme['c-font']} style={sharedStyle.icon} />
+        <Text size={15} style={styles.label}>{t('play_detail_setting_playback_rate')}</Text>
+        <Text size={13} color={theme['c-font-label']} style={styles.rateText}>{formatRate(playbackRate)}</Text>
+        <Icon
+          name={expanded ? 'caret-up' : 'caret-down'}
+          size={12}
+          weight="regular"
+          color={theme['c-font-label']}
+          style={styles.caret}
+        />
+      </TouchableOpacity>
+      {
+        expanded
+          ? (
+              <View style={styles.optionList}>
+                {RATES.map(rate => {
+                  const active = rate == playbackRate
+                  return (
+                    <Fragment key={rate}>
+                      {rate !== RATES[0] ? <View style={[styles.optionDivider, { backgroundColor: theme['c-border-background'] }]} /> : null}
+                      <TouchableOpacity
+                        style={styles.optionRow}
+                        activeOpacity={0.6}
+                        onPress={() => { handleRateChange(rate) }}
+                        accessibilityRole="button"
+                      >
+                        <Text size={15} color={active ? theme['c-primary'] : theme['c-font']}>{formatRate(rate)}</Text>
+                        {active ? <Icon name="check" size={ICON_SIZE.chevron} weight="regular" color={theme['c-primary']} /> : null}
+                      </TouchableOpacity>
+                    </Fragment>
+                  )
+                })}
+              </View>
+            )
+          : null
+      }
     </Card>
   )
 }
+
+const styles = createStyle({
+  container: {
+    flexGrow: 1,
+    flexShrink: 1,
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  label: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  rateText: {
+    fontVariant: ['tabular-nums'],
+    marginLeft: 8,
+  },
+  caret: {
+    marginLeft: 4,
+  },
+  // 内联下拉选项列（满铺 16dp 网格，行语言与弹层一致；行间发丝线）
+  optionList: {
+    paddingBottom: 4,
+  },
+  optionRow: {
+    minHeight: 42,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 32, // 对齐标题文字列（icon 20 + gap 12；Card 已有 px16）
+  },
+  optionDivider: {
+    height: 1,
+    marginLeft: 32,
+  },
+})

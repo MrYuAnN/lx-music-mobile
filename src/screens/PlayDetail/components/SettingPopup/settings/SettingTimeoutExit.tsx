@@ -47,7 +47,7 @@ export default memo(() => {
     <>
       <Card>
         <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={() => { modalRef.current?.show() }}>
-          <Icon name="timer" size={ICON_SIZE.list} color={theme['c-font']} style={sharedStyle.icon} />
+          <Icon name="timer" size={ICON_SIZE.list} weight="regular" color={theme['c-font']} style={sharedStyle.icon} />
           <Text size={15} style={styles.label}>{t('timeout_exit_title')}</Text>
           <Status theme={theme} t={t} />
         </TouchableOpacity>
