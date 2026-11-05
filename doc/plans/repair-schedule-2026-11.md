@@ -90,3 +90,24 @@
 
 ## 调整记录
 - 2026-11-03 成稿：并入全源停售批（客户端待提交部分）；剔除 W3-07/N-07（全源停售消解）；窗⑤ trial 闸取消不计入
+- 2026-11-05：五仓架构审查（2026-11-04 报告）S2/B4 breaker kg 不可达核验闭环——fork bbc249d（11-04 13:57 B4 修复笔，同笔含 B2 会话隔离/B3 mg 幽灵键）已全覆盖四项指控（_SOURCE_USERS/_PROBE_URLS per-source 注册表+kg 出池过滤+/config·/url 两消费路径接线），报告快照 11:06 早于修复；报告 S2 卡片/B4 条目/总表行已补闭环标记；残留=kg 熔断标记路径运行时冒烟随下次 fork 部署窗口+「与 S5 注册表同一张」收敛归 S5 批次
+- 2026-11-05：架构审查 **S4 降级关闭（用户拍板：fork 不跟 upstream）**——实证：upstream MeoProject 休眠 10 个月（远端 HEAD=6cf2c74 即 merge-base，fork 19 ahead/0 behind，merge 重放零实际发生）；报告「url 22 次居首」热区口径有误（modules/url 全历史 41 file-commits 主体为 upstream 自身音源适配演化，fork 侧缝合文件各仅 2 次，真实热区 routers/shiyin.py 14 次在自有新文件零冲突）。处置：不做 wrapper 剥离，hard fork 自有化（对标 Jellyfin←Emby/OpenTofu←Terraform 走向）；未来音源适配自行修改，upstream 若复活出好修复 cherry-pick 单点吸收，不背常备合并卫生；**S1 骨架 seam 不受影响另案**（wy/kw 连接级记账空洞是真实缺陷）；报告 S4 卡片已补闭环标记
+- 2026-11-05：架构审查 **S1+S5 双批落库+三席审查处置收口**（api-server shiyin 分支，S1=3e72779 并行会话实施本会话代提交，S5=d129b80 源注册表 server/sources.py 六处枚举+kg 归一四处重放收编+B4 局部表并表，均未部署）。三席审查（审查包 .review-bundle/2026-11-05/context-s1-s5.md）零 Critical/3I/9S 全处置：**I-1** wy 记账身份=MUSIC_U 凭证明文落日志/Redis 键名→sha256 派生 16 位（单点 sources.py，选号归因与记账键族同函数对齐，S1 路径未部署零存量键失配）；**I-2** 批口径失真→本条即补记：S1 实为熔断记账语义打通非纯零变化，三组用户可见增量=①wy 账号级出池+全池摘除 ②kw 源级摘除（1/1 down 即全源 403+/config 剔除，原恒 500 不摘）③kg info 段连接级归因——**部署冒烟清单补 kw/wy 各一条：连续连接失败→摘源 403→120s 半开探测自愈→恢复下发**+_alert_down 文案按有无池区分；**I-3** kw probe 域振荡→改 mobi.kuwo.cn 探真链路（GET <500 即栈通，tx/wy 同口径成立不动）；S 级 9 项全修（selection 直读注册表撤 pool_spec 壳/filter→pool_filter/ident 注解放宽/KW_ACCOUNT_ID 单源 kw.py 引用/shiyin:508 死分支/default.py 归属澄清，S-7 statistics 键序变化知悉项/S-8 test_url_tiering.py 归并行会话尾账）；修复批 8+10+13 测试全绿。挂账：doc/plans/url-abuse-hardening.md 决策文档断链（多批注释锚点空悬）待补档
+
+## T2 服务端归位批（2026-11-05 全收官，不在原 S0-S8 序列内）
+- 源：improve-codebase-architecture 五仓审查 T2 项；方案四拍板（拓扑 A 并入 order-core/含净屏/filter-repo 保史/MrYuAnN/order-core 私有远端）+方案审查三席 6I 全收+代码审查三席 4I 全修。
+- 已落地：backend 双仓摘除（App 9dc000a2/净屏 7449d29）→ order-core 仓 server/{shiyin,jingping} 保史并入（31+148 笔，blob 对拍全等）+接线（481589f）+审查修复（16e55ed）；平台契约路径 8fe1649；净屏 f16ddf3；新 clone 三模块 build/test/vet 全绿=clone 即构建达成。
+- **挂账（用户认可 2026-11-05）**：①deploy 脚本 /tmp 产物并发互踩+裸 ssh 未复用 SSH_CMD（部署批顺带）②DEPLOY.md cwd 前提+db 文件名勘误伞（下批触达）③release.sh PLATFORM_ENV 可覆写+latest 双份/清单虚 claim/token cmdline 三处既有漂移（发布批）④domain-packs 双副本对拍防线（T3 契约专题，先轻量 diff）⑤净屏 CLAUDE.md 孤笔 8110c87 旁支留档不动。
+- 生产零变更：本次未部署；下次部署拾音按 server/shiyin/DEPLOY.md 新路径、净屏按 order-core tools/deploy-jingping-backend.sh。
+
+## P5 出站通知收口批（2026-11-05 代码落库，不在原 S0-S8 序列内）
+- 源：improve-codebase-architecture 五仓审查 P5 项（平台→净屏出站通知双实现）；grilling 两拍板（Q1=B notifier 单源+trial 配置并入 ProductPanel/meta 两键退役+panelForward 不并入；Q2=normalizeKey 升单点核销 S-2 登记）→方案 v2（doc/plans/p5-outbound-notify.md）→三席方案审查 0C/5I/11S 全采修订→实施→三席代码审查 0C/2I/5S+14 证伪、I/S 七处修复全落（半配置 WARN/应急路径双后缀/debug.Stack/tokenHeader fail-fast/非 2xx 附截断 body 等+回归测试）。
+- 已落地（平台仓 b0ddfd5+App 仓 ef840d59）：internal/notify 新包（Post/Async 机制单点）+kick Service 化（包级全局消灭/env 形态原样）+httputil +NormalizeKey/+JoinURL+trial notify 改 ProductPanel(product)（跨产品错投缺口结构性闭合）+docs/RUNBOOK-出站通知收口部署.md（平台仓）；提交树 worktree 模拟验证绿（只含 P5 内容独立 build+test 过）。
+- 挂账（部署批）：**RUNBOOK 四核查闸门先过再切流**——①存量码大写性 SQL（核查 1 未过不得切流：normalizeKey 对非大写存量码=踢空静默失效）②净屏面板 vs meta 旧值归一化对拍（剥 /panel/action 后缀）③拾音面板注册态+token 有效性④净屏侧 JPTRIAL 存量错投单只读核查；meta trial_notify_url/token 两键部署验证通过后再清删（保回滚无缝）。
+- 甄别在案：TestUsageWindowSize=时间敏感既有脆弱（基线复跑同败）；TestSDKDriftThreeRepos=App 仓 T3 笔③待回灌挂账，均与本批零交集。panel.go 不在本笔（P3 批在途，本批 JoinURL 行随其落库）。
+
+
+## O3 订单状态机单源化批（2026-11-05 代码落库，不在原 S0-S8 序列内）
+- 源：improve-codebase-architecture 五仓审查 O3 项（守卫散布 8 处+SQL 状态字面量）；grilling 四拍板（单独成批/声明式迁移表+薄底座不引库/三处守卫统一语义不动/表驱动+资金用例）→方案 v1→三席方案审 0C/9I 合并 8+6S 全采→v2（三元组规则行+底座契约）→架构师复审（原发现全解+I-A 基线漂移 rebase+S-A1~A5）→v2.1/v2.2 定稿→实施（基线 88e4e55 O1 后）→三席代码审 0C/3I/5S+13 证伪，处置：3I 全修+3S 修/2S 留档（审查包 order-core .review-bundle/2026-11-05/o3-code-context.md+方案包 App 仓 .review-bundle/2026-11-05/o3-plan-context.md）。
+- 已落地（order-core 仓工作区，待提交）：order_transition.go（6 entry 三元组迁移表+transitionOrder compare-and-set 底座+opts 运行时槽）/6 调用点收编（AdminConfirmPaid 补聚合 IN 守卫/afterManualCodeGone 补 status='delivered'/deliver 补 0 行断言+回查回显）/包内 SQL status 字面量全常量化（8 文件）/types.go 双锁注释/order_transition_test.go 7 条（矩阵+不变量/初始态/资金语义）；三模块 build/vet/test 全绿（-count=1）。
+- **挂账（包外字面量，后续批；types.go 注释所指）**：orderstore 包外 SQL status 单引号字面量仍靠 grep 成对改——①server/jingping/store/orders.go:239（'delivered'）②server/jingping/store/rulepacks.go:437（'closed'）③server/shiyin/store/orderdomain.go:209（'paid'，行号随 O1 漂移）④server/jingping/cmd/migrate-from-platform/main.go:136/:139/:157⑤DDL DEFAULT（migrations）。值域变更时按本清单连带；纳入常量化随下一服务端批顺带。
