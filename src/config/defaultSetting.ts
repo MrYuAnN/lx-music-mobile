@@ -45,8 +45,8 @@ const defaultSetting: SY.AppSetting = {
   // AM 精致化默认形态（2026-10-21 拍板）：白字柔和阴影无描边；下一句固定白 55%、阴影固定（native 写死不设键）
   'desktopLyric.style.lyricPlayedColor': 'rgba(255, 255, 255, 1)',
 
-  'search.isShowHotSearch': false,
-  'search.isShowHistorySearch': false,
+  'search.isShowHotSearch': true,
+  'search.isShowHistorySearch': true,
 
   'list.isShowSource': true,
   'list.isSaveScrollLocation': true,
