@@ -115,3 +115,4 @@
 ## P3 store 消费面切窄批（2026-11-05 笔②落库，平台仓；不在原 S0-S8 序列内）
 - 源：五仓审查 P3 项（*Store 144 方法全量暴露）；方案 docs/方案-store消费面切窄.md（七拍板+三席审全采，方案文档随笔②入平台仓）。笔①读写二分 76fe9d9；**笔② srv 拆包 4d28946**（本会话实施）：internal/api/srvapi.go 670 行→internal/srv 注入式（18 路径对拍全等+wire 注入挂载+试用指标族随迁勘误——trialRejectAdd 在 TrialClaim 有生产写点，方案盲点修正为族迁 srv+导出 Add）；api/srv/wire 全绿。
 - 挂账：**笔③三面 interface 切分**（api/admin/srv 各消费包窄 interface，144 方法面收窄直达病灶）待续；**TestUsageWindowSize 既有脆弱定性**（11-05 晚实证=当日时钟进度型——today 窗跨度断言 ≥0.9 天在 21:36 后必红，基线带病非任何批引入；修复方向=断言改窗起点锚定今日零点，随 admin 域批顺带）；sdkdrift 1 处漂移=既有挂账（T3 笔③待回灌）。
+- **P3 补记（2026-11-05 代码三席审 0C/1I/8S 全处置收口）**：I-1 apiFace 头注释计数漂移+S①~⑤（字符还原/import 规整/WithTx S-4 边界注记/方案 v1.1 勘误回写/srv.New 构造对齐）+S⑥三 face.go 消费域分组注释全部随收尾笔落库（平台仓）；**挂账两项**：①srv handleSRVDeliver WithTx 闭包内三处 pool 裸 SQL（:146/:152/:206）下沉 store 层事务方法（架构师 S-4 存量欠账，随下一 store 域批）②越界编译错实证输出附 commit message 留档（验收纪律，未来同类批执行）。
