@@ -47,12 +47,12 @@ export default () => {
           menus={RATES.map(rate => ({ action: String(rate), label: formatRate(rate) }))}
           activeId={String(playbackRate)}
           onPress={menu => { handleRateChange(parseFloat(menu.action)) }}
+          anchorActive
           fitMenuWidth
           fontSize={13}
         >
           <View style={styles.rateBtn}>
             <Text size={13} color={theme['c-font-label']} style={styles.rateText}>{formatRate(playbackRate)}</Text>
-            <Icon name="caret-down" size={12} weight="regular" color={theme['c-font-label']} />
           </View>
         </DorpDownMenu>
       </View>

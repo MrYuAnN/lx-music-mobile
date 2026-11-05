@@ -1,5 +1,5 @@
-import { useImperativeHandle, forwardRef, useMemo, useRef, useState, type Ref, type JSX } from 'react'
-import { View, Animated, TouchableHighlight } from 'react-native'
+import { Fragment, useImperativeHandle, forwardRef, useMemo, useRef, useState, type Ref, type JSX } from 'react'
+import { View, Animated, TouchableHighlight, StyleSheet } from 'react-native'
 import { useWindowSize } from '@/utils/hooks'
 
 import Modal, { type ModalType } from './Modal'
@@ -47,6 +47,9 @@ const styles = createStyle({
     justifyContent: 'center',
     // backgroundColor: '#ccc',
   },
+  itemDivider: {
+    height: StyleSheet.hairlineWidth,
+  },
   // menuText: {
   //   // textAlign: 'center',
   //   fontSize: 14,
@@ -63,6 +66,8 @@ interface Props<M extends Menus = Menus> {
   height?: number
   fontSize?: number
   center?: boolean
+  /** 锚定模式：activeId 项中心对齐触发钮中心（当前档原位显示，上下展开其余档位） */
+  anchorActive?: boolean
   activeId?: M[number]['action'] | null
   /** 玻璃 tint（毛玻璃全体系阶段二）：外层 Modal wrapper 探测跨窗模糊后传入，null=实色回退 */
   glassTint?: string | null
@@ -79,6 +84,7 @@ const Menu = ({
   activeId,
   fontSize = 15,
   center = false,
+  anchorActive = false,
   glassTint = null,
 }: Props) => {
   const theme = useTheme()
@@ -94,12 +100,28 @@ const Menu = ({
   }, [menuSize, width, height])
 
   const menuStyle = useMemo(() => {
-    let menuHeight = menus.length * menuItemStyle.height
+    const itemH = menuItemStyle.height
+    const menuWidth = menuItemStyle.width
+    // 锚定模式（anchorActive，2026-11-05 速率档位下拉拍板）：activeId 项的中心对准触发钮中心——
+    // 当前档显示在数值原位（上方更快档/下方更慢档），水平菜单中心对齐数值中心；屏内 8dp clamp。
+    // activeId 不在列表（如倍速非预设历史值）回退默认贴边定位
+    const activeIndex = anchorActive && activeId != null
+      ? menus.findIndex(menu => menu.action === activeId)
+      : -1
+    if (anchorActive && activeIndex >= 0) {
+      const menuHeight = menus.length * itemH
+      let top = buttonPosition.y + buttonPosition.h / 2 - (activeIndex + 0.5) * itemH
+      top = Math.min(Math.max(top, 8), windowSize.height - menuHeight - 8)
+      let left = buttonPosition.x + buttonPosition.w / 2 - menuWidth / 2
+      left = Math.min(Math.max(left, 8), windowSize.width - menuWidth - 8)
+      return { height: menuHeight, width: menuWidth, top, left }
+    }
+
+    let menuHeight = menus.length * itemH
     const topHeight = buttonPosition.y - 20
     const bottomHeight = windowSize.height - buttonPosition.y - buttonPosition.h - 20
     if (menuHeight > topHeight && menuHeight > bottomHeight) menuHeight = Math.max(topHeight, bottomHeight)
 
-    const menuWidth = menuItemStyle.width
     const bottomSpace = windowSize.height - buttonPosition.y - buttonPosition.h - 20
     const rightSpace = windowSize.width - buttonPosition.x - menuWidth
     const showInBottom = bottomSpace >= menuHeight
@@ -121,7 +143,7 @@ const Menu = ({
       frameStyle.right = windowSize.width - buttonPosition.x - buttonPosition.w
     }
     return frameStyle
-  }, [menus.length, menuItemStyle, buttonPosition, windowSize])
+  }, [menus, menuItemStyle, buttonPosition, windowSize, anchorActive, activeId])
 
   const menuPress = (menu: Menus[number]) => {
     // if (menu.disabled) return
@@ -138,35 +160,37 @@ const Menu = ({
       <Animated.ScrollView keyboardShouldPersistTaps={'always'} showsVerticalScrollIndicator={false}>
         {
           menus.map((menu, index) => (
-            menu.disabled
-              ? (
-                  <View
-                    key={menu.action}
-                    style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height, opacity: 0.4 }}
-                  >
-                    <Text style={{ textAlign: center ? 'center' : 'left' }} size={fontSize} numberOfLines={1}>{menu.label}</Text>
-                  </View>
-                )
-              : menu.action == activeId
-                ? (
-                    <View
-                      key={menu.action}
-                      style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height }}
-                    >
-                      <Text style={{ textAlign: center ? 'center' : 'left' }} color={theme['c-primary-font-active']} size={fontSize} numberOfLines={1}>{menu.label}</Text>
-                    </View>
-                  )
-                : (
-                    <TouchableHighlight
-                      key={menu.action}
-                      style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height }}
-                      underlayColor={theme['c-primary-background-active']}
-                      onPress={() => { menuPress(menu) }}
-                    >
-                      <Text style={{ textAlign: center ? 'center' : 'left' }} size={fontSize} numberOfLines={1}>{menu.label}</Text>
-                    </TouchableHighlight>
-                  )
-
+            <Fragment key={menu.action}>
+              {/* 菜单项间发丝线（2026-11-05 速率档位菜单反馈：多项菜单无分隔「混做一团」，通用改良） */}
+              {index > 0 ? <View style={{ ...styles.itemDivider, backgroundColor: theme['c-border-background'] }} /> : null}
+              {
+                menu.disabled
+                  ? (
+                      <View
+                        style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height, opacity: 0.4 }}
+                      >
+                        <Text style={{ textAlign: center ? 'center' : 'left' }} size={fontSize} numberOfLines={1}>{menu.label}</Text>
+                      </View>
+                    )
+                  : menu.action == activeId
+                    ? (
+                        <View
+                          style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height }}
+                        >
+                          <Text style={{ textAlign: center ? 'center' : 'left' }} color={theme['c-primary-font-active']} size={fontSize} numberOfLines={1}>{menu.label}</Text>
+                        </View>
+                      )
+                    : (
+                        <TouchableHighlight
+                          style={{ ...styles.menuItem, width: menuItemStyle.width, height: menuItemStyle.height }}
+                          underlayColor={theme['c-primary-background-active']}
+                          onPress={() => { menuPress(menu) }}
+                        >
+                          <Text style={{ textAlign: center ? 'center' : 'left' }} size={fontSize} numberOfLines={1}>{menu.label}</Text>
+                        </TouchableHighlight>
+                      )
+              }
+            </Fragment>
           ))
         }
       </Animated.ScrollView>
@@ -182,6 +206,7 @@ export interface MenuProps<M extends Menus = Menus> {
   height?: number
   fontSize?: number
   center?: boolean
+  anchorActive?: boolean
   activeId?: M[number]['action'] | null
 }
 
@@ -190,7 +215,7 @@ export interface MenuType {
   hide: () => void
 }
 
-const Component = <M extends Menus>({ menus, width, height, activeId, onHide, onPress, fontSize, center }: MenuProps<M>, ref: Ref<MenuType>) => {
+const Component = <M extends Menus>({ menus, width, height, activeId, onHide, onPress, fontSize, center, anchorActive }: MenuProps<M>, ref: Ref<MenuType>) => {
   // console.log(visible)
   const theme = useTheme()
   const modalRef = useRef<ModalType>(null)
@@ -218,7 +243,7 @@ const Component = <M extends Menus>({ menus, width, height, activeId, onHide, on
     // statusBarPadding 显式 false（2026-10-20 代码审查 C1 冻结）：buttonPosition 为窗口坐标（含状态栏区），
     // Modal 避让激活后 absolute 锚点随 padding box 下移致菜单整体偏移一个状态栏高（与 DorpDownPanel 同机制）
     <Modal statusBarPadding={false} onHide={onHide} ref={modalRef}>
-      <Menu menus={menus} width={width} height={height} activeId={activeId} buttonPosition={position} menuSize={menuSize} onPress={onPress} onHide={hide} fontSize={fontSize} center={center} glassTint={blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : null} />
+      <Menu menus={menus} width={width} height={height} activeId={activeId} buttonPosition={position} menuSize={menuSize} onPress={onPress} onHide={hide} fontSize={fontSize} center={center} anchorActive={anchorActive} glassTint={blurBehind ? GLASS_TINT[theme.isDark ? 'dark' : 'light'] : null} />
     </Modal>
   )
 }

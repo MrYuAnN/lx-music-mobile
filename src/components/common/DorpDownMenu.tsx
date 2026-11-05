@@ -34,6 +34,7 @@ export default <T extends Menus>({
   height,
   fontSize,
   center,
+  anchorActive,
   children,
   activeId,
   btnStyle,
@@ -64,6 +65,7 @@ export default <T extends Menus>({
         ref={menuRef}
         menus={menus}
         center={center}
+        anchorActive={anchorActive}
         onPress={onPress}
         fontSize={fontSize}
         height={height}
