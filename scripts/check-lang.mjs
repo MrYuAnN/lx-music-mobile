@@ -55,49 +55,11 @@ const EXEMPT_KEYS = [
 // 死键放行清单（首跑甄别 2026-11-05：全键名带引号/词边界 grep 零命中+词根不在全仓
 // 模板 heads——上游 lx-music 遗留或本 fork 改版退役；实际调用键名不同的证据例：
 // download_paused 非 download_pause、exit_app_tip 非 exit_app、collect_success 非
-// collect_songlist）。放行=warn 挂清单不 fail；是否物理删除三语键留后续清理批拍板。
-// 防腐规则=清单键若重新出现字面量命中即报「死键复活」引导移除登记。
-const KNOWN_DEAD_KEYS = [
-  'back',
-  'stopped',
-  'exit_app',
-  'load_failed',
-  'play_all',
-  'play_next',
-  'play_prev',
-  'cancel_button_text_2',
-  'collect_songlist',
-  'collect_toplist',
-  'deep_link__handle_error_tip',
-  'list_add_btn_title',
-  'list_import_link_button',
-  'list_edit_action_tip_exist',
-  'list_edit_action_tip_remove_success',
-  'list_updating',
-  'metadata_edit_modal_file_path',
-  'notifications_check_tip',
-  'notifications_check_title',
-  'play_detail_setting_title',
-  'play_detail_setting_volume',
-  'play_detail_setting_playback_rate_reset',
-  'play_detail_todo_tip',
-  'setting_other_cache',
-  'setting_other_cache_clear_btn',
-  'version_btn_unknown',
-  'songs_count_unit',
-  'local_music_rescan',
-  'keyinfo_no_keys',
-  'keyinfo_get_code_hint',
-  'keyinfo_bound_count',
-  'keyinfo_state_other',
-  'keyinfo_state_unbound',
-  'keyinfo_current_key',
-  'keyinfo_bound_state_self',
-  'keyinfo_empty_link',
-  'activation_clip_chip',
-  'activation_activating',
-  'activation_state_n_sources',
-]
+// collect_songlist）。39 键已于死键清理批三语物理删除（doc/plans/lang-dead-keys-cleanup.md，
+// 编译期护栏兜底：删「有调用方」键 tsc 必红），数组清空；防腐规则保留——未来甄别出的
+// 新死键登记于此（放行=warn 挂清单不 fail），清单键若重新出现字面量命中即报「死键复活」
+// 引导移除登记。
+const KNOWN_DEAD_KEYS = []
 
 const checkMissing = (base, others) => {
   const violations = []
