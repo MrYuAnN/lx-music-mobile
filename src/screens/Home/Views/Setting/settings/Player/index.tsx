@@ -14,13 +14,15 @@ import { useI18n } from '@/lang'
 
 // 播放域设置两组（2026-11-05 弹窗重构批）：「播放」保留设备/音质/不喜欢管理；新增「歌词」组
 // 收编播放页更多弹层迁出的四项（拖拽进度/罗马音/对齐/字号）——组标题复用弹窗节头键 t('lyric')
-// 零新增键面；罗马音为孤儿组件补挂（文件早已在 Player/ 下但 index 从未引用）
-export default memo(() => {
+// 零新增键面；罗马音为孤儿组件补挂（文件早已在 Player/ 下但 index 从未引用）。
+// first prop 接线（审查 I-架1）：宿主 Main/SettingSectionScreen 按节组件惯例传 first，
+// 本组件为项目首个内含双 SettingSection 的节组件，first 转发给首组收敛顶部留白
+export default memo(({ first }: { first?: boolean }) => {
   const t = useI18n()
 
   return (
     <>
-      <SettingSection title={t('setting_player')}>
+      <SettingSection title={t('setting_player')} first={first}>
         <IsShowBluetoothLyric />
         <PlayHighQuality />
         <DislikeList />

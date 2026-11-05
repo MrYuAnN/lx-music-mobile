@@ -9,6 +9,7 @@ import { useTheme } from '@/store/theme/hook'
 import { createStyle, toast } from '@/utils/tools'
 import { dislikeMusic } from '@/core/player/player'
 import Card from './Card'
+import sharedStyle from './style'
 
 // 「加入黑名单」动作行（治理批 P5 播放页入口，对标网易云 FM 垃圾桶：拉黑当前歌并自动切下一首，
 // dislikeMusic 链路现成；写入经 utils/dislikeManage 转义单点）。
@@ -24,6 +25,7 @@ interface Props {
 const SettingDislike = ({ onDismiss }: Props) => {
   const theme = useTheme()
   const t = useI18n()
+  const destructiveColor = theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light
 
   const handlePress = useCallback(() => {
     onDismiss()
@@ -35,13 +37,8 @@ const SettingDislike = ({ onDismiss }: Props) => {
   return (
     <Card>
       <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={handlePress}>
-        <Icon
-          name="dislike-add"
-          size={ICON_SIZE.list}
-          color={theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light}
-          style={styles.icon}
-        />
-        <Text size={15} color={theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light}>{t('dislike_play_action')}</Text>
+        <Icon name="dislike-add" size={ICON_SIZE.list} color={destructiveColor} style={sharedStyle.icon} />
+        <Text size={15} color={destructiveColor}>{t('dislike_play_action')}</Text>
       </TouchableOpacity>
     </Card>
   )
@@ -53,9 +50,6 @@ const styles = createStyle({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  icon: {
-    marginRight: 12,
   },
 })
 

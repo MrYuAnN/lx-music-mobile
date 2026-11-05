@@ -13,8 +13,9 @@ import { createStyle } from '@/utils/tools'
 
 // 「歌词字号」两行（2026-11-05 弹窗重构批：自播放页更多弹层（横屏）迁入设置页歌词组，
 // 竖屏横屏两键独立成行——两布局字号独立设计（默认 210/220）不合并；原弹窗组件
-// SettingLrcFontSize 本体保留（竖屏歌词动作行 SheetBase 仍在消费），行形态按设置页
-// 惯例重写（FORM_ROW_PADDING + 标题行右数值 + 整宽滑杆，滑动本地态、松手落盘））
+// SettingLrcFontSize 本体保留（竖屏歌词动作行 SheetBase 仍在消费）。滑杆行形态为
+// fork 首个设置页滑杆行（无先例）：滑杆行为沿弹窗版组件同参（100-300/step2/松手落盘），
+// 行容器沿 FORM_ROW_PADDING 表单惯例（审查 I-PM2 措辞修正））
 const DIRECTIONS = [
   { direction: 'vertical', labelKey: 'setting_play_lrc_font_size_vertical', settingKey: 'playDetail.vertical.style.lrcFontSize' },
   { direction: 'horizontal', labelKey: 'setting_play_lrc_font_size_horizontal', settingKey: 'playDetail.horizontal.style.lrcFontSize' },

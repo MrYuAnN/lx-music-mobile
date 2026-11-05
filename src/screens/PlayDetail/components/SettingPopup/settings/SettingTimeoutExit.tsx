@@ -10,6 +10,7 @@ import { useI18n } from '@/lang'
 import { useTimeoutExitTimeInfo } from '@/core/player/timeoutExit'
 import { createStyle } from '@/utils/tools'
 import Card from './Card'
+import sharedStyle from './style'
 
 // 「定时关闭」入口行（2026-10-20 播放页打磨批：原顶栏定时钮迁入更多弹层）。
 // 右侧状态值：关闭 / 播完停止（计时结束等待播完）/ 剩余倒计时（激活红字，每秒刷新）
@@ -46,7 +47,7 @@ export default memo(() => {
     <>
       <Card>
         <TouchableOpacity style={styles.container} activeOpacity={0.6} onPress={() => { modalRef.current?.show() }}>
-          <Icon name="timer" size={ICON_SIZE.list} color={theme['c-font']} style={styles.icon} />
+          <Icon name="timer" size={ICON_SIZE.list} color={theme['c-font']} style={sharedStyle.icon} />
           <Text size={15} style={styles.label}>{t('timeout_exit_title')}</Text>
           <Status theme={theme} t={t} />
         </TouchableOpacity>
@@ -65,9 +66,6 @@ const styles = createStyle({
     minHeight: 44,
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  icon: {
-    marginRight: 12,
   },
   label: {
     flexGrow: 1,
