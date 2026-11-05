@@ -8,6 +8,7 @@ import ListMusicMultiAdd, { type MusicMultiAddModalType as ListAddMultiType } fr
 import ListMusicAdd, { type MusicAddModalType as ListMusicAddType } from '@/components/MusicAddModal'
 import MultipleModeBar, { type MultipleModeBarType, type SelectMode } from './MultipleModeBar'
 import { handlePlay, handlePlayLater, handleShare, handleCopyLink } from './listAction'
+import type { PLAY_CHANNEL } from '@/config/constant'
 import { guardEntitlementGate } from '@/core/shiyin/gateApp'
 import { createStyle } from '@/utils/tools'
 
@@ -25,6 +26,9 @@ export interface OnlineListProps {
   scrollYAnimated?: Animated.Value
   /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：列表延伸整屏 paddingTop 补偿，未传零 diff */
   contentPaddingTop?: number
+  /** 播放发起渠道（使用统计 play_source 单源）：内部点歌/菜单播放透传给 playList；自带
+   * onPlayList 的宿主（歌单/排行榜）在自家链路打标，无需传 */
+  playChannel?: PLAY_CHANNEL
 }
 export interface OnlineListType {
   setList: (list: SY.Music.MusicInfoOnline[], isAppend?: boolean, showSource?: boolean) => void
@@ -45,6 +49,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
   rankBadge,
   scrollYAnimated,
   contentPaddingTop,
+  playChannel,
 }, ref) => {
   const downloadQualityModalRef = useRef<DownloadQualityModalType>(null)
 
@@ -117,6 +122,7 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
           rankBadge={rankBadge}
           scrollYAnimated={scrollYAnimated}
           contentPaddingTop={contentPaddingTop}
+          playChannel={playChannel}
         />
         <MultipleModeBar
           ref={multipleModeBarRef}
@@ -132,10 +138,10 @@ export default forwardRef<OnlineListType, OnlineListProps>(({
         onPlay={info => {
           hancelExitSelect()
           // 多选以选择集为队列；单选以当前列表为队列从该曲起播
-          if (info.selectedList.length) void handlePlay(info.selectedList, 0)
-          else void handlePlay(info.list, info.index)
+          if (info.selectedList.length) void handlePlay(info.selectedList, 0, playChannel)
+          else void handlePlay(info.list, info.index, playChannel)
         }}
-        onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.musicInfo, info.selectedList, hancelExitSelect) }}
+        onPlayLater={info => { hancelExitSelect(); handlePlayLater(info.musicInfo, info.selectedList, hancelExitSelect, playChannel) }}
         onShare={info => { handleShare(info.musicInfo) }}
         onCopyLink={info => { handleCopyLink(info.musicInfo) }}
         onAdd={handleAddMusic}

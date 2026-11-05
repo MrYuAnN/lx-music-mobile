@@ -1,4 +1,4 @@
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, storageDataPrefix, type PLAY_CHANNEL } from '@/config/constant'
 import { addDislikeInfo } from '@/core/dislikeList'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
@@ -11,9 +11,10 @@ import { toOldMusicInfo } from '@/utils'
 const ONLINE_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_ONLINE
 
 // 点播=以来源列表为队列注入临时列表播放（对齐 QQ/网易云；不再写默认歌单）
-export const handlePlay = async(list: SY.Music.MusicInfoOnline[], index: number) => {
+// channel=播放发起渠道（搜索/在线歌单等打标，使用统计 play_source 单源）
+export const handlePlay = async(list: SY.Music.MusicInfoOnline[], index: number, channel?: PLAY_CHANNEL | '') => {
   await setTempList(ONLINE_TEMP_LIST_ID, [...list])
-  void playList(LIST_IDS.TEMP, index)
+  void playList(LIST_IDS.TEMP, index, channel)
 }
 // 拉黑当前条目（治理批 P5：菜单快捷入口回归，对标 QQ 歌单 ⋮ 快捷拉黑；列表内标记不切歌，
 // 写入经 core→utils 转义单点）
@@ -22,12 +23,13 @@ export const handleDislike = (musicInfo: { name: string, singer: string }) => {
   toast(global.i18n.t('dislike_add_success_tip'))
 }
 
-export const handlePlayLater = (musicInfo: SY.Music.MusicInfoOnline, selectedList: SY.Music.MusicInfoOnline[], onCancelSelect: () => void) => {
+export const handlePlayLater = (musicInfo: SY.Music.MusicInfoOnline, selectedList: SY.Music.MusicInfoOnline[], onCancelSelect: () => void, channel?: PLAY_CHANNEL | '') => {
+  // 稍后播放插播带发起渠道（审查 C1：缺省项 listId='' 反推落 unknown 污染渠道分布）
   if (selectedList.length) {
-    addTempPlayList(selectedList.map(s => ({ listId: '', musicInfo: s })))
+    addTempPlayList(selectedList.map(s => ({ listId: '', musicInfo: s, channel })))
     onCancelSelect()
   } else {
-    addTempPlayList([{ listId: '', musicInfo }])
+    addTempPlayList([{ listId: '', musicInfo, channel }])
   }
 }
 

@@ -6,7 +6,7 @@ import songlistState from '@/store/songlist/state'
 import { handlePlay } from './listAction'
 import { createStyle } from '@/utils/tools'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { SCREEN_HEADER_HEIGHT, PLAY_CHANNELS } from '@/config/constant'
 import ListMusicSearch, { type ListMusicSearchType } from '@/screens/Home/Views/Mylist/MusicList/ListMusicSearch'
 import Header, { type HeaderType } from './Header'
 import { useListInfo } from './state'
@@ -169,6 +169,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ componentId, scrollY
       <OnlineList
         ref={listRef}
         onPlayList={handlePlayList}
+        playChannel={PLAY_CHANNELS.SONGLIST} // 菜单「稍后播放」带发起渠道（行点击走自家 listAction 已打标）
         onRefresh={handleRefresh}
         onLoadMore={handleLoadMore}
         ListHeaderComponent={header}

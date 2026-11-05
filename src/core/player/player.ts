@@ -28,7 +28,7 @@ import { getOrderedPlayList } from './queue'
 import BackgroundTimer from 'react-native-background-timer'
 import { checkNotificationPermission, debounceBackgroundTimer } from '@/utils/tools'
 import { guardEntitlementGate } from '@/core/shiyin/gateApp'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, type PLAY_CHANNEL } from '@/config/constant'
 import { addListMusics, removeListMusics } from '@/core/list'
 import { addDislikeInfo } from '@/core/dislikeList'
 import { updateRecentPlayPic } from './recentPlay'
@@ -415,8 +415,9 @@ const handlePlay = async() => {
  * 播放列表内歌曲
  * @param listId 列表id
  * @param id 歌曲id
+ * @param channel 播放发起渠道（使用统计 play_source 单源；缺省按 listId 反推）
  */
-export const playListById = async(listId: string, id: string) => {
+export const playListById = async(listId: string, id: string, channel?: PLAY_CHANNEL | '') => {
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   const musicInfo = getList(listId).find(m => m.id == id)
@@ -424,7 +425,7 @@ export const playListById = async(listId: string, id: string) => {
   // ⑧ 拦截前移（2026-11-02 用户反馈：拦在 handlePlay 时 setPlayMusicInfo/addPlayedList
   // 已落库——最近播放出现未真正播放的歌）：点击入口在写播放状态前拦截
   if (await guardEntitlementGate()) return
-  setPlayMusicInfo(listId, musicInfo)
+  setPlayMusicInfo(listId, musicInfo, false, channel)
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
   await handlePlay()
@@ -434,13 +435,14 @@ export const playListById = async(listId: string, id: string) => {
  * 播放列表内歌曲
  * @param listId 列表id
  * @param index 播放的歌曲位置
+ * @param channel 播放发起渠道（使用统计 play_source 单源；缺省按 listId 反推）
  */
-export const playList = async(listId: string, index: number) => {
+export const playList = async(listId: string, index: number, channel?: PLAY_CHANNEL | '') => {
   const prevListId = playerState.playInfo.playerListId
   setPlayListId(listId)
   // ⑧ 拦截前移（同 playListById：先于 setPlayMusicInfo/addPlayedList 落库）
   if (await guardEntitlementGate()) return
-  setPlayMusicInfo(listId, getList(listId)[index])
+  setPlayMusicInfo(listId, getList(listId)[index], false, channel)
   if (settingState.setting['player.isAutoCleanPlayedList'] || prevListId != listId) clearPlayedList()
   clearTempPlayeList()
   await handlePlay()
@@ -543,6 +545,7 @@ export const getNextPlayMusicInfo = async(): Promise<SY.Player.PlayMusicInfo | n
     musicInfo: filteredList[nextIndex],
     listId: currentListId,
     isTempPlay: false,
+    channel: playMusicInfo.channel, // 渠道随会话延续（自动切歌不换渠道）
   }
 
   if (togglePlayMethod == 'random') {
@@ -553,7 +556,7 @@ export const getNextPlayMusicInfo = async(): Promise<SY.Player.PlayMusicInfo | n
 }
 
 const handlePlayNext = async(playMusicInfo: SY.Player.PlayMusicInfo) => {
-  setPlayMusicInfo(playMusicInfo.listId, playMusicInfo.musicInfo, playMusicInfo.isTempPlay)
+  setPlayMusicInfo(playMusicInfo.listId, playMusicInfo.musicInfo, playMusicInfo.isTempPlay, playMusicInfo.channel)
   await handlePlay()
 }
 /**
@@ -656,6 +659,7 @@ export const playNext = async(isAutoToggle = false): Promise<void> => {
     musicInfo: filteredList[nextIndex],
     listId: currentListId,
     isTempPlay: false,
+    channel: playMusicInfo.channel, // 渠道随会话延续（自动切歌不换渠道）
   })
 }
 
@@ -745,6 +749,7 @@ export const playPrev = async(isAutoToggle = false): Promise<void> => {
     musicInfo: filteredList[nextIndex],
     listId: currentListId,
     isTempPlay: false,
+    channel: playMusicInfo.channel, // 渠道随会话延续（自动切歌不换渠道）
   })
 }
 

@@ -248,7 +248,8 @@ export default forwardRef<PlayListPanelType>((_, ref) => {
   const handlePress = useCallback((item: SY.Music.MusicInfo) => {
     const listId = playerState.playInfo.playerListId
     if (!listId) return
-    void playListById(listId, item.id)
+    // 队列点歌延续当前会话渠道（审查 I2：与自动切歌延续口径统一）
+    void playListById(listId, item.id, playerState.playMusicInfo.channel)
   }, [])
 
   // 队列不可见（下载列表/临时榜单缓存丢失）与无队列两种空态区分，避免「正在播放却提示暂无播放列表」的矛盾

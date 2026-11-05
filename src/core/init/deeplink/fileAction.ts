@@ -4,7 +4,7 @@ import { type FileType } from '@/utils/fs'
 import { confirmDialog } from '@/utils/tools'
 import playerState from '@/store/player/state'
 import { addTempPlayList } from '@/core/player/tempPlayList'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS } from '@/config/constant'
 import { playNext } from '@/core/player/player'
 import { buildLocalMusicInfo, buildLocalMusicInfoByFilePath } from '@/screens/Home/Views/Mylist/manage/listAction'
 
@@ -22,7 +22,7 @@ export const handleFileMusicAction = async(file: FileType) => {
   const isPlaying = !!playerState.playMusicInfo.musicInfo
   const musicInfo = info ? buildLocalMusicInfo(file.path, info) : buildLocalMusicInfoByFilePath(file)
   console.log(musicInfo)
-  addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
+  addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true, channel: PLAY_CHANNELS.DEEPLINK }])
   if (isPlaying) void playNext()
 }
 

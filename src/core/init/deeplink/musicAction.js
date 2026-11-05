@@ -1,7 +1,7 @@
 import { decodeName, toNewMusicInfo } from '@/utils'
 import { dataVerify, qualityFilter, sourceVerify } from './utils'
 import playerState from '@/store/player/state'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS } from '@/config/constant'
 import { playNext } from '@/core/player/player'
 import { getOtherSource } from '@/core/music/utils'
 import { addTempPlayList } from '@/core/player/tempPlayList'
@@ -143,7 +143,7 @@ const handlePlayMusic = ({ data: _musicInfo }) => {
   }
   musicInfo = toNewMusicInfo(musicInfo)
   const isPlaying = !!playerState.playMusicInfo.musicInfo
-  addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
+  addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true, channel: PLAY_CHANNELS.DEEPLINK }])
   if (isPlaying) playNext()
 }
 
@@ -190,9 +190,9 @@ const handleSearchPlayMusic = async({ paths, data }) => {
     const musicInfo = musicList[0]
     const isPlaying = !!playerState.playMusicInfo.musicInfo
     if (info.playLater) {
-      addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo }])
+      addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, channel: PLAY_CHANNELS.DEEPLINK }])
     } else {
-      addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
+      addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true, channel: PLAY_CHANNELS.DEEPLINK }])
       if (isPlaying) playNext()
     }
   } else {

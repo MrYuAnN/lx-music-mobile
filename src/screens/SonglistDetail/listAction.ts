@@ -2,7 +2,7 @@ import { createList, removeUserList, setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { updateSetting } from '@/core/common'
 import { getListDetail, getListDetailAll } from '@/core/songlist'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS } from '@/config/constant'
 import listState from '@/store/list/state'
 import { confirmDialog, toMD5, toast } from '@/utils/tools'
 import { type Source } from '@/store/songlist/state'
@@ -18,7 +18,7 @@ export const handlePlay = async(id: string, source: Source, list?: SY.Music.Musi
   if (!list?.length) list = (await getListDetail(id, source, 1)).list
   if (list?.length) {
     await setTempList(listId, [...list])
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.SONGLIST)
     isPlayingList = true
   }
   const fullList = await getListDetailAll(source, id)
@@ -29,7 +29,7 @@ export const handlePlay = async(id: string, source: Source, list?: SY.Music.Musi
     }
   } else {
     await setTempList(listId, [...fullList])
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.SONGLIST)
   }
 }
 
@@ -42,7 +42,7 @@ export const handlePlayShuffle = async(id: string, source: Source) => {
   if (!list.length) return
   void updateSetting({ 'player.togglePlayMethod': 'random' })
   await setTempList(listId, [...list])
-  void playList(LIST_IDS.TEMP, 0)
+  void playList(LIST_IDS.TEMP, 0, PLAY_CHANNELS.SONGLIST)
   const fullList = await getListDetailAll(source, id)
   if (!fullList.length) return
   if (listState.tempListMeta.id == listId) {

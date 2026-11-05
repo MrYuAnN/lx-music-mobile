@@ -12,7 +12,7 @@ import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
-import { LIST_IDS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 
 export interface LocalMusicGroupProps {
@@ -55,7 +55,7 @@ export default ({ componentId, type, value }: LocalMusicGroupProps) => {
     // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, playList_).then(() => {
       const index = playList_.findIndex(m => m.id == item.id)
-      if (index > -1) void playList(LIST_IDS.TEMP, index)
+      if (index > -1) void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.LOCAL)
     })
   }, [])
 

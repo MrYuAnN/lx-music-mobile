@@ -18,6 +18,7 @@ import playerState from '@/store/player/state'
 import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { LIST_IDS, ICON_SIZE } from '@/config/constant'
 import { addTempPlayList } from '@/core/player/tempPlayList'
+import { playSourceOf } from '@/core/player/playSource'
 import { playNext } from '@/core/player/player'
 import { SPACING } from '@/config/spacing'
 
@@ -326,7 +327,8 @@ const Modal = forwardRef<ModalType, {}>((props, ref) => {
   const handlePlay = useCallback((musicInfo: SY.Music.MusicInfoOnline) => {
     setToggleSource(musicInfo)
     const isPlaying = !!playerState.playMusicInfo.musicInfo
-    addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true }])
+    // 换源插播延续当前会话渠道（审查 C1：PLAY_LATER 项反推落 unknown）
+    addTempPlayList([{ listId: LIST_IDS.PLAY_LATER, musicInfo, isTop: true, channel: playerState.playMusicInfo.channel || playSourceOf(playerState.playMusicInfo.listId) }])
     if (isPlaying) void playNext()
   }, [])
 

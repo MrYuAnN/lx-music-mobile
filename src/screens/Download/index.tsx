@@ -25,7 +25,7 @@ import {
 } from '@/core/download'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
-import { LIST_IDS, storageDataPrefix, ICON_SIZE, SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, storageDataPrefix, ICON_SIZE, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { qualityLabel as formatQuality } from '@/utils/music'
 import { confirmDialog, createStyle, toast } from '@/utils/tools'
 import { SPACING } from '@/config/spacing'
@@ -254,7 +254,7 @@ export default ({ componentId }: { componentId: string }) => {
       case 'play': {
         const musicInfo = toDownloadedMusicInfo(task)
         void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, [musicInfo]).then(() => {
-          void playList(LIST_IDS.TEMP, 0)
+          void playList(LIST_IDS.TEMP, 0, PLAY_CHANNELS.DOWNLOAD)
         })
         break
       }
@@ -276,7 +276,7 @@ export default ({ componentId }: { componentId: string }) => {
   const handleCompletedPress = useCallback((musicInfo: SY.Music.MusicInfoLocal, list: SY.Music.MusicInfoLocal[]) => {
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
       const index = list.findIndex(m => m.id == musicInfo.id)
-      if (index > -1) void playList(LIST_IDS.TEMP, index)
+      if (index > -1) void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.DOWNLOAD)
     })
   }, [])
 

@@ -1,4 +1,5 @@
 import type { Track as RNTrack } from 'react-native-track-player'
+import type { PLAY_CHANNEL } from '@/config/constant'
 
 declare global {
   namespace SY {
@@ -36,6 +37,13 @@ declare global {
           * 是否属于 “稍后播放”
           */
         isTempPlay: boolean
+        /**
+         * 播放发起渠道（使用统计 play_source 单源，值域=PLAY_CHANNELS）：
+         * search/leaderboard/songlist/download/local/recent/preview/deeplink 等。
+         * 打标入口见各屏播放调用；缺省（我的列表/播放队列/恢复播放等）由统计侧
+         * 按 listId 反推兜底
+         */
+        channel?: PLAY_CHANNEL | ''
       }>
 
       interface PlayInfo {
@@ -66,6 +74,11 @@ declare global {
          * 是否添加到列表顶部
          */
         isTop?: boolean
+        /**
+         * 播放发起渠道（使用统计 play_source 单源，值域=PLAY_CHANNELS）：稍后播放
+         * 插播时经 handlePlayNext 透传；缺省由统计侧按 listId 反推兜底
+         */
+        channel?: PLAY_CHANNEL | ''
       }
 
       interface SavedPlayInfo {
@@ -75,6 +88,8 @@ declare global {
         index: number
         /** 当前播放歌曲 id（2026-10-30 审查 I-1：TEMP 列表可被新搜索覆盖，恢复时按 id 重定位防错歌错进度；旧存档无此字段走位置语义） */
         musicId?: string
+        /** 播放发起渠道（2026-11-05 渠道区分批审查 S-5：重启恢复延续原会话渠道；旧存档无此字段走 listId 反推兜底） */
+        channel?: PLAY_CHANNEL | ''
       }
 
       interface Track extends RNTrack {

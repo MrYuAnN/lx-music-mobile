@@ -1,6 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import type { Animated } from 'react-native'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
+import { PLAY_CHANNELS } from '@/config/constant'
 import { clearListDetail, getListDetail, setListDetail, setListDetailInfo } from '@/core/leaderboard'
 import boardState from '@/store/leaderboard/state'
 import { handlePlay } from './listAction'
@@ -94,6 +95,7 @@ export default forwardRef<MusicListType, MusicListProps>(({ scrollYAnimated, con
   return <OnlineList
     ref={listRef}
     onPlayList={handlePlayList}
+    playChannel={PLAY_CHANNELS.LEADERBOARD} // 菜单「稍后播放」带发起渠道（行点击走自家 listAction 已打标）
     onRefresh={handleRefresh}
     onLoadMore={handleLoadMore}
     checkHomePagerIdle

@@ -7,6 +7,7 @@ import { AnimatedFlatList } from '@/components/common/AnimatedLists'
 import { usePlayerBarBottomInset } from '@/components/player/PlayerBar'
 import { createStyle, getRowInfo, toast, type RowInfoType } from '@/utils/tools'
 import type { Position } from './ListMenu'
+import type { PLAY_CHANNEL } from '@/config/constant'
 import type { SelectMode } from './MultipleModeBar'
 import { useTheme } from '@/store/theme/hook'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
@@ -41,6 +42,8 @@ export interface ListProps {
   scrollYAnimated?: Animated.Value
   /** 顶栏族穿行化（毛玻璃全体系阶段三，方案 §5）：列表延伸整屏时的 paddingTop 补偿（状态栏+顶栏[+固定子头]），未传零 diff */
   contentPaddingTop?: number
+  /** 播放发起渠道（使用统计 play_source 单源）：onPlayList 缺省走内部点歌时透传 playList */
+  playChannel?: PLAY_CHANNEL
 }
 export interface ListType {
   setList: (list: SY.Music.MusicInfoOnline[], isAppend: boolean, showSource: boolean) => void
@@ -72,6 +75,7 @@ const List = forwardRef<ListType, ListProps>(({
   rankBadge = false,
   scrollYAnimated,
   contentPaddingTop,
+  playChannel,
 }, ref) => {
   // 列表内搜索定位 toast 文案（scrollToInfo 未命中）
   const t = useI18n()
@@ -190,7 +194,7 @@ const List = forwardRef<ListType, ListProps>(({
         if (onPlayList != null) {
           onPlayList(index)
         } else {
-          void handlePlay(currentList, index)
+          void handlePlay(currentList, index, playChannel)
         }
       }
     })

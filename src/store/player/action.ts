@@ -1,4 +1,5 @@
 import { arrPush, arrUnshift, formatPlayTime2 } from '@/utils'
+import type { PLAY_CHANNEL } from '@/config/constant'
 import state from './state'
 
 type PlayerMusicInfoKeys = keyof SY.Player.MusicInfo
@@ -16,8 +17,8 @@ export default {
 
     global.state_event.playInfoChanged({ ...state.playInfo })
   },
-  setPlayMusicInfo(listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false) {
-    state.playMusicInfo = { listId, musicInfo, isTempPlay }
+  setPlayMusicInfo(listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false, channel?: PLAY_CHANNEL | '') {
+    state.playMusicInfo = { listId, musicInfo, isTempPlay, channel }
     // 换歌重置实际播放档（2026-10-29 题1）：走 setActualQuality 发事件（审查 I-A2：裸赋值
     // 不通知订阅方，换歌瞬间 UI 残留上一首档位），UI 回退全局设置档
     this.setActualQuality(null)

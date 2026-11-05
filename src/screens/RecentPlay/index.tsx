@@ -18,7 +18,7 @@ import { addTempPlayList } from '@/core/player/tempPlayList'
 import { useLikedSet, useLikeToggle } from '@/store/list/hook'
 import { useDownloadedSet, action as downloadedAction } from '@/store/downloaded'
 import { toOnlineIdentity } from '@/utils/music'
-import { LIST_IDS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, storageDataPrefix, SCREEN_HEADER_HEIGHT } from '@/config/constant'
 import { createStyle } from '@/utils/tools'
 
 const RECENT_TEMP_LIST_ID = storageDataPrefix.TEMP_LIST_RECENT
@@ -78,7 +78,7 @@ export default ({ componentId }: { componentId: string }) => {
     // 与搜索歌单试听同模式：最近播放列表注入临时列表播放
     const musicInfos = list.map(item => item.musicInfo)
     await setTempList(RECENT_TEMP_LIST_ID, musicInfos)
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.RECENT)
   }, [list])
 
   const showMenu = useCallback((item: SY.Music.MusicInfo, index: number) => {
@@ -100,7 +100,7 @@ export default ({ componentId }: { componentId: string }) => {
         void handlePlay(index)
         break
       case 'playLater':
-        addTempPlayList([{ listId: '', musicInfo: item }])
+        addTempPlayList([{ listId: '', musicInfo: item, channel: PLAY_CHANNELS.RECENT }])
         break
       case 'add':
         listMusicAddRef.current?.show({ musicInfo: item, listId: '', isMove: false })

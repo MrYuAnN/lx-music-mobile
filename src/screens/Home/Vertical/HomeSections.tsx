@@ -17,7 +17,7 @@ import { Icon } from '@/components/common/Icon'
 import { getGlassHairlineColor } from '@/components/common/GlassSurface'
 import { BorderWidths } from '@/theme'
 import Image from '@/components/common/Image'
-import { LIST_IDS, storageDataPrefix, ICON_SIZE, LOVE_COLOR, LOVE_GRADIENT } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, storageDataPrefix, ICON_SIZE, LOVE_COLOR, LOVE_GRADIENT } from '@/config/constant'
 import Text, { FontFamilies } from '@/components/common/Text'
 import CreateListDialog, { type CreateListDialogType } from '@/components/common/CreateListDialog'
 import ImportListDialog, { type ImportListDialogType } from '@/components/common/ImportListDialog'
@@ -217,7 +217,7 @@ const RecentPlayCard = () => {
   const handlePlay = async(index: number) => {
     const musicInfos = list.map(item => item.musicInfo)
     await setTempList(storageDataPrefix.TEMP_LIST_RECENT, musicInfos)
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.RECENT)
   }
 
   // 空态整块隐藏（含卡头，对标 AM/Spotify 空内容不显示区块；全量入口随之无必要）

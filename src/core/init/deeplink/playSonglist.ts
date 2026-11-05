@@ -1,4 +1,4 @@
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS } from '@/config/constant'
 import { setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { getListDetail, getListDetailAll } from '@/core/songlist'
@@ -24,14 +24,14 @@ const playSongListDetail = async(source: SY.OnlineSource, link: string, playInde
   if (playIndex == null || list.length > playIndex) {
     isPlayingList = true
     await setTempList(playListId, list)
-    await playList(LIST_IDS.TEMP, getListPlayIndex(list, playIndex))
+    await playList(LIST_IDS.TEMP, getListPlayIndex(list, playIndex), PLAY_CHANNELS.SONGLIST)
   }
   list = await getListDetailAll(source, id)
   if (isPlayingList) {
     if (listState.tempListMeta.id == playListId) await setTempList(playListId, list)
   } else {
     await setTempList(playListId, list)
-    await playList(LIST_IDS.TEMP, getListPlayIndex(list, playIndex))
+    await playList(LIST_IDS.TEMP, getListPlayIndex(list, playIndex), PLAY_CHANNELS.SONGLIST)
   }
 }
 export const playSonglist = async(source: SY.OnlineSource, link: string, playIndex?: number) => {

@@ -19,7 +19,7 @@ export default async(setting: SY.AppSetting) => {
   if (index < 0 || !list[index]) return
   global.sy.restorePlayInfo = { ...info, index }
 
-  await playList(info.listId, index)
+  await playList(info.listId, index, info.channel) // 恢复延续存档渠道（审查 S5）
 
   if (setting['player.startupAutoPlay']) setTimeout(play)
 

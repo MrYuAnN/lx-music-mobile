@@ -12,6 +12,10 @@ export interface InitState {
      * 是否属于 “稍后播放”
      */
     isTempPlay: boolean
+    /**
+     * 播放发起渠道（使用统计 play_source 单源；可选，缺省统计侧按 listId 反推）
+     */
+    channel?: SY.Player.PlayMusicInfo['channel']
   }
   playInfo: SY.Player.PlayInfo
   musicInfo: SY.Player.MusicInfo

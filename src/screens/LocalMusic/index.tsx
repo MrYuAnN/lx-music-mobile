@@ -16,7 +16,7 @@ import { Icon } from '@/components/common/Icon'
 
 import LocalMusicMenu, { type LocalMusicMenuType } from './LocalMusicMenu'
 import { FolderSectionList, AlbumGrid, ArtistList, splitSingers, type MusicGroup, type GroupViewActions } from './GroupViews'
-import { storageDataPrefix, LIST_IDS, SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
+import { storageDataPrefix, LIST_IDS, PLAY_CHANNELS, SCREEN_HEADER_HEIGHT, ICON_SIZE } from '@/config/constant'
 import { useI18n } from '@/lang'
 import { useTheme } from '@/store/theme/hook'
 import { useStatusbarHeight } from '@/store/common/hook'
@@ -199,7 +199,7 @@ export default ({ componentId }: { componentId: string }) => {
     // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
     void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, playList_).then(() => {
       const index = playList_.findIndex(m => m.id == item.id)
-      if (index > -1) void playList(LIST_IDS.TEMP, index)
+      if (index > -1) void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.LOCAL)
     })
   }, [])
 

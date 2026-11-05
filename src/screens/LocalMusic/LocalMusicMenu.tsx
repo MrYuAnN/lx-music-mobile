@@ -6,7 +6,7 @@ import { useI18n } from '@/lang'
 import { setTempList } from '@/core/list'
 import { addTempPlayList } from '@/core/player/tempPlayList'
 import { playList } from '@/core/player/player'
-import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, storageDataPrefix } from '@/config/constant'
 import { isAppDownloadedPath, removeLocalMusics } from '@/core/localMusic'
 import { readMetadata, writeMetadata, writePic } from '@/utils/localMediaMetadata'
 import { downloadFile, temporaryDirectoryPath, unlink } from '@/utils/fs'
@@ -51,13 +51,13 @@ export default forwardRef<LocalMusicMenuType>((_, ref) => {
         if (index < 0) break
         // 本地歌与在线歌共用临时列表播放链（播放器按 source 分流取 URL）
         void setTempList(storageDataPrefix.TEMP_LIST_LOCAL, list).then(() => {
-          void playList(LIST_IDS.TEMP, index)
+          void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.LOCAL)
         })
         break
       }
       case 'playLater':
         // 下载曲按原曲在线身份入队（2026-10-29 题3 定稿：下载是属性非身份，歌单/稍后播放存歌不存文件）
-        addTempPlayList([{ listId: '', musicInfo: item.meta.onlineInfo ?? item }])
+        addTempPlayList([{ listId: '', musicInfo: item.meta.onlineInfo ?? item, channel: PLAY_CHANNELS.LOCAL }])
         break
       case 'add':
         listMusicAddRef.current?.show({ musicInfo: item.meta.onlineInfo ?? item, listId: '', isMove: false })

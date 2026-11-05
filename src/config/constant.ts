@@ -39,6 +39,27 @@ export const LIST_IDS = {
   PLAY_LATER: null,
 } as const
 
+// 播放发起渠道值域单源（2026-11-05 渠道区分批；PlayMusicInfo/TempPlayListItem/
+// SavedPlayInfo 的 channel 引用此值域，管理台 usageChannelLabel 随此人工同步）。
+// 打标入口：Search/Leaderboard/SonglistDetail/Download/LocalMusic/RecentPlay/
+// AddMusicScreen/deeplink；未打标路径（我的列表/播放队列/恢复播放）由统计侧按
+// listId 反推兜底（core/player/playSource.ts），temp=临时/队列兜底值
+export const PLAY_CHANNELS = {
+  SEARCH: 'search',
+  LEADERBOARD: 'leaderboard',
+  SONGLIST: 'songlist',
+  PLAYLIST: 'playlist',
+  DEFAULT: 'default',
+  LOVE: 'love',
+  DOWNLOAD: 'download',
+  LOCAL: 'local',
+  RECENT: 'recent',
+  PREVIEW: 'preview',
+  DEEPLINK: 'deeplink',
+  TEMP: 'temp',
+} as const
+export type PLAY_CHANNEL = typeof PLAY_CHANNELS[keyof typeof PLAY_CHANNELS]
+
 // 横屏 Home 侧栏宽度（单源）：Aside 布局与迷你条 overlay 横屏让位共用（新批问题4 审查 S-5 跨层引用收敛）
 export const NAV_WIDTH = 68
 

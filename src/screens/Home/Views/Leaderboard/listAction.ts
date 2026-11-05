@@ -1,7 +1,7 @@
 import { createList, setTempList } from '@/core/list'
 import { playList } from '@/core/player/player'
 import { getListDetail, getListDetailAll } from '@/core/leaderboard'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS } from '@/config/constant'
 import listState from '@/store/list/state'
 import syncSourceList from '@/core/syncSourceList'
 import { confirmDialog, toMD5, toast } from '@/utils/tools'
@@ -16,7 +16,7 @@ export const handlePlay = async(id: string, list?: SY.Music.MusicInfoOnline[], i
   if (!list?.length) list = (await getListDetail(id, 1)).list
   if (list?.length) {
     await setTempList(listId, [...list])
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.LEADERBOARD)
     isPlayingList = true
   }
   const fullList = await getListDetailAll(id)
@@ -27,7 +27,7 @@ export const handlePlay = async(id: string, list?: SY.Music.MusicInfoOnline[], i
     }
   } else {
     await setTempList(listId, [...fullList])
-    void playList(LIST_IDS.TEMP, index)
+    void playList(LIST_IDS.TEMP, index, PLAY_CHANNELS.LEADERBOARD)
   }
 }
 

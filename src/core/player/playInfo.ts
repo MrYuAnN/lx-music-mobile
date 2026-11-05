@@ -4,7 +4,7 @@ import { addRecentPlay } from './recentPlay'
 
 import { getListMusicSync } from '@/utils/listManage'
 import { setProgress } from '@/core/player/progress'
-import { LIST_IDS } from '@/config/constant'
+import { LIST_IDS, type PLAY_CHANNEL } from '@/config/constant'
 
 
 export const setMusicInfo = (musicInfo: Partial<SY.Player.MusicInfo>) => {
@@ -119,9 +119,10 @@ const setPlayerMusicInfo = (musicInfo: SY.Music.MusicInfo | SY.Download.ListItem
  * @param listId 歌曲所属的列表id
  * @param musicInfo 歌曲信息
  * @param isTempPlay 是否临时播放
+ * @param channel 播放发起渠道（使用统计 play_source 单源；缺省由统计侧按 listId 反推）
  */
-export const setPlayMusicInfo = (listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false) => {
-  playerActions.setPlayMusicInfo(listId, musicInfo, isTempPlay)
+export const setPlayMusicInfo = (listId: string | null, musicInfo: SY.Download.ListItem | SY.Music.MusicInfo | null, isTempPlay: boolean = false, channel?: PLAY_CHANNEL | '') => {
+  playerActions.setPlayMusicInfo(listId, musicInfo, isTempPlay, channel)
   setPlayerMusicInfo(musicInfo)
 
   setProgress(0, 0)

@@ -17,6 +17,7 @@ import { getPosition } from '@/plugins/player'
 import playerState from '@/store/player/state'
 import { getData, removeData, saveData } from '@/plugins/storage'
 import { LIST_IDS, storageDataPrefix } from '@/config/constant'
+import { playSourceOf } from '@/core/player/playSource'
 import { trackUsageEvent, type UsagePayload } from './tracker'
 
 /** 播放会话快照（=play_end 私有载荷减 end_reason；落盘形状即孤儿补记形状）。
@@ -49,14 +50,10 @@ let tickCount = 0
 // 采样定时器：会话活跃才起、闭会话清（审查 S2/Arch-S2——常驻每秒跨桥空转纯功耗）
 let tickTimer: ReturnType<typeof BackgroundTimer.setInterval> | null = null
 
-// play_source 低基数映射（listId 直传会产生自建歌单 UUID 高基数脏维度，Q2 一步做对）
-const playSourceOf = (listId: string | null): string => {
-  if (listId == LIST_IDS.DEFAULT) return 'default'
-  if (listId == LIST_IDS.LOVE) return 'love'
-  if (listId == LIST_IDS.TEMP) return 'temp'
-  if (listId == LIST_IDS.DOWNLOAD) return 'download'
-  return listId ? 'playlist' : ''
-}
+// play_source 反推兜底映射单源已抽至 core/player/playSource.ts（2026-11-05 渠道
+// 区分批审查 S3，换源弹窗同源消费）；打标入口（搜索/榜单/在线歌单/下载/本地/
+// 最近播放/加歌试听/深链/稍后播放带标项）的渠道由 playMusicInfo channel 优先
+// 提供（Spotify context 语义：渠道是会话属性不从容器反推）
 
 const payloadOf = (snap: SessionSnapshot): UsagePayload => {
   return {
@@ -112,7 +109,7 @@ const openSession = (): void => {
     song_id: String(musicInfo.id),
     song_title: 'name' in musicInfo ? String(musicInfo.name ?? '') : '',
     song_artist: 'singer' in musicInfo ? String(musicInfo.singer ?? '') : '',
-    play_source: playSourceOf(playMusicInfo.listId),
+    play_source: playMusicInfo.channel || playSourceOf(playMusicInfo.listId), // `||` 拦空串防兜底被绕过（审查 S1）
     online: playMusicInfo.listId != LIST_IDS.DOWNLOAD,
     quality: playerState.actualQuality ?? '',
     played_ms: 0,

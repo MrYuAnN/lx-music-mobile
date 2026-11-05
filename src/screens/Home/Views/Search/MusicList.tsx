@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react'
 import OnlineList, { type OnlineListType, type OnlineListProps } from '@/components/OnlineList'
 import type { Animated } from 'react-native'
 import { search } from '@/core/search/music'
+import { PLAY_CHANNELS } from '@/config/constant'
 import searchMusicState, { type Source } from '@/store/search/music/state'
 
 // export type MusicListProps = Pick<OnlineListProps,
@@ -98,6 +99,7 @@ export default forwardRef<MusicListType, SearchMusicListProps>(({ scrollYAnimate
     onRefresh={handleRefresh}
     onLoadMore={handleLoadMore}
     checkHomePagerIdle
+    playChannel={PLAY_CHANNELS.SEARCH}
     scrollYAnimated={scrollYAnimated}
     contentPaddingTop={contentPaddingTop}
   />

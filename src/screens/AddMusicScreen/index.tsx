@@ -32,7 +32,7 @@ import { getDownloadListSnapshot, toDownloadedMusicInfo } from '@/core/download'
 import { toMusicInfoLocal, useLocalMusicList } from '@/core/localMusic'
 import searchMusicState from '@/store/search/music/state'
 import musicSdk from '@/utils/musicSdk'
-import { LIST_IDS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
+import { LIST_IDS, PLAY_CHANNELS, SCREEN_HEADER_HEIGHT, storageDataPrefix } from '@/config/constant'
 import { queueCoverGen } from '@/utils/playlistCoverGen'
 import { SPACING } from '@/config/spacing'
 import { ensureShiyinSources, getShiyinSources } from '@/core/shiyin/config'
@@ -297,7 +297,7 @@ export default ({ componentId, listId, listName }: { componentId: string, listId
     const queueIndex = queue.findIndex(m => m.id == musicInfo.id)
     const tempListId = isLocal ? storageDataPrefix.TEMP_LIST_LOCAL : storageDataPrefix.TEMP_LIST_ONLINE
     void setTempList(tempListId, queue).then(() => {
-      if (queueIndex > -1) void playList(LIST_IDS.TEMP, queueIndex)
+      if (queueIndex > -1) void playList(LIST_IDS.TEMP, queueIndex, PLAY_CHANNELS.PREVIEW)
     })
   }, [pickList, source, list])
 
