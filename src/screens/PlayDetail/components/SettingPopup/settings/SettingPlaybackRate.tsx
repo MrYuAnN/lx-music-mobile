@@ -1,8 +1,8 @@
-import { Fragment, useState } from 'react'
-import { TouchableOpacity, View } from 'react-native'
+import { View } from 'react-native'
 
 import Text from '@/components/common/Text'
 import { Icon } from '@/components/common/Icon'
+import DorpDownMenu from '@/components/common/DorpDownMenu'
 import { ICON_SIZE } from '@/config/constant'
 import { useSettingValue } from '@/store/setting/hook'
 import { updateSetting } from '@/core/common'
@@ -15,13 +15,13 @@ import { createStyle } from '@/utils/tools'
 import Card from './Card'
 import sharedStyle from './style'
 
-// 倍速行卡（2026-10-20 更多弹层重构「预设胶囊」→ 2026-11-05 真机反馈两轮演进）：
-// 全档位 chips 常驻展示不协调（一轮反馈）→ 单值步进误解为 ▲▼（二轮否决）→ 终态=**内联下拉**：
-// 平时只显示当前档位值（右值+caret 提示），点击行/值在该位置上下展开全部档位选项列
-// （降序 2x→0.5x，当前档主色+勾选标记，点选即收起归化；非预设历史值仅显示不勾选）。
-// 行结构与定时关闭行同构（图标+标题+右值）；选项列满铺 16dp 网格，行语言与弹层一致。
+// 倍速行卡（2026-10-20 更多弹层重构「预设胶囊」→ 2026-11-05 真机反馈三轮演进终态）：
+// 全档位 chips 常驻（不协调）→ 内联展开选项列（把弹层区域撑大，三轮否决）→ 终态=**锚定下拉
+// 浮层**（DorpDownMenu 现成件，同搜索页来源切换先例）：平时只显示当前档位值+caret 提示，点击
+// 弹出浮层档位菜单（当前档 activeId 高亮；非预设历史值无高亮仅显示），点选即回调落盘；浮层
+// 悬浮于内容之上零布局影响，空间不足自动向上翻转。行结构与定时关闭行同构（图标+标题+右值）。
 // 图标显式 weight regular 细线（≤20dp 默认 bold 在菜单行显粗笨，与玻璃体系细线语言对齐）
-const RATES = [2, 1.5, 1.25, 1, 0.75, 0.5] // 展示序：快在上
+const RATES = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 const formatRate = (rate: number) => `${rate}x`
 
@@ -29,65 +29,33 @@ export default () => {
   const playbackRate = useSettingValue('player.playbackRate')
   const theme = useTheme()
   const t = useI18n()
-  const [expanded, setExpanded] = useState(false)
 
   const handleRateChange = (rate: number) => {
-    if (playbackRate == rate) {
-      setExpanded(false) // 点当前档=仅收起
-      return
-    }
+    if (playbackRate == rate) return // 同值短路（审查 S-2）：重复点已选档不重放播放器/通知元数据
     void setPlaybackRate(rate)
     void setLyricPlaybackRate(rate)
     void updateMetaData(playerState.musicInfo, playerState.isPlay, true) // 更新通知栏的播放速率
     updateSetting({ 'player.playbackRate': rate })
-    setExpanded(false)
   }
 
   return (
     <Card>
-      <TouchableOpacity
-        style={styles.container}
-        activeOpacity={0.6}
-        onPress={() => { setExpanded(!expanded) }}
-        accessibilityRole="button"
-        accessibilityState={{ expanded }}
-      >
+      <View style={styles.container}>
         <Icon name="playback-rate" size={ICON_SIZE.list} weight="regular" color={theme['c-font']} style={sharedStyle.icon} />
         <Text size={15} style={styles.label}>{t('play_detail_setting_playback_rate')}</Text>
-        <Text size={13} color={theme['c-font-label']} style={styles.rateText}>{formatRate(playbackRate)}</Text>
-        <Icon
-          name={expanded ? 'caret-up' : 'caret-down'}
-          size={12}
-          weight="regular"
-          color={theme['c-font-label']}
-          style={styles.caret}
-        />
-      </TouchableOpacity>
-      {
-        expanded
-          ? (
-              <View style={styles.optionList}>
-                {RATES.map(rate => {
-                  const active = rate == playbackRate
-                  return (
-                    <Fragment key={rate}>
-                      {rate !== RATES[0] ? <View style={[styles.optionDivider, { backgroundColor: theme['c-border-background'] }]} /> : null}
-                      <TouchableOpacity
-                        style={styles.optionRow}
-                        activeOpacity={0.6}
-                        onPress={() => { handleRateChange(rate) }}
-                        accessibilityRole="button"
-                      >
-                        <Text size={15} color={active ? theme['c-primary'] : theme['c-font']}>{formatRate(rate)}</Text>
-                        {active ? <Icon name="check" size={ICON_SIZE.chevron} weight="regular" color={theme['c-primary']} /> : null}
-                      </TouchableOpacity>
-                    </Fragment>
-                  )
-                })}
-              </View>
-            )
-          : null
-      }
+        <DorpDownMenu
+          menus={RATES.map(rate => ({ action: String(rate), label: formatRate(rate) }))}
+          activeId={String(playbackRate)}
+          onPress={menu => { handleRateChange(parseFloat(menu.action)) }}
+          fitMenuWidth
+          fontSize={13}
+        >
+          <View style={styles.rateBtn}>
+            <Text size={13} color={theme['c-font-label']} style={styles.rateText}>{formatRate(playbackRate)}</Text>
+            <Icon name="caret-down" size={12} weight="regular" color={theme['c-font-label']} />
+          </View>
+        </DorpDownMenu>
+      </View>
     </Card>
   )
 }
@@ -104,26 +72,13 @@ const styles = createStyle({
     flexGrow: 1,
     flexShrink: 1,
   },
-  rateText: {
-    fontVariant: ['tabular-nums'],
-    marginLeft: 8,
-  },
-  caret: {
-    marginLeft: 4,
-  },
-  // 内联下拉选项列（满铺 16dp 网格，行语言与弹层一致；行间发丝线）
-  optionList: {
-    paddingBottom: 4,
-  },
-  optionRow: {
-    minHeight: 42,
+  rateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingLeft: 32, // 对齐标题文字列（icon 20 + gap 12；Card 已有 px16）
+    paddingLeft: 8,
   },
-  optionDivider: {
-    height: 1,
-    marginLeft: 32,
+  rateText: {
+    fontVariant: ['tabular-nums'],
+    marginRight: 4,
   },
 })
