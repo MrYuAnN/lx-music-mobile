@@ -155,11 +155,23 @@ test('服务端按源视图：源行渲染，tap 展开段行组', async() => {
   const { getByText } = await render(<MyKeys componentId="mykeys" />)
   const user = userEvent.setup()
   await waitFor(() => expect(getByText('腾讯')).toBeTruthy())
-  // 源行收起态段行组不渲染；tap 源行展开
+  // tap 源行展开（段行组常挂载+高度插值裁剪，2026-11-07 Q8 动画批——收起态裁剪不可见）
   await user.press(getByText('腾讯'))
   // 段行1 档位直出（skuName）+ 状态三态（ent_state_active，t stub 回显 key）
   expect(getByText('月度')).toBeTruthy()
   expect(getByText('ent_state_active')).toBeTruthy()
+})
+
+test('源行头拼时分（Q6 时刻上提）：valid 源表头含 h:m；行4 ent_expire_at 退役不渲染', async() => {
+  activeState()
+  mockEntitlements.current = [serverView()]
+  const { getByText, queryByText } = await render(<MyKeys componentId="mykeys" />)
+  // 表头=「至 日期 h:m」（dateFormat stub 回显格式串：'Y-M-D@sec h:m@sec'）
+  await waitFor(() => expect(getByText('h:m@', { exact: false })).toBeTruthy())
+  // 行4（段级到期时刻）2026-11-07 退役：展开段行组后同样不渲染
+  const user = userEvent.setup()
+  await user.press(getByText('腾讯'))
+  expect(queryByText('ent_expire_at')).toBeNull()
 })
 
 test('段面板开合：tap 段行 → 设备面板（设备管理行）出现', async() => {

@@ -689,7 +689,6 @@
   "ent_state_queued": "排队中",
   "ent_pending_until": "待生效 {start} 起 · 至 {end}",
   "ent_pending_until_permanent": "待生效 {start} 起 · 永久",
-  "ent_expire_at": "到期时刻 {time}",
   "ent_fallback_until": "全源兜底至 {date}",
   "ent_local_fallback": "服务端视图暂不可用，当前为本地概要（权益判定不受影响）",
   "ent_close": "关闭",

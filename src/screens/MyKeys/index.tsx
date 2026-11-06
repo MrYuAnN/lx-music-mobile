@@ -13,11 +13,18 @@
 // 子卡改版（2026-11-04 grilling 七题+三席方案审定稿）：段=同色平面行组+细分隔线划界（弃灰底嵌套卡）；行1 档位=
 // sku_name 直出（缺失 free 兑「试用/赠送」paid 兑「正式」，free 兑底命中省徽标防同
 // 词重复）；行2 完整码 tap 复制（脱敏退役，泄露面用户拍板接受）；行3 起止（排队段=
-// 「待生效 X 起 · 至 Y」，end=0 变体「· 永久」）；行4 到期时刻 h:m:s（兜 seg.valid，
-// 永久/历史段不显）；行内解绑=正式段+valid+bindings 回填后显（stale mark 误显收敛为
+// 「待生效 X 起 · 至 Y」，end=0 变体「· 永久」）；原行4「到期时刻 h:m:s」2026-11-07
+// 退役（relay 链各段边界同刻、段行级重复——上提源行头拼时分 h:m 去秒，过期源不拼；
+// grilling Q6 拍板）；行内解绑=正式段+valid+bindings 回填后显（stale mark 误显收敛为
 // 零，拍板 I-5）。面板瘦身为设备面板（信息行全在段行组；设备开关行三态 mark 均渲染=
 // 修复 UNBOUND 时绑回钮不可达死路径，审查 I-4 随批修）。排队态=服务端段 state 单源
 // 三态 active|queued|expired（空串/undefined 回落 valid 两态，T4 判定族口径 RN 不自算）。
+// 展开可供性+动画（2026-11-07 grilling Q7/Q8 拍板）：源行尾 chevron-right 16dp 次级色，
+// 展开旋转 90°与段行组高度过渡同步（250ms，Animated 驱动 height/opacity/rotate，
+// useNativeDriver=false——height 布局属性；不用 LayoutAnimation 全局 flag 防 Android
+// 副作用）；段行组常挂载 onLayout 测高插值裁剪（收起态 accessibilityElementsHidden）；
+// 历史折叠区 ▲/▼ 文本三角同批统一为旋转 chevron（内容瞬时开合，仅箭头动画）——
+// HIG 右箭头=导航语义的偏离为用户看图例后知情拍板（B 案）。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Animated, Image, Modal, TouchableOpacity, View } from 'react-native'
 import Clipboard from '@react-native-clipboard/clipboard'
@@ -38,6 +45,7 @@ import { BorderWidths } from '@/theme'
 import { ICON_SIZE, DESTRUCTIVE_RED, SCREEN_HEADER_HEIGHT, SUCCESS_GREEN } from '@/config/constant'
 import { useStatusbarHeight } from '@/store/common/hook'
 import { dateFormat } from '@/utils'
+import { amEase } from '@/utils/animation'
 import { pushScreen } from '@/navigation/navigation'
 import { PURCHASE_SCREEN } from '@/navigation/screenNames'
 import { onEntitlementChanged, BINDING_MARK, SEG_STATE, type KeyEntry, type BindingInfo, type EntSourceView, type EntSegmentView } from '@/utils/nativeModules/activation'
@@ -461,9 +469,10 @@ export default ({ componentId }: { componentId: string }) => {
 }
 
 // 按源卡（六规则①②③+装机反馈 2026-11-04；子卡改版 2026-11-04 定稿）：官方 logo
-// 圆角矩形+源名+行值**同行**；无折叠箭头——整卡点击展开/收起；展开=段平面行组
-// （同色无灰底，细分隔线划界）：行1=档位+kind 徽标+状态三态/行2=完整码 tap 复制/
-// 行3=起止（排队段「待生效 X 起 · 至 Y」）/行4=到期时刻 h:m:s；行内解绑=正式段+
+// 圆角矩形+源名+行值（含时分，2026-11-07 Q6）**同行**+行尾旋转 chevron 展开指示
+// （2026-11-07 Q7 B 案，替代「无折叠箭头」旧拍板——折叠可供性缺失用户反馈）；展开=
+// 段平面行组高度同步动画（Q8）：行1=档位+kind 徽标+状态三态/行2=完整码 tap 复制/
+// 行3=起止（排队段「待生效 X 起 · 至 Y」）；行内解绑=正式段+
 // valid+bindings 回填后显；tap 行组=设备面板；已耗尽段入历史折叠区（默认收起，置灰
 // 纯查看，复制随块禁用）；末附兜底摘要行（兜底口径同前批）
 const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSegUnbind }: {
@@ -477,8 +486,29 @@ const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSe
   const theme = useTheme()
   const t = useI18n()
   const destructiveColor = theme.isDark ? DESTRUCTIVE_RED.dark : DESTRUCTIVE_RED.light
+  // 展开/收起动画（Q7/Q8 拍板）：单 Animated.Value 0↔1 驱动 chevron 旋转+段行组高度/
+  // 透明度三插值，250ms 同步过渡；高度=onLayout 实测插值裁剪（overflow hidden），
+  // 历史折叠区开合改变实测高后 onLayout 回填插值上限（跟随即瞬时，S-5 知情登记）
   const [expanded, setExpanded] = useState(false)
+  const [segListH, setSegListH] = useState(0)
+  const expandAnim = useRef(new Animated.Value(0)).current
+  const toggleExpanded = useCallback(() => {
+    const next = !expanded
+    setExpanded(next)
+    Animated.timing(expandAnim, {
+      toValue: next ? 1 : 0,
+      duration: 250,
+      easing: amEase, // AM 转场统一曲线（utils/animation 单源；Q8 拍板 250ms）
+      useNativeDriver: false, // height 布局属性不可 native 驱动
+    }).start()
+  }, [expandAnim, expanded])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const historyAnim = useRef(new Animated.Value(0)).current
+  const toggleHistoryOpen = useCallback(() => {
+    const next = !historyOpen
+    setHistoryOpen(next)
+    Animated.timing(historyAnim, { toValue: next ? 1 : 0, duration: 250, easing: amEase, useNativeDriver: true }).start()
+  }, [historyAnim, historyOpen])
   const name = APP_CN[source.app] ?? source.app
   const icon = SOURCE_ICONS[source.app]
   const activeSegs = source.segments.filter(s => s.valid)
@@ -489,9 +519,11 @@ const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSe
   const hasPermanentSeg = source.segments.some(s => s.end == 0)
   const segMaxEnd = source.segments.reduce((m, s) => (s.end != 0 && s.end > m ? s.end : m), 0)
   const showFallback = !hasPermanentSeg && (source.expiry == 0 || source.expiry > segMaxEnd)
+  // 源行头到期文本（2026-11-07 Q6 拍板：时刻上提表头拼时分 h:m 去秒——relay 链段边界
+  // 同刻，聚合到期=真实见底时刻；已过期源不拼（历史时刻无意义），永久不变）
   const expiryText = source.expiry == 0
     ? t('activation_permanent')
-    : `${source.valid ? '' : `${t('activation_state_expired')} · `}${t('activation_until')} ${dateFormat(source.expiry * 1000, 'Y-M-D')}`
+    : `${source.valid ? '' : `${t('activation_state_expired')} · `}${t('activation_until')} ${dateFormat(source.expiry * 1000, 'Y-M-D')}${source.valid ? ` ${dateFormat(source.expiry * 1000, 'h:m')}` : ''}`
   // 段平面行组（子卡改版定稿）：状态三态=state 服务端单源（queued 排队中主色/active
   // 生效中绿/expired 已过期灰；空串/undefined 回落 valid 两态——T4 口径 RN 不自算
   // 时间比较）；行4 兜 seg.valid（state 空串窗口下历史段不误显，审查 I-2）；行内解绑=
@@ -539,13 +571,6 @@ const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSe
                   ? (dateEnd == '' ? t('activation_permanent') : `${t('activation_until')} ${dateEnd}`)
                   : `${dateStart} ~ ${dateEnd == '' ? t('activation_permanent') : dateEnd}`)}
           </Text>
-          {seg.end != 0 && seg.valid
-            ? (
-              <Text size={12} color={theme['c-font-label']} style={styles.segTextRow}>
-                {t('ent_expire_at', { time: dateFormat(seg.end * 1000, 'h:m:s') })}
-              </Text>
-              )
-            : null}
         </TouchableOpacity>
         {canUnbind
           ? (
@@ -557,9 +582,21 @@ const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSe
       </View>
     )
   }
+  // 动画插值（渲染期构建：segListH 经 onLayout 回填后 outputRange 随渲染更新——
+  // 历史折叠区开合改变实测高即跟随，S-5 登记的边界）
+  const chevRotate = expandAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] })
+  const segHeight = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, segListH || 1] })
+  const segOpacity = expandAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] })
+  const historyRotate = historyAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '90deg'] })
   return (
     <View style={[styles.card, { backgroundColor: theme['c-content-background'], opacity: source.valid ? 1 : 0.55 }]}>
-      <TouchableOpacity style={styles.sourceRow} activeOpacity={0.6} onPress={() => { setExpanded(v => !v) }}>
+      <TouchableOpacity
+        style={styles.sourceRow}
+        activeOpacity={0.6}
+        onPress={toggleExpanded}
+        accessibilityRole="button"
+        accessibilityState={{ expanded }}
+      >
         {icon != null
           ? <Image source={icon} style={styles.sourceIcon} />
           : (
@@ -567,34 +604,44 @@ const SourceCard = memo(({ source, bindings, acting, onSegPress, onSegCopy, onSe
             )}
         <Text size={15} style={styles.sourceName} color={theme['c-font']}>{name}</Text>
         <Text size={13} color={source.valid ? theme['c-font'] : theme['c-font-label']}>{expiryText}</Text>
+        {/* 展开可供性（Q7 B 案）：行尾 chevron-right 展开旋转 90°朝下——与入口行同字形
+            的语义混用为用户知情拍板；HIG 原生范式=caret-down（ 对照面登记 doc 方案） */}
+        <Animated.View style={{ transform: [{ rotate: chevRotate }] }}>
+          <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+        </Animated.View>
       </TouchableOpacity>
-      {expanded
-        ? (
-          <View style={styles.segList}>
-            {activeSegs.map((seg, i) => SegRow(seg, false, i == activeSegs.length - 1))}
-            {/* 历史激活码折叠区（六规则③：已耗尽段默认收起，同构置灰纯查看） */}
-            {historySegs.length
-              ? (
-                <>
-                  <TouchableOpacity style={styles.historyRow} activeOpacity={0.6} onPress={() => { setHistoryOpen(v => !v) }}>
-                    <Text size={12} color={theme['c-font-label']}>
-                      {t('ent_history', { n: historySegs.length })} {historyOpen ? '▲' : '▼'}
-                    </Text>
-                  </TouchableOpacity>
-                  {historyOpen ? historySegs.map((seg, i) => SegRow(seg, true, i == historySegs.length - 1)) : null}
-                </>
-                )
-              : null}
-            {showFallback
-              ? (
-                <Text size={11} color={theme['c-font-label']} style={styles.fallbackRow}>
-                  {t('ent_fallback_until', { date: source.expiry == 0 ? t('activation_permanent') : dateFormat(source.expiry * 1000, 'Y-M-D') })}
-                </Text>
-                )
-              : null}
-          </View>
-          )
-        : null}
+      {/* 段行组常挂载+高度插值裁剪（动画同步拍板 Q8）；收起态对无障碍隐藏（内容仍在树） */}
+      <Animated.View
+        style={[styles.segAnimClip, { height: segHeight, opacity: segOpacity }]}
+        accessibilityElementsHidden={!expanded}
+        importantForAccessibility={expanded ? 'auto' : 'no-hide-descendants'}
+      >
+        <View style={styles.segList} onLayout={e => { setSegListH(e.nativeEvent.layout.height) }}>
+          {activeSegs.map((seg, i) => SegRow(seg, false, i == activeSegs.length - 1))}
+          {/* 历史激活码折叠区（六规则③：已耗尽段默认收起，同构置灰纯查看；开合指示
+              2026-11-07 随批统一为旋转 chevron，替代 ▲/▼ 文本三角——S-3 顺带统一拍板） */}
+          {historySegs.length
+            ? (
+              <>
+                <TouchableOpacity style={styles.historyRow} activeOpacity={0.6} onPress={toggleHistoryOpen}>
+                  <Text size={12} color={theme['c-font-label']}>{t('ent_history', { n: historySegs.length })}</Text>
+                  <Animated.View style={{ transform: [{ rotate: historyRotate }] }}>
+                    <Icon name="chevron-right" size={ICON_SIZE.chevron} color={theme['c-font-label']} />
+                  </Animated.View>
+                </TouchableOpacity>
+                {historyOpen ? historySegs.map((seg, i) => SegRow(seg, true, i == historySegs.length - 1)) : null}
+              </>
+              )
+            : null}
+          {showFallback
+            ? (
+              <Text size={11} color={theme['c-font-label']} style={styles.fallbackRow}>
+                {t('ent_fallback_until', { date: source.expiry == 0 ? t('activation_permanent') : dateFormat(source.expiry * 1000, 'Y-M-D') })}
+              </Text>
+              )
+            : null}
+        </View>
+      </Animated.View>
     </View>
   )
 })
@@ -651,6 +698,10 @@ const styles = createStyle({
   // 段平面行组（子卡改版定稿 Q1）：同色无灰底卡，段间细分隔线划界（iOS 分组列表式）
   segBlock: {
     paddingVertical: SPACING.s10,
+  },
+  // 段行组动画裁剪容器（2026-11-07 Q8）：高度插值驱动+overflow hidden，常挂载测高
+  segAnimClip: {
+    overflow: 'hidden',
   },
   segDivider: {
     borderBottomWidth: BorderWidths.normal,
