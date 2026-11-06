@@ -15,7 +15,6 @@ export interface InitState {
     showModal: boolean
     isUnknown: boolean
     isLatest: boolean
-    reCheck: boolean
     status: SY.UpdateStatus
   }
   ignoreVersion: string | null
@@ -29,7 +28,6 @@ const state: InitState = {
     version,
     newVersion: null,
     showModal: false,
-    reCheck: false,
     isUnknown: false,
     isLatest: false,
     status: 'idle',

@@ -16,7 +16,7 @@ const listScrollPositionKey = storageDataPrefix.listScrollPosition
 const listUpdateInfoKey = storageDataPrefix.listUpdateInfo
 const ignoreVersionKey = storageDataPrefix.ignoreVersion
 const ignoreVersionFailTipTimeKey = storageDataPrefix.ignoreVersionFailTipTimeKey
-const lastVersionCheckTimeKey = storageDataPrefix.lastVersionCheck
+const lastVersionRemindTimeKey = storageDataPrefix.lastVersionRemind
 const searchSettingKey = storageDataPrefix.searchSetting
 const searchHistoryListKey = storageDataPrefix.searchHistoryList
 const songListSettingKey = storageDataPrefix.songListSetting
@@ -188,11 +188,20 @@ export const saveIgnoreVersionFailTipTime = (time: number | null) => {
   }
 }
 
-export const getLastVersionCheckTime = async(): Promise<number> => {
-  return await getData<number>(lastVersionCheckTimeKey) ?? 0
+// 更新弹窗 24h 提醒节流标记（2026-11-06 方案 v3）：只在弹窗真正置位成功后写（不弹不写，
+// 区别于旧「检查成功就写」的检查节流标记 @last_version_check——后者随其 bug 删除，设备
+// 存量孤儿值零读取方不清理，复审 S-8 留档）
+let lastVersionRemindTime: number | null
+export const saveLastVersionRemindTime = (time: number) => {
+  lastVersionRemindTime = time
+  void saveData(lastVersionRemindTimeKey, time)
 }
-export const saveLastVersionCheckTime = async(time: number) => {
-  await saveData(lastVersionCheckTimeKey, time)
+export const getLastVersionRemindTime = async(): Promise<number> => {
+  // ?? null 收敛缓存（审查 S-1：无值设备收敛后不再重复读盘）+ ?? 0 缺省：首查无标记差值
+  // 巨大不抑制（getIgnoreVersionFailTipTime 同款，S-R1）
+  // eslint-disable-next-line require-atomic-updates
+  if (lastVersionRemindTime === undefined) lastVersionRemindTime = (await getData<number>(lastVersionRemindTimeKey)) ?? null
+  return lastVersionRemindTime ?? 0
 }
 
 // 获取忽略更新的版本号

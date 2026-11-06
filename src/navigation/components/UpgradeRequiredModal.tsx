@@ -7,7 +7,7 @@ import { View } from 'react-native'
 import Button from '@/components/common/Button'
 import { createStyle, openUrl } from '@/utils/tools'
 import { useTheme } from '@/store/theme/hook'
-import Text from '@/components/common/Text'
+import Text, { FontFamilies } from '@/components/common/Text'
 import { useI18n } from '@/lang'
 import { useUpgradeRequired } from '@/store/version/hook'
 import ModalContent from './ModalContent'
@@ -31,8 +31,9 @@ const UpgradeRequiredModal = () => {
         <Text style={styles.desc}>{t('upgrade_required_desc')}</Text>
       </View>
       <View style={styles.btns}>
-        <Button style={{ ...styles.btn, backgroundColor: theme['c-button-background'] }} onPress={handleUpdate}>
-          <Text color={theme['c-button-font']}>{t('upgrade_required_btn_update')}</Text>
+        {/* 主钮 c-primary 实底（2026-11-06 审查拍板：与 VersionModal 主钮同式样，强更钮本质=主行动作） */}
+        <Button style={{ ...styles.btn, backgroundColor: theme['c-primary'] }} onPress={handleUpdate}>
+          <Text size={14} numberOfLines={1} style={styles.btnText} color={theme['c-on-primary']}>{t('upgrade_required_btn_update')}</Text>
         </Button>
       </View>
     </ModalContent>
@@ -64,12 +65,17 @@ const styles = createStyle({
   },
   btn: {
     flex: 1,
-    paddingTop: SPACING.s10,
-    paddingBottom: SPACING.s10,
+    // padding s12 与 VersionModal 主钮完全一致（审查 S-4 拍板「完全一致」）；单钮布局
+    // （无 gap/marginRight 节奏差异）为本弹窗单键形态自有，不随对齐
+    paddingTop: SPACING.s12,
+    paddingBottom: SPACING.s12,
     paddingLeft: SPACING.s10,
     alignItems: 'center',
-    borderRadius: 4,
+    borderRadius: 8, // 圆角档（随 VersionModal 主钮对齐，原 4）
     marginRight: SPACING.s16,
+  },
+  btnText: {
+    fontFamily: FontFamilies.semibold,
   },
 })
 
