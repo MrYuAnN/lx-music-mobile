@@ -1,8 +1,10 @@
 /*
  * 键级累加（段接力）批3 SDK 纯 JVM 单测（shiyin-relay-impl.md 批3-c；终案
- * shiyin-pricing-model.md v2.4 §五.2 SDK 配套）。三件：①relay 能力位解析（旧响应
- * 兼容）②release 应答 relay_aggs 解析 ③归属重指向选择逻辑（经 parseFusedKeys 同型
- * 宽松读验证；SP/Context 依赖路径归真机回归，纯 JVM 层锁协议形状）。
+ * shiyin-pricing-model.md v2.4 §五.2 SDK 配套）。二件：①relay 能力位解析（旧响应
+ * 兼容）②release 应答 relay_aggs 解析。原③归属重指向选择逻辑 2026-11-07 随归属
+ * 映射退役删除（computeCurrent 改跨码聚合 mergeExpiries，grilling D3+三席审 I-1
+ * 拍板；重指向的防护对象「computeCurrent 归属过滤」已不存在；SP/Context 依赖路径
+ * 归真机回归，纯 JVM 层锁协议形状）。
  */
 package top.astock.activation
 
@@ -45,21 +47,7 @@ class RelayBatch3Test {
         assertEquals(Long.MIN_VALUE, badAggs.optLong("tx", Long.MIN_VALUE))
     }
 
-    // ③ 归属重指向选择：keys[app] 已被他码持有→跳过（不受解绑影响）；无持有→找
-    // expiries[app]==aggExp 的 receipt 重指向；无匹配→保持 null（降级现状）。
-    // 选择谓词纯逻辑此处锁定；SP 写入路径归真机回归（clearKeyInternal 私有）。
-    @Test
-    fun testRelayRepointPredicate() {
-        // 模拟 receipts：两码各持 tx 到期值（A=早段止、B=晚段止）；relay_aggs.tx=B 止
-        // →应选 B。谓词=parseReceipt.expiries[app]==aggExp（与 clearKeyInternal 一致）
-        val expA = 1770000000L
-        val expB = 1770300000L
-        val candidates = mapOf("JP-A" to expA, "JP-B" to expB)
-        val aggExp = expB
-        val owner = candidates.entries.firstOrNull { it.value == aggExp }?.key
-        assertEquals("JP-B", owner)
-        // 聚合无匹配（两码都不等——如服务端已重写而本地 receipt 陈旧）：保持 null
-        val ownerNone = candidates.entries.firstOrNull { it.value == 999L }?.key
-        assertEquals(null, ownerNone)
-    }
+    // ③（已退役，2026-11-07）：归属重指向选择随归属映射退役删除，替代语义=
+    // mergeExpiries 跨码聚合（见 EntitlementVectorsTest.mergedVectors / 向量
+    // aggregate-merged 段）。
 }

@@ -7,15 +7,18 @@
     "consumers": {
       "validity": ["pytest (lx-music-api-server tests/test_entitlement_gate.py)", "JUnit 净屏活源仓 activation-sdk 现状基线（phase-1）→ 收编批 SDK 纯函数层（phase-2）"],
       "aggregate": ["pytest any_source_active", "JUnit 同 validity 消费者"],
-      "verdict": ["pytest entitlement_verdict（唯一消费者；字段=Python 侧 token record snake_case）"]
+      "verdict": ["pytest entitlement_verdict（唯一消费者；字段=Python 侧 token record snake_case）"],
+      "aggregate-merged": ["JUnit 两侧镜像 EntitlementVectorsTest.mergedVectors（2026-11-07 归属退役批；无 pytest 消费者）"]
     },
     "phases": {
       "phase-1-pilot": ["validity", "aggregate", "verdict（先导批已锁，现状基线绿）"],
-      "phase-2-refactor": ["masking", "primary（收编批件5 启用；primary=新增语义：码卡主行选主规则，现状无此判定，非现状对拍）"]
+      "phase-2-refactor": ["masking", "primary（收编批件5 启用；primary=新增语义：码卡主行选主规则，现状无此判定，非现状对拍）"],
+      "phase-3-ownership-retirement": ["aggregate-merged（2026-11-07 归属退役批：computeCurrent 改跨码聚合 mergeExpiries，grilling D1/D2/D3 拍板+三席审 I-3 选型）"]
     },
     "semantics": {
       "validity": "exp==0 永久有效；exp>nowSec 有效；否则过期（含负值/脏数据 fail-closed——SDK 域脏值在 receipt 解析层 getLong 抛异常整码拦截，值级断言仅为跨语言对拍口径，2026-11-04 代码审 S6 补注）",
       "aggregate.any": "appsExp 非空=任一值 active（0=永久/大于 nowSec）；null/负值/脏字符串=过期收紧口径（2026-11-04 审查 I-G）；scope=any-only 为 SDK+pytest 共同域，scope=py-fallback（appsExp 空回退 expTs）仅 pytest 消费——SDK 现状无回退语义（merged 空=Unactivated）；excludeApp 形态（AE 段）=Worker 混合态收口消费（2026-11-04 代码审 S8 补）",
+      "aggregate-merged": "跨码聚合（2026-11-07 归属退役）：每 app 任一码 0（永久）→ 0；否则 max——paid-through 口径（relay 段接力连续性保证聚合值=真实可用截止；receipt 的 exps 天然含本码排队段聚合；与 relay.go segAgg 同语义）；乱序不变（归属顺序无关性=退役语义）；停权排除（bindingMarks）在 computeCurrent anchored 构建处上游，不在本段锁定域",
       "verdict": "apps_exp 非空=源闸（缺失且无 shiyin 兜底→not_entitled_for_source fail-closed；shiyin 兜底；0=放行；负值=expired）；apps_exp 空/缺=exp_ts 聚合闸（0/缺省=放行）；仅 pytest 消费",
       "masking": "cfg.fallbackApp 在全局聚合表 allApps 有效（validAt）→ apps 键集只留 fallbackApp（其余被遮=不参与判定/展示/提醒）；兜底未配置/无效/键不存在 → apps 原样",
       "primary": "新增语义（码卡主行；横幅归因/Worker 通知不切换）：候选=遮蔽后仍任一键有效的码；排序=含永久键优先 → 非零值最早到期优先（纯永久码=MAX_VALUE，双永久 tie-break 回落入参序，P7/P8 锁定——2026-11-04 代码审 S8 补）→ 同值按入参序；无候选=null"
@@ -80,5 +83,13 @@
     { "id": "P6-expired-fallback-no-rescue", "desc": "兜底自身过期不遮也不救→无候选", "entries": [ { "keyId": "k1", "expiries": { "tx": 1699999900 } }, { "keyId": "k2", "expiries": { "shiyin": 1699999900 } } ], "fallbackApp": "shiyin", "nowSec": 1700000000, "expectedPrimary": null },
     { "id": "P7-dual-perm-input-order", "desc": "双永久码 tie-break=入参序首个（次键 MAX_VALUE 平局）", "entries": [ { "keyId": "k1", "expiries": { "shiyin": 0 } }, { "keyId": "k2", "expiries": { "tx": 0 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": "k1" },
     { "id": "P8-perm-plus-expired-key-beats-pure-perm", "desc": "永久+带非零到期键的码胜纯永久码（次键=非零最早到期，语义审 S8 边界锁定）", "entries": [ { "keyId": "k1", "expiries": { "tx": 0 } }, { "keyId": "k2", "expiries": { "shiyin": 0, "wy": 1699999900 } } ], "fallbackApp": null, "nowSec": 1700000000, "expectedPrimary": "k2" }
+  ],
+  "aggregate-merged": [
+    { "id": "AM1-multi-key-max", "desc": "多码同 app 取 max（排队链：试用段止+月卡段聚合止→取聚合止，用户设备实证形态）", "entries": [ { "keyId": "JP-TRIAL", "expiries": { "tx": 1770000000 } }, { "keyId": "JP-MONTH", "expiries": { "tx": 1770300000 } } ], "expectedMerged": { "tx": 1770300000 } },
+    { "id": "AM2-permanent-precedence", "desc": "任一码永久→该 app 永久（segAgg 永久优先同口径）", "entries": [ { "keyId": "JP-A", "expiries": { "tx": 0 } }, { "keyId": "JP-B", "expiries": { "tx": 1770300000 } } ], "expectedMerged": { "tx": 0 } },
+    { "id": "AM3-order-independent", "desc": "乱序不变（与 AM1 同内容倒序——归属顺序无关性=退役语义核心）", "entries": [ { "keyId": "JP-MONTH", "expiries": { "tx": 1770300000 } }, { "keyId": "JP-TRIAL", "expiries": { "tx": 1770000000 } } ], "expectedMerged": { "tx": 1770300000 } },
+    { "id": "AM4-multi-app-disjoint", "desc": "各码各 app 并集（按源卡并存）", "entries": [ { "keyId": "JP-KG", "expiries": { "kg": 1770003600 } }, { "keyId": "JP-WY", "expiries": { "wy": 1770007200 } } ], "expectedMerged": { "kg": 1770003600, "wy": 1770007200 } },
+    { "id": "AM5-mixed-perm-cross-key", "desc": "跨键混合：k1 tx 永久压 k2 tx 限时；k1 wy 限时保留", "entries": [ { "keyId": "JP-A", "expiries": { "tx": 0, "wy": 1699999900 } }, { "keyId": "JP-B", "expiries": { "tx": 1770300000 } } ], "expectedMerged": { "tx": 0, "wy": 1699999900 } },
+    { "id": "AM6-single-key-identity", "desc": "单码退化为恒等（旧单码/单码设备向后兼容）", "entries": [ { "keyId": "JP-ONLY", "expiries": { "tx": 1700003600, "wy": 0 } } ], "expectedMerged": { "tx": 1700003600, "wy": 0 } }
   ]
 }

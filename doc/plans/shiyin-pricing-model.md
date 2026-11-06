@@ -136,6 +136,16 @@
    c)**Q7 确认弹窗随终态退役**（v2.3 拍板）：纯叠加无顶替风险→激活直接成功+toast
    「已叠加，QQ音乐至 X」；merge 参数保留传 true 兼容旧服务端；409 merge_required
    兜底保留防旧版客户端纵深。
+   **归属映射整体退役登记（2026-11-07，grilling D1/D2/D3 拍板+三席方案审定）**：上述
+   a)**归属刷新通道**与 b)**pruneOrphanedKeys 摘除**以更彻底的「归属映射（K_APP_KEYS/
+   appKeys/keyForApp/clearKeyInternal 重指向）整体退役」超集完成——SDK computeCurrent
+   改**跨码聚合**（mergeExpiries：任一永久=0 优先否则 max，receipt exps 天然含本码排队段
+   聚合，与服务端 segAgg 同语义；向量 aggregate-merged 段入三仓 drift 锁）。§五.2「设备级
+   聚合归 SDK computeCurrent，与现状同构」的**分工不变、聚合算法演进**：归属单源→跨码
+   聚合（消除归属三路径重写的顺序脆弱性与「排队 37 天按当前段催过期/到点锁闸」缺陷，
+   paid-through 业界口径）；relay.go:70「与现状同构」措辞按本登记理解。回滚过渡态：停写
+   窗口内归属冻结，revert 后多码设备短期按陈旧归属/receipt 键序呈现，旧包巡检成功后自愈
+   （分钟~小时级，离线窗口延长）。
    **两域影响与迁移（v2.3 补盲区，v2.4 拍板=两域同批迁移）**：平台仓（license-platform）
    激活/融合逻辑**两域共用**（数据按 product_id 隔离），SDK=三仓同文姊妹件（自净屏 M3
    抽取，INTEGRATIONS 登记）。**拍板：净屏随拾音同批迁移到段接力**（净屏=番茄，单键码

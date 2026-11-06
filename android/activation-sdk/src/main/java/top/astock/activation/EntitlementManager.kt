@@ -40,7 +40,7 @@ object EntitlementManager {
     private const val K_LICENSE_KEY = "license_key"   // 旧单码（迁移源）
     private const val K_RECEIPT = "receipt_json"      // 旧单码 receipt（迁移源）
     // 多 key 存储（2026-08-22 拍板：每 App 一个码）：app→key 归属映射 + key→receipt
-    private const val K_APP_KEYS = "app_keys_json"    // {"fanqie":"JP-A","hongguo":"JP-B"}
+    private const val K_APP_KEYS = "app_keys_json"    // {"fanqie":"JP-A",...}（2026-11-07 归属退役：停写+零读者，存量残留靠 clear() 全清兜底）
     private const val K_RELAY_MODE = "relay_mode"     // 服务端段接力能力位（v2.4 批3；单调置位，clear 全清）
 
     /** relay 能力位读取（v2.4 批4 宿主门控）：宿主 Q7 确认弹窗退役/解绑回落预告等
@@ -266,30 +266,9 @@ object EntitlementManager {
     fun storedKey(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(K_PRIMARY, "").orEmpty()
 
-    /** app → 当前归属的激活 key（多码模型；该 app 无专属码时回退主 key）。规则包拉取鉴权用 */
-    fun keyForApp(context: Context, app: String): String {
-        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        return appKeys(p)[app] ?: storedKey(context)
-    }
-
-    /** app → 归属 key 映射（多码模型核心；含旧单码迁移） */
-    private fun appKeys(p: android.content.SharedPreferences): Map<String, String> {
-        p.getString(K_APP_KEYS, null)?.let {
-            runCatching {
-                val o = JSONObject(it)
-                return o.keys().asSequence().associateWith { k -> o.getString(k) }
-            }
-        }
-        // 旧单码迁移：receipt 的 apps 全部归属该 key
-        val legacy = p.getString(K_LICENSE_KEY, null) ?: return emptyMap()
-        val rcpt = p.getString(K_RECEIPT, null) ?: return emptyMap()
-        val apps = runCatching {
-            val o = JSONObject(rcpt)
-            if (o.has("exps")) o.getJSONObject("exps").keys().asSequence().toList()
-            else o.optString("apps", "").split(",").filter { it.isNotEmpty() }
-        }.getOrDefault(emptyList())
-        return apps.associateWith { legacy }
-    }
+    // app → 归属 key 映射（appKeys/keyForApp）2026-11-07 整体退役：computeCurrent 改跨码
+    // 聚合（见 mergeExpiries）后归属过滤无消费方，persist/clearKey 停写 K_APP_KEYS
+    // （grilling 2026-11-06 D3 拍板；三席审查 I-1 补全清场边界）
 
     /** key → receipt JSON 映射（多码；含旧单码迁移） */
     private fun receiptsMap(p: android.content.SharedPreferences): Map<String, String> {
@@ -360,21 +339,24 @@ object EntitlementManager {
             clear(context)
             return State.Unactivated
         }
-        val keys = appKeys(p)
         val rcpts = receiptsMap(p)
         if (rcpts.isEmpty()) return State.Unactivated
-        // 多码聚合：每 key 解析 receipt，expiries 按 app 归属 key 取值（同 app 冲突
-        // 以归属映射为准）；任一 app 有效 → Active。绑定态标记非空的码不并入
-        // （unbound/bound_other 按码停权，S2 口径：融合 auto-release 的旧码不受全局牵连）
+        // 多码聚合（2026-11-07 归属退役，grilling D1/D2 拍板）：跨码聚合取每 app 真实
+        // 可用截止（任一码永久=0 优先，否则 max）——relay 段接力保证段链连续，聚合值
+        // =paid-through 口径（业界对齐，杜绝「排队 37 天却按当前段催过期/到点锁闸」）。
+        // v2.4 §五.2「设备级聚合归 SDK computeCurrent」分工不变，聚合算法由归属单源
+        // 演进为跨码聚合（与服务端 segAgg 同语义；演进登记见 pricing-model §五.2）。
+        // 任一 app 有效 → Active。绑定态标记非空的码不并入（unbound/bound_other 按码
+        // 停权，S2 口径：融合 auto-release 的旧码不受全局牵连）——停权排除在 anchored
+        // 构建处，与聚合正交
         val marks = bindingMarks(p)
-        val merged = HashMap<String, Long>()
-        // 聚合元数据（keyId/tier/kind/deviceLimit）锚定 paid>trial 优先（2026-11-04 登记项
-        // 转正：按源购买上线后试用+正价并存成真实主路径，原「首个未停权码」锚随 SP JSON
-        // 键序漂移，残留试用码会让 isTrial 误报 trial——首个非试用码优先，无则回退首个）。
-        // 该码可能不贡献任何有效 app
         val anchored = rcpts.mapNotNull { (key, rcpt) ->
             if (marks[key] != null) null else parseReceipt(rcpt)?.let { key to it }
         }
+        // 聚合元数据（keyId/tier/kind/deviceLimit）锚定 paid>trial 优先（2026-11-04 登记项
+        // 转正：按源购买上线后试用+正价并存成真实主路径，原「首个未停权码」锚随 SP JSON
+        // 键序漂移，残留试用码会让 isTrial 误报 trial——首个非试用码优先，无则回退首个）。
+        // 聚合口径下 anchor 与 merged 内容脱钩成常态（merged 来自全部码）
         val anchor = anchored.firstOrNull { !it.second.isTrial() } ?: anchored.firstOrNull()
         var keyId = ""
         var tier = ""
@@ -384,12 +366,7 @@ object EntitlementManager {
             keyId = anchor.second.keyId; tier = anchor.second.tier
             kind = anchor.second.kind; deviceLimit = anchor.second.deviceLimit
         }
-        for ((key, ent) in anchored) {
-            for ((app, exp) in ent.expiries) {
-                // 归属映射里该 app 属于本 key 才计入（防另一张过期码的同 app 覆盖）
-                if (keys[app] == null || keys[app] == key) merged[app] = exp
-            }
-        }
+        val merged = mergeExpiries(anchored)
         if (merged.isEmpty()) return State.Unactivated
         touchLastSeen(p)
         val effNow = effectiveNowSeconds(p)
@@ -462,10 +439,9 @@ object EntitlementManager {
             is AuthResult.Success -> {
                 persist(context, code.takeIf { !code.startsWith("CZ-") } ?: storedKey(context), r)
                 if (!code.startsWith("CZ-")) {
-                    // 2026-08-24 用户拍板（方案C 根治）：新码激活成功后清理被顶替的孤儿码
-                    // （全部 App 权益都已被新码接管的旧码，避免 KeyInfoSheet 展示失效旧码、
-                    // 用户误点解绑报 not_bound）
-                    pruneOrphanedKeys(context)
+                    // 孤儿码清理（pruneOrphanedKeys，2026-08-24 legacy 拍板）2026-11-07 随
+                    // 归属映射退役删除：relay 段接力无「被顶替」概念（K_RELAY_MODE 单调+
+                    // 双产品全切 relay=清理链死路径，grilling D3 拍板）
                     // 手动激活成功=服务端已建立本机绑定 → 解除该码停权标记
                     // （CZ- 纯续期不动 devices，标记必须保留，防「刚续费忽开忽关」审查 I1）
                     setBindingMark(p, code, null)
@@ -486,24 +462,6 @@ object EntitlementManager {
             }
             else -> r
         }
-    }
-
-    /**
-     * 清理被顶替的孤儿码（2026-08-24 用户拍板）：appKeys 当前归属映射里不再出现的
-     * 旧 key（其 App 权益已全部被新码接管）→ clearKey 清除本地 receipt。
-     * 无孤儿时 no-op；clearKey 内部处理 primary 迁移与 MAC 重写。
-     */
-    private fun pruneOrphanedKeys(context: Context) {
-        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        // relay 条件化（v2.4 批3 SDK 配套；shiyin-pricing-model.md §五.2）：段接力无
-        // 「被接管」——非归属≠无贡献段（他码贡献段在役），归属排除法判定在 relay 下会
-        // 误清有段贡献码（批2 实施计划 I-B 识别）。能力位=激活/巡检响应 relay:true
-        // （K_RELAY_MODE 单调置位）——false 时行为不变（legacy 融合照旧产生孤儿，且
-        // 回滚态清理链是必需资产，与 fused 清理链同待遇：不摘代码，只条件化）
-        if (p.getBoolean(K_RELAY_MODE, false)) return
-        val owned = appKeys(p).values.toSet()
-        val orphans = receiptsMap(p).keys.filter { it !in owned }
-        for (key in orphans) clearKey(context, key)
     }
 
     /**
@@ -913,6 +871,28 @@ object EntitlementManager {
     internal fun anyActive(apps: Map<String, Long>, nowSec: Long, excludeApp: String? = null): Boolean =
         apps.any { (k, v) -> k != excludeApp && validAt(v, nowSec) }
 
+    /** 跨码聚合（2026-11-07 归属退役，grilling D1/D2 拍板；三席审 I-3 选型=纯函数
+     *  seam）：每 app 取全部候选码的真实可用截止——任一码 0（永久）→ 0（永久优先）；
+     *  否则 max（relay 段接力保证段链连续，聚合值=paid-through，receipt 的 exps 天然
+     *  含本码排队段聚合）。与服务端 segAgg（relay.go:46）同语义；与归属顺序无关
+     *  （乱序不变）。停权排除（bindingMarks）在调用方 anchored 构建处，本函数上游。
+     *  向量=entitlement-vectors.json aggregate-merged 段（JUnit 两侧镜像消费）。 */
+    internal fun mergeExpiries(entries: List<Pair<String, Entitlement>>): Map<String, Long> {
+        val merged = HashMap<String, Long>()
+        for ((_, ent) in entries) {
+            for ((app, exp) in ent.expiries) {
+                val cur = merged[app]
+                merged[app] = when {
+                    cur == null -> exp
+                    cur == 0L || exp == 0L -> 0L // 任一永久 → 永久（segAgg 同口径）
+                    exp > cur -> exp
+                    else -> cur
+                }
+            }
+        }
+        return merged
+    }
+
     /** 遮蔽（T4 件5 通用兜底机制）：cfg.fallbackApp 在全局聚合表 allApps 中有效 →
      *  apps 键集被遮（只留 fallbackApp 键）；兜底未配置/无效 → 原样返回。
      *  现状对应：Worker 通知遍历「app!=shiyin && shiyinExp 有效 → continue」（拾音
@@ -1093,41 +1073,21 @@ object EntitlementManager {
         invalidateStateCache()
     }
 
-    /** 清除单个 key（多码模型：该 key receipt + 其归属 app 条目）。实际移除即发
-     *  CLEARED 事件（2026-11-04）：被融合清码/吊销/无效与巡检 discovered 清码统一
-     *  通知宿主收敛界面（首页横幅/码卡列表此前滞留到重进页）；未移除（码不存在）
-     *  早退不发 */
+    /** 清除单个 key（多码模型：移除该 key receipt）。归属映射维护 2026-11-07 退役
+     *  （grilling D3+三席审 I-1）：原「receipt+其归属 app 条目」双写与 relay 解绑拆回的
+     *  归属重指向（v2.4 批3 clearKeyInternal/relay_aggs 消费）随 computeCurrent 跨码
+     *  聚合一并退役——重指向的防护对象（computeCurrent 归属过滤）已不存在，聚合天然
+     *  含剩余码。实际移除即发 CLEARED 事件（2026-11-04）：被融合清码/吊销/无效与巡检
+     *  discovered 清码统一通知宿主收敛界面（首页横幅/码卡列表此前滞留到重进页）；
+     *  未移除（码不存在）早退不发 */
     fun clearKey(context: Context, key: String) {
-        clearKeyInternal(context, key, null)
-    }
-
-    /** clearKey 核心（v2.4 批3 扩展）：relayAggs 非空=relay 解绑拆回场景——服务端
-     *  /device/release 应答 relay_aggs={app:其余码联合聚合}，归属重指向依据。流程：
-     *  ①移除该 key receipt+归属条目（原 clearKey 语义）②对每个 relay app，在剩余
-     *  receipt 中找持有该 app 且到期与聚合一致者，重指向归属（keys[app]==null 会放行
-     *  任意 receipt，过期码可混入聚合——:379 防护正是归属存在的理由）；无匹配保持
-     *  null（降级为现状语义，不阻塞）。legacy 调用（relayAggs=null）行为不变。 */
-    private fun clearKeyInternal(context: Context, key: String, relayAggs: Map<String, Long>?) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val rcpts = receiptsMap(p).toMutableMap()
         if (rcpts.remove(key) == null) return
         setBindingMark(p, key, null)
-        val keys = appKeys(p).filterValues { it != key }.toMutableMap()
-        if (relayAggs != null) {
-            for ((app, aggExp) in relayAggs) {
-                if (keys.containsKey(app)) continue // 他码仍归属（未受本次解绑影响）
-                val owner = rcpts.entries.firstOrNull { (_, raw) ->
-                    parseReceipt(raw)?.expiries?.get(app) == aggExp
-                }?.key
-                if (owner != null) keys[app] = owner
-            }
-        }
         // macLock：同 persist（竞态修复 2026-10-14）
         synchronized(macLock) {
-            p.edit()
-                .putString(K_RECEIPTS, JSONObject(rcpts).toString())
-                .putString(K_APP_KEYS, JSONObject(keys).toString())
-                .apply()
+            p.edit().putString(K_RECEIPTS, JSONObject(rcpts).toString()).apply()
             if (storedKey(context) == key) {
                 p.edit().putString(K_PRIMARY, rcpts.keys.firstOrNull() ?: "").apply()
             }
@@ -1178,18 +1138,10 @@ object EntitlementManager {
                         userMessage = releaseFailMessage(err, code, remote = false),
                     )
                 }
-                // relay 拆回消费（v2.4 批3；shiyin-pricing-model.md §五.2 SDK 配套 a）：
-                // 服务端 release 应答 relay_aggs={app:该设备其余码联合聚合}（legacy 无此
-                // 键=null=原行为）——清本码 receipt 同时把受影响 app 的归属重指向其余
-                // 持有码（否则 keys[app]==null 放行任意 receipt，过期码可混入聚合）
-                val relayAggs = runCatching {
-                    JSONObject(respBody).optJSONObject("relay_aggs")?.let { o ->
-                        o.keys().asSequence().mapNotNull { app ->
-                            o.optLong(app, Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE }?.let { app to it }
-                        }.toMap()
-                    }
-                }.getOrNull()
-                clearKeyInternal(context, key, relayAggs)
+                // relay_aggs 消费（v2.4 批3 归属重指向）2026-11-07 随归属退役删除：
+                // 聚合天然含剩余码，重指向无防护对象可服务（服务端应答字段保留，旧客户端
+                // 兼容不受影响）
+                clearKey(context, key)
                 ReleaseOutcome(ok = true, errCode = null, userMessage = "")
             }.fold(
                 { it },
@@ -1521,14 +1473,14 @@ object EntitlementManager {
 
         val rcpts = receiptsMap(p).toMutableMap()
         rcpts[key] = receipt
-        val keys = appKeys(p).toMutableMap()
-        e.apps.forEach { keys[it] = key } // 响应 apps 归属本 key（同 app 冲突=新码接管）
+        // K_APP_KEYS 停写（2026-11-07 归属退役，grilling D3 拍板）：响应 apps 归属机制
+        // 随 computeCurrent 跨码聚合一并退役——归属映射曾按激活/巡检/restore 三路径
+        // 反复重写（顺序决定权益视图的结构脆弱性），跨码聚合与顺序无关
 
         // macLock：凭证写入（payload 成分）与 writeStateMac 原子于并发 verify（竞态修复 2026-10-14）
         synchronized(macLock) {
             p.edit()
                 .putString(K_RECEIPTS, JSONObject(rcpts).toString())
-                .putString(K_APP_KEYS, JSONObject(keys).toString())
                 .putString(K_PRIMARY, key)
                 .putLong(K_LAST_SEEN, System.currentTimeMillis())
                 .apply()

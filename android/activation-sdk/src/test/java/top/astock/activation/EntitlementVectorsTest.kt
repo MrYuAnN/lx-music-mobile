@@ -151,4 +151,36 @@ class EntitlementVectorsTest {
             )
         }
     }
+
+    /** 跨码聚合段（2026-11-07 归属退役批，grilling D1/D2+三席审 I-3/S-7）：每码
+     *  expiries → mergeExpiries（任一永久=0 优先，否则 max，乱序不变=PAID-THROUGH
+     *  口径与服务端 segAgg 同语义）。stop-marks 排除在 computeCurrent anchored 构建
+     *  处（上游既有逻辑不变），本段只锁聚合数学。 */
+    @Test
+    fun mergedVectors() {
+        val root = loadVectors() ?: run { assumeTrue("[entitlement-vectors] 向量文件不可达，skip", false); return }
+        val arr = section(root, "aggregate-merged") ?: return
+        var asserted = 0
+        for (i in 0 until arr.length()) {
+            val v = arr.getJSONObject(i)
+            val entries = ArrayList<Pair<String, EntitlementManager.Entitlement>>()
+            val ea = v.optJSONArray("entries")
+            for (j in 0 until (ea?.length() ?: 0)) {
+                val e = ea!!.getJSONObject(j)
+                val exp = HashMap<String, Long>()
+                e.optJSONObject("expiries")?.let { jo -> jo.keys().forEach { k -> exp[k] = longOf(jo.opt(k)) } }
+                entries.add(e.optString("keyId") to entOf(e.optString("keyId"), exp))
+            }
+            val expected = HashMap<String, Long>()
+            v.optJSONObject("expectedMerged")?.let { jo -> jo.keys().forEach { k -> expected[k] = longOf(jo.opt(k)) } }
+            val got = EntitlementManager.mergeExpiries(entries)
+            assertTrue(
+                "${v.optString("id")}: got=$got expected=$expected",
+                got == expected,
+            )
+            asserted++
+        }
+        // 最小断言数防护（aggregate 段 S7 同款）：段被整体改为跳过域时防线不无声失效
+        assertTrue("aggregate-merged 段断言条目数为 0（防线空转）", asserted > 0)
+    }
 }
