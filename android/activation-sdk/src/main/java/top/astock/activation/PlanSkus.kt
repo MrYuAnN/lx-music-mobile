@@ -54,6 +54,13 @@ object PlanSkus {
     val APP_CN = mapOf("fanqie" to "番茄小说", "hongguo" to "红果免费短剧/漫剧")
     const val FAMILY_CN = "全家桶"
 
+    /** 源行展示顺序兜底表（2026-11-17 冒烟反馈：权益页本地骨架行的 expiries 键序来自
+     *  org.json JSONObject（HashMap，键序无保证），首帧顺序与服务端 sources 下发序
+     *  不一致，打开瞬间顺序闪变。宿主排序优先消费 learned 序（服务端 sources 实际序
+     *  本地持久化），本表只兜首装首开（learned 未及）；未知 app 排末尾。仅展示层
+     *  排序约定，判定面不受影响 */
+    val SOURCE_DISPLAY_ORDER = listOf("fanqie", "hongguo")
+
     /** 在线支付是否开通（服务端 payable 字段，mock 通道=false）：false 时购买入口
      *  拦截改「联系购买」（2026-08-22 用户拍板：正式支付接入前不走通支付路径）。
      *  随每次 parse（网络/缓存）同步，默认 true 宽容旧服务端。 */

@@ -1439,6 +1439,12 @@ object EntitlementManager {
             "device_bound_other" -> "该激活码已在其他手机使用，绑定后才可用（如非本人操作请联系客服）"
             "device_limit" -> "设备数已满：请在原设备解绑，或到订单页查看换绑说明"
             "trial_used" -> "体验卡每设备限用 1 张，如需继续使用请购买月卡/年卡"
+            // 试用域三码（2026-11-17 审计批2+三席 I-1 勘正）：仅 /api/trial-claim 下发
+            // （trial.go 429/503/503），当前 claim 链路静默退避不走 mapError——本映射为
+            // 未来文案出口预留的契约面，非现行用户可见路径
+            "trial_ip_limit" -> "今天申请试用的设备较多，请明天再试"
+            "trial_disabled" -> "试用资格申请暂未开放，请稍后再试"
+            "trial_cap_reached" -> "今日试用名额已发放完毕，请明天再试"
             "invalid_code" -> "充值码无效或已使用"
             "key_not_found" -> "请先用激活码（JP- 开头）开通后，再用充值码续费"
             "rate_limited" -> "操作过于频繁，请稍后再试"
