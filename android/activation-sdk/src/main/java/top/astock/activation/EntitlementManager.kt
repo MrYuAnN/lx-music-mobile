@@ -61,6 +61,17 @@ object EntitlementManager {
     const val BINDING_MARK_OTHER = "bound_other"      // 已被其它手机绑定
     const val BINDING_INTENT_BIND = "bind"            // /activate intent：用户主动绑定
 
+    // 激活族 200 响应本地校验失败拆分（2026-11-18 排查批：JP-JFXRM 设备全激活族
+    // 响应不落盘+409 重领实证=手机侧单点，原文案两分支同串无法区分验签/解析——
+    // 对标 RevenueCat signatureVerificationFailed 独立错误码模式：文案给用户自助
+    // 动作、errCode 给日志/诊断分派，展示与协议解耦同 mapError 先例）
+    const val ERR_SIG_VERIFY = "signature_verification_failed"  // 验签不过=响应疑似被链路篡改
+    const val ERR_RESP_PARSE = "response_parse_failed"          // 结构解析异常=响应形状不符
+    const val MSG_SIG_VERIFY = "服务响应签名校验失败：当前网络可能拦截了数据，请切换流量/WiFi或关闭代理/VPN后重试"
+    const val MSG_RESP_PARSE = "服务响应数据异常，请稍后再试"
+    // 验签失败诊断上报节流（随 /app/install 附 diag 字段；每设备每日 1 条防风暴）
+    private const val K_DIAG_LAST_DAY = "verify_fail_diag_last_day"
+
     // binding-check 巡检节流（2026-08-27 方案A'）：onResume 级调用压平到 3 分钟一次，
     // 防再打穿服务端 /IP/日 配额。显式通道——码详情页打开 bindingCheckNow / 绑定本机 /
     // 输码激活——不经此路径不受限，实时性不受影响。失败也计入窗口（防 429 风暴重试）。
@@ -199,6 +210,11 @@ object EntitlementManager {
             val errCode: String? = null,
             val devices: List<BoundDevice> = emptyList(),
             val released: Boolean = false,
+            // 验签失败诊断载荷（2026-11-18 排查批；仅 ERR_SIG_VERIFY 分支非空）：
+            // {pk_fp,canon_hash,skew,did,key,base}——随 /app/install 上报（每设备
+            // 每日 1 条），服务端落 op_log verify-fail 供管理侧定位劫持/篡改设备。
+            // 纯技术指纹（哈希前缀+时钟偏移秒），无个人信息；旧调用点缺省 null 零影响
+            val diag: JSONObject? = null,
         ) : AuthResult()
         // errCode=服务端结构化错误码（如 not_bound/device_bound_other/expired），
         // 巡检按它分派处置；null=无服务端应答（网络失败等），一律走离线宽限。
@@ -956,15 +972,16 @@ object EntitlementManager {
         // 请求即收状态码与响应体。2026-10-14 claim 先行编排：409 trial_has_license=
         // 设备有仍生效绑定（正价重装）→ restore 接管；其余非 200（限流/关断/发放量
         // 熔断/版本门槛）静默退避重试。disconnect 入 try/finally（审查 S4：异常路径
-        // 不泄漏连接）
-        val resp: Pair<Int, String>? = runCatching {
-            val body = JSONObject(
-                mapOf(
-                    "device_id" to deviceId(context),
-                    "drm_id" to drmDeviceId(context),
-                    "device_name" to android.os.Build.MODEL,
-                )
+        // 不泄漏连接）。claimBody 提到外层（三席审查 I-2 接线：验签失败走
+        // verifyFailRecovery 备域重放复用同一请求体，防双份形状漂移）
+        val claimBody = JSONObject(
+            mapOf(
+                "device_id" to deviceId(context),
+                "drm_id" to drmDeviceId(context),
+                "device_name" to android.os.Build.MODEL,
             )
+        )
+        val resp: Pair<Int, String>? = runCatching {
             val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/trial-claim").openConnection() as HttpURLConnection
             val code: Int
             val respBody: String
@@ -976,7 +993,7 @@ object EntitlementManager {
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
                 conn.setRequestProperty("X-Product", ActivationSdk.productId)
-                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+                conn.outputStream.use { it.write(claimBody.toString().toByteArray(Charsets.UTF_8)) }
                 code = conn.responseCode
                 respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
                     ?.bufferedReader()?.use { it.readText() } ?: ""
@@ -1019,9 +1036,21 @@ object EntitlementManager {
                     true
                 }
                 is AuthResult.Failure -> {
-                    // 验签失败等异常响应：计一次失败退避重试（下次请求拿全新签名）
-                    p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
-                    false
+                    // 本地校验失败（验签/解析）：走激活族公共编排（备域重放+限频诊断，
+                    // 三席审查 I-2 接线——trial 为新装设备首发撞墙点，排查定案的
+                    // JP-JFXRM 即「trial 200 后重领 409」形态）；仍失败计退避重试
+                    when (val recovered = verifyFailRecovery(context, r, "/api/trial-claim", claimBody)) {
+                        is AuthResult.Success -> {
+                            persist(context, recovered.e.keyId, recovered)
+                            p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).apply()
+                            notifyEntitlementChanged(EntitlementChange.CLAIMED)
+                            true
+                        }
+                        is AuthResult.Failure -> {
+                            p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
+                            false
+                        }
+                    }
                 }
             }
         }
@@ -1294,20 +1323,55 @@ object EntitlementManager {
                         "app_ver" to ver,
                     )
                 )
-                val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/app/install").openConnection() as HttpURLConnection
-                conn.connectTimeout = 15000
-                conn.readTimeout = 15000
-                conn.doOutput = true
-                conn.requestMethod = "POST"
-                conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-                conn.setRequestProperty("X-Client-Version", ver)
-                conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
-                conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-                val code = conn.responseCode
-                conn.disconnect()
-                if (code !in 200..299) Log.w(TAG, "install report failed: $code")
+                postInstallBody(context, body, ver)
             }.onFailure { Log.w(TAG, "install report error", it) }
         }
+    }
+
+    /** /app/install POST 管道单源（2026-11-18 拆分批抽出）：reportInstall（挂起，
+     *  前台心跳）与 reportVerifyFailDiag（非挂起，激活链路内联上报）共用，防双份
+     *  header/body 漂移。调用方自带 runCatching（诊断通道失败静默不冒泡）。
+     *  diag 载荷仅 reportVerifyFailDiag 组装（三席审查 S3：不走 reportInstall 死参数）。 */
+    private fun postInstallBody(context: Context, body: JSONObject, ver: String) {
+        val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/app/install").openConnection() as HttpURLConnection
+        conn.connectTimeout = 15000
+        conn.readTimeout = 15000
+        conn.doOutput = true
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        conn.setRequestProperty("X-Client-Version", ver)
+        conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+        conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        val code = conn.responseCode
+        conn.disconnect()
+        if (code !in 200..299) Log.w(TAG, "install report failed: $code")
+    }
+
+    /** 验签失败诊断上报（2026-11-18 拆分批）：随 /app/install 附 diag 字段，服务端
+     *  落 op_log(kind=verify-fail) 供管理侧按设备定位劫持/篡改面。每设备每日 1 条
+     *  限频（day 粒度先记后发，失败也计入窗口——防风暴重试，同 trial 节流口径）；
+     *  上报失败静默，诊断通道不得影响激活主链路。非挂起：激活链路（IO 线程）内联
+     *  调用，与挂起的 reportInstall 共用 postInstallBody 管道。 */
+    private fun reportVerifyFailDiag(context: Context, diag: JSONObject?) {
+        if (diag == null || !ActivationSdk.installReportEnabled) return
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val today = System.currentTimeMillis() / 86_400_000L
+        if (prefs.getLong(K_DIAG_LAST_DAY, -1L) == today) return
+        prefs.edit().putLong(K_DIAG_LAST_DAY, today).apply()
+        runCatching {
+            postInstallBody(
+                context,
+                JSONObject(
+                    mapOf(
+                        "device_id" to stableDeviceId(context).ifEmpty { deviceId(context) },
+                        "app_pkg" to context.packageName,
+                        "app_ver" to ActivationSdk.xClientVersion,
+                        "diag" to diag,
+                    )
+                ),
+                ActivationSdk.xClientVersion,
+            )
+        }.onFailure { Log.w(TAG, "verify-fail diag report failed", it) }
     }
 
     private fun sha256Hex(input: String): String {
@@ -1320,37 +1384,98 @@ object EntitlementManager {
 
     private fun postAuth(context: Context, path: String, body: JSONObject): AuthResult =
         runCatching {
-            val conn = URL(ActivationSdk.apiBase.trimEnd('/') + path).openConnection() as HttpURLConnection
-            conn.connectTimeout = 15000
-            conn.readTimeout = 15000
-            // doOutput 必须先开（真机实证修复：不开则 getOutputStream 直接抛 IOException，
-            // 请求未发出即被 runCatching 转成「网络异常」——GET 链路无 body 故不受影响，
-            // 激活/续费 POST 全挂在写 body 一步；M3 起缺失，激活链路首次真机全链路跑暴露）
-            conn.doOutput = true
-            conn.requestMethod = "POST"
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
-            conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
-            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-            val code = conn.responseCode
-            val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
-                ?.bufferedReader()?.use { it.readText() } ?: ""
-            conn.disconnect()
-            if (code != 200) {
-                val jo = runCatching { JSONObject(respBody) }.getOrNull()
-                val errCode = jo?.optString("error")?.takeIf { it.isNotEmpty() }
-                return@runCatching AuthResult.Failure(
-                    mapError(code, respBody), errCode, parseDevices(jo),
-                    jo?.optBoolean("released", false) ?: false,
-                )
-            }
-            parseActivationResp(JSONObject(respBody))
+            val primary = postAuthOnce(ActivationSdk.apiBase, path, body)
+            if (isLocalVerifyFail(primary)) verifyFailRecovery(context, primary, path, body) else primary
         }.getOrElse {
             // 真机实证（2026-08-22）：服务端 200 但客户端仍报网络异常且 message 为空——
             // runCatching 吞栈无日志，logcat 空白无法定位；此处落日志保留完整栈
             Log.e(TAG, "postAuth failed: $path", it)
             AuthResult.Failure("网络异常，请稍后再试（${it.message ?: ""}）")
         }
+
+    /** 激活族 200 响应本地校验失败判定（2026-11-18 三席审查 I-PM 拍板：验签与解析
+     *  两分支同属「响应疑似被链路篡改/劫持」——域名劫持常见形态含结构损坏（HTML
+     *  插页/截断体），一并纳入备域重放+诊断触发面）。 */
+    private fun isLocalVerifyFail(r: AuthResult): Boolean =
+        r is AuthResult.Failure && (r.errCode == ERR_SIG_VERIFY || r.errCode == ERR_RESP_PARSE)
+
+    /** 激活族本地校验失败公共编排（2026-11-18 三席审查 I-1/I-3/I-2 合并修复）：
+     *  先备域重放救主链路（诊断不插中间，消 90s 串行阻塞——对标 Sentry 异步
+     *  transport），后限频上报合并诊断（fb_hit=备域是否也失败；解析分支 diag=null
+     *  时上报精简形态）——主备双失败信号不再被日限频吞掉（原实现第二次上报不可达），
+     *  base 恒标主域名失真随之消解（primary 实际来自主域，base 语义归正）。
+     *  备域重放安全性=activate 同机幂等/redeem 已用码拒（I-4 见核验分支）/trial
+     *  双锚幂等，均已实证。primary=主域结果（isLocalVerifyFail 必真）。
+     *  postAuth 与 claimTrialImpl（三席审查 I-2 接线：trial 为新装设备首发撞墙点）
+     *  两处共用，防编排漂移。 */
+    private fun verifyFailRecovery(context: Context, primary: AuthResult.Failure, path: String, body: JSONObject): AuthResult {
+        val fb = ActivationSdk.fallbackApiBase.trim()
+        val retried = if (fb.isNotEmpty() && fb.trimEnd('/') != ActivationSdk.apiBase.trimEnd('/')) {
+            Log.w(TAG, "local verify failed on primary ($path), retry once via fallback base")
+            postAuthOnce(fb, path, body)
+        } else null
+        val fbFailed = retried != null && isLocalVerifyFail(retried)
+        val mergedDiag = primary.diag?.put("fb_hit", fbFailed)
+            ?: JSONObject(mapOf("base" to ActivationSdk.apiBase.trimEnd('/'), "fb_hit" to fbFailed))
+        reportVerifyFailDiag(context, mergedDiag)
+        if (retried == null) return primary
+        // I-4：redeem 首请求可能已被服务端成功处理（码已置 used、权益已叠加），备域
+        // 重放必得 invalid_code——binding-check 只读核验，权益已实际生效则按成功呈现
+        // （对标 Stripe 幂等重试=返回原始成功响应语义；本产品无幂等键的自定简化补偿）。
+        // 核验直连主域单跳（postAuthOnce 不递归编排），核验本身再失败则维持重放错误
+        if (path == "/redeem" && retried is AuthResult.Failure && retried.errCode == "invalid_code") {
+            val key = body.optString("key")
+            if (key.isNotEmpty()) {
+                val check = postAuthOnce(
+                    ActivationSdk.apiBase, "/api/binding-check",
+                    JSONObject(mapOf("key" to key, "device_id" to deviceId(context))),
+                )
+                if (check is AuthResult.Success) {
+                    Log.i(TAG, "redeem fallback invalid_code but entitlement active via binding-check")
+                    return check
+                }
+            }
+        }
+        return retried
+    }
+
+    /** 单域名一次激活族请求（2026-11-18 拆分批从 postAuth 抽出：主/备域名共用管道，
+     *  备用域名重放复用同一段 HTTP 与错误映射，防双份 canonical 漂移）。
+     *  网络异常原样上抛，由 postAuth 外层统一转「网络异常」文案。 */
+    private fun postAuthOnce(base: String, path: String, body: JSONObject): AuthResult {
+        val conn = URL(base.trimEnd('/') + path).openConnection() as HttpURLConnection
+        conn.connectTimeout = 15000
+        conn.readTimeout = 15000
+        // doOutput 必须先开（真机实证修复：不开则 getOutputStream 直接抛 IOException，
+        // 请求未发出即被 runCatching 转成「网络异常」——GET 链路无 body 故不受影响，
+        // 激活/续费 POST 全挂在写 body 一步；M3 起缺失，激活链路首次真机全链路跑暴露）
+        conn.doOutput = true
+        conn.requestMethod = "POST"
+        conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
+        conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
+        conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+        // disconnect 入 try/finally（三席审查 S4：读响应抛 IOException 时也要归还
+        // 连接池 socket；原 postAuth 同病随抽单源一并收口）
+        val code: Int
+        val respBody: String
+        try {
+            conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+            code = conn.responseCode
+            respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
+                ?.bufferedReader()?.use { it.readText() } ?: ""
+        } finally {
+            conn.disconnect()
+        }
+        if (code != 200) {
+            val jo = runCatching { JSONObject(respBody) }.getOrNull()
+            val errCode = jo?.optString("error")?.takeIf { it.isNotEmpty() }
+            return AuthResult.Failure(
+                mapError(code, respBody), errCode, parseDevices(jo),
+                jo?.optBoolean("released", false) ?: false,
+            )
+        }
+        return parseActivationResp(JSONObject(respBody))
+    }
 
     /**
      * activationResp 同构响应解析（/activate、/api/binding-check(ok)、/api/trial-claim
@@ -1391,7 +1516,13 @@ object EntitlementManager {
                 hexToBytes(pub), canonical.toByteArray(Charsets.UTF_8),
                 Base64.decode(rc.getString("sig"), Base64.DEFAULT)
             )
-            if (!ok) return@runCatching AuthResult.Failure("服务返回数据校验失败，请稍后再试")
+            if (!ok) {
+                return@runCatching AuthResult.Failure(
+                    MSG_SIG_VERIFY, ERR_SIG_VERIFY,
+                    // 诊断载荷（2026-11-18 排查批，构造单源 buildVerifyFailDiag 可单测）
+                    diag = buildVerifyFailDiag(pub, canonical, rc, root.optString("key_id"), ActivationSdk.apiBase.trimEnd('/')),
+                )
+            }
         }
         AuthResult.Success(
             Entitlement(
@@ -1411,7 +1542,7 @@ object EntitlementManager {
         )
     }.getOrElse {
         Log.e(TAG, "parseActivationResp failed", it)
-        AuthResult.Failure("服务返回数据校验失败，请稍后再试")
+        AuthResult.Failure(MSG_RESP_PARSE, ERR_RESP_PARSE)
     }
 
     /** 被融合码清单解析（2026-11-04）：顶层 fused_keys 数组宽松读（旧平台无此键=空表，
@@ -1423,6 +1554,10 @@ object EntitlementManager {
 
     // internal（模块内）：fused_keys 解析单测入口（2026-11-04 激活域收敛批次）
     internal fun parseFusedKeysForTest(json: String): List<String> = parseFusedKeys(JSONObject(json))
+
+    // internal（模块内）：activationResp 解析单测入口（2026-11-18 拆分批——验签/
+    // 解析两分支的文案+errCode+diag 断言面）
+    internal fun parseActivationRespForTest(json: String): AuthResult = parseActivationResp(JSONObject(json))
 
     private fun mapError(code: Int, body: String): String {
         val err = runCatching { JSONObject(body).optString("error") }.getOrDefault("")
@@ -1452,6 +1587,24 @@ object EntitlementManager {
             else -> "服务异常（$code），请稍后再试"
         }
     }
+
+    /** 验签失败诊断载荷构造（2026-11-18 拆分批；纯 JVM 可单测——公钥指纹/canonical
+     *  哈希各取前 8 位（只判「同一设备同一形态失败」不泄露密钥材料）；skew=服务端
+     *  签发时刻与本地钟差（秒，正=本地慢）——时钟回拨也会验签失败（iat 进 canonical），
+     *  该字段直接分辨这类误报；key 取响应 key_id（激活族请求可回查订单）；
+     *  base=本次请求主域名（区分主/备域名命中面）。 */
+    internal fun buildVerifyFailDiag(
+        pubHex: String, canonical: String, rc: JSONObject, keyId: String, base: String,
+    ): JSONObject = JSONObject(
+        mapOf(
+            "pk_fp" to pubHex.take(8),
+            "canon_hash" to sha256Hex(canonical).take(8),
+            "skew" to (rc.getLong("iat") - System.currentTimeMillis() / 1000),
+            "did" to rc.optString("did"),
+            "key" to keyId,
+            "base" to base,
+        )
+    )
 
     /** receipt JSON 组装 seam（组1 块4 测试面）：persist 落盘形状单源，纯 JVM
      *  可与 parseReceipt 往返断言（不丢字段/口径不漂）。 */

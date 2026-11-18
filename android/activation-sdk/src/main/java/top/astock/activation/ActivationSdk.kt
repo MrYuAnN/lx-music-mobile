@@ -24,6 +24,13 @@ object ActivationSdk {
     var apiBase: String = ""
         private set
 
+    /** 备用 API 基址（可选；验签失败=响应疑似被域名级劫持/篡改时换它重试一次，
+     *  对标 Chrome 备用主机模式。默认空=关闭（shiyin 等宿主不注入零影响）；
+     *  须与 apiBase 同一后端（本产品 jp.a-stock.top 为旧版 App 兼容别名）。 */
+    @Volatile
+    var fallbackApiBase: String = ""
+        private set
+
     /** 产品键（X-Product 头，随所有平台端点请求上报；须与平台 products 注册表键一致） */
     @Volatile
     var productId: String = ""
@@ -85,6 +92,7 @@ object ActivationSdk {
         xClientVersion: String,
         webBaseUrl: String = "",
         installReportEnabled: Boolean = true,
+        fallbackApiBase: String = "",
         entitlementConfig: EntitlementConfig = EntitlementConfig(),
     ) {
         // 公钥 fail-fast（三席审查 I-1）：空/格式错即抛——receipt 验签是防伪底线，
@@ -99,6 +107,7 @@ object ActivationSdk {
         this.xClientVersion = xClientVersion
         this.webBaseUrl = webBaseUrl
         this.installReportEnabled = installReportEnabled
+        this.fallbackApiBase = fallbackApiBase
         this.entitlementConfig = entitlementConfig
     }
 
