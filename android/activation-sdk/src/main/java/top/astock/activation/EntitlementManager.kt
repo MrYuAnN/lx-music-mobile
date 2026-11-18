@@ -31,6 +31,8 @@ import android.security.keystore.KeyProperties
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import java.util.Calendar
+import java.util.TimeZone
 
 object EntitlementManager {
 
@@ -67,10 +69,17 @@ object EntitlementManager {
     // 动作、errCode 给日志/诊断分派，展示与协议解耦同 mapError 先例）
     const val ERR_SIG_VERIFY = "signature_verification_failed"  // 验签不过=响应疑似被链路篡改
     const val ERR_RESP_PARSE = "response_parse_failed"          // 结构解析异常=响应形状不符
+    const val ERR_RELEASE_LIMIT = "release_limit"               // 解绑限额用尽（服务端结构化值，自然月口径）
     const val MSG_SIG_VERIFY = "服务响应签名校验失败：当前网络可能拦截了数据，请切换流量/WiFi或关闭代理/VPN后重试"
     const val MSG_RESP_PARSE = "服务响应数据异常，请稍后再试"
     // 验签失败诊断上报节流（随 /app/install 附 diag 字段；每设备每日 1 条防风暴）
     private const val K_DIAG_LAST_DAY = "verify_fail_diag_last_day"
+
+    // 解绑限额自然月口径（2026-11-18 拍板，服务端 /device/release 闸同步改自然月）：
+    // 每码最近自助解绑的年月记录（键=本前缀+key 原文，值=东八区 "yyyy-MM"）。
+    // 仅 App 侧「快路径提示」用非硬闸——服务端唯一事实源；独立 SP 键不进 state MAC，
+    // 不受 clearKey/clear 清理（清权益≠清配额历史）。
+    private const val K_LAST_RELEASE_YM = "last_release_ym_"
 
     // binding-check 巡检节流（2026-08-27 方案A'）：onResume 级调用压平到 3 分钟一次，
     // 防再打穿服务端 /IP/日 配额。显式通道——码详情页打开 bindingCheckNow / 绑定本机 /
@@ -182,15 +191,15 @@ object EntitlementManager {
     }
 
     // v1.4：解绑失败文案单源（not_bound/trial_no_release 自原 when 分支逐字迁入；
-    // release_limit 2026-11-03 口径对齐改写「每月限 1 次」→「每 30 天限 1 次」，呼应
-    // 平台仓 4176cbf 30 天滚动窗——旧宿主消费 Result.message/String? 即此文案；
-    // remote 仅影响 not_bound 措辞）
+    // release_limit 口径随窗口演进：2026-11-03 改「每 30 天限 1 次」对齐 4176cbf
+    // 滚动窗，2026-11-18 服务端改自然月闸同步改「每自然月限 1 次」——旧宿主消费
+    // Result.message/String? 即此文案；remote 仅影响 not_bound 措辞）
     internal fun releaseFailMessage(err: String, httpCode: Int, remote: Boolean): String = when (err) {
         "not_bound" ->
             if (remote) "该设备已不在此码名下，刷新后查看最新列表"
             else "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
         "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
-        "release_limit" -> "解绑次数已用完（每 30 天限 1 次），请联系客服协助"
+        "release_limit" -> "本月解绑次数已用完（每自然月限 1 次，次月 1 日恢复），如需提前解绑请联系客服"
         else -> "服务异常（$httpCode），请稍后再试"
     }
 
@@ -1126,12 +1135,13 @@ object EntitlementManager {
     }
 
     /** 解绑指定 key 的本机设备（多码模型：KeyInfoSheet 指定码解绑）；成功后清除该
-     *  key 本地权益，激活码可在新设备重新激活（用户侧每 30 天限 1 次，服务端控制）。
+     *  key 本地权益，激活码可在新设备重新激活（用户侧每自然月限 1 次，服务端控制；
+     *  2026-11-18 口径由 30 天滚动窗改自然月）。
      *  体验卡（trial7/trial3）除外：服务端禁止自助解绑（一码一用锁首绑设备，
      *  2026-10-24），仅管理台客诉通道可解。
      *  v1.4：委托 releaseDeviceEx（行为等价；有意差异两处=①网络异常 message 为 null 时
-     *  补「网络异常」兜底文案（旧版此路径 message=null）②release_limit 文案 2026-11-03
-     *  口径对齐「每月限 1 次」→「每 30 天限 1 次」（平台仓 4176cbf），其余文案逐字不变） */
+     *  补「网络异常」兜底文案（旧版此路径 message=null）②release_limit 文案随窗口演进
+     *  逐次对齐（2026-11-03 滚动窗 4176cbf→2026-11-18 自然月），其余文案逐字不变） */
     suspend fun releaseDevice(context: Context, keyOverride: String? = null): Result<Unit> {
         val r = releaseDeviceEx(context, keyOverride)
         return if (r.ok) Result.success(Unit) else Result.failure(IllegalStateException(r.userMessage))
@@ -1161,9 +1171,13 @@ object EntitlementManager {
                 conn.disconnect()
                 if (code != 200) {
                     val err = runCatching { JSONObject(respBody).optString("error") }.getOrDefault("")
+                    val errCode = releaseErrCode(err)
+                    // 服务端确认限额用尽=事实回写本地月态（防本地记录丢失/重装漂移，
+                    // App 前置拦截恢复准度；客服代解绑重置窗口场景由 App「仍要解绑」兜底）
+                    if (errCode == ERR_RELEASE_LIMIT) markSelfReleaseMonth(context, key)
                     return@runCatching ReleaseOutcome(
                         ok = false,
-                        errCode = releaseErrCode(err),
+                        errCode = errCode,
                         userMessage = releaseFailMessage(err, code, remote = false),
                     )
                 }
@@ -1171,6 +1185,7 @@ object EntitlementManager {
                 // 聚合天然含剩余码，重指向无防护对象可服务（服务端应答字段保留，旧客户端
                 // 兼容不受影响）
                 clearKey(context, key)
+                markSelfReleaseMonth(context, key)
                 ReleaseOutcome(ok = true, errCode = null, userMessage = "")
             }.fold(
                 { it },
@@ -1213,12 +1228,15 @@ object EntitlementManager {
                 conn.disconnect()
                 if (code != 200) {
                     val err = runCatching { JSONObject(respBody).optString("error") }.getOrDefault("")
+                    val errCode = releaseErrCode(err)
+                    if (errCode == ERR_RELEASE_LIMIT) markSelfReleaseMonth(context, key)  // 同本机：服务端事实回写
                     return@runCatching ReleaseOutcome(
                         ok = false,
-                        errCode = releaseErrCode(err),
+                        errCode = errCode,
                         userMessage = releaseFailMessage(err, code, remote = true),
                     )
                 }
+                markSelfReleaseMonth(context, key)
                 ReleaseOutcome(ok = true, errCode = null, userMessage = "")
             }.fold(
                 { it },
@@ -1228,6 +1246,33 @@ object EntitlementManager {
                 },
             )
         }
+
+    /** 本月是否已自助解绑过该码（2026-11-18 自然月口径；东八区当月 ym 比对）。
+     *  本地记录仅做「快路径提示」非硬闸——服务端唯一事实源（客服代解绑不占自助
+     *  额度/重装丢 SP 的漂移场景由宿主「仍要解绑」直连服务端兜底；服务端确认用尽
+     *  时本 SDK 已在 release 失败分支事实回写）。
+     *  public：净屏 App 消费；拾音 RN bridge 未暴露暂无调用方（挂账另批）。 */
+    fun releasedThisMonth(context: Context, key: String): Boolean {
+        val saved = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .getString(K_LAST_RELEASE_YM + key, null) ?: return false
+        return saved == releaseYmOf(System.currentTimeMillis())
+    }
+
+    /** 毫秒时刻 → 东八区年月（"yyyy-MM"；与服务端 monthStartUnix 同区，防改设备
+     *  时区薅额度）。纯函数拆出=纯 JVM 可测（无 Robolectric 基建，SP 相关由真机冒烟盖）。 */
+    internal fun releaseYmOf(epochMillis: Long): String {
+        val cal = Calendar.getInstance(TimeZone.getTimeZone("GMT+08:00"))
+        cal.timeInMillis = epochMillis
+        return String.format("%04d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
+    }
+
+    private fun currentReleaseYm(): String = releaseYmOf(System.currentTimeMillis())
+
+    /** 自助解绑成功（本机/远程）落当月记录；非权益数据不进 state MAC。 */
+    private fun markSelfReleaseMonth(context: Context, key: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit().putString(K_LAST_RELEASE_YM + key, currentReleaseYm()).apply()
+    }
 
     /**
      * code-overlap 前置查询（⑥件②方案①净屏侧适配，2026-11-03）：输码激活前查新码
@@ -1385,7 +1430,12 @@ object EntitlementManager {
     private fun postAuth(context: Context, path: String, body: JSONObject): AuthResult =
         runCatching {
             val primary = postAuthOnce(ActivationSdk.apiBase, path, body)
-            if (isLocalVerifyFail(primary)) verifyFailRecovery(context, primary, path, body) else primary
+            // is 收窄在前（与 isLocalVerifyFail 首子句同款判断，行为等价）：primary 声明
+            // 为宽 AuthResult，不收窄传不进 verifyFailRecovery(Failure)——上批 742104f
+            // 编译遗留（Kotlin 未编译验证），解绑自然月批补修
+            if (primary is AuthResult.Failure && isLocalVerifyFail(primary)) {
+                verifyFailRecovery(context, primary, path, body)
+            } else primary
         }.getOrElse {
             // 真机实证（2026-08-22）：服务端 200 但客户端仍报网络异常且 message 为空——
             // runCatching 吞栈无日志，logcat 空白无法定位；此处落日志保留完整栈

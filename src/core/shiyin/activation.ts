@@ -191,7 +191,7 @@ export const unbindDevice = async(key: string | null, onDone: () => void): Promi
         }
         if (parts.length > 0) {
           // 拼接而非整体替换（审查 IM-8 修复，对齐净屏形态）：通用文案的「已下载歌曲
-          // 无法播放/每 30 天限 1 次」关键知情在 relay 态同样适用
+          // 无法播放/每自然月限 1 次」关键知情在 relay 态同样适用
           message = global.i18n.t('activation_unbind_relay_preview', { detail: parts.join('；') }) +
             '\n\n' + global.i18n.t('activation_unbind_confirm')
         }
