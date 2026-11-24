@@ -91,6 +91,12 @@ object PlanSkus {
     var nativeCheckout: Boolean = false
         private set
 
+    /** 订单发货自动激活（2026-11-23）：/api/skus 下发；缺省 false（老服务端安全）。
+     *  关闭时前台不触发自动激活、不清本地记录，手动「一键激活」入口保留。 */
+    @Volatile
+    var autoActivate: Boolean = false
+        private set
+
     /** 闲鱼商品链接（管理台配置下发，App 支付引导页/联系客服页拉起目标；空=对应按钮隐藏） */
     @Volatile
     var xianyuUrl: String = ""
@@ -125,6 +131,7 @@ object PlanSkus {
         payable = root.optBoolean("payable", true)
         payMode = root.optString("pay_mode", "online")
         nativeCheckout = root.optBoolean("native_checkout", false)
+        autoActivate = root.optBoolean("auto_activate", false)
         xianyuUrl = root.optString("xianyu_url", "")
         xianyuItemId = root.optString("xianyu_item_id", "")
         contactUrl = root.optString("contact_url", "")

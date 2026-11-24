@@ -51,10 +51,11 @@ class PlanSkusGoldenTest {
         check(s.deviceLimit == 1) { "deviceLimit=${s.deviceLimit}" }
         check(s.priceCents == 1290) { "priceCents=${s.priceCents}" }
         check(!s.isForever) { "days=7 非永久" }
-        // meta 8 键副作用态（payable 恒 true——旧版 App 1.1.0 读 false 拦购买入口）
+        // meta 9 键副作用态（payable 恒 true——旧版 App 1.1.0 读 false 拦购买入口）
         check(PlanSkus.payable) { "payable=${PlanSkus.payable}" }
         check(PlanSkus.payMode == "manual") { "payMode=${PlanSkus.payMode}" }
         check(PlanSkus.nativeCheckout) { "nativeCheckout=${PlanSkus.nativeCheckout}" }
+        check(PlanSkus.autoActivate) { "autoActivate=${PlanSkus.autoActivate}" }
         check(PlanSkus.xianyuUrl == "https://m.tb.cn/x") { "xianyuUrl=${PlanSkus.xianyuUrl}" }
         check(PlanSkus.xianyuItemId == "1079871862279") { "xianyuItemId=${PlanSkus.xianyuItemId}" }
         check(PlanSkus.contactUrl == "https://afs.example") { "contactUrl=${PlanSkus.contactUrl}" }

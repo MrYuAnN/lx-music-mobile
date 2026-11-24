@@ -5,39 +5,92 @@
  * 订单中心 delivered 订单与支付 WebView 的 JS 桥共用同一激活链路：
  * 逐个激活（JP- 前缀走 /activate、CZ- 走 /redeem），任一成功即整体成功；
  * 全部失败返回首个错误文案（调用方负责 UI 兜底）。
+ *
+ * 2026-11-23 订单自动激活批：
+ *  - 逐码结果（PerCode）：自动路径需要「部分成功保留剩余码」，仅聚合结果不够；
+ *  - errCode 透传：失败分类按结构化错误码，不再依赖中文文案子串；
+ *  - 按码单飞 + 临界区重查：并发第二调用者返回 ALREADY_HELD（幂等成功），
+ *    不会拿到「该激活码已使用过」的假失败。
  */
 package top.astock.activation
 
 import android.content.Context
+import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.json.JSONArray
 
 object CodeActivator {
 
-    /** 批量激活结果 */
-    sealed class Outcome {
-        /** 任一码激活成功（codes 为成功激活的码） */
-        data class Success(val codes: List<String>) : Outcome()
+    /** 单码结果（自动激活分类/重试的输入） */
+    data class PerCode(
+        val code: String,
+        val kind: Kind,
+        val errCode: String? = null,
+        val message: String? = null,
+    ) {
+        enum class Kind { ACTIVATED, ALREADY_HELD, FAILED }
 
-        /** 全部失败（message=首个用户可读错误） */
-        data class Failure(val message: String, val codes: List<String>) : Outcome()
+        /** 已兑现（刚激活或本机已持有） */
+        val ok: Boolean get() = kind != Kind.FAILED
+    }
+
+    /** 批量激活结果（Success/Failure 字段向后兼容旧调用方） */
+    sealed class Outcome {
+        /** 任一码成功（codes 为成功激活的码；results 为逐码明细） */
+        data class Success(
+            val codes: List<String>,
+            val results: List<PerCode> = emptyList(),
+        ) : Outcome()
+
+        /** 全部失败（message=首个用户可读错误；errCode/results 供自动路径分类） */
+        data class Failure(
+            val message: String,
+            val codes: List<String>,
+            val errCode: String? = null,
+            val results: List<PerCode> = emptyList(),
+        ) : Outcome()
 
         /** 码列表为空（无需激活） */
         object Empty : Outcome()
     }
 
+    /** 按码单飞锁（同进程；手动/自动/桥三路径共用） */
+    private val codeLocks = ConcurrentHashMap<String, Mutex>()
+
     /** 逐个激活：JP- 前缀走 /activate、CZ- 走 /redeem（服务端 PoolIDs 顺序即先 JP 后 CZ） */
     suspend fun activate(context: Context, codes: List<String>): Outcome {
         if (codes.isEmpty()) return Outcome.Empty
-        val okCodes = mutableListOf<String>()
-        var firstError = ""
-        for (code in codes) {
+        val results = codes.map { activateOne(context, it) }
+        val okCodes = results.filter { it.ok }.map { it.code }
+        return if (okCodes.isNotEmpty()) {
+            Outcome.Success(okCodes, results)
+        } else {
+            val first = results.firstOrNull { !it.ok }
+            Outcome.Failure(
+                first?.message ?: "激活失败，请稍后重试",
+                codes,
+                first?.errCode,
+                results
+            )
+        }
+    }
+
+    private suspend fun activateOne(context: Context, code: String): PerCode {
+        val normalized = code.trim().uppercase().replace(" ", "")
+        val lock = codeLocks.computeIfAbsent(normalized) { Mutex() }
+        return lock.withLock {
+            // 临界区重查：并发第二调用者应得到幂等成功，而非「已使用过」失败
+            if (EntitlementManager.isCodeActivatedLocally(context, normalized)) {
+                return@withLock PerCode(code, PerCode.Kind.ALREADY_HELD)
+            }
             when (val r = EntitlementManager.activateOrRedeem(context, code)) {
-                is EntitlementManager.AuthResult.Success -> okCodes.add(code)
-                is EntitlementManager.AuthResult.Failure -> if (firstError.isEmpty()) firstError = r.userMessage
+                is EntitlementManager.AuthResult.Success ->
+                    PerCode(code, PerCode.Kind.ACTIVATED)
+                is EntitlementManager.AuthResult.Failure ->
+                    PerCode(code, PerCode.Kind.FAILED, r.errCode, r.userMessage)
             }
         }
-        return if (okCodes.isNotEmpty()) Outcome.Success(okCodes)
-        else Outcome.Failure(firstError.ifEmpty { "激活失败，请稍后重试" }, codes)
     }
 
     /** 码参数容错解析（桥侧/订单侧双用）：合法 JSON 数组 → 元素表；否则去引号按

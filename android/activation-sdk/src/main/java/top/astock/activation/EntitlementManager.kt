@@ -39,6 +39,9 @@ object EntitlementManager {
     private const val TAG = "EntitlementMgr"
     private const val PREFS = "jingping"
     private const val K_DEVICE_ID = "device_id"
+    // DRM 锚成功读取值（2026-11-24）：strict 三元组下「读失败→空值」会被判成另一台
+    // 机器，故缓存上次成功值兜底；卸载重装仍在（硬件锚稳定），恢复出厂/换机清空。
+    private const val K_DRM_ID = "drm_id_cached"
     private const val K_LICENSE_KEY = "license_key"   // 旧单码（迁移源）
     private const val K_RECEIPT = "receipt_json"      // 旧单码 receipt（迁移源）
     // 多 key 存储（2026-08-22 拍板：每 App 一个码）：app→key 归属映射 + key→receipt
@@ -92,6 +95,11 @@ object EntitlementManager {
     private const val KEYSTORE_ALIAS = "jingping_state_mac"
     private val markLock = Any() // 绑定态标记 dict 读改写互斥（审查 O-S3）
     private const val ROLLBACK_TOLERANCE_MS = 5 * 60 * 1000L
+
+    // DRM 锚进程内缓存（2026-11-24）：首次成功读取后钉住，避免巡检按码反复构造
+    // MediaDrm；进程重启后从 SharedPreferences 恢复。@Volatile 防 IO 线程间撕裂。
+    @Volatile
+    private var drmIdMemo: String? = null
 
     // 首启免费试用 claim（2026-10-13 拍板）节流键：非权益数据不进 state MAC。
     // 退避序列 10s→5min→30min→6h 封顶（失败累计；请求前先记时间防 429 风暴）。
@@ -266,26 +274,83 @@ object EntitlementManager {
     }
 
     /**
-     * MediaDRM 设备唯一 ID 盐化哈希（2026-10-13 首启免费试用双锚第二锚）：
-     * Widevine plugin 的 PROPERTY_DEVICE_UNIQUE_ID。卸载重装稳定、多数设备恢复
-     * 出厂不变、root 难改（多来源一致；官方 API 不承诺持久性，GrapheneOS 等隐私
-     * 系统会派生改写）。读取失败/设备不支持 → 返回空串，服务端自动回落 device_id
-     * 单锚（claim 与激活链路均空值容错，不阻塞主流程）。
+     * MediaDRM 设备唯一 ID 盐化哈希（2026-10-13 双锚第二锚；2026-11-24 加缓存）：
+     * Widevine plugin 的 PROPERTY_DEVICE_UNIQUE_ID。卸载重装稳定、多数设备恢复出厂
+     * 不变、root 难改（多来源一致；官方 API 不承诺持久性，GrapheneOS 等隐私系统会
+     * 派生改写）。
+     *
+     * 2026-11-24 起该值参与服务端 strict 三元组比较（binding-check / restore /
+     * entitlements / code-overlap 也上报），旧语义「读取失败→空串→服务端回落单锚」
+     * 已不成立：行内锚非空时，本次读空会被判成「另一台机器」→ 本机被停权。故缓存
+     * **上次成功读取**的锚（SharedPreferences + 进程内）：读取失败/空数组时复用缓存，
+     * 从未成功过才返回 ""（真·无 Widevine，服务端按空锚通配补写）。顺带把巡检按码
+     * 多次构造 MediaDrm（≈15-25ms/次）的开销压到一次。
      * 隐私：与 stableDeviceId 同款 SHA-256+盐，后端只见哈希不暴露原始标识。
      */
-    fun drmDeviceId(context: Context): String = runCatching {
-        // Widevine UUID（业界通行常量 EDEF8BA9-79D6-4ACE-A3C8-27DCD51D21ED）
-        val drm = android.media.MediaDrm(java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"))
-        val id = try {
-            drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
-        } finally {
-            runCatching { drm.release() }
+    fun drmDeviceId(context: Context): String {
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val cached = drmIdMemo ?: p.getString(K_DRM_ID, "").orEmpty()
+        val read = runCatching {
+            // Widevine UUID（业界通行常量 EDEF8BA9-79D6-4ACE-A3C8-27DCD51D21ED）
+            val drm = android.media.MediaDrm(java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"))
+            val id = try {
+                drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+            } finally {
+                runCatching { drm.release() }
+            }
+            if (id == null || id.isEmpty()) ""
+            // and 0xFF 防 %x 对 Byte 符号扩展输出 8 字符（审查 S1：保持通行 hex 惯例，
+            // 防未来第二实现按直觉重算不一致）
+            else sha256Hex(id.joinToString("") { "%02x".format(it.toInt() and 0xFF) } + SALT_DEVICE_ID)
+        }.getOrDefault("")
+        val v = resolveDrmId(read, cached)
+        if (v.isNotEmpty()) {
+            drmIdMemo = v
+            if (v != cached) p.edit().putString(K_DRM_ID, v).apply()
         }
-        if (id == null || id.isEmpty()) ""
-        // and 0xFF 防 %x 对 Byte 符号扩展输出 8 字符（审查 S1：保持通行 hex 惯例，
-        // 防未来第二实现按直觉重算不一致）
-        else sha256Hex(id.joinToString("") { "%02x".format(it.toInt() and 0xFF) } + SALT_DEVICE_ID)
-    }.getOrDefault("")
+        return v
+    }
+
+    /** 锚取值策略（纯函数，JVM 可测）：本次读到非空→新值；读空/失败→复用上次成功值。 */
+    internal fun resolveDrmId(read: String, cached: String): String = read.ifEmpty { cached }
+
+    /**
+     * 设备身份三元组字段（2026-11-24 服务端三元组改造，方案 device-identity-final3.md §6）：
+     * binding-check / restore / entitlements / code-overlap 必须**同时显式带**
+     * `device_name` 与 `drm_id`——服务端按「键是否存在」区分新旧客户端，缺一个即回落
+     * legacy（等于本机身份根本没上报，串码窗口不收敛）；无 Widevine 设备 `drm_id`
+     * 为空串也要带。机型用 Build.MODEL 原码（服务端 devices.device_name 存的就是它，
+     * 中文显示名在服务端/管理台映射层做）。
+     * 纯函数（JVM 可单测）：两键恒在、空值保留。
+     */
+    internal fun deviceIdentityPairs(deviceName: String, drmId: String): Map<String, String> =
+        mapOf("device_name" to deviceName, "drm_id" to drmId)
+
+    /**
+     * 端点请求体单源（2026-11-24 审查 S-1/S-2）：base 放端点自有字段（key/code/
+     * device_id/intent…），三元组两键由本函数统一补齐——六处调用点（activate /
+     * trial-claim / binding-check ×2 / entitlements / code-overlap）不再各拼一遍。
+     * 纯函数（JVM 可测）：两键恒在，`JSONObject` 保留空串键。
+     */
+    internal fun identityPayload(
+        base: Map<String, String>,
+        deviceName: String,
+        drmId: String,
+    ): JSONObject = JSONObject(base + deviceIdentityPairs(deviceName, drmId))
+
+    /** 本机请求体：Build.MODEL 走 `?: ""` 兜底（null 值会被 JSONObject 当删键 → legacy）。 */
+    private fun bodyWithIdentity(context: Context, base: Map<String, String>): JSONObject =
+        identityPayload(base, android.os.Build.MODEL ?: "", drmDeviceId(context))
+
+    /**
+     * restore GET URL（2026-11-24）：三元组参数必须**显式带**（服务端用 `q.Has`
+     * 判 strict，空值也算「新客户端」），不能因为值为空就省略；机型可能含空格/中文，
+     * 逐个 URLEncoder 编码。纯函数（JVM 可单测）。
+     */
+    internal fun restoreUrl(apiBase: String, deviceId: String, deviceName: String, drmId: String): String =
+        apiBase.trimEnd('/') + "/api/restore?device_id=" + java.net.URLEncoder.encode(deviceId, "UTF-8") +
+            "&device_name=" + java.net.URLEncoder.encode(deviceName, "UTF-8") +
+            "&drm_id=" + java.net.URLEncoder.encode(drmId, "UTF-8")
 
     /** 主 key（最近激活）：CZ- 充值码默认目标；兼容旧调用 */
     fun storedKey(context: Context): String =
@@ -433,7 +498,10 @@ object EntitlementManager {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val (path, body) = if (code.startsWith("CZ-")) {
             val key = storedKey(context)
-            if (key.isEmpty()) return@withContext AuthResult.Failure("充值码用于续费：请先输入激活码（JP- 开头）开通")
+            if (key.isEmpty()) return@withContext AuthResult.Failure(
+                "充值码用于续费：请先输入激活码（JP- 开头）开通",
+                "local_recharge_needs_jp"
+            )
             "/redeem" to JSONObject(mapOf("code" to code, "key" to key, "device_id" to deviceId(context)))
         } else {
             // 已使用提示（2026-08-22 拍板）：本机已激活过该码 → 直接提示，不发请求。
@@ -443,19 +511,18 @@ object EntitlementManager {
             // 例外 2（2026-10-14 三席收敛）：merge=true 放行——确认弹窗已告知融合，
             // 同码重输并入其他在绑码的入口；服务端重激活融合幂等裁决
             if (receiptsMap(p).containsKey(code) && bindingMarks(p)[code] == null && !merge) {
-                return@withContext AuthResult.Failure("该激活码已使用过")
+                return@withContext AuthResult.Failure("该激活码已使用过", "already_activated_local")
             }
             // 多码模型：JP- 新码激活=并存新 key（响应 apps 归属改新 key，不顶替老码）；
             // intent="bind"=用户主动路径，服务端允许过上限后认领已解绑的历史行。
             // merge=true 仅手动输码确认弹窗之后（doActivateImpl 透传）：服务端重激活
             // 时吸收本机在绑其他码（「剩余时长并入」承诺落地）；claim 命中返原码等
             // 自动路径不带——重装恢复零副作用，防在绑高权益被自动烧进命中码
-            val reqBody = JSONObject(
-                mapOf(
-                    "key" to code, "device_id" to deviceId(context),
-                    "drm_id" to drmDeviceId(context),
-                    "device_name" to android.os.Build.MODEL, "intent" to BINDING_INTENT_BIND
-                )
+            // 三元组身份单源（2026-11-24 审查 S-1）：activate 与巡检/权益/输码四端点
+            // 共用 identityPayload，避免「一处带、一处漏」的口径分叉。
+            val reqBody = bodyWithIdentity(
+                context,
+                mapOf("key" to code, "device_id" to deviceId(context), "intent" to BINDING_INTENT_BIND),
             )
             if (merge) reqBody.put("merge", true)
             "/activate" to reqBody
@@ -542,7 +609,9 @@ object EntitlementManager {
             runCatching {
                 val key = storedKey(context)
                 check(key.isNotEmpty()) { "本机未开通会员" }
-                val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
+                // 三元组字段（2026-11-24）：本端点服务端鉴权用通配、取数用精确，
+                // 会在 self 判定后先补锚——必须带 device_name+drm_id 才能进 strict。
+                val body = bodyWithIdentity(context, mapOf("key" to key, "device_id" to deviceId(context)))
                 val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/entitlements").openConnection() as HttpURLConnection
                 val code: Int
                 val respBody: String
@@ -602,7 +671,9 @@ object EntitlementManager {
         p: android.content.SharedPreferences,
         key: String,
     ): BindingInfo {
-        val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
+        // 三元组字段（2026-11-24）：binding-check 是服务端补锚的唯一自动修复点之一，
+        // 必须带 device_name+drm_id 才会进 strict（缺一回落 legacy，本机身份不上报）。
+        val body = bodyWithIdentity(context, mapOf("key" to key, "device_id" to deviceId(context)))
         val r = postAuth(context, "/api/binding-check", body)
         when (r) {
             is AuthResult.Success -> {
@@ -654,8 +725,12 @@ object EntitlementManager {
         if (current(context) is State.Active) return@withContext false
         runCatching {
             val did = deviceId(context)
-            val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/restore?device_id=" +
-                java.net.URLEncoder.encode(did, "UTF-8")).openConnection() as HttpURLConnection
+            // 三元组参数（2026-11-24）：服务端 restore 用「参数是否存在」判 strict，
+            // 空值也必须带（&device_name=&drm_id=）；否则回落 legacy 会把同 device_id
+            // 其他机器的码也返回（串码面）。URL 构造抽 restoreUrl 供 JVM 单测锁定。
+            val conn = URL(
+                restoreUrl(ActivationSdk.apiBase, did, android.os.Build.MODEL ?: "", drmDeviceId(context))
+            ).openConnection() as HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
             conn.requestMethod = "GET"
@@ -665,7 +740,12 @@ object EntitlementManager {
             val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.use { it.readText() } ?: ""
             conn.disconnect()
-            if (code != 200) return@runCatching false
+            if (code != 200) {
+                // 2026-11-24 审查 S-3：P2 后 strict 三元组会让「有码但被过滤」成为新的
+                // 空结果成因，至少留一行可区分的日志（不带机型/锚值，避免敏感信息入日志）。
+                Log.i(TAG, "restore -> $code")
+                return@runCatching false
+            }
             val arr = JSONObject(respBody).optJSONArray("keys") ?: return@runCatching false
             var restored = false
             for (i in 0 until arr.length()) {
@@ -696,6 +776,10 @@ object EntitlementManager {
                 context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
                     .edit().putBoolean(K_TRIAL_PENDING, false).apply()
                 notifyEntitlementChanged(EntitlementChange.RESTORED)
+            } else {
+                // 0 命中（2026-11-24）：可能确实无在绑码，也可能是 strict 三元组把本机
+                // 空锚/漂移行过滤掉了——两者用户表现相同（无自动恢复），日志留可分辨点。
+                Log.i(TAG, "restore hit 0 keys (no active binding or strict triple mismatch)")
             }
             restored
         }.getOrElse {
@@ -781,6 +865,15 @@ object EntitlementManager {
         return receiptsMap(p).mapNotNull { (key, rcpt) ->
             parseReceipt(rcpt)?.let { key to it }
         }
+    }
+
+    /** 本机是否已持有该码（归一化 + 停权标记例外，与 [activateOrRedeem] 的本地查重
+     *  完全同口径）：自动激活/订单页派生「已激活」态复用，避免第二份实现。
+     *  2026-11-23 订单自动激活批。 */
+    fun isCodeActivatedLocally(context: Context, input: String): Boolean {
+        val code = input.trim().uppercase().replace(" ", "")
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        return receiptsMap(p).containsKey(code) && bindingMarks(p)[code] == null
     }
 
     // ---- T4 件5 编排层：真值/选主单源入口（bridge 每键真值下发与 Worker 遮蔽
@@ -967,6 +1060,11 @@ object EntitlementManager {
     internal fun trial409WantsRestore(body: String): Boolean =
         runCatching { JSONObject(body).optString("error") }.getOrDefault("") == "trial_has_license"
 
+    // 2026-11-24 设备身份三元组：同 device_id 的另一台机器已领过试用 → 终态拒绝
+    // （服务端既不返他人码也不发新码，重试不会改判）。
+    internal fun trial409IsDeviceMismatch(body: String): Boolean =
+        runCatching { JSONObject(body).optString("error") }.getOrDefault("") == "trial_device_mismatch"
+
     private suspend fun claimTrialImpl(context: Context): Boolean = withContext(Dispatchers.IO) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         if (p.getBoolean(K_TRIAL_DONE, false)) return@withContext false
@@ -983,13 +1081,9 @@ object EntitlementManager {
         // 熔断/版本门槛）静默退避重试。disconnect 入 try/finally（审查 S4：异常路径
         // 不泄漏连接）。claimBody 提到外层（三席审查 I-2 接线：验签失败走
         // verifyFailRecovery 备域重放复用同一请求体，防双份形状漂移）
-        val claimBody = JSONObject(
-            mapOf(
-                "device_id" to deviceId(context),
-                "drm_id" to drmDeviceId(context),
-                "device_name" to android.os.Build.MODEL,
-            )
-        )
+        // 三元组身份单源（2026-11-24 审查 S-1）：claim 与 activate/巡检同口径，
+        // 避免 Build.MODEL 为空时 JSONObject(Map) 删键导致回落 legacy。
+        val claimBody = bodyWithIdentity(context, mapOf("device_id" to deviceId(context)))
         val resp: Pair<Int, String>? = runCatching {
             val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/trial-claim").openConnection() as HttpURLConnection
             val code: Int
@@ -1023,6 +1117,17 @@ object EntitlementManager {
             // 正价重装导航（审查 I-6）：restore 找回；失败不计 fails——付费用户权益
             // 恢复不被试用退避拉长（restore 保持每次冷启动重试，同旧行为）。
             if (trial409WantsRestore(respBody)) return@withContext restoreFromDevice(context)
+            // 2026-11-24 设备身份三元组：同 device_id 的另一台机器已领过试用（服务端
+            // 拒发他人码、也不发新码）。这是终态重试不会改判——不导航 restore（restore
+            // 按三元组也拿不到别人的码），静默走购买墙；留独立日志便于区分「真异常」。
+            if (trial409IsDeviceMismatch(respBody)) {
+                // 终态（2026-11-24 审查 I-2）：trial_grants 按 device_id 唯一，解绑/换机
+                // 都不会改判——与下方 expired 终态同构，置 DONE 停止每 ≤6h 的注定失败轮询，
+                // 并清 pending 欢迎资格（否则每次冷启动都会重设一个没人消费的待弹标记）。
+                Log.i(TAG, "trial claim 409: device identity registered by another machine, stop trial")
+                p.edit().putBoolean(K_TRIAL_DONE, true).remove(K_TRIAL_PENDING).apply()
+                return@withContext false
+            }
             Log.i(TAG, "trial claim 409 unexpected")
             p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
             return@withContext false
@@ -1098,16 +1203,21 @@ object EntitlementManager {
     }
 
     fun clear(context: Context) {
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
-            .remove(K_RECEIPT).remove(K_LICENSE_KEY).remove(K_APP_KEYS).remove(K_RECEIPTS)
-            .remove(K_RELAY_MODE)
-            .remove(K_KEY_BINDING)
-            .remove(K_PRIMARY).remove(K_LAST_SEEN).remove(K_MAC)
-            .remove(K_TRIAL_FAILS).remove(K_TRIAL_LAST).remove(K_TRIAL_DONE)
-            .remove(K_TRIAL_PENDING).remove(K_TRIAL_WELCOMED)
-            // "trial_just_started"：K_TRIAL_JUST_STARTED 已退役（2026-10-14 时序重梳），
-            // 升级用户 SP 残留清理
-            .remove("trial_just_started").apply()
+        val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // macLock（2026-11-23 自动激活并发批）：与 persist/clearKey 同锁，防并发
+        // persist 在 clear 之后把刚清空的 receipts「复活」
+        synchronized(macLock) {
+            p.edit()
+                .remove(K_RECEIPT).remove(K_LICENSE_KEY).remove(K_APP_KEYS).remove(K_RECEIPTS)
+                .remove(K_RELAY_MODE)
+                .remove(K_KEY_BINDING)
+                .remove(K_PRIMARY).remove(K_LAST_SEEN).remove(K_MAC)
+                .remove(K_TRIAL_FAILS).remove(K_TRIAL_LAST).remove(K_TRIAL_DONE)
+                .remove(K_TRIAL_PENDING).remove(K_TRIAL_WELCOMED)
+                // "trial_just_started"：K_TRIAL_JUST_STARTED 已退役（2026-10-14 时序重梳），
+                // 升级用户 SP 残留清理
+                .remove("trial_just_started").apply()
+        }
         invalidateStateCache()
     }
 
@@ -1120,11 +1230,12 @@ object EntitlementManager {
      *  未移除（码不存在）早退不发 */
     fun clearKey(context: Context, key: String) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val rcpts = receiptsMap(p).toMutableMap()
-        if (rcpts.remove(key) == null) return
-        setBindingMark(p, key, null)
-        // macLock：同 persist（竞态修复 2026-10-14）
+        // macLock（2026-11-23）：读 receipts 也进锁——原实现读在锁外，自动激活与
+        // fused-key 清理/巡检/CLEARED 并发时可能整段回写覆盖丢 receipt
         synchronized(macLock) {
+            val rcpts = receiptsMap(p).toMutableMap()
+            if (rcpts.remove(key) == null) return
+            setBindingMark(p, key, null)
             p.edit().putString(K_RECEIPTS, JSONObject(rcpts).toString()).apply()
             if (storedKey(context) == key) {
                 p.edit().putString(K_PRIMARY, rcpts.keys.firstOrNull() ?: "").apply()
@@ -1292,11 +1403,14 @@ object EntitlementManager {
         withContext(Dispatchers.IO) {
             runCatching {
                 // body 构造置于 runCatching 内（代码审查 S-3：与两 Ex 函数骨架同构）
-                val body = JSONObject(
+                // 三元组字段（2026-11-24）：overlap 只算同一台机器的在绑码——缺字段会
+                // 回落 legacy，把同 device_id 其他机器也算进来（确认弹窗与融合判定错位）。
+                val body = bodyWithIdentity(
+                    context,
                     mapOf(
                         "code" to code.trim().uppercase().replace(" ", ""),
                         "device_id" to deviceId(context),
-                    )
+                    ),
                 )
                 val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/api/code-overlap").openConnection() as HttpURLConnection
                 conn.connectTimeout = 5000
@@ -1478,7 +1592,9 @@ object EntitlementManager {
             if (key.isNotEmpty()) {
                 val check = postAuthOnce(
                     ActivationSdk.apiBase, "/api/binding-check",
-                    JSONObject(mapOf("key" to key, "device_id" to deviceId(context))),
+                    // 三元组字段（2026-11-24）：与 checkKeyOnce 同 body 口径（缺一会回落
+                    // legacy，核验面与主巡检面口径分叉）
+                    bodyWithIdentity(context, mapOf("key" to key, "device_id" to deviceId(context))),
                 )
                 if (check is AuthResult.Success) {
                     Log.i(TAG, "redeem fallback invalid_code but entitlement active via binding-check")
@@ -1622,14 +1738,27 @@ object EntitlementManager {
             // 「已过期/已吊销/无效」，老版本 App 静默重放命中时不会误清本地码
             "not_bound" -> "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
             "device_bound_other" -> "该激活码已在其他手机使用，绑定后才可用（如非本人操作请联系客服）"
+            // 设备身份三元组（2026-11-24；原「指纹一致性闸」文案 2026-11-22 并入）：
+            // 同码在该 device_id 上已锚定另一套机型/DRM（刷机、换机、克隆都落这里）。
+            // 自助出口＝该码详情 →「设备管理」里解绑本机旧记录（release 只比 key+device_id，
+            // 不比较三元组；漂移用户与同号他机都走这条），再点「绑定本机」重绑；
+            // 试用码服务端禁自助解绑，只能联系客服。
+            "device_mismatch" -> "本机硬件信息与该码的绑定记录不一致：请打开该码详情 →「设备管理」解绑本机旧记录，再点「绑定本机」；试用码请联系客服"
             "device_limit" -> "设备数已满：请在原设备解绑，或到订单页查看换绑说明"
             "trial_used" -> "体验卡每设备限用 1 张，如需继续使用请购买月卡/年卡"
-            // 试用域三码（2026-11-17 审计批2+三席 I-1 勘正）：仅 /api/trial-claim 下发
-            // （trial.go 429/503/503），当前 claim 链路静默退避不走 mapError——本映射为
-            // 未来文案出口预留的契约面，非现行用户可见路径
+            // 试用域四码（2026-11-17 审计批2+三席 I-1 勘正；2026-11-24 增
+            // trial_device_mismatch）：仅 /api/trial-claim 下发，且 claim 链路在
+            // claimTrialImpl 内自行分派、不走 mapError——本组映射是「未来文案出口预留
+            // 契约面」，当前不可达（与 trial_ip_limit/trial_cap_reached 同型；勿误以为
+            // 已接 UI）。
             "trial_ip_limit" -> "今天申请试用的设备较多，请明天再试"
             "trial_disabled" -> "试用资格申请暂未开放，请稍后再试"
             "trial_cap_reached" -> "今日试用名额已发放完毕，请明天再试"
+            // 2026-11-24 三元组：同 device_id 下已有试用发放记录、但属于另一台机器——
+            // 不发他人码、也不发新码（服务端拒绝即终态，不是「过会儿再试」）。App 侧
+            // 拿到该码按「本机非试用受众」处理：走购买墙，不导航 restore（restore 也
+            // 拿不到别人的码）。
+            "trial_device_mismatch" -> "本机试用资格已由同一设备号的其他机器使用，如需继续使用请购买月卡/年卡"
             "invalid_code" -> "充值码无效或已使用"
             "key_not_found" -> "请先用激活码（JP- 开头）开通后，再用充值码续费"
             "rate_limited" -> "操作过于频繁，请稍后再试"
@@ -1683,14 +1812,12 @@ object EntitlementManager {
         val e = r.e
         val receipt = buildReceiptJson(e, deviceId(context), System.currentTimeMillis() / 1000, System.currentTimeMillis())
 
-        val rcpts = receiptsMap(p).toMutableMap()
-        rcpts[key] = receipt
-        // K_APP_KEYS 停写（2026-11-07 归属退役，grilling D3 拍板）：响应 apps 归属机制
-        // 随 computeCurrent 跨码聚合一并退役——归属映射曾按激活/巡检/restore 三路径
-        // 反复重写（顺序决定权益视图的结构脆弱性），跨码聚合与顺序无关
-
-        // macLock：凭证写入（payload 成分）与 writeStateMac 原子于并发 verify（竞态修复 2026-10-14）
+        // macLock（2026-11-23）：读 receipts 进锁——原读在锁外，与 clearKey/自动激活
+        // 并发时整段回写会覆盖丢码
         synchronized(macLock) {
+            val rcpts = receiptsMap(p).toMutableMap()
+            rcpts[key] = receipt
+
             p.edit()
                 .putString(K_RECEIPTS, JSONObject(rcpts).toString())
                 .putString(K_PRIMARY, key)
