@@ -8,6 +8,22 @@
 ## 能力（拷入 + init 即得全链）
 
 - 激活/续费（JP- 激活码 / CZ- 充值码自动识别）、重装自动恢复（device_id 找回）
+- **安装实例签名**（同机判定实体化 §8，2026-11-26）：硬件密钥库 EC P-256 私钥
+  （别名 `astock.install.proof.v1`，不绑锁屏凭据），对 7 端点带身份请求自动附
+  `X-Inst-Key/X-Inst-Pub/X-Inst-Ts/X-Inst-Sig` 四头——激活、巡检 binding-check、
+  找回 restore、权益 entitlements、试用 trial-claim、取链重叠 code-overlap、
+  安装上报 /app/install；纯函数层 `InstallationSigner` JVM 单测锁规范化串
+  （签名串=ts
++device_id
++device_name
++drm_id
++METHOD
++path
++sha256hex(body)，
+  GET body 空串、path 不含查询串）；密钥库异常=请求不带签名头（服务端按无证明
+  回落实体规则并留痕，永不拒请求 §8.4）。解绑 /device/release 不在签名面
+  （方案端点清单外）。**§8.5 实机清单**（卸载重装指纹变化/锁屏密码不失效/
+  OTA 存续等 7 项）随打包装机冒烟执行，结论回填方案文档。apiBase/fallbackApiBase 须为**纯 origin**（不带路径后缀）：签名 path 取请求路径字面，基址带路径段会致签名与实际路径失配
 - 多码多 App 权益（{app: expiry} per-app 到期）、绑定巡检（3 分钟节流 + 6h WorkManager 周期巡检）
 - receipt 本地 Ed25519 验签（RFC 8032 纯 Kotlin 实现，v1/v2 双 canonical）
 - 解绑本机/远程解绑他机（服务端月限口径）、SKU 拉取缓存（PlanSkus）

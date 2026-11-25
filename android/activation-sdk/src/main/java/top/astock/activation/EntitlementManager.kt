@@ -517,7 +517,10 @@ object EntitlementManager {
                 "充值码用于续费：请先输入激活码（JP- 开头）开通",
                 "local_recharge_needs_jp"
             )
-            "/redeem" to JSONObject(mapOf("code" to code, "key" to key, "device_id" to deviceId(context)))
+            // 三元组单源（同机判定实体化审查 I-B 2026-11-26）：redeem 与 activate 同族
+            // 走 bodyWithIdentity——旧形状会被服务端 §8.3 形状门短路（签名恒不解析，
+            // CZ- 续费路径安装证明失效）；服务端 handler 容忍多余键
+            "/redeem" to bodyWithIdentity(context, mapOf("code" to code, "key" to key, "device_id" to deviceId(context)))
         } else {
             // 已使用提示（2026-08-22 拍板）：本机已激活过该码 → 直接提示，不发请求。
             // 跨设备已使用由服务端 device_limit(409) 兜住；本机查重只拦同机重复提交。
@@ -640,6 +643,10 @@ object EntitlementManager {
                     conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                     conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
                     conn.setRequestProperty("X-Product", ActivationSdk.productId)
+                    // 安装实例签名（同机判定实体化 §8.2；异常=不带头永不拒，§8.4）
+                    for ((k, v) in InstallationSigner.signForBody(context, body, "POST", "/api/entitlements")) {
+                        conn.setRequestProperty(k, v)
+                    }
                     conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                     code = conn.responseCode
                     respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
@@ -750,14 +757,26 @@ object EntitlementManager {
             // 三元组参数（2026-11-24）：服务端 restore 用「参数是否存在」判 strict，
             // 空值也必须带（&device_name=&drm_id=）；否则回落 legacy 会把同 device_id
             // 其他机器的码也返回（串码面）。URL 构造抽 restoreUrl 供 JVM 单测锁定。
+            // GET 三元组单源（审查 S-1 2026-11-26）：URL query 与签名串共用同组取值
+            // （防两处口径漂移→验签过但归属错位）
+            val model = android.os.Build.MODEL ?: ""
+            val drm = drmDeviceId(context)
             val conn = URL(
-                restoreUrl(ActivationSdk.apiBase, did, android.os.Build.MODEL ?: "", drmDeviceId(context))
+                restoreUrl(ActivationSdk.apiBase, did, model, drm)
             ).openConnection() as HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
             conn.requestMethod = "GET"
             conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
             conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+            // 安装实例签名（同机判定实体化 §8.2）：restore 是 GET——三元组在 query，
+            // body 按空串哈希、path 不含查询串；异常=不带头永不拒（§8.4）
+            for ((k, v) in InstallationSigner.sign(
+                context, did, model, drm,
+                "GET", "/api/restore", null,
+            )) {
+                conn.setRequestProperty(k, v)
+            }
             val code = conn.responseCode
             val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
                 ?.bufferedReader()?.use { it.readText() } ?: ""
@@ -1131,6 +1150,10 @@ object EntitlementManager {
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
                 conn.setRequestProperty("X-Product", ActivationSdk.productId)
+                // 安装实例签名（同机判定实体化 §8.2；异常=不带头永不拒，§8.4）
+                for ((k, v) in InstallationSigner.signForBody(context, claimBody, "POST", "/api/trial-claim")) {
+                    conn.setRequestProperty(k, v)
+                }
                 conn.outputStream.use { it.write(claimBody.toString().toByteArray(Charsets.UTF_8)) }
                 code = conn.responseCode
                 respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
@@ -1448,6 +1471,10 @@ object EntitlementManager {
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
                 conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+                // 安装实例签名（同机判定实体化 §8.2；异常=不带头永不拒，§8.4）
+                for ((k, v) in InstallationSigner.signForBody(context, body, "POST", "/api/code-overlap")) {
+                    conn.setRequestProperty(k, v)
+                }
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                 val http = conn.responseCode
                 val respBody = (if (http in 200..299) conn.inputStream else conn.errorStream)
@@ -1528,6 +1555,11 @@ object EntitlementManager {
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
         conn.setRequestProperty("X-Client-Version", ver)
         conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+        // 安装实例签名（同机判定实体化 §8.2；异常=不带头永不拒，§8.4）——三元组
+        // 同源 body（deviceIdentityMap 拼入），X-Client-Version 走调用方 ver 参数
+        for ((k, v) in InstallationSigner.signForBody(context, body, "POST", "/app/install")) {
+            conn.setRequestProperty(k, v)
+        }
         conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
         val code = conn.responseCode
         conn.disconnect()
@@ -1554,7 +1586,7 @@ object EntitlementManager {
                         "app_pkg" to context.packageName,
                         "app_ver" to ActivationSdk.xClientVersion,
                         "diag" to diag,
-                    )
+                    ) + deviceIdentityMap(context)   // 三元组同源（审查 I-C 2026-11-26）：与 reportInstall 同形状，diag 通道带安装证明（服务端 upsert 容忍多余键）
                 ),
                 ActivationSdk.xClientVersion,
             )
@@ -1571,7 +1603,7 @@ object EntitlementManager {
 
     private fun postAuth(context: Context, path: String, body: JSONObject): AuthResult =
         runCatching {
-            val primary = postAuthOnce(ActivationSdk.apiBase, path, body)
+            val primary = postAuthOnce(context, ActivationSdk.apiBase, path, body)
             // is 收窄在前（与 isLocalVerifyFail 首子句同款判断，行为等价）：primary 声明
             // 为宽 AuthResult，不收窄传不进 verifyFailRecovery(Failure)——上批 742104f
             // 编译遗留（Kotlin 未编译验证），解绑自然月批补修
@@ -1604,7 +1636,7 @@ object EntitlementManager {
         val fb = ActivationSdk.fallbackApiBase.trim()
         val retried = if (fb.isNotEmpty() && fb.trimEnd('/') != ActivationSdk.apiBase.trimEnd('/')) {
             Log.w(TAG, "local verify failed on primary ($path), retry once via fallback base")
-            postAuthOnce(fb, path, body)
+            postAuthOnce(context, fb, path, body)
         } else null
         val fbFailed = retried != null && isLocalVerifyFail(retried)
         val mergedDiag = primary.diag?.put("fb_hit", fbFailed)
@@ -1619,7 +1651,7 @@ object EntitlementManager {
             val key = body.optString("key")
             if (key.isNotEmpty()) {
                 val check = postAuthOnce(
-                    ActivationSdk.apiBase, "/api/binding-check",
+                    context, ActivationSdk.apiBase, "/api/binding-check",
                     // 三元组字段（2026-11-24）：与 checkKeyOnce 同 body 口径（缺一会回落
                     // legacy，核验面与主巡检面口径分叉）
                     bodyWithIdentity(context, mapOf("key" to key, "device_id" to deviceId(context))),
@@ -1636,7 +1668,7 @@ object EntitlementManager {
     /** 单域名一次激活族请求（2026-11-18 拆分批从 postAuth 抽出：主/备域名共用管道，
      *  备用域名重放复用同一段 HTTP 与错误映射，防双份 canonical 漂移）。
      *  网络异常原样上抛，由 postAuth 外层统一转「网络异常」文案。 */
-    private fun postAuthOnce(base: String, path: String, body: JSONObject): AuthResult {
+    private fun postAuthOnce(context: Context, base: String, path: String, body: JSONObject): AuthResult {
         val conn = URL(base.trimEnd('/') + path).openConnection() as HttpURLConnection
         conn.connectTimeout = 15000
         conn.readTimeout = 15000
@@ -1648,6 +1680,13 @@ object EntitlementManager {
         conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
         conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
         conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+        // 安装实例签名（同机判定实体化 §8.2）：三元组同源自 body（bodyWithIdentity
+        // 产物恒含三键）；密钥库异常=空 map 不带头（§8.4：服务端按无证明回落实体
+        // 规则+留痕 inst-proof-fail，永不拒请求）。签名覆盖的字节=下方写出的同一
+        // toString 字节（JSONObject.toString 确定性）。
+        for ((k, v) in InstallationSigner.signForBody(context, body, "POST", path)) {
+            conn.setRequestProperty(k, v)
+        }
         // disconnect 入 try/finally（三席审查 S4：读响应抛 IOException 时也要归还
         // 连接池 socket；原 postAuth 同病随抽单源一并收口）
         val code: Int

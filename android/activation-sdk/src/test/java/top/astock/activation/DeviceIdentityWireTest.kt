@@ -86,4 +86,28 @@ class DeviceIdentityWireTest {
     // ④ claim 的 409 分派：三元组不符是终态（不导航 restore），与 trial_has_license 分开
     // trial409DispatchSeparatesDeviceMismatch 已删（2026-11-25 批 3 三端死面撤除：
     // trial409IsDeviceMismatch 随平台零产生点退役，trial409WantsRestore 保留）
+
+    // ⑤ 安装实例签名链（同机判定实体化 §8.2/§15「请求头断言」）：签名串的三元组
+    // 与请求体三元组**同源**（signForBody 从 bodyWithIdentity 产物提取）——三键
+    // 逐值落进 canonical 对应位置、body 哈希=实际写出字节。锁出口注入约定的
+    // 纯函数半程（密钥库半程走 §8.5 实机）。
+    @Test
+    fun signedCanonicalTripleComesFromIdentityPayload() {
+        val body = EntitlementManager.identityPayload(
+            mapOf("key" to "JP-A", "device_id" to "dev-1"), "Pixel 7", "drmX",
+        )
+        val s = InstallationSigner.canonical(
+            1L,
+            body.optString("device_id"),
+            body.optString("device_name"),
+            body.optString("drm_id"),
+            "POST",
+            "/api/activate",
+            InstallationSigner.sha256Hex(body.toString().toByteArray()),
+        )
+        assertTrue(s, s.contains("\ndev-1\nPixel 7\ndrmX\nPOST\n/api/activate\n"))
+        assertTrue(s, s.startsWith("1\n"))
+        // 第 7 段锁面（审查 S-3）：body 哈希恰为串尾——「哈希=实际写出字节」完整落地
+        assertTrue(s, s.endsWith(InstallationSigner.sha256Hex(body.toString().toByteArray())))
+    }
 }
