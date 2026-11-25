@@ -691,8 +691,12 @@ object EntitlementManager {
             is AuthResult.Failure -> {
                 Log.i(TAG, "binding check $key -> ${r.errCode ?: "no-answer"}: ${r.userMessage}")
                 // D-07 锚刷新：结构化应答（errCode 非空）=真实服务端响应；no-answer
-                // （网络异常）不刷——宽限窗口从最近确认起算
-                if (r.errCode != null) touchServerConfirm(p, effectiveNowSeconds(p))
+                // （网络异常）不刷——宽限窗口从最近确认起算。审查 I-3：ERR_SIG_VERIFY/
+                // ERR_RESP_PARSE 是本地生成的错误码（篡改/伪造响应也算「确认」与防
+                // 逃逸目的相反），排除。
+                if (r.errCode != null && r.errCode != ERR_SIG_VERIFY && r.errCode != ERR_RESP_PARSE) {
+                    touchServerConfirm(p, effectiveNowSeconds(p))
+                }
                 when (r.errCode) {
                     "expired" -> {
                         invalidateStateCache()
@@ -993,7 +997,10 @@ object EntitlementManager {
     // 先导批=现状谓词原样搬家（computeCurrent/isEntitled 改调本 seam，零行为变化）；
     // 收编批=断言对象即本层，masking/primary 段随本批启用（向量同步补段）。
     /** 单值真值：0=永久；到期在未（>nowSec）有效；否则过期（负值/脏值由调用方上游解析兜底） */
-    internal fun validAt(exp: Long, nowSec: Long): Boolean = exp == 0L || exp > nowSec
+    internal fun validAt(exp: Long, nowSec: Long): Boolean =
+        // D-07 审查 I-2（2026-11-25 批 3）：grace 超窗时钟（Long.MAX_VALUE）下
+        // 永久权益（exp==0）同样判失效——「断网超窗全部失效」含永久形态，防逃逸
+        nowSec != Long.MAX_VALUE && (exp == 0L || exp > nowSec)
 
     /** 聚合视角：任一 app 真值即 active（多码合并表 any 语义，computeCurrent 同款）；
      *  excludeApp=排除指定键（Worker 混合态收口「排除本键」消费，审查 S3） */
@@ -1925,17 +1932,39 @@ object EntitlementManager {
     /**
      * grace 感知的判定时钟（D-07，并入 effectiveNowSeconds seam——全部权益读面
      * 换用本函数）：offlineGraceDays>0 且距最近服务端确认超窗 → 返回 Long.MAX_VALUE
-     * （一切有期限权益判过期、永久权益亦失效——窗口语义=「断网超窗即全部失效」，
-     * 35 拍板「撤权最大离线窗口 30 天」）。graceDays=0（缺省）或从未有过服务端
-     * 确认（全新安装未联网）→ 原样返回（不限）。
+     * （超窗语义=「断网超窗即全部失效」——审查 I-2：永久权益（exp=0）在 MAX 时钟
+     * 下同样判失效（validAt 单点排除），防断网逃逸撤权；35 拍板「撤权最大离线
+     * 窗口 30 天」）。graceDays=0（缺省）或从未有过服务端确认（全新安装未联网）
+     * → 原样返回（不限）。
+     *
+     * 审查 C-1 勘误（2026-11-25 批 3）：首行曾误写为调自身（批量替换 seam 时误伤
+     * 定义体）——无限自递归 StackOverflow，权益读面全链必崩；正身=调
+     * effectiveNowSeconds。
      */
     private fun graceAwareNow(p: android.content.SharedPreferences): Long {
-        val now = graceAwareNow(p)
+        val now = effectiveNowSeconds(p)
         val days = ActivationSdk.entitlementConfig.offlineGraceDays
         if (days <= 0) return now
-        val confirmedAt = p.getLong(K_LAST_SERVER_CONFIRM, 0L)
+        val confirmedAt = serverConfirmAt(p)
         if (confirmedAt <= 0L) return now // 从未联网确认：无锚不限（首启离线不误杀）
         return if (now - confirmedAt > days * 86400L) Long.MAX_VALUE else now
+    }
+
+    /**
+     * 服务端确认时刻（审查 I-4，2026-11-25 批 3）：优先取 K_LAST_SERVER_CONFIRM；
+     * 无锚键时回落各 receipt.iat 最大值（receipts 受 Keystore MAC 保护——root/ADB
+     * 删锚键无法重置窗口；升级用户首次读时落锚，冷路径一次性）。
+     */
+    private fun serverConfirmAt(p: android.content.SharedPreferences): Long {
+        val direct = p.getLong(K_LAST_SERVER_CONFIRM, 0L)
+        if (direct > 0L) return direct
+        var mx = 0L
+        for ((_, receiptJson) in receiptsMap(p)) {
+            val iat = runCatching { JSONObject(receiptJson).optLong("iat", 0L) }.getOrDefault(0L)
+            if (iat > mx) mx = iat
+        }
+        if (mx > 0L) p.edit().putLong(K_LAST_SERVER_CONFIRM, mx).apply()
+        return mx
     }
 
     // ---------- Keystore MAC 完整性 ----------

@@ -84,14 +84,6 @@ class DeviceIdentityWireTest {
     }
 
     // ④ claim 的 409 分派：三元组不符是终态（不导航 restore），与 trial_has_license 分开
-    @Test
-    fun trial409DispatchSeparatesDeviceMismatch() {
-        val mismatch = """{"error":"trial_device_mismatch"}"""
-        val hasLicense = """{"error":"trial_has_license"}"""
-        assertTrue(EntitlementManager.trial409IsDeviceMismatch(mismatch))
-        assertTrue(!EntitlementManager.trial409WantsRestore(mismatch))
-        assertTrue(!EntitlementManager.trial409IsDeviceMismatch(hasLicense))
-        assertTrue(EntitlementManager.trial409WantsRestore(hasLicense))
-        assertTrue(!EntitlementManager.trial409IsDeviceMismatch("not json"))
-    }
+    // trial409DispatchSeparatesDeviceMismatch 已删（2026-11-25 批 3 三端死面撤除：
+    // trial409IsDeviceMismatch 随平台零产生点退役，trial409WantsRestore 保留）
 }
