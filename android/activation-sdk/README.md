@@ -81,14 +81,15 @@ ActivationSdk.registerExpiryHandler(
 0. **活源=净屏 App 仓**（2026-10-15 组1 块4 起倒转确立，v1.2 前本仓领先的说法作废）：
    本目录任何变更必须经「净屏 App 仓 `activation-sdk/` 改动 → 编译+单测绿 → 回灌
    提交本仓」，**禁止在本仓直接手改 SDK 源**（本仓无 Android 构建环境，手改无验证
-   即被两仓 drift 锁双双固化）。净屏仓 `backend/admin/sdk_drift_test.go` 机械比对
+   即被两仓 drift 锁双双固化）。净屏侧锁（order-core 仓
+   `server/jingping/admin/sdk_drift_test.go`，2026-11-05 T2 迁移自净屏仓 backend/admin）机械比对
    两仓 *.kt（零 diff 断言），漏拷回=测试红。
 1. 改净屏 App 仓 SDK → App 仓 commit（本节版本号同步 +1）；
 2. **单测在 App 仓跑**（平台仓无 Android 构建环境）：`gradlew :activation-sdk:testDebugUnitTest`
    ——ClaimOrchestrationTest（claim 编排五件：退避/409 分派/单飞/监听/持久化往返）+
    Ed25519VerifyTest（RFC 8032 向量）/ActivationSdkConfigTest；
 3. 逐项目（净屏 App 仓 `activation-sdk/` + 后续接入项目）重新拷入 diff 对拍；收尾
-   验证=两把 drift 锁 `go test -count=1` 全绿（净屏侧锁 backend/admin 盖净屏↔平台；
+   验证=两把 drift 锁 `go test -count=1` 全绿（净屏侧锁 order-core server/jingping/admin 盖净屏↔平台；
    平台侧锁 license-platform internal/sdkdrift 盖三仓 *.kt+向量+两姊妹件）——
    **`-count=1` 必带**：裸跑 `go test` 会命中陈旧缓存假绿（Go 测试缓存 key 不含
    运行时读取的 SDK 文件，2026-11-04 漂移收口批实证 cached ok 与实际红并存）；

@@ -55,7 +55,7 @@ object EntitlementManager {
     fun relayMode(context: Context): Boolean =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getBoolean(K_RELAY_MODE, false)
     private const val K_RECEIPTS = "receipts_json"    // {"JP-A":{...},"JP-B":{...}}
-    private const val K_PRIMARY = "primary_key"       // 最近激活的 key（CZ- 充值目标）
+    private const val K_PRIMARY = "primary_key"       // 主码=recomputePrimary 单源重算（B4-4 选主归一，CZ- 充值目标跟随主行）
     private const val K_LAST_SEEN = "last_seen"
     // D-07 撤权离线宽限锚（2026-11-25 批 3，35 拍板「新锚点=最近一次服务端确认
     // 时刻 max 单调」）：binding-check/激活族任何结构化服务端应答即刷新（max 单调
@@ -360,7 +360,8 @@ object EntitlementManager {
             "&device_name=" + java.net.URLEncoder.encode(deviceName, "UTF-8") +
             "&drm_id=" + java.net.URLEncoder.encode(drmId, "UTF-8")
 
-    /** 主 key（最近激活）：CZ- 充值码默认目标；兼容旧调用 */
+    /** 主 key（pickPrimary 单源重算，B4-4 选主归一）：CZ- 充值码默认目标跟随主行 */
+
     fun storedKey(context: Context): String =
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(K_PRIMARY, "").orEmpty()
 
@@ -1073,6 +1074,17 @@ object EntitlementManager {
     private fun allAppsOf(entries: List<Pair<String, Entitlement>>): Map<String, Long> =
         buildMap { entries.forEach { (_, ent) -> putAll(ent.expiries) } }
 
+    /** primary 存储单源重算（B4-4 选主归一）：全量码候选走 [pickPrimary]（永久
+     *  优先→最快到期优先→稳定 tie-break）——persist/clearKey 写点统一消费本函数，
+     *  读侧 primarySelection 同规则，展示与存储不再分叉。无有效候选回落空串。 */
+    private fun recomputePrimary(
+        rcpts: Map<String, String>,
+        nowSec: Long,
+    ): String = pickPrimary(
+        rcpts.mapNotNull { (k, j) -> parseReceipt(j)?.let { k to it } },
+        nowSec, ActivationSdk.entitlementConfig,
+    )?.first.orEmpty()
+
     // 409 分派 seam：仅 trial_has_license 语义导航 restore（审查 S9：防未来 409
     // 增义被误判「本机已有权益」白跑 restore）
     internal fun trial409WantsRestore(body: String): Boolean =
@@ -1247,7 +1259,8 @@ object EntitlementManager {
             setBindingMark(p, key, null)
             p.edit().putString(K_RECEIPTS, JSONObject(rcpts).toString()).apply()
             if (storedKey(context) == key) {
-                p.edit().putString(K_PRIMARY, rcpts.keys.firstOrNull() ?: "").apply()
+                // 选主归一（B4-4）：回落走 pickPrimary 重算（原 firstOrNull=入参序）
+                p.edit().putString(K_PRIMARY, recomputePrimary(rcpts, effectiveNowSeconds(p))).apply()
             }
             writeStateMac(p)
         }
@@ -1826,9 +1839,15 @@ object EntitlementManager {
             val rcpts = receiptsMap(p).toMutableMap()
             rcpts[key] = receipt
 
+            // 选主归一（B4-4 尾巴拍板 2026-11-26「相加+统一 pickPrimary」）：primary
+            // 恒等 pickPrimary 全量重算——原「最近激活覆写」与码卡主行规则分叉
+            // （31 证据「选主 3 处互不相同」；D2-A03 漂移：巡检共享本入口，巡检顺序
+            // 曾决定主码）。本函数=激活/巡检/绑定检查统一入口，一处收口全链对齐。
+            val primaryNow = recomputePrimary(rcpts, effectiveNowSeconds(p))
+
             p.edit()
                 .putString(K_RECEIPTS, JSONObject(rcpts).toString())
-                .putString(K_PRIMARY, key)
+                .putString(K_PRIMARY, primaryNow)
                 .putLong(K_LAST_SEEN, System.currentTimeMillis())
                 .apply()
             // relay 能力位（v2.4 批3）：与凭证同事务落——任一激活/巡检通道携带即置位，
