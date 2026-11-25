@@ -61,21 +61,10 @@ object PlanSkus {
      *  排序约定，判定面不受影响 */
     val SOURCE_DISPLAY_ORDER = listOf("fanqie", "hongguo")
 
-    /** 在线支付是否开通（服务端 payable 字段，mock 通道=false）：false 时购买入口
-     *  拦截改「联系购买」（2026-08-22 用户拍板：正式支付接入前不走通支付路径）。
-     *  随每次 parse（网络/缓存）同步，默认 true 宽容旧服务端。 */
-    @Volatile
-    var payable: Boolean = true
-        private set
-
-    /** 支付模式（2026-08-22 拍板：payable 语义收窄为「在线支付」且服务端恒下发
-     *  true——旧版 App 读 payable=false 会拦截；购买入口开合改由本字段驱动）：
-     *  "online"=在线支付通道（虎皮椒）/ "manual"=人工支付（闲鱼担保交易，下单后
-     *  跳订单页）/ "none"=不开放购买（服务端不会下发，客户端兜底拦截）。
-     *  默认 "online" 宽容旧服务端。 */
-    @Volatile
-    var payMode: String = "online"
-        private set
+    // payable/payMode 字段已删（2026-11-25 批 3 D-13，31 死码拍板「宿主里零读点」：
+    // 原生选购页 2026-10-13 全量接管后购买入口开合由服务端 sku 下发与原生页承担，
+    // 宿主不再读此两态。服务端 /api/skus 仍下发 payable/pay_mode 键——parse 忽略
+    // 未知键，对旧服务端宽容）。
 
     /** 组合折扣表（2026-08-22 原生化拍板：服务端单一事实源下发 [{n,r}]，本地
      *  实时算价与后端 ComboTotalCents HALF_UP 同口径）。空=服务端未下发（旧
@@ -124,12 +113,11 @@ object PlanSkus {
     // 六字段一体下发，parseSkuList 单源解析；原宿主双拉 /jp/skus-ext 及 SkuExtSync
     // 随源合并退役，SDK 无保留必要）。
 
-    /** 响应体 → SKU 列表（纯函数；格式不符返回空表，不抛；顺带解析 payable/pay_mode/
-     *  combo_rates/native_checkout/xianyu_url/contact_url/service_hours） */
+    /** 响应体 → SKU 列表（纯函数；格式不符返回空表，不抛；顺带解析 combo_rates/
+     *  native_checkout/xianyu_url/contact_url/service_hours——payable/pay_mode 停解析
+     *  D-13，服务端键保留但宿主零消费） */
     fun parseSkuList(json: String): List<Sku> = runCatching {
         val root = JSONObject(json)
-        payable = root.optBoolean("payable", true)
-        payMode = root.optString("pay_mode", "online")
         nativeCheckout = root.optBoolean("native_checkout", false)
         autoActivate = root.optBoolean("auto_activate", false)
         xianyuUrl = root.optString("xianyu_url", "")
@@ -250,7 +238,7 @@ object PlanSkus {
      *  [cacheAgeMs] 供 UI 标注「价格以支付页为准」（S3：>7 天必拉新失败才静默用旧）。
      *  契约锚定（4.7.2 三角色审查 I-3）：本方法经 parseSkuList 兼具「恢复六字段
      *  内存态」职责——购买路由判定前必须先调本方法（或 fetch），离线冷启动的
-     *  payMode/nativeCheckout 恢复依赖此副作用，拆解析时须保留该语义 */
+     *  nativeCheckout 等字段恢复依赖此副作用，拆解析时须保留该语义 */
     fun cached(context: Context): List<Sku>? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val json = p.getString(K_SKU_CACHE, null) ?: return null

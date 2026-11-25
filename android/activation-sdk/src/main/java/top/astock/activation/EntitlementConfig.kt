@@ -14,4 +14,10 @@ data class EntitlementConfig(
     val fallbackApp: String? = null,
     /** 产品键域清单（键域过滤/键表消费单源；null=不做键域过滤） */
     val productApps: List<String>? = null,
+    /** 撤权离线宽限上限（天；2026-11-25 批 3 D-07，35 拍板「最大离线窗口 30 天」）：
+     *  距最近一次服务端确认超过该天数 → 全部权益视为失效（防断网逃逸撤权）。
+     *  0=不限（缺省，旧语义；shiyin 等宿主不传即不限，净屏壳传 30）。
+     *  锚点=last_server_confirm（服务端任何结构化应答即刷新，max 单调），
+     *  窗算术并入 effectiveNowSeconds seam（graceAwareNow）。 */
+    val offlineGraceDays: Int = 0,
 )

@@ -57,6 +57,10 @@ object EntitlementManager {
     private const val K_RECEIPTS = "receipts_json"    // {"JP-A":{...},"JP-B":{...}}
     private const val K_PRIMARY = "primary_key"       // 最近激活的 key（CZ- 充值目标）
     private const val K_LAST_SEEN = "last_seen"
+    // D-07 撤权离线宽限锚（2026-11-25 批 3，35 拍板「新锚点=最近一次服务端确认
+    // 时刻 max 单调」）：binding-check/激活族任何结构化服务端应答即刷新（max 单调
+    // 防回拨），窗口判定并入 graceAwareNow seam。
+    private const val K_LAST_SERVER_CONFIRM = "last_server_confirm"
     private const val K_MAC = "state_mac"
     // 绑定态标记（2026-08-27 三态模型）：{"JP-A":"unbound"|"bound_other"}；缺省=本机绑定中。
     // 仅作展示与本地停权过滤，服务端 /api/binding-check 是唯一权威且巡检会持续重写，
@@ -342,6 +346,10 @@ object EntitlementManager {
     private fun bodyWithIdentity(context: Context, base: Map<String, String>): JSONObject =
         identityPayload(base, android.os.Build.MODEL ?: "", drmDeviceId(context))
 
+    /** 本机三元组键值对（公开：App 安装上报/下单复用，与端点请求体同源）。 */
+    fun deviceIdentityMap(context: Context): Map<String, String> =
+        deviceIdentityPairs(android.os.Build.MODEL ?: "", drmDeviceId(context))
+
     /**
      * restore GET URL（2026-11-24）：三元组参数必须**显式带**（服务端用 `q.Has`
      * 判 strict，空值也算「新客户端」），不能因为值为空就省略；机型可能含空格/中文，
@@ -459,7 +467,7 @@ object EntitlementManager {
         val merged = mergeExpiries(anchored)
         if (merged.isEmpty()) return State.Unactivated
         touchLastSeen(p)
-        val effNow = effectiveNowSeconds(p)
+        val effNow = graceAwareNow(p)
         val ent = Entitlement(keyId = keyId, expiries = merged, tier = tier, deviceLimit = deviceLimit, kind = kind)
         val anyValid = anyActive(merged, effNow)
         return if (anyValid) State.Active(ent) else State.Expired(ent)
@@ -469,7 +477,7 @@ object EntitlementManager {
         val st = current(context)
         if (st !is State.Active) return false
         val exp = st.e.expiries[app] ?: return false
-        return validAt(exp, effectiveNowSeconds(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)))
+        return validAt(exp, graceAwareNow(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)))
     }
 
     /** 是否存在任一 app 即将到期（≤3 天，含已到期的单独走 per-app 状态行）；永久不计数。
@@ -478,7 +486,7 @@ object EntitlementManager {
     fun expiringSoon(context: Context): Boolean {
         val st = current(context)
         if (st !is State.Active) return false
-        val now = effectiveNowSeconds(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
+        val now = graceAwareNow(context.getSharedPreferences(PREFS, Context.MODE_PRIVATE))
         return st.e.expiries.values.any { it != 0L && it > now && it - now <= 3 * 86400 }
     }
 
@@ -682,6 +690,9 @@ object EntitlementManager {
             }
             is AuthResult.Failure -> {
                 Log.i(TAG, "binding check $key -> ${r.errCode ?: "no-answer"}: ${r.userMessage}")
+                // D-07 锚刷新：结构化应答（errCode 非空）=真实服务端响应；no-answer
+                // （网络异常）不刷——宽限窗口从最近确认起算
+                if (r.errCode != null) touchServerConfirm(p, effectiveNowSeconds(p))
                 when (r.errCode) {
                     "expired" -> {
                         invalidateStateCache()
@@ -895,7 +906,7 @@ object EntitlementManager {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val entries = keyEntries(context)
         val allApps = buildMap { entries.forEach { (_, ent) -> putAll(ent.expiries) } }
-        val now = effectiveNowSeconds(p)
+        val now = graceAwareNow(p)
         val cfg = ActivationSdk.entitlementConfig
         return entries.map { (key, ent) ->
             val maskedExp = maskApps(ent.expiries, allApps, now, cfg)
@@ -910,7 +921,7 @@ object EntitlementManager {
 
     fun primarySelection(context: Context): Primary? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val pick = pickPrimary(keyEntries(context), effectiveNowSeconds(p), ActivationSdk.entitlementConfig)
+        val pick = pickPrimary(keyEntries(context), graceAwareNow(p), ActivationSdk.entitlementConfig)
         return pick?.let { Primary(it.first, it.second) }
     }
 
@@ -920,7 +931,7 @@ object EntitlementManager {
      *  无权益返回空表（now 仍给判定钟，调用方循环空转）。 */
     fun maskedMerged(context: Context): Pair<Map<String, Long>, Long> {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val now = effectiveNowSeconds(p)
+        val now = graceAwareNow(p)
         val st = current(context)
         val ent = (st as? State.Active)?.e ?: (st as? State.Expired)?.e ?: return Pair(emptyMap(), now)
         return Pair(maskApps(ent.expiries, ent.expiries, now, ActivationSdk.entitlementConfig), now)
@@ -943,7 +954,7 @@ object EntitlementManager {
 
     fun mergedTruth(context: Context): MergedTruth? {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        val now = effectiveNowSeconds(p)
+        val now = graceAwareNow(p)
         val st = current(context)
         val ent = (st as? State.Active)?.e ?: (st as? State.Expired)?.e ?: return null
         val masked = maskApps(ent.expiries, ent.expiries, now, ActivationSdk.entitlementConfig)
@@ -1060,10 +1071,9 @@ object EntitlementManager {
     internal fun trial409WantsRestore(body: String): Boolean =
         runCatching { JSONObject(body).optString("error") }.getOrDefault("") == "trial_has_license"
 
-    // 2026-11-24 设备身份三元组：同 device_id 的另一台机器已领过试用 → 终态拒绝
-    // （服务端既不返他人码也不发新码，重试不会改判）。
-    internal fun trial409IsDeviceMismatch(body: String): Boolean =
-        runCatching { JSONObject(body).optString("error") }.getOrDefault("") == "trial_device_mismatch"
+    // trial409IsDeviceMismatch 已删（2026-11-25 批 3，trial_device_mismatch 三端
+    // 死面撤除：平台 D-10 撤保守拦截后该 409 全仓零产生点——平台 handler 409 出口
+    // 与 golden 行同批撤）。
 
     private suspend fun claimTrialImpl(context: Context): Boolean = withContext(Dispatchers.IO) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -1117,17 +1127,9 @@ object EntitlementManager {
             // 正价重装导航（审查 I-6）：restore 找回；失败不计 fails——付费用户权益
             // 恢复不被试用退避拉长（restore 保持每次冷启动重试，同旧行为）。
             if (trial409WantsRestore(respBody)) return@withContext restoreFromDevice(context)
-            // 2026-11-24 设备身份三元组：同 device_id 的另一台机器已领过试用（服务端
-            // 拒发他人码、也不发新码）。这是终态重试不会改判——不导航 restore（restore
-            // 按三元组也拿不到别人的码），静默走购买墙；留独立日志便于区分「真异常」。
-            if (trial409IsDeviceMismatch(respBody)) {
-                // 终态（2026-11-24 审查 I-2）：trial_grants 按 device_id 唯一，解绑/换机
-                // 都不会改判——与下方 expired 终态同构，置 DONE 停止每 ≤6h 的注定失败轮询，
-                // 并清 pending 欢迎资格（否则每次冷启动都会重设一个没人消费的待弹标记）。
-                Log.i(TAG, "trial claim 409: device identity registered by another machine, stop trial")
-                p.edit().putBoolean(K_TRIAL_DONE, true).remove(K_TRIAL_PENDING).apply()
-                return@withContext false
-            }
+            // trial_device_mismatch 409 分支已删（2026-11-25 批 3 三端死面撤除）：
+            // 平台 D-10 撤保守拦截后该码零产生点，409 只剩 trial_has_license 语义
+            // （上方 trial409WantsRestore 已承接）。
             Log.i(TAG, "trial claim 409 unexpected")
             p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
             return@withContext false
@@ -1480,7 +1482,7 @@ object EntitlementManager {
                         "device_id" to stableDeviceId(context).ifEmpty { deviceId(context) },
                         "app_pkg" to context.packageName,
                         "app_ver" to ver,
-                    )
+                    ) + deviceIdentityMap(context)   // 三元组（2026-11-24）：安装/活跃按机器归因
                 )
                 postInstallBody(context, body, ver)
             }.onFailure { Log.w(TAG, "install report error", it) }
@@ -1746,19 +1748,16 @@ object EntitlementManager {
             "device_mismatch" -> "本机硬件信息与该码的绑定记录不一致：请打开该码详情 →「设备管理」解绑本机旧记录，再点「绑定本机」；试用码请联系客服"
             "device_limit" -> "设备数已满：请在原设备解绑，或到订单页查看换绑说明"
             "trial_used" -> "体验卡每设备限用 1 张，如需继续使用请购买月卡/年卡"
-            // 试用域四码（2026-11-17 审计批2+三席 I-1 勘正；2026-11-24 增
-            // trial_device_mismatch）：仅 /api/trial-claim 下发，且 claim 链路在
+            // 试用域四码（2026-11-17 审计批2+三席 I-1 勘正；trial_device_mismatch
+            // 2026-11-24 增 2026-11-25 批 3 随三端死面撤除）：仅 /api/trial-claim 下发，且 claim 链路在
             // claimTrialImpl 内自行分派、不走 mapError——本组映射是「未来文案出口预留
             // 契约面」，当前不可达（与 trial_ip_limit/trial_cap_reached 同型；勿误以为
             // 已接 UI）。
             "trial_ip_limit" -> "今天申请试用的设备较多，请明天再试"
+            "trial_device_limit" -> "本机今日试用申请次数已达上限，请明天再试"
             "trial_disabled" -> "试用资格申请暂未开放，请稍后再试"
             "trial_cap_reached" -> "今日试用名额已发放完毕，请明天再试"
-            // 2026-11-24 三元组：同 device_id 下已有试用发放记录、但属于另一台机器——
-            // 不发他人码、也不发新码（服务端拒绝即终态，不是「过会儿再试」）。App 侧
-            // 拿到该码按「本机非试用受众」处理：走购买墙，不导航 restore（restore 也
-            // 拿不到别人的码）。
-            "trial_device_mismatch" -> "本机试用资格已由同一设备号的其他机器使用，如需继续使用请购买月卡/年卡"
+            // trial_device_mismatch 映射已删（2026-11-25 批 3 三端死面撤除：平台零产生点）
             "invalid_code" -> "充值码无效或已使用"
             "key_not_found" -> "请先用激活码（JP- 开头）开通后，再用充值码续费"
             "rate_limited" -> "操作过于频繁，请稍后再试"
@@ -1809,6 +1808,8 @@ object EntitlementManager {
 
     private fun persist(context: Context, key: String, r: AuthResult.Success) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        // D-07 锚刷新：服务端确认成功（激活族/binding-check 落库统一入口）
+        touchServerConfirm(p, effectiveNowSeconds(p))
         val e = r.e
         val receipt = buildReceiptJson(e, deviceId(context), System.currentTimeMillis() / 1000, System.currentTimeMillis())
 
@@ -1909,6 +1910,32 @@ object EntitlementManager {
         val last = p.getLong(K_LAST_SEEN, 0L)
         val eff = if (now + ROLLBACK_TOLERANCE_MS < last) last else now
         return eff / 1000
+    }
+
+    /**
+     * 服务端确认锚刷新（D-07，max 单调防回拨）：binding-check/激活族任何结构化
+     * 服务端应答（AuthResult.Success 或 errCode 非空 = 有真实响应）即调用；
+     * 网络异常/no-answer 不刷（宽限窗口从最近确认起算）。
+     */
+    private fun touchServerConfirm(p: android.content.SharedPreferences, nowSec: Long) {
+        val cur = p.getLong(K_LAST_SERVER_CONFIRM, 0L)
+        if (nowSec > cur) p.edit().putLong(K_LAST_SERVER_CONFIRM, nowSec).apply()
+    }
+
+    /**
+     * grace 感知的判定时钟（D-07，并入 effectiveNowSeconds seam——全部权益读面
+     * 换用本函数）：offlineGraceDays>0 且距最近服务端确认超窗 → 返回 Long.MAX_VALUE
+     * （一切有期限权益判过期、永久权益亦失效——窗口语义=「断网超窗即全部失效」，
+     * 35 拍板「撤权最大离线窗口 30 天」）。graceDays=0（缺省）或从未有过服务端
+     * 确认（全新安装未联网）→ 原样返回（不限）。
+     */
+    private fun graceAwareNow(p: android.content.SharedPreferences): Long {
+        val now = graceAwareNow(p)
+        val days = ActivationSdk.entitlementConfig.offlineGraceDays
+        if (days <= 0) return now
+        val confirmedAt = p.getLong(K_LAST_SERVER_CONFIRM, 0L)
+        if (confirmedAt <= 0L) return now // 从未联网确认：无锚不限（首启离线不误杀）
+        return if (now - confirmedAt > days * 86400L) Long.MAX_VALUE else now
     }
 
     // ---------- Keystore MAC 完整性 ----------
