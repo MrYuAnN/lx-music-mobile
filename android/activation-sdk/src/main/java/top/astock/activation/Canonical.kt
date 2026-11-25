@@ -10,4 +10,5 @@ object Canonical {
     val ACTIVATE_ERROR_CODES = listOf("invalid_key", "revoked", "already_permanent", "expired", "not_bound", "device_mismatch", "device_limit", "trial_used", "invalid_product", "invalid_code", "key_not_found", "release_limit", "trial_no_release")
     val GATE_403_FAMILY = listOf("expired", "device_limit", "not_entitled_for_source", "source_disabled", "forbidden")
     val APP_LOCAL_CODES = listOf("device_bound_other", "local_recharge_needs_jp", "already_activated_local")
+    val TRIAL_TIERS = listOf("trial3", "trial7")
 }

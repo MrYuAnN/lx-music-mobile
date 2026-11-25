@@ -61,6 +61,12 @@ object EntitlementManager {
     // 时刻 max 单调」）：binding-check/激活族任何结构化服务端应答即刷新（max 单调
     // 防回拨），窗口判定并入 graceAwareNow seam。
     private const val K_LAST_SERVER_CONFIRM = "last_server_confirm"
+
+    /** grace 超窗哨兵钟值（graceAwareNow 产出 / validAt 识别的隐式协议点，合并审查
+     *  S3 收口为具名常量防第二消费点误判；超窗=离线宽限耗尽，此刻任何有限 exp 都
+     *  判过期）。**勿与排序 tie-break 的 Long.MAX_VALUE 混用**——后者是 pickPrimary
+     *  纯排序哨兵，语义无关。 */
+    private const val GRACE_EXPIRED_NOW = Long.MAX_VALUE
     private const val K_MAC = "state_mac"
     // 绑定态标记（2026-08-27 三态模型）：{"JP-A":"unbound"|"bound_other"}；缺省=本机绑定中。
     // 仅作展示与本地停权过滤，服务端 /api/binding-check 是唯一权威且巡检会持续重写，
@@ -120,12 +126,12 @@ object EntitlementManager {
      *  （退役条件：entitlement_kind 全端覆盖两个发版周期后删除本常量与回落分支）。 */
     const val TRIAL_TIER = "auto3"
 
-    /** 体验卡（付费试用卡 trial7/trial3）tier 名单单源（2026-10-24 体验卡禁自助解绑；
-     *  与平台仓 store.isTrialCardTier 同名单，跨端无共享包，改动必须成对）。
-     *  服务端对体验卡禁自助解绑（一码一用锁首绑设备，跨设备轮薅防线），UI 据此
-     *  隐藏解绑入口。注意与 TRIAL_TIER（auto3 首启免费试用）是两套体系——
-     *  isTrial() 判的是后者，勿混用。 */
-    fun isTrialCardTier(tier: String): Boolean = tier == "trial7" || tier == "trial3"
+    /** 体验卡（付费试用卡）tier 名单（2026-10-24 体验卡禁自助解绑；服务端对体验卡
+     *  禁自助解绑——一码一用锁首绑设备，跨设备轮薅防线，UI 据此隐藏解绑入口）。
+     *  合并审查 S10-3：值域单源化 Canonical.TRIAL_TIERS（canonical.TrialTiers 生成
+     *  投影，与后端 TierCN 键集/平台 trial-claim 枚举三端同源）。注意与 TRIAL_TIER
+     *  （auto3 首启免费试用）是两套体系——isTrial() 判的是后者，勿混用。 */
+    fun isTrialCardTier(tier: String): Boolean = tier in Canonical.TRIAL_TIERS
 
     /** 权益类型语义（组1 块3 契约字段，平台 activationResp 顶层 entitlement_kind 下发；
      *  值域=平台 entitlementKind 函数单源（trial/paid，对标 RevenueCat periodType 裁剪）。
@@ -999,9 +1005,9 @@ object EntitlementManager {
     // 收编批=断言对象即本层，masking/primary 段随本批启用（向量同步补段）。
     /** 单值真值：0=永久；到期在未（>nowSec）有效；否则过期（负值/脏值由调用方上游解析兜底） */
     internal fun validAt(exp: Long, nowSec: Long): Boolean =
-        // D-07 审查 I-2（2026-11-25 批 3）：grace 超窗时钟（Long.MAX_VALUE）下
+        // D-07 审查 I-2（2026-11-25 批 3）：grace 超窗时钟（GRACE_EXPIRED_NOW 哨兵）下
         // 永久权益（exp==0）同样判失效——「断网超窗全部失效」含永久形态，防逃逸
-        nowSec != Long.MAX_VALUE && (exp == 0L || exp > nowSec)
+        nowSec != GRACE_EXPIRED_NOW && (exp == 0L || exp > nowSec)
 
     /** 聚合视角：任一 app 真值即 active（多码合并表 any 语义，computeCurrent 同款）；
      *  excludeApp=排除指定键（Worker 混合态收口「排除本键」消费，审查 S3） */
@@ -1950,7 +1956,7 @@ object EntitlementManager {
 
     /**
      * grace 感知的判定时钟（D-07，并入 effectiveNowSeconds seam——全部权益读面
-     * 换用本函数）：offlineGraceDays>0 且距最近服务端确认超窗 → 返回 Long.MAX_VALUE
+     * 换用本函数）：offlineGraceDays>0 且距最近服务端确认超窗 → 返回 GRACE_EXPIRED_NOW
      * （超窗语义=「断网超窗即全部失效」——审查 I-2：永久权益（exp=0）在 MAX 时钟
      * 下同样判失效（validAt 单点排除），防断网逃逸撤权；35 拍板「撤权最大离线
      * 窗口 30 天」）。graceDays=0（缺省）或从未有过服务端确认（全新安装未联网）
@@ -1966,7 +1972,7 @@ object EntitlementManager {
         if (days <= 0) return now
         val confirmedAt = serverConfirmAt(p)
         if (confirmedAt <= 0L) return now // 从未联网确认：无锚不限（首启离线不误杀）
-        return if (now - confirmedAt > days * 86400L) Long.MAX_VALUE else now
+        return if (now - confirmedAt > days * 86400L) GRACE_EXPIRED_NOW else now
     }
 
     /**
