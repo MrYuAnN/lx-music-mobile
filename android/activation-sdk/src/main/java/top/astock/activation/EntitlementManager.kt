@@ -1857,6 +1857,11 @@ object EntitlementManager {
             "trial_device_limit" -> "本机今日试用申请次数已达上限，请明天再试"
             "trial_disabled" -> "试用资格申请暂未开放，请稍后再试"
             "trial_cap_reached" -> "今日试用名额已发放完毕，请明天再试"
+            // trial_test_build（2026-11-26 深夜拍板「test 版禁领试用」）：测试线构建
+            // （版本名含 -testN）拒领商业试用——/test/ 测试包曾被外部枚举获取并被
+            // 用于领取试用（11-25 批量领码 + 11-26 test29 设备）。预留文案契约面
+            // （claim 链路 claimTrialImpl 内静默退避、当前不走 mapError——同上四码）
+            "trial_test_build" -> "测试版不可领取试用，请下载正式版后重试"
             // trial_device_mismatch 映射已删（2026-11-25 批 3 三端死面撤除：平台零产生点）
             "invalid_code" -> "充值码无效或已使用"
             "key_not_found" -> "请先用激活码（JP- 开头）开通后，再用充值码续费"
