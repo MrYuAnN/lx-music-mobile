@@ -71,3 +71,15 @@ A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageK
   机械断言为本批升级）；两把锁
   注释+SDK README 检查单第 3 步补「`-count=1` 必带」纪律（净屏侧锁比对范围不动，
   维持 S10 双视角分工）。
+
+## 三仓镜像漂移定性（2026-11-26 解绑三元组闸批）
+
+- 现象：`go test ./internal/sdkdrift/ -count=1` 红 2 文件——`EntitlementManager.kt`/
+  `ReleaseOutcomeTest.kt` 净屏 hash 互异于平台/拾音（本批按活源改动后未即时回灌，
+  收尾锁跑发现，-count=1 纪律生效）。
+- 处置：活源两文件回灌平台仓 sdk/android + 拷入拾音仓 android/activation-sdk；终态
+  `-count=1` 全绿、三仓零 diff。本批 SDK 侧改动清单：releaseDeviceEx body 加三元组+
+  签名头（审计用）、releaseRemote/Ex 标 @Deprecated（远程解绑退役）、release_mismatch
+  错误码+文案、device_bound_other 清本地记录（2026-11-26 拍板）、refreshOnStart/
+  checkKeyOnce 注释随拍板更新、device_mismatch 文案去远程解绑引导（用户实机验证发现
+  死路文案）；ReleaseOutcomeTest 增 release_mismatch 锚。向量文件无改动。
