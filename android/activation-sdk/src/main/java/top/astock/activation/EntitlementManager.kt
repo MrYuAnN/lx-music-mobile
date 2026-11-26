@@ -202,22 +202,27 @@ object EntitlementManager {
      *  多语言宿主 i18n 消费；userMessage 保持中文原文（旧宿主文案通道+兜底双轨） */
     data class ReleaseOutcome(val ok: Boolean, val errCode: String?, val userMessage: String)
 
-    // v1.4：服务端错误串→结构化码；非三值（空/未识别）归 null=网络或非结构化应答
+    // v1.4：服务端错误串→结构化码；非四值（空/未识别）归 null=网络或非结构化应答。
+    // release_mismatch（2026-11-26 解绑三元组闸，服务端 sentinelErrResp 同批新增）。
     internal fun releaseErrCode(err: String): String? = when (err) {
-        "not_bound", "trial_no_release", "release_limit" -> err
+        "not_bound", "trial_no_release", "release_limit", "release_mismatch" -> err
         else -> null
     }
 
     // v1.4：解绑失败文案单源（not_bound/trial_no_release 自原 when 分支逐字迁入；
     // release_limit 口径随窗口演进：2026-11-03 改「每 30 天限 1 次」对齐 4176cbf
     // 滚动窗，2026-11-18 服务端改自然月闸同步改「每自然月限 1 次」——旧宿主消费
-    // Result.message/String? 即此文案；remote 仅影响 not_bound 措辞）
+    // Result.message/String? 即此文案；remote 仅影响 not_bound 措辞）。
+    // release_mismatch（2026-11-26 拍板）：本机三元组与码绑定行不一致——覆盖两类
+    // 触发：①他机/克隆机试图解绑他机占用（闸的目标面）②本机刷机/隐私 ROM 锚派生
+    // 改写后的合法用户（drmDeviceId 注释自证场景存在）→ 文案统一引导客服，不区分。
     internal fun releaseFailMessage(err: String, httpCode: Int, remote: Boolean): String = when (err) {
         "not_bound" ->
             if (remote) "该设备已不在此码名下，刷新后查看最新列表"
             else "该激活码未绑定本机（可能是已被新激活码顶替，或在其他设备解绑），无需重复解绑"
         "trial_no_release" -> "体验卡为一次性试用权益，不支持解绑或转移设备，如需更换设备请联系客服协助"
         "release_limit" -> "本月解绑次数已用完（每自然月限 1 次，次月 1 日恢复），如需提前解绑请联系客服"
+        "release_mismatch" -> "本机与该激活码的绑定记录不一致，无法解绑；如需换绑设备请联系客服协助"
         else -> "服务异常（$httpCode），请稍后再试"
     }
 
@@ -578,10 +583,10 @@ object EntitlementManager {
      * 启动时静默刷新（2026-08-27 三态模型拍板）：巡检改打只读 /api/binding-check，
      * 绑定关系只能由主动激活（intent="bind"，activateOrRedeem 路径）变更——服务端
      * 对已解绑行的静默重放一律拒绝（ErrReleased），管理台/用户侧解绑不可被撤销。
-     * 本机绑定中=刷新 receipt 并解除停权标记；解绑/被他机绑定=落标记并按码停权
-     * （保留本地记录，「绑定本机」按钮有入口载体）；过期不清码沿用；吊销/无效清除；
-     * 分派按结构化 errCode（审查 I2：展示文案不再承担协议职责）；errCode 缺失=
-     * 无服务端应答，离线宽限保留。
+     * 本机绑定中=刷新 receipt 并解除停权标记；被他机绑定=清本地记录（2026-11-26
+     * 拍板，原「停权保留+绑定本机按钮」口径随远程解绑退役一并废止）；过期不清码
+     * 沿用；吊销/无效清除；分派按结构化 errCode（审查 I2：展示文案不再承担协议
+     * 职责）；errCode 缺失=无服务端应答，离线宽限保留。
      * 巡检节流（方案A'）：3 分钟最小间隔压平 onResume 级调用，显式通道不受限。
      */
     suspend fun refreshOnStart(context: Context) = withContext(Dispatchers.IO) {
@@ -725,7 +730,14 @@ object EntitlementManager {
                         }
                     }
                     "device_bound_other" -> {
-                        setBindingMark(p, key, BINDING_MARK_OTHER)
+                        // 非本机占用→清本地记录（2026-11-26 拍板，推翻 2026-11-04「停权
+                        // 保留+绑定本机按钮」旧口径）：解绑三元组闸+面板实体过滤后，码
+                        // 与本机无关即与用户无关——码卡连带「绑定本机」入口一并消失，
+                        // 克隆群残留自动清干净。重绑=重新输码或客服（清记录不影响权益，
+                        // 服务端是权益唯一事实源）；代价=被盗码受害者无「被占」提示，
+                        // 已拍板接受。clearKey 含 mark 清理（releaseDeviceEx 同款语义）。
+                        Log.i(TAG, "binding check $key -> bound_other -> clearKey")
+                        clearKey(context, key)
                         invalidateStateCache()
                     }
                     "not_bound" -> {
@@ -1311,13 +1323,16 @@ object EntitlementManager {
 
     /** 结构化解绑本机（v1.4）：成功路径与旧 releaseDevice 完全一致（含 clearKey 清
      *  receipt+mark+primary 迁移）；失败给 errCode（not_bound/trial_no_release/
-     *  release_limit/null）+中文原文双通道 */
+     *  release_limit/release_mismatch/null）+中文原文双通道。
+     *  三元组（2026-11-26 解绑三元组闸）：bodyWithIdentity 单源补 device_name/drm_id
+     *  两键（服务端「行有锚强制同机」校验依赖请求三元组；不带=legacy 形状对有锚行
+     *  恒 release_mismatch）。按 2026-11-26 三席审查 I-B 拍板：不加安装签名头。 */
     suspend fun releaseDeviceEx(context: Context, keyOverride: String? = null): ReleaseOutcome =
         withContext(Dispatchers.IO) {
             runCatching {
                 val key = keyOverride ?: storedKey(context)
                 check(key.isNotEmpty()) { "本机未开通会员，无需解绑" }
-                val body = JSONObject(mapOf("key" to key, "device_id" to deviceId(context)))
+                val body = bodyWithIdentity(context, mapOf("key" to key, "device_id" to deviceId(context)))
                 val conn = URL(ActivationSdk.apiBase.trimEnd('/') + "/device/release").openConnection() as HttpURLConnection
                 conn.connectTimeout = 15000
                 conn.readTimeout = 15000
@@ -1326,6 +1341,12 @@ object EntitlementManager {
                 conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
                 conn.setRequestProperty("X-Client-Version", ActivationSdk.xClientVersion)
                 conn.setRequestProperty("X-Product", ActivationSdk.productId)   // X-Product 通道（批次2，v1.2）
+                // 安装实例签名（2026-11-26 深夜拍板：仅审计不拒——服务端 release 不验签，
+                // 头供 release-mismatch 审计记录请求方安装公钥指纹；Keystore 化专案
+                // （密钥迁硬件+attestation）评估立项后升级为分层校验第 1 层）
+                for ((k, v) in InstallationSigner.signForBody(context, body, "POST", "/device/release")) {
+                    conn.setRequestProperty(k, v)
+                }
                 conn.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
                 val code = conn.responseCode
                 val respBody = (if (code in 200..299) conn.inputStream else conn.errorStream)
@@ -1360,17 +1381,30 @@ object EntitlementManager {
         }
 
     /**
-     * 远程解绑他机占用（2026-08-27 设备管理面板）：/device/release 本无「仅本机」
-     * 约束——key 即凭证的自助换绑模型，服务端同一月限口径管控。与 releaseDevice
-     * 同请求骨架，但目标非本机，不清本地任何权益状态。成功返回 null，失败返回用户文案。
+     * 远程解绑他机占用（2026-08-27 设备管理面板）。
+     *
+     * **已退役（2026-11-26 拍板）**：「换绑=原机解绑」，远程解绑功能整体撤除——
+     * 服务端解绑三元组闸上线后，本函数对有锚行恒 403 release_mismatch（请求三元组
+     * 为调用方本机，与目标行不同机），无锚老行为过渡期宽松（随锚补齐收敛）。
+     * 本函数冻结不改 body（三席审查 I-2 修订 A）：撤 UI 后零调用方，仅为二进制
+     * 兼容保留；宿主不得新接此入口，换绑统一走原机自解或客服。
      * v1.4：委托 releaseRemoteEx（行为等价）。
      */
+    @Deprecated(
+        message = "远程解绑已退役（2026-11-26 拍板：换绑=原机解绑），有锚行恒 release_mismatch，勿新接",
+        replaceWith = ReplaceWith("releaseDevice(context, key)"),
+    )
     suspend fun releaseRemote(context: Context, key: String, targetDeviceId: String): String? {
         val r = releaseRemoteEx(context, key, targetDeviceId)
         return if (r.ok) null else r.userMessage
     }
 
-    /** 结构化远程解绑（v1.4）：不清本地权益；失败 errCode+中文原文双通道 */
+    /** 结构化远程解绑（v1.4）：不清本地权益；失败 errCode+中文原文双通道。已随
+     *  releaseRemote 一并退役（2026-11-26），body 冻结不改，详见上注。 */
+    @Deprecated(
+        message = "远程解绑已退役（2026-11-26 拍板：换绑=原机解绑），有锚行恒 release_mismatch，勿新接",
+        replaceWith = ReplaceWith("releaseDeviceEx(context, key)"),
+    )
     suspend fun releaseRemoteEx(context: Context, key: String, targetDeviceId: String): ReleaseOutcome =
         withContext(Dispatchers.IO) {
             runCatching {

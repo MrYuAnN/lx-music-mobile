@@ -1,8 +1,9 @@
 /*
  * v1.4 解绑结构化通道单测（拾音激活域入口重构批，方案 doc/plans/activation-keyinfo-page.md §2.1）：
- * ①releaseErrCode 三值映射+null 归并 ②releaseFailMessage 文案回归（not_bound/
+ * ①releaseErrCode 结构化值映射+null 归并 ②releaseFailMessage 文案回归（not_bound/
  * trial_no_release 逐字锚 v1.3 原文；release_limit 口径随窗口演进逐次锚拍板：
- * 2026-11-03 滚动窗 4176cbf、2026-11-18 自然月拍板——快照锁改动须明示拍板）。
+ * 2026-11-03 滚动窗 4176cbf、2026-11-18 自然月拍板；release_mismatch 锚 2026-11-26
+ * 解绑三元组闸拍板——快照锁改动须明示拍板）。
  * ③releaseYmOf 东八区年月边界（2026-11-18 自然月批：月初/跨年/UTC 差异点）。
  * 成功路径 clearKey/markSelfReleaseMonth（SP）不属纯 JVM 可测面，由真机冒烟盖
  * （README 检查单第 5 步）。
@@ -17,12 +18,13 @@ import java.util.TimeZone
 
 class ReleaseOutcomeTest {
 
-    // ① errCode 映射：服务端三结构化值透传；空/未识别/服务异常归 null（=非结构化应答）
+    // ① errCode 映射：服务端结构化值透传；空/未识别/服务异常归 null（=非结构化应答）
     @Test
     fun testReleaseErrCode() {
         assertEquals("not_bound", EntitlementManager.releaseErrCode("not_bound"))
         assertEquals("trial_no_release", EntitlementManager.releaseErrCode("trial_no_release"))
         assertEquals("release_limit", EntitlementManager.releaseErrCode("release_limit"))
+        assertEquals("release_mismatch", EntitlementManager.releaseErrCode("release_mismatch"))
         assertNull(EntitlementManager.releaseErrCode(""))
         assertNull(EntitlementManager.releaseErrCode("internal"))
         assertNull(EntitlementManager.releaseErrCode("whatever_unknown"))
@@ -45,6 +47,12 @@ class ReleaseOutcomeTest {
         assertEquals(
             "本月解绑次数已用完（每自然月限 1 次，次月 1 日恢复），如需提前解绑请联系客服",
             EntitlementManager.releaseFailMessage("release_limit", 429, remote = false),
+        )
+        // release_mismatch（2026-11-26 解绑三元组闸）：闸的目标面（他机/克隆解绑）与
+        // 合法误伤面（本机刷机/隐私 ROM 锚改写）共用一条文案，统一引导客服
+        assertEquals(
+            "本机与该激活码的绑定记录不一致，无法解绑；如需换绑设备请联系客服协助",
+            EntitlementManager.releaseFailMessage("release_mismatch", 403, remote = false),
         )
         assertEquals(
             "服务异常（500），请稍后再试",
