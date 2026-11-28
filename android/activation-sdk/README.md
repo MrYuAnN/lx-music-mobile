@@ -13,13 +13,7 @@
   `X-Inst-Key/X-Inst-Pub/X-Inst-Ts/X-Inst-Sig` 四头——激活、巡检 binding-check、
   找回 restore、权益 entitlements、试用 trial-claim、取链重叠 code-overlap、
   安装上报 /app/install；纯函数层 `InstallationSigner` JVM 单测锁规范化串
-  （签名串=ts
-+device_id
-+device_name
-+drm_id
-+METHOD
-+path
-+sha256hex(body)，
+  （签名串=ts\n+device_id\n+device_name\n+drm_id\n+METHOD\n+path\n+sha256hex(body)，
   GET body 空串、path 不含查询串）；密钥库异常=请求不带签名头（服务端按无证明
   回落实体规则并留痕，永不拒请求 §8.4）。解绑 /device/release 不在签名面
   （方案端点清单外）。**§8.5 实机清单**（卸载重装指纹变化/锁屏密码不失效/
@@ -57,23 +51,7 @@ ActivationSdk.init(
 )
 ```
 
-3. **权益启动协程**（Application.onCreate 起 IO 协程；**顺序不可倒——restore 先行是
-   claimTrial 的调用契约**，正价重装召回不依赖 claim 409 分支，trial 版本门槛 426
-   掐断试用链时召回链仍通）：
-
-```kotlin
-appScope.launch {
-    EntitlementManager.refreshOnStart(applicationContext)
-    // Expired 不召回（过期本地码换新码语义）；Active 由 SDK 内部短路。Unactivated 无在绑
-    // 记录时 restore 为一次轻量空应答 GET（每次冷启动至多一次，可接受）
-    if (EntitlementManager.current(applicationContext) is EntitlementManager.State.Unactivated) {
-        EntitlementManager.restoreFromDevice(applicationContext)
-    }
-    EntitlementManager.claimTrial(applicationContext)   // 首启自动领试用（内部幂等+退避）
-}
-```
-
-4. **可选：到期处置**（不注册=SDK 只提供 State 供宿主自行判定）：
+3. **可选：到期处置**（不注册=SDK 只提供 State 供宿主自行判定）：
 
 ```kotlin
 ActivationSdk.registerExpiryHandler(
@@ -97,7 +75,7 @@ ActivationSdk.registerExpiryHandler(
 0. **活源=净屏 App 仓**（2026-10-15 组1 块4 起倒转确立，v1.2 前本仓领先的说法作废）：
    本目录任何变更必须经「净屏 App 仓 `activation-sdk/` 改动 → 编译+单测绿 → 回灌
    提交本仓」，**禁止在本仓直接手改 SDK 源**（本仓无 Android 构建环境，手改无验证
-   即被两仓 drift 锁双双固化）。净屏侧锁（order-core 仓
+   即被两仓 drift 锁双双固化）。净屏侧 drift 锁（order-core 仓
    `server/jingping/admin/sdk_drift_test.go`，2026-11-05 T2 迁移自净屏仓 backend/admin）机械比对
    两仓 *.kt（零 diff 断言），漏拷回=测试红。
 1. 改净屏 App 仓 SDK → App 仓 commit（本节版本号同步 +1）；
@@ -105,7 +83,8 @@ ActivationSdk.registerExpiryHandler(
    ——ClaimOrchestrationTest（claim 编排五件：退避/409 分派/单飞/监听/持久化往返）+
    Ed25519VerifyTest（RFC 8032 向量）/ActivationSdkConfigTest；
 3. 逐项目（净屏 App 仓 `activation-sdk/` + 后续接入项目）重新拷入 diff 对拍；收尾
-   验证=两把 drift 锁 `go test -count=1` 全绿（净屏侧锁 order-core server/jingping/admin 盖净屏↔平台；
+   验证=两把 drift 锁 `go test -count=1` 全绿（净屏侧锁 order-core 仓
+   server/jingping/admin 盖净屏↔平台；
    平台侧锁 license-platform internal/sdkdrift 盖三仓 *.kt+向量+两姊妹件）——
    **`-count=1` 必带**：裸跑 `go test` 会命中陈旧缓存假绿（Go 测试缓存 key 不含
    运行时读取的 SDK 文件，2026-11-04 漂移收口批实证 cached ok 与实际红并存）；
@@ -148,10 +127,12 @@ ActivationSdk.registerExpiryHandler(
   `ReleaseOutcome{ok,errCode,userMessage}` 与 `releaseDeviceEx`/`releaseRemoteEx`
   （errCode=not_bound/trial_no_release/release_limit/null 三值+null 归并，多语言宿主
   i18n 消费；userMessage 中文原文双轨保留）；旧 `releaseDevice`/`releaseRemote` 委托
-  Ex 并保持原签名（净屏消费面零改动；唯一有意差异=releaseDevice 网络异常 message
-  为 null 时补「网络异常」兜底文案）；err→errCode/文案提取单源 `releaseErrCode`/
-  `releaseFailMessage`（纯函数）；单测 ReleaseOutcomeTest（映射+文案逐字回归双锚点；
-  成功路径 clearKey 行为由真机冒烟盖）。
+  Ex 并保持原签名（净屏消费面零改动；有意差异两处=①releaseDevice 网络异常 message
+  为 null 时补「网络异常」兜底文案 ②release_limit 文案 2026-11-03 口径对齐「每月限
+  1 次」→「每 30 天限 1 次」（平台仓 4176cbf，净屏 KeyInfo toast 用户可见，代码审查
+  I-1 登记改实）；其余文案逐字迁入）；err→errCode/文案提取单源 `releaseErrCode`/
+  `releaseFailMessage`（纯函数）；单测 ReleaseOutcomeTest（映射+文案回归双锚点，
+  release_limit 锚=对齐后文案；成功路径 clearKey 行为由真机冒烟盖）。
 
 - 2026-11-03 v1.5（⑥件②方案①净屏侧适配，三角色审查定稿）：code-overlap 前置查询——
   `codeOverlap(context,code): List<String>?`（POST /api/code-overlap，200→overlap 源键

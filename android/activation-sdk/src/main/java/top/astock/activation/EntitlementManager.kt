@@ -83,6 +83,9 @@ object EntitlementManager {
     const val ERR_SIG_VERIFY = "signature_verification_failed"  // 验签不过=响应疑似被链路篡改
     const val ERR_RESP_PARSE = "response_parse_failed"          // 结构解析异常=响应形状不符
     const val ERR_RELEASE_LIMIT = "release_limit"               // 解绑限额用尽（服务端结构化值，自然月口径）
+    // 版本门槛 426 服务端 error 原码（方案 v3 批B1）：钩子触发判定与 mapError 文案
+    // 分支同源引用（审查 S-1——原两处裸字面量防漂移）
+    const val ERR_UPGRADE_REQUIRED = "upgrade_required"
     const val MSG_SIG_VERIFY = "服务响应签名校验失败：当前网络可能拦截了数据，请切换流量/WiFi或关闭代理/VPN后重试"
     const val MSG_RESP_PARSE = "服务响应数据异常，请稍后再试"
     // 验签失败诊断上报节流（随 /app/install 附 diag 字段；每设备每日 1 条防风暴）
@@ -117,9 +120,16 @@ object EntitlementManager {
     private const val K_TRIAL_FAILS = "trial_claim_fails"
     private const val K_TRIAL_LAST = "trial_claim_last_at"
     private const val K_TRIAL_DONE = "trial_claim_done"   // 命中原码已过期（购买墙）后不再空转
+    private const val K_TRIAL_DONE_AT = "trial_claim_done_at" // DONE 锁落锁时刻（TTL 放行判定）
     private const val K_TRIAL_PENDING = "trial_welcome_pending" // 首启资格待弹（Application 前置判定）
     private const val K_TRIAL_WELCOMED = "trial_welcomed"       // 资格卡已弹过（弹一次）
     private val TRIAL_BACKOFF_MS = longArrayOf(10_000L, 5 * 60_000L, 30 * 60_000L, 6 * 3_600_000L)
+
+    // DONE 锁 TTL（2026-11-27 拍板 1h）：锁死场景仅存在于 Unactivated+服务端返死码
+    // （proof-P0 类事故——正常试用结束的用户 state=Expired，被 claim 入口 Unactivated
+    // 检查拦截不经过此锁）。服务端侧事故修复后，到期放行一次 claim 即自愈；重试若仍
+    // expired 会重新落锁刷新时间戳。防薅不受影响：一人一次试用闸在服务端幂等层。
+    private const val TRIAL_DONE_TTL_MS = 3_600_000L
 
     /** 试用 tier 契约字面量（与平台仓 store.TrialTier 同串；跨端无共享包，改动必须成对）。
      *  2026-10-15 组1 块4 起降级为过渡回落（kind 缺失时比对），与过渡分支同批退役
@@ -302,28 +312,43 @@ object EntitlementManager {
      * 多次构造 MediaDrm（≈15-25ms/次）的开销压到一次。
      * 隐私：与 stableDeviceId 同款 SHA-256+盐，后端只见哈希不暴露原始标识。
      */
-    fun drmDeviceId(context: Context): String {
+    fun drmDeviceId(context: Context): String = drmProbe(context).first
+
+    /**
+     * MediaDRM 单会话双读（v1.8.5 硬件锚 §6.1）：锚哈希 + Widevine 安全级别同会话取
+     * （构造 ≈15-25ms/次——:312 开销注记勘正：v1.8.5 起一次会话取两值，热路径构造
+     * 次数不随新字段增加）。级别=本次实时读、**不缓存**（会话级语义 §4：合法 L1
+     * 设备一次降级播放会读到 L3——服务端降级一致性判定 r11 两条观测才降级，App 缓存
+     * 会把真 L3 冻结成 L1 假边）。级别入口选型 §11-⑨ 挂真机验证拍板；
+     * PROPERTY_SECURITY_LEVEL 为业界通行读法。返回 (锚哈希, 级别 'L1'/'L3'/原样；读失败="").
+     * 隐私：与 stableDeviceId 同款 SHA-256+盐，后端只见哈希不暴露原始标识。
+     */
+    internal fun drmProbe(context: Context): Pair<String, String> {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val cached = drmIdMemo ?: p.getString(K_DRM_ID, "").orEmpty()
-        val read = runCatching {
+        val probe = runCatching {
             // Widevine UUID（业界通行常量 EDEF8BA9-79D6-4ACE-A3C8-27DCD51D21ED）
             val drm = android.media.MediaDrm(java.util.UUID.fromString("edef8ba9-79d6-4ace-a3c8-27dcd51d21ed"))
-            val id = try {
-                drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+            val id: ByteArray?
+            val lvl: String
+            try {
+                id = drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
+                lvl = drm.getPropertyString(android.media.MediaDrm.PROPERTY_SECURITY_LEVEL) ?: ""
             } finally {
                 runCatching { drm.release() }
             }
-            if (id == null || id.isEmpty()) ""
+            val hash = if (id == null || id.isEmpty()) ""
             // and 0xFF 防 %x 对 Byte 符号扩展输出 8 字符（审查 S1：保持通行 hex 惯例，
             // 防未来第二实现按直觉重算不一致）
             else sha256Hex(id.joinToString("") { "%02x".format(it.toInt() and 0xFF) } + SALT_DEVICE_ID)
-        }.getOrDefault("")
-        val v = resolveDrmId(read, cached)
+            hash to lvl
+        }.getOrDefault("" to "")
+        val v = resolveDrmId(probe.first, cached)
         if (v.isNotEmpty()) {
             drmIdMemo = v
             if (v != cached) p.edit().putString(K_DRM_ID, v).apply()
         }
-        return v
+        return v to probe.second
     }
 
     /** 锚取值策略（纯函数，JVM 可测）：本次读到非空→新值；读空/失败→复用上次成功值。 */
@@ -336,10 +361,15 @@ object EntitlementManager {
      * legacy（等于本机身份根本没上报，串码窗口不收敛）；无 Widevine 设备 `drm_id`
      * 为空串也要带。机型用 Build.MODEL 原码（服务端 devices.device_name 存的就是它，
      * 中文显示名在服务端/管理台映射层做）。
-     * 纯函数（JVM 可单测）：两键恒在、空值保留。
+     * v1.8.5 硬件锚扩字段（§6.1）：四键恒在、空值保留——新增 `ssaid_anchor`
+     * （复用 stableDeviceId() 同公式同域，实时值；device_id 为缓存值且永久冻结，
+     * 两者可异：UUID 兜底设备）/ `drm_level`（Widevine 安全级别 'L1'/'L3'/''，
+     * 会话级实时读，§11-⑨ 入口选型挂真机验证）。服务端 1.8.5 形状判定=带任一新键。
+     * 纯函数（JVM 可单测）：四键恒在、空值保留。
      */
-    internal fun deviceIdentityPairs(deviceName: String, drmId: String): Map<String, String> =
-        mapOf("device_name" to deviceName, "drm_id" to drmId)
+    internal fun deviceIdentityPairs(deviceName: String, drmId: String, ssaidAnchor: String, drmLevel: String): Map<String, String> =
+        mapOf("device_name" to deviceName, "drm_id" to drmId,
+              "ssaid_anchor" to ssaidAnchor, "drm_level" to drmLevel)
 
     /**
      * 端点请求体单源（2026-11-24 审查 S-1/S-2）：base 放端点自有字段（key/code/
@@ -351,25 +381,40 @@ object EntitlementManager {
         base: Map<String, String>,
         deviceName: String,
         drmId: String,
-    ): JSONObject = JSONObject(base + deviceIdentityPairs(deviceName, drmId))
+        ssaidAnchor: String,
+        drmLevel: String,
+    ): JSONObject = JSONObject(base + deviceIdentityPairs(deviceName, drmId, ssaidAnchor, drmLevel))
 
     /** 本机请求体：Build.MODEL 走 `?: ""` 兜底（null 值会被 JSONObject 当删键 → legacy）。 */
-    private fun bodyWithIdentity(context: Context, base: Map<String, String>): JSONObject =
-        identityPayload(base, android.os.Build.MODEL ?: "", drmDeviceId(context))
+    private fun bodyWithIdentity(context: Context, base: Map<String, String>): JSONObject {
+        val (drm, lvl) = drmProbe(context)
+        return identityPayload(base, android.os.Build.MODEL ?: "", drm, stableDeviceId(context), lvl)
+    }
 
-    /** 本机三元组键值对（公开：App 安装上报/下单复用，与端点请求体同源）。 */
-    fun deviceIdentityMap(context: Context): Map<String, String> =
-        deviceIdentityPairs(android.os.Build.MODEL ?: "", drmDeviceId(context))
+    /** 本机身份键值对（公开：App 安装上报/下单复用，与端点请求体同源）。 */
+    fun deviceIdentityMap(context: Context): Map<String, String> {
+        val (drm, lvl) = drmProbe(context)
+        return deviceIdentityPairs(android.os.Build.MODEL ?: "", drm, stableDeviceId(context), lvl)
+    }
 
     /**
      * restore GET URL（2026-11-24）：三元组参数必须**显式带**（服务端用 `q.Has`
      * 判 strict，空值也算「新客户端」），不能因为值为空就省略；机型可能含空格/中文，
      * 逐个 URLEncoder 编码。纯函数（JVM 可单测）。
      */
-    internal fun restoreUrl(apiBase: String, deviceId: String, deviceName: String, drmId: String): String =
+    internal fun restoreUrl(
+        apiBase: String,
+        deviceId: String,
+        deviceName: String,
+        drmId: String,
+        ssaidAnchor: String,
+        drmLevel: String,
+    ): String =
         apiBase.trimEnd('/') + "/api/restore?device_id=" + java.net.URLEncoder.encode(deviceId, "UTF-8") +
             "&device_name=" + java.net.URLEncoder.encode(deviceName, "UTF-8") +
-            "&drm_id=" + java.net.URLEncoder.encode(drmId, "UTF-8")
+            "&drm_id=" + java.net.URLEncoder.encode(drmId, "UTF-8") +
+            "&ssaid_anchor=" + java.net.URLEncoder.encode(ssaidAnchor, "UTF-8") +
+            "&drm_level=" + java.net.URLEncoder.encode(drmLevel, "UTF-8")
 
     /** 主 key（pickPrimary 单源重算，B4-4 选主归一）：CZ- 充值码默认目标跟随主行 */
 
@@ -513,7 +558,14 @@ object EntitlementManager {
      * 激活（key）或续费（充值码自动识别：CZ- 前缀走 /redeem，其余走 /activate）。
      * 成功后 receipt 落盘并带 MAC。
      */
-    suspend fun activateOrRedeem(context: Context, input: String, merge: Boolean = false): AuthResult = withContext(Dispatchers.IO) {
+    suspend fun activateOrRedeem(
+        context: Context,
+        input: String,
+        merge: Boolean = false,
+        // 版本门槛强更钩子开关（方案 v3 批B1 审查 C-3）：仅用户主动路径（默认）触发
+        // 钩子；自动链（OrderAutoActivation）传 false——426 维持其静默 blockedCodes 语义
+        userInitiated: Boolean = true,
+    ): AuthResult = withContext(Dispatchers.IO) {
         val code = input.trim().uppercase().replace(" ", "")
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val (path, body) = if (code.startsWith("CZ-")) {
@@ -575,7 +627,17 @@ object EntitlementManager {
                 notifyEntitlementChanged(EntitlementChange.ACTIVATED)
                 r
             }
-            else -> r
+            else -> {
+                // 版本门槛强更钩子（方案 v3 批B1，2026-11-27 拍板）：主动动作路径
+                // （输码激活/CZ- 续费）收到 upgrade_required → 宿主强更页。此处是
+                // 全 SDK 唯一触发点——巡检 checkKeyOnce（binding-check）不经过本
+                // 分支，预告期不拦拍板天然成立；mapError 文案照常回传（强更页
+                // 关闭后 underlying 表单仍留有「App 版本过旧」上下文，非双重打断）
+                if (userInitiated && r is AuthResult.Failure && r.errCode == ERR_UPGRADE_REQUIRED) {
+                    ActivationSdk.onUpgradeRequired?.invoke(context)
+                }
+                r
+            }
         }
     }
 
@@ -771,10 +833,12 @@ object EntitlementManager {
             // 其他机器的码也返回（串码面）。URL 构造抽 restoreUrl 供 JVM 单测锁定。
             // GET 三元组单源（审查 S-1 2026-11-26）：URL query 与签名串共用同组取值
             // （防两处口径漂移→验签过但归属错位）
+            // v1.8.5 新增 ssaid_anchor/drm_level 两参不入 GET 签名规范串（restore
+            // 新参数不受安装签名保护=§6.3 已登记限制）；三元组三键仍与签名串同源
             val model = android.os.Build.MODEL ?: ""
-            val drm = drmDeviceId(context)
+            val (drm, lvl) = drmProbe(context)
             val conn = URL(
-                restoreUrl(ActivationSdk.apiBase, did, model, drm)
+                restoreUrl(ActivationSdk.apiBase, did, model, drm, stableDeviceId(context), lvl)
             ).openConnection() as HttpURLConnection
             conn.connectTimeout = 15000
             conn.readTimeout = 15000
@@ -1030,6 +1094,11 @@ object EntitlementManager {
     internal fun shouldAttemptTrialAt(fails: Int, lastAt: Long, nowMs: Long): Boolean =
         lastAt <= 0L || nowMs - lastAt >= trialBackoffMs(fails)
 
+    // DONE 锁 TTL 判定 seam（2026-11-27，纯函数测试面）：doneAt<=0=旧版落锁无时间戳，
+    // 保守视为仍在锁内（升级用户下一轮 expired 落锁补写后才进入 TTL 生命周期）
+    internal fun shouldRetryDoneLock(doneAt: Long, nowMs: Long): Boolean =
+        doneAt > 0L && nowMs - doneAt >= TRIAL_DONE_TTL_MS
+
     // 权益真值判定 seam（T4 件3/件5，2026-11-04：语义向量锁定的纯函数化——
     // 向量=tests/entitlement-vectors.json，跨仓语义契约锁，方案件3/件5）。
     // 先导批=现状谓词原样搬家（computeCurrent/isEntitled 改调本 seam，零行为变化）；
@@ -1122,10 +1191,14 @@ object EntitlementManager {
         nowSec, ActivationSdk.entitlementConfig,
     )?.first.orEmpty()
 
-    // 409 分派 seam：仅 trial_has_license 语义导航 restore（审查 S9：防未来 409
-    // 增义被误判「本机已有权益」白跑 restore）
+    // 409 分派 seam：trial_has_license（正价重装）与 trial_pending（硬件锚 r11
+    // §5.3-2：待裁决不发新码——自己的码在找回里照常可见，导航 restore=「去找回」，
+    // 人工裁决后重试）同语义导航 restore（审查 S9：防未来 409 增义被误判「本机已有
+    // 权益」白跑 restore）
     internal fun trial409WantsRestore(body: String): Boolean =
-        runCatching { JSONObject(body).optString("error") }.getOrDefault("") == "trial_has_license"
+        runCatching { JSONObject(body).optString("error") }.getOrDefault("").let {
+            it == "trial_has_license" || it == "trial_pending"
+        }
 
     // trial409IsDeviceMismatch 已删（2026-11-25 批 3，trial_device_mismatch 三端
     // 死面撤除：平台 D-10 撤保守拦截后该 409 全仓零产生点——平台 handler 409 出口
@@ -1133,7 +1206,11 @@ object EntitlementManager {
 
     private suspend fun claimTrialImpl(context: Context): Boolean = withContext(Dispatchers.IO) {
         val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        if (p.getBoolean(K_TRIAL_DONE, false)) return@withContext false
+        // DONE 锁带 TTL（2026-11-27 拍板）：TTL 内短路不变；到期放行重试（服务端修复
+        // 后自愈通道）。无时间戳的旧版残留锁保守不放行（见 shouldRetryDoneLock 注）。
+        if (p.getBoolean(K_TRIAL_DONE, false) &&
+            !shouldRetryDoneLock(p.getLong(K_TRIAL_DONE_AT, 0L), System.currentTimeMillis())
+        ) return@withContext false
         if (current(context) !is State.Unactivated) return@withContext false
         val fails = p.getInt(K_TRIAL_FAILS, 0)
         val last = p.getLong(K_TRIAL_LAST, 0L)
@@ -1187,9 +1264,10 @@ object EntitlementManager {
             // 正价重装导航（审查 I-6）：restore 找回；失败不计 fails——付费用户权益
             // 恢复不被试用退避拉长（restore 保持每次冷启动重试，同旧行为）。
             if (trial409WantsRestore(respBody)) return@withContext restoreFromDevice(context)
-            // trial_device_mismatch 409 分支已删（2026-11-25 批 3 三端死面撤除）：
-            // 平台 D-10 撤保守拦截后该码零产生点，409 只剩 trial_has_license 语义
-            // （上方 trial409WantsRestore 已承接）。
+            // trial_device_mismatch 409 分支已删（2026-11-25 批 3 三端死面撤除）。
+            // 409 现两语义均由 trial409WantsRestore 承接：trial_has_license（正价
+            // 重装）/ trial_pending（硬件锚 r11 §5.3-2 待裁决——服务端 anchor 开关
+            // 打开后才可达；App 无需区分，同为「去找回」导航）。
             Log.i(TAG, "trial claim 409 unexpected")
             p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
             return@withContext false
@@ -1207,7 +1285,7 @@ object EntitlementManager {
             return@withContext when (val r = parseActivationResp(root)) {
                 is AuthResult.Success -> {
                     persist(context, r.e.keyId, r)
-                    p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).apply()
+                    p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).remove(K_TRIAL_DONE_AT).apply()
                     notifyEntitlementChanged(EntitlementChange.CLAIMED)
                     true
                 }
@@ -1218,7 +1296,7 @@ object EntitlementManager {
                     when (val recovered = verifyFailRecovery(context, r, "/api/trial-claim", claimBody)) {
                         is AuthResult.Success -> {
                             persist(context, recovered.e.keyId, recovered)
-                            p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).apply()
+                            p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).remove(K_TRIAL_DONE_AT).apply()
                             notifyEntitlementChanged(EntitlementChange.CLAIMED)
                             true
                         }
@@ -1246,16 +1324,19 @@ object EntitlementManager {
         }
         return@withContext when (val r = activateOrRedeem(context, ok)) {
             is AuthResult.Success -> {
-                p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).apply()
+                p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).remove(K_TRIAL_DONE_AT).apply()
                 notifyEntitlementChanged(EntitlementChange.CLAIMED)
                 true
             }
             is AuthResult.Failure -> {
                 if (r.errCode == "expired") {
-                    // 命中原码已过期：购买墙态，服务端每次都会返同一张码，不再空转。
-                    // 顺手清待弹标志（2026-10-14 结果驱动弹：done=永不可能再有「试用
-                    // 已生效」，pending 滞留无意义，防脏态）
-                    p.edit().putBoolean(K_TRIAL_DONE, true).remove(K_TRIAL_PENDING).apply()
+                    // 命中原码已过期：购买墙态，服务端每次都会返同一张码，不再空转
+                    // （TTL 到期会放行重试一次，见 shouldRetryDoneLock）。顺手清待弹
+                    // 标志（2026-10-14 结果驱动弹：done=永不可能再有「试用已生效」，
+                    // pending 滞留无意义，防脏态）。落锁时刻同批写入（TTL 判定锚）
+                    p.edit().putBoolean(K_TRIAL_DONE, true)
+                        .putLong(K_TRIAL_DONE_AT, System.currentTimeMillis())
+                        .remove(K_TRIAL_PENDING).apply()
                 } else {
                     p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
                 }
@@ -1274,7 +1355,7 @@ object EntitlementManager {
                 .remove(K_RELAY_MODE)
                 .remove(K_KEY_BINDING)
                 .remove(K_PRIMARY).remove(K_LAST_SEEN).remove(K_MAC)
-                .remove(K_TRIAL_FAILS).remove(K_TRIAL_LAST).remove(K_TRIAL_DONE)
+                .remove(K_TRIAL_FAILS).remove(K_TRIAL_LAST).remove(K_TRIAL_DONE).remove(K_TRIAL_DONE_AT)
                 .remove(K_TRIAL_PENDING).remove(K_TRIAL_WELCOMED)
                 // "trial_just_started"：K_TRIAL_JUST_STARTED 已退役（2026-10-14 时序重梳），
                 // 升级用户 SP 残留清理
@@ -1866,7 +1947,7 @@ object EntitlementManager {
             "invalid_code" -> "充值码无效或已使用"
             "key_not_found" -> "请先用激活码（JP- 开头）开通后，再用充值码续费"
             "rate_limited" -> "操作过于频繁，请稍后再试"
-            "upgrade_required" -> "App 版本过旧，请到官网下载新版"
+            ERR_UPGRADE_REQUIRED -> "App 版本过旧，请到官网下载新版"
             else -> "服务异常（$code），请稍后再试"
         }
     }

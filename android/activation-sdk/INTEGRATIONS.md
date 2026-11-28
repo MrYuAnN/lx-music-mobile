@@ -91,7 +91,9 @@ A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageK
   零产生，存量 SDK/App 无感（else 兜底=通用错误可重试不崩溃）。
 - 契约：`contracts/trial-claim.json` error_rows 已登记；`sdk_exempt_codes` 暂列
   trial_pending（豁免=本测试不要求 mapError 显式映射的机械语义）。
-- 待办（App 1.8.5 攒批，活源=净屏 App 仓）：claimTrialImpl 补「去找回」特判分支
-  （同 trial_has_license 处理面——restore 导航，待裁决期间自己的码在找回里照常可见）；
-  补齐后把 trial_pending 从豁免表挪到 claimImpl 锚（trial_wire_test 断言面）。
-- 本批不改 SDK 镜像（活源纪律：禁止平台仓手改 sdk/android）。
+- 已落地（App 1.8.5 攒批 2026-11-28）：claimTrialImpl「去找回」特判分支已接
+  （trial409WantsRestore 收录 trial_pending，同 trial_has_license 处理面——restore 导航，
+  待裁决期间自己的码在找回里照常可见）；trial_pending 已从豁免表挪到 claimImpl 锚
+  （contracts/trial-claim.json notes 同批更新）。同批 SDK 四键恒在（device_name/drm_id/
+  ssaid_anchor/drm_level，§6.1）+ drmProbe 单会话双读（锚哈希+安全级别）+ restoreUrl 扩参。
+- 三仓镜像随本批回灌零 diff（sdkdrift 全绿；预存 4 处漂移一并归零）。

@@ -79,6 +79,16 @@ object ActivationSdk {
     var onAppNotEntitled: (suspend (Context, ManagedApp) -> Unit)? = null
         private set
 
+    /** 版本门槛强更钩子（版本门槛强制化方案 v3 批B1，2026-11-27 效果图拍板）：
+     *  主动动作（activateOrRedeem=输码激活/CZ- 续费）收到服务端 errCode=upgrade_required
+     *  时触发；巡检（binding-check）/试用 claim/restore 等**后台与静默路径不触发**
+     *  ——预告期不拦拍板（426 维持离线宽限语义，显示不变）。null=宿主无强更页
+     *  （回落 mapError 文案「App 版本过旧，请到官网下载新版」，兼容拾音等无 UI 宿主）。
+     *  回调在 SDK IO 线程触发，实现方自行切主线程。 */
+    @Volatile
+    var onUpgradeRequired: ((Context) -> Unit)? = null
+        private set
+
     /**
      * 初始化（宿主 Application.onCreate 调一次；重复调用以最后一次为准）。
      * 未 init 即用 = apiBase 空串，所有网络请求打向无效地址静默失败（离线宽限兜底），
@@ -122,5 +132,11 @@ object ActivationSdk {
     ) {
         this.managedAppsProvider = managedAppsProvider
         this.onAppNotEntitled = onAppNotEntitled
+    }
+
+    /** 注册强更页钩子（可选；净屏=打开 ForceUpdateActivity，2026-11-27 拍板方案 B）。
+     *  触发面与语义见 [onUpgradeRequired] 注释。 */
+    fun registerUpgradeHandler(onUpgradeRequired: (Context) -> Unit) {
+        this.onUpgradeRequired = onUpgradeRequired
     }
 }

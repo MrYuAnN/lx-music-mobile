@@ -35,10 +35,27 @@ class ClaimOrchestrationTest {
         assertTrue(EntitlementManager.shouldAttemptTrialAt(1, 100_000L, 400_000L))
     }
 
+    // ①b DONE 锁 TTL（2026-11-27 拍板 1h）：到期放行重试（proof-P0 类事故自愈通道）。
+    // 无时间戳的旧版残留锁保守不放行；恰好到界（>=）放行；TTL 内不放行
+    @Test
+    fun testTrialDoneLockTtl() {
+        val ttl = 3_600_000L
+        // 旧版落锁（doneAt=0，升级残留）：保守仍锁
+        assertFalse(EntitlementManager.shouldRetryDoneLock(0L, 0L + ttl))
+        // TTL 内不放行
+        assertFalse(EntitlementManager.shouldRetryDoneLock(1_000_000L, 1_000_000L + ttl - 1))
+        // 恰到 TTL 边界放行（>=）
+        assertTrue(EntitlementManager.shouldRetryDoneLock(1_000_000L, 1_000_000L + ttl))
+        // 远超 TTL 放行
+        assertTrue(EntitlementManager.shouldRetryDoneLock(1_000_000L, 1_000_000L + ttl * 5))
+    }
+
     // ② 409 分派：仅 trial_has_license 导航 restore（审查 S9：防未来 409 增义误判）
     @Test
     fun testTrial409Dispatch() {
         assertTrue(EntitlementManager.trial409WantsRestore("""{"error":"trial_has_license"}"""))
+        // v1.8.5 硬件锚：trial_pending（待裁决）同语义「去找回」（r11 §5.3-2）
+        assertTrue(EntitlementManager.trial409WantsRestore("""{"error":"trial_pending"}"""))
         assertFalse(EntitlementManager.trial409WantsRestore("""{"error":"rate_limited"}"""))
         assertFalse(EntitlementManager.trial409WantsRestore("""{"error":""}"""))
         assertFalse(EntitlementManager.trial409WantsRestore("not json")) // 非法体=不放行

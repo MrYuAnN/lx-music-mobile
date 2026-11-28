@@ -58,10 +58,13 @@ object CodeActivator {
     /** 按码单飞锁（同进程；手动/自动/桥三路径共用） */
     private val codeLocks = ConcurrentHashMap<String, Mutex>()
 
-    /** 逐个激活：JP- 前缀走 /activate、CZ- 走 /redeem（服务端 PoolIDs 顺序即先 JP 后 CZ） */
-    suspend fun activate(context: Context, codes: List<String>): Outcome {
+    /** 逐个激活：JP- 前缀走 /activate、CZ- 走 /redeem（服务端 PoolIDs 顺序即先 JP 后 CZ）。
+     *  userInitiated（方案 v3 批B1 审查 C-3，2026-11-27）：仅用户主动点击路径传 true
+     *  （订单中心一键激活）；自动链（OrderAutoActivation 回前台补拉）传 false——
+     *  其对 426 upgrade_required 的既有语义=静默 blockedCodes 24h 重试，不拉强更页。 */
+    suspend fun activate(context: Context, codes: List<String>, userInitiated: Boolean = true): Outcome {
         if (codes.isEmpty()) return Outcome.Empty
-        val results = codes.map { activateOne(context, it) }
+        val results = codes.map { activateOne(context, it, userInitiated) }
         val okCodes = results.filter { it.ok }.map { it.code }
         return if (okCodes.isNotEmpty()) {
             Outcome.Success(okCodes, results)
@@ -76,7 +79,7 @@ object CodeActivator {
         }
     }
 
-    private suspend fun activateOne(context: Context, code: String): PerCode {
+    private suspend fun activateOne(context: Context, code: String, userInitiated: Boolean): PerCode {
         val normalized = code.trim().uppercase().replace(" ", "")
         val lock = codeLocks.computeIfAbsent(normalized) { Mutex() }
         return lock.withLock {
@@ -84,7 +87,7 @@ object CodeActivator {
             if (EntitlementManager.isCodeActivatedLocally(context, normalized)) {
                 return@withLock PerCode(code, PerCode.Kind.ALREADY_HELD)
             }
-            when (val r = EntitlementManager.activateOrRedeem(context, code)) {
+            when (val r = EntitlementManager.activateOrRedeem(context, code, userInitiated = userInitiated)) {
                 is EntitlementManager.AuthResult.Success ->
                     PerCode(code, PerCode.Kind.ACTIVATED)
                 is EntitlementManager.AuthResult.Failure ->
