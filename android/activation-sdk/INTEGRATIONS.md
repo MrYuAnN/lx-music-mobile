@@ -83,3 +83,15 @@ A-4/A-7/F5 文案）已于 2026-10-31 修复验证绿（tsc+eslint+compileStageK
   错误码+文案、device_bound_other 清本地记录（2026-11-26 拍板）、refreshOnStart/
   checkKeyOnce 注释随拍板更新、device_mismatch 文案去远程解绑引导（用户实机验证发现
   死路文案）；ReleaseOutcomeTest 增 release_mismatch 锚。向量文件无改动。
+
+## trial_pending 预留登记（2026-11-28 硬件锚策略批）
+
+- 平台侧：`/api/trial-claim` 新增错误出口 `trial_pending`（409，待裁决不发新码，硬件锚
+  方案 r11 §5.3-2/§6.3）。**切闸（meta.identity_policy=anchor）前码不可达**——v3 下
+  零产生，存量 SDK/App 无感（else 兜底=通用错误可重试不崩溃）。
+- 契约：`contracts/trial-claim.json` error_rows 已登记；`sdk_exempt_codes` 暂列
+  trial_pending（豁免=本测试不要求 mapError 显式映射的机械语义）。
+- 待办（App 1.8.5 攒批，活源=净屏 App 仓）：claimTrialImpl 补「去找回」特判分支
+  （同 trial_has_license 处理面——restore 导航，待裁决期间自己的码在找回里照常可见）；
+  补齐后把 trial_pending 从豁免表挪到 claimImpl 锚（trial_wire_test 断言面）。
+- 本批不改 SDK 镜像（活源纪律：禁止平台仓手改 sdk/android）。
