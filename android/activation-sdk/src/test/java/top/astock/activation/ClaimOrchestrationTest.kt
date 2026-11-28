@@ -41,7 +41,8 @@ class ClaimOrchestrationTest {
     fun testTrialDoneLockTtl() {
         val ttl = 3_600_000L
         // 旧版落锁（doneAt=0，升级残留）：保守仍锁
-        assertFalse(EntitlementManager.shouldRetryDoneLock(0L, 0L + ttl))
+        // doneAt=0 旧残留锁：2026-11-28 复议翻转为放行一次自愈（永锁死结修复，App 端审查 S-10）
+        assertTrue(EntitlementManager.shouldRetryDoneLock(0L, 0L + ttl))
         // TTL 内不放行
         assertFalse(EntitlementManager.shouldRetryDoneLock(1_000_000L, 1_000_000L + ttl - 1))
         // 恰到 TTL 边界放行（>=）

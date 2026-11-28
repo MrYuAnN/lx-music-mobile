@@ -13,6 +13,7 @@ package top.astock.activation
 
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -133,5 +134,26 @@ class DeviceIdentityWireTest {
         assertTrue(s, s.startsWith("1\n"))
         // 第 7 段锁面（审查 S-3）：body 哈希恰为串尾——「哈希=实际写出字节」完整落地
         assertTrue(s, s.endsWith(InstallationSigner.sha256Hex(body.toString().toByteArray())))
+        // v1.8.5 负向断言（App 端审查 S-1，两席同提）：新键不得织入 canonical
+        // 三元组段（§6.3 已登记限制——防未来 canonical 改动静默脱锚）
+        assertFalse(s.contains("L1")) // 级别值不入 canonical（三元组段仅 device_id/机型/drm）
+        // 变异锚：改 ssaid 值 → body 哈希变 → canonical 串尾变（新键随第 7 段覆盖的直接证明）
+        val body2 = EntitlementManager.identityPayload(
+            mapOf("key" to "JP-A", "device_id" to "dev-1"), "Pixel 7", "drmX", "ssaidY", "L1",
+        )
+        val s2 = InstallationSigner.canonical(
+            1L,
+            body2.optString("device_id"),
+            body2.optString("device_name"),
+            body2.optString("drm_id"),
+            "POST",
+            "/api/activate",
+            InstallationSigner.sha256Hex(body2.toString().toByteArray()),
+        )
+        assertTrue(s2, s2.endsWith(InstallationSigner.sha256Hex(body2.toString().toByteArray())))
+        assertTrue(
+            "改 ssaid 值应改变 body 哈希段",
+            s.takeLast(64) != s2.takeLast(64),
+        )
     }
 }
