@@ -111,7 +111,7 @@ object EntitlementManager {
 
     // DRM 锚进程内缓存（2026-11-24）：首次成功读取后钉住，避免巡检按码反复构造
     // MediaDrm；进程重启后从 SharedPreferences 恢复。@Volatile 防 IO 线程间撕裂。
-    @Volatile
+    @Volatile // 防 IO 线程间撕裂；App 端审查 S-4 复核通过（已有声明，无需重复）
     private var drmIdMemo: String? = null
 
     // 首启免费试用 claim（2026-10-13 拍板）节流键：非权益数据不进 state MAC。
@@ -333,7 +333,12 @@ object EntitlementManager {
             val lvl: String
             try {
                 id = drm.getPropertyByteArray(android.media.MediaDrm.PROPERTY_DEVICE_UNIQUE_ID)
-                lvl = drm.getPropertyString(android.media.MediaDrm.PROPERTY_SECURITY_LEVEL) ?: ""
+                // 级别读独立容错（App 端审查 I-2）：级别读异常不牵连锚哈希——首装
+                // （缓存空）设备上若整包置空，drm_id 恒空=恒 legacy、串码窗口不收敛
+                //（2026-11-24 缓存机制要防的面）；空串本就是合法级别值
+                // "securityLevel"=MediaDrm 文档键（返回 'L1'/'L3'/其他；该模块对此
+                // 常量名不可解析，字面量侧写——入口选型 §11-⑨ 挂真机验证拍板）
+                lvl = runCatching { drm.getPropertyString("securityLevel") ?: "" }.getOrDefault("") // ?: 防"成功返回 null"（Robolectric/部分 ROM——getOrDefault 不替换 null 成功值；test37 批单测抓到的 NPE）
             } finally {
                 runCatching { drm.release() }
             }
@@ -1097,7 +1102,11 @@ object EntitlementManager {
     // DONE 锁 TTL 判定 seam（2026-11-27，纯函数测试面）：doneAt<=0=旧版落锁无时间戳，
     // 保守视为仍在锁内（升级用户下一轮 expired 落锁补写后才进入 TTL 生命周期）
     internal fun shouldRetryDoneLock(doneAt: Long, nowMs: Long): Boolean =
-        doneAt > 0L && nowMs - doneAt >= TRIAL_DONE_TTL_MS
+        // doneAt=0（旧版事故期残留、无时间戳）复议（App 端审查 S-10，2026-11-28 拍板
+        // 「全部修复」）：原保守不放行存在永锁死结——锁死态到不了 expired 重落锁路径，
+        // 补写不可达。放行一次自愈：最坏=一次 claim 返 expired 后带时间戳重新落锁进入
+        // 正常 TTL 循环；防薅不受影响（一人一次闸在服务端幂等层）。
+        doneAt <= 0L || nowMs - doneAt >= TRIAL_DONE_TTL_MS
 
     // 权益真值判定 seam（T4 件3/件5，2026-11-04：语义向量锁定的纯函数化——
     // 向量=tests/entitlement-vectors.json，跨仓语义契约锁，方案件3/件5）。
@@ -1322,7 +1331,10 @@ object EntitlementManager {
             if (!active) p.edit().putInt(K_TRIAL_FAILS, fails + 1).apply()
             return@withContext active
         }
-        return@withContext when (val r = activateOrRedeem(context, ok)) {
+        // userInitiated=false（App 端审查 I-1，两席收敛）：本调用是 claim 200 带
+        // key_id、本地无 receipt 的「两跳 /activate」自动回退链（资格弹卡/购买墙自动
+        // 驱动）——426 时静默走退避，不弹全屏强更页（触发面拍板：后台/静默路径不触发）
+        return@withContext when (val r = activateOrRedeem(context, ok, userInitiated = false)) {
             is AuthResult.Success -> {
                 p.edit().putInt(K_TRIAL_FAILS, 0).putLong(K_TRIAL_LAST, 0L).putBoolean(K_TRIAL_DONE, false).remove(K_TRIAL_DONE_AT).apply()
                 notifyEntitlementChanged(EntitlementChange.CLAIMED)
